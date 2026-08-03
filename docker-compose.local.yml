@@ -1,0 +1,85 @@
+# Local development — one command, no configuration.
+#
+#     docker compose -f docker-compose.local.yml up --build
+#     open http://localhost:3000
+#
+# Deliberately different from deploy/docker-compose.yml (production):
+#   * one app container running API + inline workers, so there is one log to read
+#   * nginx serves the site and proxies /api → same origin, exactly like Vercel,
+#     so the camera works and CORS never enters the picture
+#   * DEV_LOGIN is on and secrets are throwaway — this stack is not for the public
+#   * ports are published so you can curl the API directly while debugging
+
+name: astro-palmistry-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: astro
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: astro
+    ports: ["5432:5432"]          # so you can psql from the host
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astro"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory-policy noeviction
+    ports: ["6379:6379"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.worker
+      args:
+        WITH_CONFLUENCE: "0"      # "1" adds torch (~2 GB) for the full report
+    environment:
+      ENV: dev
+      DATABASE_URL: postgresql+psycopg://astro:localdev@postgres:5432/astro
+      REDIS_URL: redis://redis:6379/0
+      APP_SECRET: local-dev-only-not-a-secret
+      DEV_LOGIN: "1"              # lets e2e_check.py sign in. Local only.
+      INLINE_WORKER: "1"
+      INLINE_WORKER_THREADS: "2"
+      ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:8080"
+      LOCAL_STORE: /data/storage
+      KEEP_UPLOADS: "0"
+      CAP_FULL_REPORT: "1"        # a laptop should not run four reports at once
+      CAP_BTR: "1"
+      CAP_PALM: "2"
+      CAP_DEFAULT: "4"
+    ports: ["8080:8080"]          # direct API access for curl / e2e_check
+    volumes:
+      - storage:/data
+      # live-edit the product layer without rebuilding the 1.2 GB image.
+      # The engines stay baked in; remove these two lines for a clean-image test.
+      - ./core:/app/core:ro
+      - ./api.py:/app/api.py:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
+  web:
+    image: nginx:1.27-alpine
+    ports: ["3000:80"]
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+      - ./deploy/nginx.local.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:

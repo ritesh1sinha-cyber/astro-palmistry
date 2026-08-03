@@ -53,7 +53,18 @@ deploy/ephe/                ← Swiss Ephemeris .se1 files
 
 `Dockerfile.worker` copies those into place.
 
-## Run it on a laptop (no infrastructure)
+## Run it locally with Docker (recommended)
+
+```bash
+docker compose -f docker-compose.local.yml up --build
+open http://localhost:3000
+```
+
+One container runs the API and the workers, with Postgres, Redis and nginx
+alongside. nginx proxies `/api` so the frontend is same-origin — the same shape
+as Vercel in front of Railway. See **LOCAL.md**.
+
+## Run it without Docker (no infrastructure at all)
 
 ```bash
 pip install "fastapi[standard]" sqlalchemy redis fakeredis pydantic
