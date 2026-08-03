@@ -30,9 +30,17 @@ RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
 COPY core ./core
 COPY api.py worker.py e2e_check.py ./
 
-# engines, imported unchanged
+# engines, imported unchanged.
+#
+# Both use the same COPY form: no trailing slash, explicit destination. The
+# earlier `COPY engines/astro/ ./` (contents-into-workdir) failed on Railway with
+# `"/engines/astro": not found` while the palm_api line beside it succeeded, so
+# the difference is that form — not the files, which are present in the repo.
+# PYTHONPATH keeps the modules importable by their own names, exactly as the
+# engine expects (`import astro_precompute`, not `astro_engine.astro_precompute`).
 COPY engines/palm_api ./palm_api
-COPY engines/astro/ ./
+COPY engines/astro ./astro_engine
+ENV PYTHONPATH=/app:/app/astro_engine
 
 # Swiss Ephemeris (*.se1) is deliberately NOT copied here. Those files are
 # gitignored (large, licensed separately), so in a clean clone the directory is
@@ -45,7 +53,8 @@ COPY engines/astro/ ./
 RUN python -c "from palm_api.pipeline import ensure_corpus; ensure_corpus()" || true
 
 # fail the BUILD, not the first customer, if the astrology engine can't import
-RUN PYJHORA_SRC=/usr/local/lib/python3.12/site-packages python -c "\
+RUN PYTHONPATH=/app:/app/astro_engine \
+    PYJHORA_SRC=/usr/local/lib/python3.12/site-packages python -c "\
 import astro_precompute, vedic_confluence_report, numerology_report, \
        kundali_match, muhurat_checker, btr_rectify, astro_voice, astro_split; \
 print('astrology engine imports OK')"
