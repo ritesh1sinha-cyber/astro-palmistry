@@ -83,6 +83,18 @@ class Settings:
 
     engine_version: str = os.getenv("ENGINE_VERSION", "2026.08")
 
+    def __post_init__(self) -> None:
+        # Managed hosts (Railway, Render, Heroku, Neon) hand out URLs starting
+        # `postgres://` or `postgresql://`. SQLAlchemy maps those to psycopg2,
+        # which is not in our image — psycopg3 is. Normalise it here so nobody
+        # has to remember a driver suffix in a dashboard.
+        u = self.database_url
+        if u.startswith("postgres://"):
+            u = "postgresql://" + u[len("postgres://"):]
+        if u.startswith("postgresql://"):
+            u = "postgresql+psycopg://" + u[len("postgresql://"):]
+        self.database_url = u
+
     @property
     def is_postgres(self) -> bool:
         return self.database_url.startswith("postgres")

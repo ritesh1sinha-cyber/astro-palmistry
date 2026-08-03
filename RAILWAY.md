@@ -1,0 +1,98 @@
+# Deploying the backend on Railway
+
+Railway runs real containers, so the engines and the long-running workers both
+work — unlike Vercel, where the dependency bundle (318 MB) exceeds the 250 MB
+function limit and a 90–180 s report exceeds the execution cap.
+
+Shape for the test round: **one service** (API + workers in one container),
+plus managed Postgres and Redis.
+
+```
+Vercel (frontend, static)  ──/api/*──▶  Railway service (api + inline workers)
+                                              ├── Railway Postgres
+                                              └── Railway Redis
+```
+
+## 1. Create the project
+
+1. railway.app → **New Project → Deploy from GitHub repo** → pick this repo.
+2. Railway reads `railway.json` and builds `deploy/Dockerfile.worker`.
+   First build takes ~8–12 minutes (mediapipe and PyJHora are large).
+3. **Add Postgres:** New → Database → PostgreSQL.
+4. **Add Redis:** New → Database → Redis.
+
+## 2. Variables
+
+On the app service, set these. The two `${{...}}` values are Railway references —
+paste them exactly; Railway substitutes the real credentials.
+
+```bash
+ENV=prod
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+REDIS_URL=${{Redis.REDIS_URL}}
+
+APP_SECRET=            # openssl rand -hex 32
+INLINE_WORKER=1        # one service answers HTTP and runs readings
+INLINE_WORKER_THREADS=2
+
+ALLOWED_ORIGINS=https://your-app.vercel.app
+LOCAL_STORE=/data/storage
+
+# for the test round only — lets e2e_check.py sign in. REMOVE before real payments.
+DEV_LOGIN=1
+
+# when you have them:
+GOOGLE_CLIENT_ID=
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+```
+
+Railway's `DATABASE_URL` arrives as `postgresql://…`, which SQLAlchemy would
+route to psycopg2. The app rewrites it to psycopg3 on startup, so you don't need
+to touch it.
+
+## 3. Add a volume
+
+Generated reports are written to `LOCAL_STORE`. Without a volume they vanish on
+every redeploy, and a customer's paid report 404s.
+
+- Service → **Settings → Volumes → New Volume**, mount path `/data`.
+
+For anything beyond testing, use object storage instead — set `S3_BUCKET`,
+`S3_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (Cloudflare R2 is
+cheapest for this) and the volume stops mattering.
+
+## 4. Verify
+
+```bash
+python3 e2e_check.py --api https://your-service.up.railway.app
+```
+
+Expect 29 checks. Two will differ from local:
+
+- **`no citations in output`** must still pass — that is the check that your
+  readings carry no book, author or page reference.
+- **`unsigned webhook rejected`** will pass *instead of* the unlock checks once
+  `RAZORPAY_WEBHOOK_SECRET` is set. That is correct: without a valid signature no
+  order can be marked paid.
+
+## 5. Then the frontend on Vercel
+
+1. Import the same repo. Vercel reads `vercel.json` and serves `site/`.
+2. Edit `vercel.json`: replace `BACKEND_URL_PLACEHOLDER` with your Railway host
+   (Vercel rewrites cannot read env vars, so it must be a literal), commit, redeploy.
+3. Set `ALLOWED_ORIGINS` on Railway to the Vercel URL.
+
+## What to expect on the free tier
+
+- **Build time** ~10 min; the image is ~1.2 GB without torch.
+- **Memory:** mediapipe needs ~1 GB resident during a palm reading. Railway's
+  starter allowance is tight — if a palm reading dies silently, that is an OOM.
+- **Cold start** after idle is ~20–30 s on the first request.
+- **The full confluence report is off by default** (`WITH_CONFLUENCE=0`): torch
+  adds ~2 GB. Every other feature works. Turn it on with a build arg when you
+  have the headroom.
+- **Cost:** roughly $5–15/month at test volumes. It sleeps less aggressively than
+  Render's free tier, which is why it is the better choice for a demo you want to
+  show someone.
