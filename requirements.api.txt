@@ -1,0 +1,9 @@
+# API image — no engines, stays small
+fastapi[standard]==0.115.*
+uvicorn[standard]==0.32.*
+sqlalchemy==2.0.*
+psycopg[binary]==3.2.*
+redis==5.2.*
+pydantic==2.9.*
+google-auth==2.35.*
+boto3==1.35.*

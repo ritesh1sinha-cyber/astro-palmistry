@@ -1,0 +1,43 @@
+{
+  "source": "Predict with Navamsha (V.P. Goel) - rules3.md + OCR",
+  "disclaimer": "Navamsha shows how D1 promises mature over time (Goel). Educational astrology only - not legal or medical advice.",
+  "d9_house_meanings": {
+    "1": "Self-image in partnership; how you enter marriage",
+    "4": "Marital home, domestic peace, happiness after wedding",
+    "5": "Romance, emotional bond, children after marriage",
+    "7": "Marriage house - spouse tone and partnership itself",
+    "8": "Mangalya, longevity themes, hidden side of union",
+    "9": "Dharma in marriage, fortune through spouse, spirituality",
+    "12": "Bed pleasure, foreign spouse, retreat - also Venus exaltation zone"
+  },
+  "marriage_karaka": {
+    "male": "Venus",
+    "female": "Jupiter"
+  },
+  "denial_rules": [
+    "Three afflictions on 7th in both D1 and D9 with no benefic relief",
+    "Malefic in 7th plus graha in 9th - joyless or spiritual turn",
+    "Marriage karaka alone in D9 lagna (Venus male / Jupiter female)"
+  ],
+  "quality_rules": [
+    "D9 is the long-term outcome tone of marriage",
+    "Two or more benefics on 7th in D1 and D9 enhance quality",
+    "Karaka debility alone tolerable; multiple afflictions spoil outcomes"
+  ],
+  "separation_rules": [
+    "D9 7th lord under malefic PAC - hard to sustain marriage",
+    "Papa kartari on D9 4th - domestic strain"
+  ],
+  "spiritual_d9": {
+    "4": "Seat of God, social good deeds",
+    "5": "Mantra siddhi, emotional devotion",
+    "8": "Samadhi, guru ashram, karmic burn",
+    "9": "Guru, temple, pilgrimage, japa",
+    "12": "Salvation, isolation practice, samadhi"
+  },
+  "trajectory": {
+    "strong_d1_weak_d9": "Early promise may sour if D9 karaka or 7th is afflicted",
+    "weak_d1_strong_d9": "Rough start can improve - D9 overrides long-term flavor",
+    "neecha_in_d1_exalted_d9": "Planet debilitated in D1 but strong in D9 - late improvement"
+  }
+}

@@ -1,0 +1,1195 @@
+[
+  {
+    "case_id": 2,
+    "question": "Where is John s GameBoy?",
+    "planets": [
+      "Sun",
+      "Moon",
+      "Jupiter",
+      "Mercury"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Jupiter"
+      },
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Mercury"
+      },
+      {
+        "type": "trine",
+        "p1": "Sun",
+        "p2": "Moon"
+      },
+      {
+        "type": "sextile",
+        "p1": "Sun",
+        "p2": "Moon"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 59",
+    "book_note": "GameBoy recovered ~1 month later (Mars conjoined natal Neptune timing); late-Asc haste caveat."
+  },
+  {
+    "case_id": 3,
+    "question": "What is the cosmic state of Jupiter?",
+    "planets": [
+      "Moon",
+      "Saturn",
+      "Jupiter"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Jupiter"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Saturn"
+      }
+    ],
+    "conditions": [
+      "retrograde"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 1 (Sara baby health)",
+    "book_note": "Book answers this sub-question as Mixed (Jupiter strong by house yet intercepted, etc.); the same passage then argues adverse prognosis for the baby. Binary NO flags the adverse medical direction, not 'unmixed Jupiter'."
+  },
+  {
+    "case_id": 4,
+    "question": "What happened in the past two weeks?\"\nOctober 5, 1989, 10:39 pm EDT, 73W01, 41N19 Koch Houses\nIn looking at Chart 2A, I decided that it had to be\ngood news because Jupiter was rising in the first house\nand the question came on a Jupiter day.",
+    "planets": [
+      "Jupiter",
+      "Saturn",
+      "Venus",
+      "Moon",
+      "Mercury"
+    ],
+    "aspects": [
+      {
+        "type": "conjunction",
+        "p1": "Moon",
+        "p2": "Venus"
+      },
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Mercury"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Mercury"
+      }
+    ],
+    "conditions": [
+      "saturn_in_7th"
+    ],
+    "result": "YES",
+    "book_note": "Louis Chart 2A — Sara confirmed: unexpected recovered money (client inheritance paying long-owed fees). Prior label NO was wrong vs book outcome.",
+    "book_ref": "Chart 2A"
+  },
+  {
+    "case_id": 5,
+    "question": "If, however, this were the chart for a\nhorary question,  Will there be an earthquake?",
+    "planets": [
+      "Sun",
+      "Moon",
+      "Mercury",
+      "Jupiter",
+      "Saturn",
+      "Uranus",
+      "Neptune",
+      "Mars"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Sun",
+        "p2": "Moon"
+      }
+    ],
+    "conditions": [],
+    "result": "YES",
+    "book_ref": "Chart 3 (1989 San Francisco earthquake)",
+    "book_note": "Event chart, not horary; Louis writes that *if* this were a horary 'Will there be an earthquake?' he would answer unequivocal Yes."
+  },
+  {
+    "case_id": 6,
+    "question": "Chart 4: ValuJet Flight 592 — event chart (May 11, 1996, 2:25 p.m. EDT)",
+    "planets": [
+      "Mercury",
+      "Sun",
+      "Venus",
+      "Saturn",
+      "Mars",
+      "Uranus"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Venus",
+        "p2": "Saturn"
+      },
+      {
+        "type": "conjunction",
+        "p1": "Sun",
+        "p2": "Mercury"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "combust"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 4 (ValuJet Flight 592)",
+    "book_note": "Disaster event chart: Mercury highly debilitated, combust Sun; Venus dissociate square Saturn. result NO = no favorable/survival outcome."
+  },
+  {
+    "case_id": 7,
+    "question": "On Sunday, February 3, 1974, a\nfriend of Joan McEvers asked the question  Is my house\ngoing to burn down the end of this month?",
+    "planets": [
+      "Moon",
+      "Saturn"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Saturn"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 6",
+    "book_note": "House did not burn; McEvers/Louis both conclude No."
+  },
+  {
+    "case_id": 8,
+    "question": "Is my house going to burn down at the end of this month?",
+    "planets": [
+      "Moon",
+      "Saturn",
+      "Venus",
+      "Mars",
+      "Pluto",
+      "Uranus",
+      "Sun",
+      "Mercury"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Venus",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "retrograde"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 6",
+    "book_note": "Louis's read: Venus (home) and Mars (fire) mutually apply by trine — No, house will not burn; same factual outcome as case 7."
+  },
+  {
+    "case_id": 9,
+    "question": "Will | ever have children?",
+    "planets": [
+      "Mercury",
+      "Moon",
+      "Saturn",
+      "Sun",
+      "Venus"
+    ],
+    "aspects": [],
+    "conditions": [],
+    "result": "NO",
+    "book_ref": "Chart 7 (Lilly)",
+    "book_note": "Lilly declared the querent would never have children per CA rules."
+  },
+  {
+    "case_id": 10,
+    "question": "Would he find a secretary through a\nchild?",
+    "planets": [
+      "Mars",
+      "Moon"
+    ],
+    "aspects": [
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [],
+    "result": "YES"
+  },
+  {
+    "case_id": 11,
+    "question": "Where is the missing TV clicker? \nJuly 6, 1996, 10:24 p.m. EDT, 73W04, 41N16 Regiomontanus Houses\nMoon and Sun are in mutual reception by\nsign/exaltation.",
+    "planets": [
+      "Saturn",
+      "Moon",
+      "Mars",
+      "Sun",
+      "Mercury",
+      "Venus"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Venus"
+      }
+    ],
+    "conditions": [],
+    "result": "YES",
+    "book_ref": "Chart 9",
+    "book_note": "Wife found clicker under son's bed during analysis; angular Mars in 4th."
+  },
+  {
+    "case_id": 12,
+    "question": "Should I buy the computerized test?\nJuly 21, 1989, 8:20 a.m. EDT, 72W45, 41N27 Koch Houses\nVenus, primary ruler of the computer program,\noccupies the 12th house of sorrow and self-undoing.",
+    "planets": [
+      "Mars",
+      "Venus",
+      "Moon",
+      "Saturn"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Venus"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Saturn"
+      },
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 11",
+    "book_note": "Louis judged against purchase (Venus 12th, Via Combusta); bought anyway — software failed, misleading clinical use. result NO = unfavorable outcome / should not have bought."
+  },
+  {
+    "case_id": 13,
+    "question": "If the Presbytery shall stand?",
+    "planets": [
+      "Moon",
+      "Mercury",
+      "Jupiter",
+      "Uranus",
+      "Neptune"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Mercury"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 12 (Lilly Presbytery)",
+    "book_note": "Illustrates void-of-course Moon in context; book does not spell a yes/no verdict for the Presbytery in the OCR excerpt — NO retained as 'matter not brought to maturity / static' per void teaching."
+  },
+  {
+    "case_id": 14,
+    "question": "# bewitched?",
+    "planets": [
+      "Moon",
+      "Saturn",
+      "Mercury",
+      "Jupiter",
+      "Mars",
+      "Venus"
+    ],
+    "aspects": [
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Jupiter"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "moon_in_via_combusta"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 14 (Lilly bewitched)",
+    "book_note": "Lilly judged the querent was not bewitched (Mercury trine Jupiter/Mars, etc.). Condition moon_in_via_combusta = Moon in burned path (not solar combust)."
+  },
+  {
+    "case_id": 15,
+    "question": "Money lost, who stole it? \nJune 3, 1647, 4:54 p.m. GMT, 0OW10, 51N30 Regiomontanus Houses\nThe Moon in late degrees of a sign, especially\nGemini, Scorpio, and Capricorn.",
+    "planets": [
+      "Moon",
+      "Mars",
+      "Mercury",
+      "Jupiter",
+      "Saturn",
+      "Sun",
+      "Uranus",
+      "Neptune"
+    ],
+    "aspects": [
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "combust"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 15 (Lilly money stolen)",
+    "book_note": "Lilly: money returned in three days; Mercury as thief, Moon applies to Mars."
+  },
+  {
+    "case_id": 16,
+    "question": "Should we buy the stained glass business?",
+    "planets": [
+      "Sun",
+      "Moon"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Sun",
+        "p2": "Moon"
+      },
+      {
+        "type": "sextile",
+        "p1": "Sun",
+        "p2": "Moon"
+      }
+    ],
+    "conditions": [
+      "combust",
+      "intercepted"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 16",
+    "book_note": "Joan initially advised against purchase; son bought anyway — stained glass business became extremely successful (Spica, mutual reception)."
+  },
+  {
+    "case_id": 17,
+    "question": "Will | marry?",
+    "planets": [
+      "Sun",
+      "Moon",
+      "Saturn",
+      "Jupiter"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Sun",
+        "p2": "Moon"
+      },
+      {
+        "type": "sextile",
+        "p1": "Sun",
+        "p2": "Moon"
+      },
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Jupiter"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Jupiter"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Saturn"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 17",
+    "book_note": "Querent married in Denver after relocation, as indicated (Venus–Mars conjunction after sign change)."
+  },
+  {
+    "case_id": 18,
+    "question": "When her husband, who is imprisoned, shall be delivered?",
+    "planets": [
+      "Moon",
+      "Saturn",
+      "Jupiter"
+    ],
+    "aspects": [
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Saturn"
+      },
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Jupiter"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 18",
+    "book_note": "Lilly: husband already released / discharged (Moon–Jupiter, retrograde Jupiter)."
+  },
+  {
+    "case_id": 19,
+    "question": "Will | need to buy a new air conditioner?",
+    "planets": [
+      "Mercury",
+      "Saturn",
+      "Uranus",
+      "Moon"
+    ],
+    "aspects": [],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 19",
+    "book_note": "Repair fixed the unit (debris in fan); no new purchase needed — NO to buying new AC."
+  },
+  {
+    "case_id": 20,
+    "question": "Will Luis get the loan?",
+    "planets": [
+      "Moon",
+      "Jupiter",
+      "Saturn",
+      "Uranus",
+      "Neptune",
+      "Pluto"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Jupiter"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 20",
+    "book_note": "Loan approved ~10:07 a.m.; Venus–Jupiter semi-sextile exact ~10:09."
+  },
+  {
+    "case_id": 21,
+    "question": "Have you found our cat?",
+    "planets": [
+      "Mars",
+      "Jupiter",
+      "Venus",
+      "Mercury"
+    ],
+    "aspects": [
+      {
+        "type": "sextile",
+        "p1": "Mercury",
+        "p2": "Venus"
+      },
+      {
+        "type": "trine",
+        "p1": "Mercury",
+        "p2": "Mars"
+      },
+      {
+        "type": "square",
+        "p1": "Mercury",
+        "p2": "Jupiter"
+      }
+    ],
+    "conditions": [],
+    "result": "YES"
+  },
+  {
+    "case_id": 22,
+    "question": "Will | get the job with Llewellyn? \nJune 24, 1987, 10:00 a.m. PST, 116W46, 47N41 Koch Houses\nIn the context of the question, the chart tells me\nthat the  job with Llewellyn  most likely involves\nwriting or editing (Mercury) for the publisher in the\nsolitude of her home (12th), With Virgo rising,\nMercury McEvers  ruler is retrograde at 16  20 \n\nCancer in the 11th house.",
+    "planets": [
+      "Moon",
+      "Mercury",
+      "Venus",
+      "Mars",
+      "Sun"
+    ],
+    "aspects": [
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Mercury"
+      },
+      {
+        "type": "conjunction",
+        "p1": "Moon",
+        "p2": "Venus"
+      },
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "combust"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 22",
+    "book_note": "McEvers got Llewellyn editing job (Moon–Mercury mutual application, translation to Venus)."
+  },
+  {
+    "case_id": 23,
+    "question": "What has already happened? \nMarch 24, 1633, 2.26 p.m, GMT 0W10/51N30 Regiomontanus Houses",
+    "planets": [
+      "Mars",
+      "Moon",
+      "Saturn",
+      "Uranus",
+      "Neptune"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "retrograde"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 23 (Lilly impedition)",
+    "book_note": "Past-reconstruction / impedition teaching chart; not a future yes-no forecast. NO kept only as weak placeholder for tooling."
+  },
+  {
+    "case_id": 24,
+    "question": "Should | move to the new office?",
+    "planets": [
+      "Sun",
+      "Jupiter",
+      "Mercury",
+      "Saturn",
+      "Uranus",
+      "Neptune",
+      "Pluto"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Sun",
+        "p2": "Jupiter"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 24",
+    "book_note": "Louis did not move; landlord withdrew suite — 'no aspects, no action' + retrograde Mercury."
+  },
+  {
+    "case_id": 26,
+    "question": "What about the real estate?",
+    "planets": [
+      "Venus",
+      "Moon",
+      "Sun",
+      "Saturn",
+      "Mercury"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Saturn"
+      },
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Venus"
+      },
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Mercury"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Mercury"
+      },
+      {
+        "type": "square",
+        "p1": "Sun",
+        "p2": "Moon"
+      },
+      {
+        "type": "trine",
+        "p1": "Sun",
+        "p2": "Moon"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Charts 26A / Lilly Mr. B",
+    "book_note": "Lilly purchased Mr. B's houses; Venus–Sun conjunction + stretched Moon–Saturn square argument per Louis."
+  },
+  {
+    "case_id": 27,
+    "question": "What was the outcome?",
+    "planets": [
+      "Venus",
+      "Sun",
+      "Saturn",
+      "Moon",
+      "Mars",
+      "Mercury",
+      "Jupiter"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Mars"
+      },
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Mercury"
+      }
+    ],
+    "conditions": [
+      "retrograde"
+    ],
+    "result": "YES",
+    "book_ref": "Charts 26A outcome",
+    "book_note": "Lilly bought the houses; outcome YES with financial/hard-bargain caveats per Lilly's own report."
+  },
+  {
+    "case_id": 28,
+    "question": "A MODERN EXAMPLE: WHERE ARE RACHEL S\nMISSING EYEGLASSES? (Chart 30 — Sept 15, 1992, 7:21 a.m. EDT, 73W01, 41N19 Regiomontanus)",
+    "planets": [
+      "Venus",
+      "Moon",
+      "Uranus",
+      "Neptune",
+      "Jupiter",
+      "Mercury"
+    ],
+    "aspects": [],
+    "conditions": [
+      "early_asc",
+      "intercepted"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 30",
+    "book_note": "Rachel found eyeglasses in purse next afternoon; Venus ruler 1st and 2nd in 1st."
+  },
+  {
+    "case_id": 30,
+    "question": "How did he do\nthis?",
+    "planets": [
+      "Venus",
+      "Moon",
+      "Sun",
+      "Mars",
+      "Jupiter",
+      "Saturn",
+      "Mercury"
+    ],
+    "aspects": [
+      {
+        "type": "opposition",
+        "p1": "Moon",
+        "p2": "Saturn"
+      },
+      {
+        "type": "conjunction",
+        "p1": "Moon",
+        "p2": "Mars"
+      },
+      {
+        "type": "trine",
+        "p1": "Sun",
+        "p2": "Moon"
+      },
+      {
+        "type": "opposition",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [],
+    "result": "YES",
+    "book_ref": "Chart 31 / Palchus",
+    "book_note": "Historical theft case — Palchus located linen; girl recovered goods. No combust tag — full-Moon-style sky; fifth-century positions differ slightly from MOSEPH."
+  },
+  {
+    "case_id": 31,
+    "question": "At 11:23 a.m., I looked at my watch and\nasked the question,  Where are my papers, where is the\nthief, and will I get my things back?",
+    "planets": [
+      "Moon",
+      "Saturn",
+      "Uranus",
+      "Jupiter",
+      "Neptune",
+      "Mars",
+      "Sun",
+      "Mercury",
+      "Venus"
+    ],
+    "aspects": [],
+    "conditions": [
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 35",
+    "book_note": "Theft of briefcase — core papers/books returned via police; valuables still lost (partial material loss)."
+  },
+  {
+    "case_id": 32,
+    "question": "Should I\nuse Saturn or Uranus as my primary ruler?",
+    "planets": [
+      "Saturn",
+      "Uranus",
+      "Moon",
+      "Neptune",
+      "Mercury",
+      "Venus",
+      "Jupiter"
+    ],
+    "aspects": [
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Venus"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Mercury"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 35",
+    "book_note": "Same theft chart — Louis debates Saturn vs Uranus as Asc ruler; notes recovered."
+  },
+  {
+    "case_id": 33,
+    "question": "Who is the thief?",
+    "planets": [
+      "Sun",
+      "Moon",
+      "Jupiter",
+      "Mars",
+      "Mercury",
+      "Saturn",
+      "Neptune",
+      "Uranus"
+    ],
+    "aspects": [],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 35",
+    "book_note": "Thief description (solar male ~40, female accomplice) matched police intelligence; goods partly recovered."
+  },
+  {
+    "case_id": 34,
+    "question": "Where Are My House Keys? \nDecember 9, 1989, 2:26 p.m. EST 73W01/41N19 Koch Houses\nAbout 9:30 p.m. the same day my father-in-law reached\ninto his pocket and discovered he had the missing\nkeys.",
+    "planets": [
+      "Moon",
+      "Mercury",
+      "Mars",
+      "Pluto",
+      "Sun",
+      "Uranus"
+    ],
+    "aspects": [],
+    "conditions": [],
+    "result": "YES",
+    "book_ref": "Chart 38",
+    "book_note": "Keys recovered same day (father-in-law's pocket); initial direction guess wrong, outcome positive. No via_combusta_7th tag — Mars in 7th in Scorpio past 15° in MOSEPH check."
+  },
+  {
+    "case_id": 35,
+    "question": "Where Is Nick? \nJune 4, 1989, 7:00 a.m. EDT 73W01/41N19 Koch Houses\nIn re-analyzing this chart for the second edition of\nthis book, I realized that Nick was due East and not\ndue West of my location.",
+    "planets": [
+      "Saturn",
+      "Moon",
+      "Venus",
+      "Mercury"
+    ],
+    "aspects": [],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 39",
+    "book_note": "Nick contacted same day at home; east vs west house choice corrected in 2nd ed."
+  },
+  {
+    "case_id": 36,
+    "question": "Where Is Tommy? \nJune 19, 1989, 7:09 p.m. EST, 72W55/41N18 Koch Houses\nAt one point in the interview she said,  You can t\ntell me if I m going to jail.",
+    "planets": [
+      "Moon",
+      "Mars",
+      "Saturn",
+      "Uranus",
+      "Neptune",
+      "Mercury",
+      "Sun",
+      "Jupiter"
+    ],
+    "aspects": [
+      {
+        "type": "opposition",
+        "p1": "Jupiter",
+        "p2": "Saturn"
+      }
+    ],
+    "conditions": [
+      "retrograde"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 40",
+    "book_note": "Tommy returned home same evening as predicted."
+  },
+  {
+    "case_id": 37,
+    "question": "Will 1 go to jail?",
+    "planets": [
+      "Venus",
+      "Moon",
+      "Mercury"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Venus"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Venus"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 41",
+    "book_note": "Querent sentenced to prison — affirmative to literal 'go to jail?'."
+  },
+  {
+    "case_id": 39,
+    "question": "Will I Marry Michael? \nAugust 29, 1987, 3:01 p.m. EST, 73W01, 41N19 Koch Houses\nThe Ascendant is 2° Capricorn.",
+    "planets": [
+      "Saturn",
+      "Neptune",
+      "Moon",
+      "Pluto",
+      "Sun",
+      "Mercury"
+    ],
+    "aspects": [
+      {
+        "type": "semi-sextile",
+        "p1": "Moon",
+        "p2": "Saturn"
+      }
+    ],
+    "conditions": [
+      "early_asc",
+      "retrograde",
+      "void"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 44",
+    "book_note": "Michael married someone else; early Asc, Neptune to Asc, Saturn 12th, Moon in Via Combusta conjunct Pluto — no marriage to querent."
+  },
+  {
+    "case_id": 41,
+    "question": "Where Did | Put the Medication?",
+    "planets": [
+      "Moon",
+      "Mercury",
+      "Venus",
+      "Mars",
+      "Jupiter",
+      "Saturn"
+    ],
+    "aspects": [],
+    "conditions": [],
+    "result": "YES",
+    "book_ref": "Chart 47",
+    "book_note": "Medication found on closet shelf as described."
+  },
+  {
+    "case_id": 43,
+    "question": "When Will My Son Be Toilet Trained?",
+    "planets": [
+      "Sun",
+      "Saturn",
+      "Jupiter"
+    ],
+    "aspects": [
+      {
+        "type": "conjunction",
+        "p1": "Sun",
+        "p2": "Saturn"
+      }
+    ],
+    "conditions": [
+      "retrograde"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 49",
+    "book_note": "Toilet-training timing matched Sun–Saturn conjunction and ~13-day Moon timing per Louis."
+  },
+  {
+    "case_id": 44,
+    "question": "Will This Book Be Published?",
+    "planets": [
+      "Mars",
+      "Sun",
+      "Moon",
+      "Saturn",
+      "Uranus",
+      "Neptune",
+      "Pluto"
+    ],
+    "aspects": [
+      {
+        "type": "conjunction",
+        "p1": "Sun",
+        "p2": "Moon"
+      },
+      {
+        "type": "square",
+        "p1": "Moon",
+        "p2": "Mars"
+      },
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "retrograde",
+      "combust"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 50",
+    "book_note": "Book published by Llewellyn; chart read Venus–Mars conjunction for publication."
+  },
+  {
+    "case_id": 45,
+    "question": "Will the Ad Fly? \nJune 5, 1990, 10:52 a.m. CDT",
+    "planets": [
+      "Mars",
+      "Venus"
+    ],
+    "aspects": [
+      {
+        "type": "conjunction",
+        "p1": "Venus",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "void"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 51",
+    "book_note": "Ad approved (~3 days); Mercury trine Saturn mutual application."
+  },
+  {
+    "case_id": 47,
+    "question": "Will He Return, and Will | Move fram New York City?",
+    "planets": [
+      "Sun",
+      "Moon",
+      "Saturn",
+      "Uranus",
+      "Neptune",
+      "Mars",
+      "Jupiter",
+      "Mercury",
+      "Venus",
+      "Pluto"
+    ],
+    "aspects": [
+      {
+        "type": "opposition",
+        "p1": "Moon",
+        "p2": "Jupiter"
+      },
+      {
+        "type": "square",
+        "p1": "Sun",
+        "p2": "Saturn"
+      },
+      {
+        "type": "sextile",
+        "p1": "Sun",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [
+      "retrograde"
+    ],
+    "result": "NO",
+    "book_ref": "Chart 53",
+    "book_note": "Husband did not return (divorce); Rachel stayed in NYC; trip to Florida occurred as timed."
+  },
+  {
+    "case_id": 48,
+    "question": "Chart 3 follow-on: Moon's final trine to Sun as mitigating factor",
+    "planets": [
+      "Moon",
+      "Sun"
+    ],
+    "aspects": [
+      {
+        "type": "trine",
+        "p1": "Moon",
+        "p2": "Sun"
+      }
+    ],
+    "conditions": [],
+    "result": "YES",
+    "book_ref": "Chart 3 (aftermath)",
+    "book_note": "Discusses relative good fortune / Moon–Sun trine amid disaster chart — not a standalone horary verdict."
+  },
+  {
+    "case_id": 51,
+    "question": "Synthetic stress-test row (verify aspects against ephemeris before use)",
+    "planets": [
+      "Mars",
+      "Sun"
+    ],
+    "aspects": [
+      {
+        "type": "square",
+        "p1": "Sun",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [],
+    "result": "NO",
+    "book_note": "Previously listed both square and opposition between Sun and Mars (impossible for one pair); single aspect retained for tests only."
+  },
+  {
+    "case_id": 52,
+    "question": "On Tuesday,\nJanuary 16, 1990, at 10:00 pM. EST Sara telephoned\nwith the question,  Where is John s GameBoy?",
+    "planets": [
+      "Mars",
+      "Sun",
+      "Moon",
+      "Saturn"
+    ],
+    "aspects": [
+      {
+        "type": "conjunction",
+        "p1": "Moon",
+        "p2": "Saturn"
+      },
+      {
+        "type": "square",
+        "p1": "Sun",
+        "p2": "Moon"
+      },
+      {
+        "type": "sextile",
+        "p1": "Moon",
+        "p2": "Mars"
+      }
+    ],
+    "conditions": [],
+    "result": "YES"
+  },
+  {
+    "case_id": 53,
+    "question": "Where is John s GameBoy?",
+    "planets": [
+      "Sun",
+      "Moon"
+    ],
+    "aspects": [
+      {
+        "type": "opposition",
+        "p1": "Sun",
+        "p2": "Moon"
+      }
+    ],
+    "conditions": [
+      "void",
+      "combust"
+    ],
+    "result": "YES",
+    "book_ref": "Chart 59",
+    "book_note": "Same GameBoy case as case_id 2 / Chart 59 — object recovered."
+  }
+]

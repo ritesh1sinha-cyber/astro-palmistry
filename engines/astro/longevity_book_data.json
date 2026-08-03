@@ -1,0 +1,528 @@
+{
+  "sources": [
+    "Marc Boney - Lord Yama Pays a Visit: Maraka Planets (2018) [book_ocr]",
+    "Marc Boney - Inauspicious Planetary Stations: Planets in Mrityu Bhaga (2021) [book_ocr]"
+  ],
+  "maraka_slokas": [
+    "Thus the 2\u201d\u00a2 and the 7\" are the maraka houses.",
+    "If Saturn is ill disposed and related to maraka planets.",
+    "Planets will only bring death when a person's longevity (ayus) has expired."
+  ],
+  "rao_hierarchy": [
+    "Periods of planets in the 2nd and 7th houses.",
+    "Periods of planets associated with the 2nd or 7th lords.",
+    "If no planets in maraka houses: 12th lord mahadasha + maraka antardasha.",
+    "Killer strength order: 2nd lord strongest.",
+    "Next: 7th lord.",
+    "Next: planets in the 2nd house.",
+    "Next: planets associated with the 2nd lord.",
+    "Next: planets in the 7th house.",
+    "Next: planets associated with the 7th lord.",
+    "Beyond six: 12th lord mahadasha or planet in 12th or associated with 12th lord.",
+    "Beyond seven: benefic antardasha of 12th lord.",
+    "Beyond eight: 8th lord or planet in 8th or associated with 8th lord.",
+    "Beyond nine: 3rd, 6th, 11th lords and their associations."
+  ],
+  "primary_maraka_by_lagna": {
+    "Aries": {
+      "2nd_lord": "Venus",
+      "7th_lord": "Venus"
+    },
+    "Taurus": {
+      "2nd_lord": "Mercury",
+      "7th_lord": "Mars"
+    },
+    "Gemini": {
+      "2nd_lord": "Moon",
+      "7th_lord": "Jupiter"
+    },
+    "Cancer": {
+      "2nd_lord": "Sun",
+      "7th_lord": "Saturn"
+    },
+    "Leo": {
+      "2nd_lord": "Mercury",
+      "7th_lord": "Saturn"
+    },
+    "Virgo": {
+      "2nd_lord": "Venus",
+      "7th_lord": "Jupiter"
+    },
+    "Libra": {
+      "2nd_lord": "Mars",
+      "7th_lord": "Mars"
+    },
+    "Scorpio": {
+      "2nd_lord": "Jupiter",
+      "7th_lord": "Venus"
+    },
+    "Sagittarius": {
+      "2nd_lord": "Saturn",
+      "7th_lord": "Mercury"
+    },
+    "Capricorn": {
+      "2nd_lord": "Saturn",
+      "7th_lord": "Moon"
+    },
+    "Aquarius": {
+      "2nd_lord": "Jupiter",
+      "7th_lord": "Sun"
+    },
+    "Pisces": {
+      "2nd_lord": "Mars",
+      "7th_lord": "Mercury"
+    }
+  },
+  "functional_killer_quote": {
+    "Aries": "Venus, being marked as a fatal planet, will certainly kill; the malefic planets beginning with Saturn will also kill.",
+    "Gemini": "The Moon is the prime killer but will give these results by association.",
+    "Cancer": "Saturn is a killer.",
+    "Leo": "Saturn is the killer.",
+    "Virgo": "Venus is a killer.",
+    "Libra": "Mars will kill and Jupiter and the rest of the malefics can also become killers",
+    "Sagittarius": "Saturn is a killer...and Venus is a killer.",
+    "Aquarius": "Jupiter, the Sun and Mars are killers.",
+    "Pisces": "Mars, though a maraka, will not kill. Saturn and Mercury will kill."
+  },
+  "unqualified_marakas": [
+    "Saturn",
+    "Rahu"
+  ],
+  "secondary_maraka_rules": [
+    "Planets in 2nd or 7th house, especially malefics (Boney OCR).",
+    "Planets conjunct or associated with 2nd or 7th lords.",
+    "12th lord when primary maraka periods are exhausted (Laghu Parashari).",
+    "8th lord when higher-priority killers are unavailable.",
+    "Functional malefics per ascendant (Parashara lordship chapter in maraka OCR).",
+    "Natural benefics in the 7th become surest killers (Boney OCR)."
+  ],
+  "mb_table": {
+    "Sun": {
+      "Aries": 20,
+      "Taurus": 9,
+      "Gemini": 12,
+      "Cancer": 6,
+      "Leo": 8,
+      "Virgo": 24,
+      "Libra": 26,
+      "Scorpio": 14,
+      "Sagittarius": 22,
+      "Capricorn": 2,
+      "Aquarius": 3,
+      "Pisces": 23
+    },
+    "Moon": {
+      "Aries": 26,
+      "Taurus": 12,
+      "Gemini": 13,
+      "Cancer": 25,
+      "Leo": 25,
+      "Virgo": 11,
+      "Libra": 26,
+      "Scorpio": 14,
+      "Sagittarius": 13,
+      "Capricorn": 25,
+      "Aquarius": 5,
+      "Pisces": 12
+    },
+    "Mars": {
+      "Aries": 19,
+      "Taurus": 28,
+      "Gemini": 25,
+      "Cancer": 23,
+      "Leo": 29,
+      "Virgo": 28,
+      "Libra": 14,
+      "Scorpio": 21,
+      "Sagittarius": 2,
+      "Capricorn": 5,
+      "Aquarius": 11,
+      "Pisces": 6
+    },
+    "Mercury": {
+      "Aries": 15,
+      "Taurus": 14,
+      "Gemini": 13,
+      "Cancer": 12,
+      "Leo": 8,
+      "Virgo": 18,
+      "Libra": 20,
+      "Scorpio": 10,
+      "Sagittarius": 21,
+      "Capricorn": 22,
+      "Aquarius": 7,
+      "Pisces": 3
+    },
+    "Jupiter": {
+      "Aries": 19,
+      "Taurus": 29,
+      "Gemini": 12,
+      "Cancer": 27,
+      "Leo": 6,
+      "Virgo": 4,
+      "Libra": 13,
+      "Scorpio": 10,
+      "Sagittarius": 17,
+      "Capricorn": 11,
+      "Aquarius": 15,
+      "Pisces": 25
+    },
+    "Venus": {
+      "Aries": 28,
+      "Taurus": 15,
+      "Gemini": 17,
+      "Cancer": 10,
+      "Leo": 10,
+      "Virgo": 4,
+      "Libra": 6,
+      "Scorpio": 27,
+      "Sagittarius": 12,
+      "Capricorn": 29,
+      "Aquarius": 29,
+      "Pisces": 18
+    },
+    "Saturn": {
+      "Aries": 10,
+      "Taurus": 15,
+      "Gemini": 18,
+      "Cancer": 9,
+      "Leo": 25,
+      "Virgo": 18,
+      "Libra": 8,
+      "Scorpio": 11,
+      "Sagittarius": null,
+      "Capricorn": null,
+      "Aquarius": null,
+      "Pisces": null
+    },
+    "Rahu": {
+      "Aries": 28,
+      "Taurus": 1,
+      "Gemini": 2,
+      "Cancer": 1,
+      "Leo": 25,
+      "Virgo": 21,
+      "Libra": 21,
+      "Scorpio": 21,
+      "Sagittarius": 14,
+      "Capricorn": null,
+      "Aquarius": null,
+      "Pisces": null
+    },
+    "Ketu": {
+      "Aries": 8,
+      "Taurus": 3,
+      "Gemini": 18,
+      "Cancer": null,
+      "Leo": null,
+      "Virgo": null,
+      "Libra": null,
+      "Scorpio": null,
+      "Sagittarius": null,
+      "Capricorn": null,
+      "Aquarius": null,
+      "Pisces": 12
+    },
+    "Lagna": {
+      "Aries": 15,
+      "Taurus": 11,
+      "Gemini": 10,
+      "Cancer": 0,
+      "Leo": null,
+      "Virgo": null,
+      "Libra": null,
+      "Scorpio": null,
+      "Sagittarius": null,
+      "Capricorn": 19,
+      "Aquarius": null,
+      "Pisces": null
+    }
+  },
+  "mb_table_meta": {
+    "Sun": {
+      "Aries": "ocr_anchor: intro: Sun mrityu bhaga at 20 deg Aries",
+      "Taurus": "ocr_row",
+      "Gemini": "ocr_row",
+      "Cancer": "ocr_anchor: Hemingway: MB for Sun in Cancer is 6",
+      "Leo": "ocr_row",
+      "Virgo": "ocr_row",
+      "Libra": "ocr_row",
+      "Scorpio": "ocr_row",
+      "Sagittarius": "ocr_row",
+      "Capricorn": "ocr_row",
+      "Aquarius": "ocr_row",
+      "Pisces": "ocr_row"
+    },
+    "Moon": {
+      "Aries": "ocr_row",
+      "Taurus": "ocr_row",
+      "Gemini": "ocr_row",
+      "Cancer": "ocr_row",
+      "Leo": "ocr_anchor: JFK: Moon's MB in Leo is 25",
+      "Virgo": "ocr_row",
+      "Libra": "ocr_row",
+      "Scorpio": "ocr_row",
+      "Sagittarius": "ocr_row",
+      "Capricorn": "ocr_row",
+      "Aquarius": "ocr_row",
+      "Pisces": "ocr_anchor: intro: Moon mrityu bhaga at 12 deg Pisces"
+    },
+    "Mars": {
+      "Aries": "ocr_row",
+      "Taurus": "ocr_row",
+      "Gemini": "ocr_row",
+      "Cancer": "ocr_row",
+      "Leo": "ocr_row",
+      "Virgo": "ocr_row",
+      "Libra": "ocr_row",
+      "Scorpio": "ocr_row",
+      "Sagittarius": "ocr_anchor: nurse chart: MB for Mars in Sagittarius is 2",
+      "Capricorn": "ocr_row",
+      "Aquarius": "ocr_row",
+      "Pisces": "ocr_anchor: example: MB for Mars in Pisces is 6"
+    },
+    "Mercury": {
+      "Aries": "ocr_anchor: Boney chart: MB for Mercury in Aries is 15",
+      "Taurus": "ocr_row",
+      "Gemini": "ocr_row",
+      "Cancer": "ocr_row",
+      "Leo": "ocr_row",
+      "Virgo": "ocr_row",
+      "Libra": "ocr_row",
+      "Scorpio": "ocr_row",
+      "Sagittarius": "ocr_row",
+      "Capricorn": "ocr_row",
+      "Aquarius": "ocr_row",
+      "Pisces": "ocr_row"
+    },
+    "Jupiter": {
+      "Aries": "ocr_row",
+      "Taurus": "ocr_row",
+      "Gemini": "ocr_row",
+      "Cancer": "ocr_row",
+      "Leo": "ocr_row",
+      "Virgo": "ocr_row",
+      "Libra": "ocr_row",
+      "Scorpio": "ocr_row",
+      "Sagittarius": "ocr_row",
+      "Capricorn": "ocr_row",
+      "Aquarius": "ocr_row",
+      "Pisces": "ocr_row"
+    },
+    "Venus": {
+      "Aries": "ocr_row",
+      "Taurus": "ocr_row",
+      "Gemini": "ocr_row",
+      "Cancer": "ocr_row",
+      "Leo": "ocr_anchor: Lyme case: Venus 10 deg17' Leo within 17' of MB",
+      "Virgo": "ocr_row",
+      "Libra": "ocr_row",
+      "Scorpio": "ocr_row",
+      "Sagittarius": "ocr_row",
+      "Capricorn": "ocr_row",
+      "Aquarius": "ocr_anchor: chart: Venus 29 deg41' Aquarius within 1 deg of MB",
+      "Pisces": "ocr_row"
+    },
+    "Saturn": {
+      "Aries": "ocr_garbled",
+      "Taurus": "ocr_garbled",
+      "Gemini": "ocr_garbled",
+      "Cancer": "ocr_anchor: Abdul-Jabbar: Saturn 8 deg59' Cancer, 1' from exact MB",
+      "Leo": "ocr_garbled",
+      "Virgo": "ocr_garbled",
+      "Libra": "ocr_garbled",
+      "Scorpio": "ocr_inferred: Pistorius chart OCR: Saturn 11 Scorpio within 1 deg of MB",
+      "Sagittarius": "ocr_unresolved",
+      "Capricorn": "ocr_unresolved",
+      "Aquarius": "ocr_unresolved",
+      "Pisces": "ocr_unresolved"
+    },
+    "Rahu": {
+      "Aries": "ocr_garbled",
+      "Taurus": "ocr_garbled",
+      "Gemini": "ocr_garbled",
+      "Cancer": "ocr_garbled",
+      "Leo": "ocr_garbled",
+      "Virgo": "ocr_garbled",
+      "Libra": "ocr_garbled",
+      "Scorpio": "ocr_anchor: case file: MB for Rahu in Scorpio is 21",
+      "Sagittarius": "ocr_garbled",
+      "Capricorn": "ocr_unresolved",
+      "Aquarius": "ocr_unresolved",
+      "Pisces": "ocr_unresolved"
+    },
+    "Ketu": {
+      "Aries": "ocr_garbled",
+      "Taurus": "ocr_garbled",
+      "Gemini": "ocr_garbled",
+      "Cancer": "ocr_unresolved",
+      "Leo": "ocr_unresolved",
+      "Virgo": "ocr_unresolved",
+      "Libra": "ocr_unresolved",
+      "Scorpio": "ocr_unresolved",
+      "Sagittarius": "ocr_unresolved",
+      "Capricorn": "ocr_unresolved",
+      "Aquarius": "ocr_unresolved",
+      "Pisces": "ocr_inferred: Pisces-asc spine case: Ketu 15' from MB in Pisces"
+    },
+    "Lagna": {
+      "Aries": "ocr_garbled",
+      "Taurus": "ocr_garbled",
+      "Gemini": "ocr_garbled",
+      "Cancer": "ocr_garbled",
+      "Leo": "ocr_unresolved",
+      "Virgo": "ocr_unresolved",
+      "Libra": "ocr_unresolved",
+      "Scorpio": "ocr_unresolved",
+      "Sagittarius": "ocr_unresolved",
+      "Capricorn": "ocr_anchor: Pistorius: ascendant 19 deg03' Capricorn in MB",
+      "Aquarius": "ocr_unresolved",
+      "Pisces": "ocr_unresolved"
+    }
+  },
+  "mb_table_gaps": [
+    "Saturn/Sagittarius",
+    "Saturn/Capricorn",
+    "Saturn/Aquarius",
+    "Saturn/Pisces",
+    "Rahu/Capricorn",
+    "Rahu/Aquarius",
+    "Rahu/Pisces",
+    "Ketu/Cancer",
+    "Ketu/Leo",
+    "Ketu/Virgo",
+    "Ketu/Libra",
+    "Ketu/Scorpio",
+    "Ketu/Sagittarius",
+    "Ketu/Capricorn",
+    "Ketu/Aquarius",
+    "Lagna/Leo",
+    "Lagna/Virgo",
+    "Lagna/Libra",
+    "Lagna/Scorpio",
+    "Lagna/Sagittarius",
+    "Lagna/Aquarius",
+    "Lagna/Pisces"
+  ],
+  "mandi_mb_row": {
+    "Aries": 23,
+    "Taurus": 24,
+    "Gemini": 1,
+    "Cancer": 12,
+    "Leo": 13,
+    "Virgo": 15,
+    "Libra": 8,
+    "Scorpio": 15,
+    "Sagittarius": 20,
+    "Capricorn": 20,
+    "Aquarius": 22,
+    "Pisces": 22
+  },
+  "mb_orbs_deg": {
+    "Lagna": 1.0,
+    "Sun": 0.6666666666666666,
+    "Moon": 0.6666666666666666,
+    "Mercury": 0.6666666666666666,
+    "Mars": 0.5,
+    "Jupiter": 0.5,
+    "Saturn": 0.5,
+    "Rahu": 0.5,
+    "Ketu": 0.5
+  },
+  "mb_near_max_deg": 1.0,
+  "mb_mandatory_anchors": [
+    {
+      "planet": "Sun",
+      "sign": "Aries",
+      "degree": 20,
+      "note": "intro: Sun mrityu bhaga at 20 deg Aries"
+    },
+    {
+      "planet": "Moon",
+      "sign": "Pisces",
+      "degree": 12,
+      "note": "intro: Moon mrityu bhaga at 12 deg Pisces"
+    },
+    {
+      "planet": "Mercury",
+      "sign": "Aries",
+      "degree": 15,
+      "note": "Boney chart: MB for Mercury in Aries is 15"
+    },
+    {
+      "planet": "Sun",
+      "sign": "Cancer",
+      "degree": 6,
+      "note": "Hemingway: MB for Sun in Cancer is 6"
+    },
+    {
+      "planet": "Moon",
+      "sign": "Leo",
+      "degree": 25,
+      "note": "JFK: Moon's MB in Leo is 25"
+    },
+    {
+      "planet": "Mars",
+      "sign": "Sagittarius",
+      "degree": 2,
+      "note": "nurse chart: MB for Mars in Sagittarius is 2"
+    },
+    {
+      "planet": "Mars",
+      "sign": "Pisces",
+      "degree": 6,
+      "note": "example: MB for Mars in Pisces is 6"
+    },
+    {
+      "planet": "Rahu",
+      "sign": "Scorpio",
+      "degree": 21,
+      "note": "case file: MB for Rahu in Scorpio is 21"
+    },
+    {
+      "planet": "Saturn",
+      "sign": "Cancer",
+      "degree": 9,
+      "note": "Abdul-Jabbar: Saturn 8 deg59' Cancer, 1' from exact MB"
+    },
+    {
+      "planet": "Venus",
+      "sign": "Leo",
+      "degree": 10,
+      "note": "Lyme case: Venus 10 deg17' Leo within 17' of MB"
+    },
+    {
+      "planet": "Venus",
+      "sign": "Aquarius",
+      "degree": 29,
+      "note": "chart: Venus 29 deg41' Aquarius within 1 deg of MB"
+    },
+    {
+      "planet": "Lagna",
+      "sign": "Capricorn",
+      "degree": 19,
+      "note": "Pistorius: ascendant 19 deg03' Capricorn in MB"
+    }
+  ],
+  "eight_death_types": [
+    "Agony / distress (vyatha)",
+    "Pain / hurt (duhkha)",
+    "Fear (bhaya)",
+    "Shame (lajja)",
+    "Illness (roga)",
+    "Confinement (bandhana)",
+    "Insult (apamana)",
+    "Physical death (mrityu) - only when ayus has expired"
+  ],
+  "mb_rules": [
+    "Use Lahiri (Chitrapaksha) ayanamsa and true nodes for MB degrees.",
+    "Lagna orb up to one degree.",
+    "Sun, Moon, Mercury orb up to 40 minutes.",
+    "Mars, Jupiter, Saturn, Rahu, Ketu orb up to 30 minutes.",
+    "Mandi orb up to 30 minutes.",
+    "Near MB = just outside stated orb but within about one degree.",
+    "MB heightens adversity only when other arista factors exist - not literal death alone.",
+    "Seven kinds of death in addition to mrtyu (physical death)."
+  ],
+  "educational_disclaimer": "Marc Boney explicitly warns astrologers should not predict death. Maraka and MB techniques identify life-risk themes and health-awareness windows only."
+}

@@ -1,0 +1,2 @@
+-r requirements.api.txt
+fakeredis>=2.26        # embedded queue, so a laptop needs no Redis

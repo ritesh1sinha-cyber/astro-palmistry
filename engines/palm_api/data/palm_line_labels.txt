@@ -1,0 +1,4 @@
+heart_line
+head_line
+life_line
+fate_line

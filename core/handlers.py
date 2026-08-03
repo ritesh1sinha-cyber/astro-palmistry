@@ -1,0 +1,515 @@
+"""
+Job handlers — the only place that touches the two engines.
+
+Everything here runs inside a worker process (never in an API request), writes
+its output to object storage, and records a row in `reports`. Both engines are
+imported lazily so an API replica never needs mediapipe or PyJHora installed.
+
+The precompute cache is the scalability keystone: one ephemeris pass per unique
+birth moment, reused by the report, the daily reading, muhurat and timing.
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import os
+import tempfile
+import uuid
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Optional
+
+from .billing import (entitled, is_subscribed, month_period, quota_left,
+                      use_quota)
+from .config import S
+from .db import (get_or_create_chart, precompute_get, precompute_put,
+                 report_insert)
+from .store import report_keys, store
+
+# ---------------------------------------------------------------------------
+# shared helpers
+# ---------------------------------------------------------------------------
+def _as_date(v) -> date:
+    if isinstance(v, date):
+        return v
+    y, m, d = (int(x) for x in str(v).split("-"))
+    return date(y, m, d)
+
+
+def precompute_for(chart: dict) -> dict:
+    """Cached ephemeris pass. This is what makes 1 lakh users affordable."""
+    cached = precompute_get(chart["chart_hash"])
+    if cached:
+        return cached
+    from astro_precompute import resolve_precompute
+    pc = resolve_precompute(
+        chart.get("person_name") or "Seeker", str(chart["dob"]),
+        birth_time=str(chart["tob"]), latitude=float(chart["lat"]),
+        longitude=float(chart["lon"]), timezone=float(chart["tz_offset"]),
+        place_name=chart.get("place") or "", gender=int(chart.get("gender") or 0))
+    precompute_put(chart["chart_hash"], pc)
+    return pc
+
+
+def _voice_ctx(pc: dict, chart: dict) -> dict:
+    import astro_voice as V
+    return V.context_from_pc(pc, name=chart.get("person_name") or "Seeker",
+                             place=chart.get("place") or "",
+                             tob=str(chart.get("tob") or ""))
+
+
+def _save_report(user_id: str, chart_id: Optional[str], kind: str,
+                 free_html: str, paid_html: str, meta: dict, paid: bool) -> dict:
+    rid = str(uuid.uuid4())
+    fk, pk = report_keys(rid)
+    st = store()
+    st.put(fk, (free_html or "").encode(), "text/html; charset=utf-8")
+    st.put(pk, (paid_html or "").encode(), "text/html; charset=utf-8")
+    # keep the id we generated so the storage keys match the row
+    from sqlalchemy import text as _text
+
+    from .db import jdump, now, tx
+    with tx() as c:
+        c.execute(_text(
+            "INSERT INTO reports (id,user_id,chart_id,kind,paid,free_key,paid_key,"
+            "meta,engine_version,created_at,expires_at)"
+            " VALUES (:i,:u,:c,:k,:paid,:f,:p,:m,:v,:t,:e)"),
+            {"i": rid, "u": user_id, "c": chart_id, "k": kind, "paid": bool(paid),
+             "f": fk, "p": pk, "m": jdump(meta), "v": S.engine_version,
+             "t": now(), "e": now() + timedelta(days=S.report_retention_days)})
+    return {"reportId": rid, "paid": bool(paid), "meta": meta}
+
+
+def _save_json_report(user_id: str, kind: str, *, free_payload: dict,
+                      paid_payload: dict, meta: dict, paid: bool) -> dict:
+    """
+    Palmistry renders in the browser from JSON rather than an iframe, so its
+    halves are stored as JSON objects. The paid half never leaves storage until
+    `/api/reading/{id}/full` confirms payment.
+    """
+    rid = str(uuid.uuid4())
+    shard = rid[:2]
+    fk = f"reports/{shard}/{rid}/free.json"
+    pk = f"reports/{shard}/{rid}/paid.json"
+    st = store()
+    st.put(fk, json.dumps(free_payload, default=str).encode(), "application/json")
+    st.put(pk, json.dumps(paid_payload, default=str).encode(), "application/json")
+    from sqlalchemy import text as _text
+
+    from .db import jdump, now, tx
+    with tx() as c:
+        c.execute(_text(
+            "INSERT INTO reports (id,user_id,chart_id,kind,paid,free_key,paid_key,"
+            "meta,engine_version,created_at,expires_at)"
+            " VALUES (:i,:u,NULL,:k,:paid,:f,:p,:m,:v,:t,:e)"),
+            {"i": rid, "u": user_id, "k": kind, "paid": bool(paid), "f": fk, "p": pk,
+             "m": jdump(meta), "v": S.engine_version, "t": now(),
+             "e": now() + timedelta(days=S.report_retention_days)})
+    return {"reportId": rid, "paid": bool(paid), "meta": meta}
+
+
+# ===========================================================================
+# palmistry
+# ===========================================================================
+def h_palm(user: dict, p: dict) -> dict:
+    import astro_voice as V
+    from palm_api.pipeline import analyze_image_paths
+
+    tmp = Path(tempfile.mkdtemp(prefix="palm_"))
+    run_id = uuid.uuid4().hex[:12]
+    overlay_dir = tmp / "out"
+    paths = []
+    try:
+        for hand in ("right", "left"):
+            data = p.get(f"{hand}Hand") or ""
+            if not data:
+                continue
+            if "," in data and data.strip().startswith("data:"):
+                data = data.split(",", 1)[1]
+            raw = base64.b64decode(data)
+            if len(raw) < 2048:
+                raise ValueError("one of the palm images is unreadable")
+            # filename carries the hand: palm_api._guess_hand reads it from there
+            f = tmp / f"{run_id}_{hand}palm.jpg"
+            f.write_bytes(raw)
+            paths.append(f)
+        if len(paths) < 2:
+            raise ValueError("both palms are required")
+
+        raw_result = analyze_image_paths(
+            [str(x) for x in paths],
+            active_hand=p.get("dominant", "right"), overlay_dir=overlay_dir)
+
+        # overlays → object storage (they are proof the engine read THEIR hand)
+        overlays = {}
+        st = store()
+        for hand in ("left", "right"):
+            op = (raw_result.get(hand) or {}).get("overlay_path")
+            if op and Path(op).is_file():
+                key = f"overlays/{run_id}/{Path(op).name}"
+                st.put(key, Path(op).read_bytes(), "image/jpeg")
+                overlays[hand] = key
+
+        from .palm_report import build_palm_reading
+        reading = build_palm_reading(raw_result, p, overlays)
+        meta = reading.pop("_meta", {})
+        paid = entitled(user["id"], "palm_full")
+        saved = _save_json_report(
+            user["id"], "palm",
+            free_payload=reading["public"], paid_payload=reading["paid"],
+            meta={**meta, "overlays": overlays,
+                  "price": S.price("palm_full") // 100}, paid=paid)
+        saved.update(reading["public"])
+        saved["overlays"] = overlays
+        saved["price"] = S.price("palm_full") // 100
+        return saved
+    finally:
+        for f in paths:
+            f.unlink(missing_ok=True)
+        if os.getenv("KEEP_UPLOADS", "0") != "1":
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ===========================================================================
+# astrology
+# ===========================================================================
+def h_chart_summary(user: dict, p: dict) -> dict:
+    import astro_voice as V
+    chart = get_or_create_chart(user["id"], p)
+    pc = precompute_for(chart)
+    meta = pc.get("meta") or {}
+    planets = pc.get("planets") or {}
+    moon = planets.get("Moon") or {}
+    vim = pc.get("vimshottari") or {}
+    cur = vim.get("current") or {}
+    if not cur:
+        today = date.today().isoformat()
+        for row in vim.get("sequence") or []:
+            if str(row.get("start") or "") <= today <= str(row.get("end") or ""):
+                cur = row
+                break
+    return {
+        "chartId": chart["id"],
+        "lagna": {"sign": meta.get("lagna_sign"), "degree": meta.get("lagna_degree"),
+                  "nakshatra": meta.get("lagna_nakshatra"), "pada": meta.get("lagna_pada"),
+                  "lord": meta.get("lagna_lord")},
+        "moon": {"sign": moon.get("sign"), "nakshatra": moon.get("nakshatra")},
+        "currentDasha": {"md": cur.get("md_lord") or cur.get("lord"),
+                         "ad": cur.get("ad_lord"), "from": cur.get("start"),
+                         "to": cur.get("end")},
+        "age": meta.get("age"), "ayanamsa": meta.get("ayanamsa"),
+        "personalNote": V.humanise(V.chart_opening(_voice_ctx(pc, chart))),
+    }
+
+
+def h_numerology(user: dict, p: dict) -> dict:
+    import astro_voice as V
+    from numerology_report import generate_numerology_html
+    y, m, d = (int(x) for x in p["dob"].split("-"))
+    sex = {0: "Male", 1: "Female"}.get(int(p.get("gender", 0)), "—")
+    html, slug = generate_numerology_html(p.get("name", "Seeker"), date(y, m, d), sex, None)
+    html = V.personalise(html, {"name": p.get("name", "Seeker"), "dob": p["dob"]},
+                         "numerology")
+    saved = _save_report(user["id"], None, "numerology", html, "", {"free": True}, True)
+    saved["free"] = True
+    return saved
+
+
+def h_full_report(user: dict, p: dict) -> dict:
+    import astro_split as SP
+    import astro_voice as V
+    from vedic_confluence_report import generate_confluence_reports
+
+    chart = get_or_create_chart(user["id"], p)
+    pc = precompute_for(chart)
+    ctx = _voice_ctx(pc, chart)
+
+    work = Path(tempfile.mkdtemp(prefix="rep_"))
+    slug = (chart.get("person_name") or "chart").replace(" ", "_")[:24] + "_" + chart["id"][:6]
+    pc_path = work / "precomputed.json"
+    pc_path.write_text(json.dumps(pc, default=str), encoding="utf-8")
+
+    conf_path, user_path, _focus, _payload = generate_confluence_reports(
+        "", str(work), chart.get("person_name") or "Seeker", str(chart["dob"]), slug,
+        client_question=p.get("question", ""), precomputed_path=str(pc_path),
+        birth_time=str(chart["tob"]), latitude=float(chart["lat"]),
+        longitude=float(chart["lon"]), timezone=float(chart["tz_offset"]),
+        place_name=chart.get("place") or "", gender=int(chart.get("gender") or 0))
+
+    conf = SP.split_confluence(V.personalise(
+        Path(conf_path).read_text(encoding="utf-8", errors="ignore"), ctx, "full_report"))
+    urep = {"free_html": "", "paid_html": "", "paid_sections": []}
+    if user_path and Path(user_path).is_file():
+        urep = SP.split_user_report(V.personalise(
+            Path(user_path).read_text(encoding="utf-8", errors="ignore"), ctx, "full_report"))
+
+    meta = {"freeSections": conf["free_sections"],
+            "paidSections": conf["paid_sections"] + urep.get("paid_sections", []),
+            "teasers": conf["teasers"], "price": S.price("full_report") // 100}
+    paid = entitled(user["id"], "full_report", chart["id"])
+    saved = _save_report(user["id"], chart["id"], "full_report",
+                         conf["free_html"] + urep["free_html"],
+                         conf["paid_html"] + urep["paid_html"], meta, paid)
+    saved["chartId"] = chart["id"]
+    saved["price"] = meta["price"]
+    import shutil
+    shutil.rmtree(work, ignore_errors=True)
+    return saved
+
+
+def h_horary(user: dict, p: dict) -> dict:
+    import astro_split as SP
+    import astro_voice as V
+
+    htmls, verdicts = {}, {}
+    vgen = None
+    if os.getenv("ASTRO_HOTFIX", "1") == "1":
+        try:
+            import astro_hotfix
+            vgen = astro_hotfix.horary_glyph_fix().generate_vedic_horary_html
+        except Exception as exc:                                      # noqa: BLE001
+            # never silent: if the upstream glyph bug is unpatched, Vedic horary
+            # dies and the customer silently gets half a product
+            print(f"[handlers] horary hotfix unavailable: {type(exc).__name__}: {exc}",
+                  flush=True)
+            vgen = None
+    if vgen is None:
+        from vedic_horary_report import generate_vedic_horary_html as vgen
+    try:
+        h, j = vgen(p["question"], p["qDate"], p["qTime"],
+                    p.get("location", "Hyderabad"), p.get("kpNumber", ""))
+        htmls["vedic"] = h
+        verdicts["vedic"] = {k: j.get(k) for k in ("verdict", "confidence", "score", "systems")}
+    except Exception as exc:                                          # noqa: BLE001
+        verdicts["vedic"] = {"error": f"{type(exc).__name__}: {exc}"}
+    try:
+        from western_horary_report import generate_western_horary_html as wgen
+        h, j = wgen(p["question"], p["qDate"], p["qTime"], p.get("location", "Hyderabad"))
+        htmls["western"] = h
+        verdicts["western"] = {k: j.get(k) for k in ("verdict", "confidence")}
+    except Exception as exc:                                          # noqa: BLE001
+        verdicts["western"] = {"error": f"{type(exc).__name__}: {exc}"}
+    if not htmls:
+        raise RuntimeError("both horary engines failed: " + json.dumps(verdicts))
+
+    ctx = {"name": user.get("name") or "Seeker", "question": p["question"],
+           "asked": f"{p['qDate']} {p['qTime']}", "place": p.get("location", "")}
+    splits = {k: SP.split_horary(V.personalise(v, ctx, "horary")) for k, v in htmls.items()}
+
+    paid = entitled(user["id"], "horary")
+    if not paid and is_subscribed(user["id"]):
+        ok, _ = use_quota(user["id"], "horary", S.sub_horary_per_month, month_period())
+        paid = ok
+
+    paid_sections, teasers = [], {}
+    for tag, sp in splits.items():
+        paid_sections += [f"{tag.title()}: {t}" for t in sp["paid_sections"]]
+        teasers.update({f"{tag.title()}: {k}": v for k, v in sp["teasers"].items()})
+
+    meta = {"verdicts": verdicts, "paidSections": paid_sections, "teasers": teasers,
+            "question": p["question"], "asked": ctx["asked"],
+            "price": S.price("horary") // 100}
+    saved = _save_report(user["id"], None, "horary",
+                         "".join(s["free_html"] for s in splits.values()),
+                         "".join(s["paid_html"] for s in splits.values()), meta, paid)
+    saved["price"] = meta["price"]
+    return saved
+
+
+def h_daily(user: dict, p: dict) -> dict:
+    import astro_voice as V
+    from daily_moon_prediction import compute_daily_moon_guide
+    chart = get_or_create_chart(user["id"], p)
+    pc = precompute_for(chart)
+    target = _as_date(p.get("date") or date.today().isoformat())
+
+    subscribed = entitled(user["id"], "daily")
+    if not subscribed:
+        left = quota_left(user["id"], "daily_free", S.free_daily_readings, "all")
+        if left <= 0:
+            return {"locked": True, "price": S.price("subscription") // 100,
+                    "message": "Your free daily readings are used. "
+                               "Subscribe for a reading built from your chart every morning."}
+        use_quota(user["id"], "daily_free", S.free_daily_readings, "all")
+
+    data = compute_daily_moon_guide(pc, target, latitude=float(chart["lat"]),
+                                    longitude=float(chart["lon"]),
+                                    timezone=float(chart["tz_offset"]))
+    if isinstance(data, dict):
+        data["personal_note"] = V.humanise(V.chart_opening(_voice_ctx(pc, chart))) \
+            .replace("<p>", "").replace("</p>", "")
+    return {"locked": False, "date": target.isoformat(), "subscribed": subscribed,
+            "freeDaysLeft": quota_left(user["id"], "daily_free",
+                                       S.free_daily_readings, "all"),
+            "reading": data}
+
+
+def h_kundali_match(user: dict, p: dict) -> dict:
+    import astro_split as SP
+    import astro_voice as V
+    from kundali_match import build_person_chart, match_kundali
+    from kundali_match_report import write_kundali_match_report
+
+    def person(pre: str) -> dict:
+        return {"name": p.get(pre + "Name") or pre.title(), "dob": p[pre + "Dob"],
+                "birth_time": p[pre + "Tob"], "latitude": float(p[pre + "Lat"]),
+                "longitude": float(p[pre + "Lon"]),
+                "timezone": float(p.get(pre + "Tz", 5.5)),
+                "place_name": p.get(pre + "Place", ""),
+                "gender": 0 if pre == "groom" else 1}
+
+    g, b = person("groom"), person("bride")
+    result = match_kundali(groom=build_person_chart(**g), bride=build_person_chart(**b),
+                          method=p.get("method", "North"),
+                          groom_name=g["name"], bride_name=b["name"],
+                          groom_dob=g["dob"], bride_dob=b["dob"])
+
+    work = Path(tempfile.mkdtemp(prefix="match_"))
+    out = work / "match.html"
+    write_kundali_match_report(
+        result=result,
+        groom_meta={"name": g["name"], "dob": g["dob"], "tob": g["birth_time"],
+                    "place": g["place_name"]},
+        bride_meta={"name": b["name"], "dob": b["dob"], "tob": b["birth_time"],
+                    "place": b["place_name"]},
+        out_path=out)
+    html = V.personalise(out.read_text(encoding="utf-8", errors="ignore"),
+                         {"name": f"{g['name']} & {b['name']}", "dob": g["dob"],
+                          "place": g["place_name"], "tob": g["birth_time"]}, "chart")
+    split = SP.split_report(html, ("kundali milan", "final verdict", "layer 1",
+                                   "ashtakoota", "prepared for"),
+                            locked_note="Your guna score is above. Unlock the dosha "
+                                        "analysis and its remedies, the Navamsha (D9) "
+                                        "synastry and the numerology compatibility.")
+    a = result.get("ashtakoota") or {}
+    vd = result.get("verdict") or {}
+    doshas = result.get("doshas") or {}
+    meta = {"total": a.get("total_guna"), "maxGuna": a.get("max_guna"),
+            "band": a.get("band"), "bandPlain": a.get("band_plain"),
+            "verdict": vd.get("verdict"), "headline": vd.get("headline"),
+            "d9Verdict": vd.get("d9_verdict"),
+            "koots": [{"label": k.get("label"), "score": k.get("score"),
+                       "max": k.get("max"), "ok": k.get("ok")}
+                      for k in (a.get("koots") or [])],
+            "stars": {"groom": a.get("groom_nakshatra"), "bride": a.get("bride_nakshatra"),
+                      "groomMoon": a.get("groom_moon_sign"),
+                      "brideMoon": a.get("bride_moon_sign")},
+            "activeDoshas": [d.get("name") for d in (doshas.get("items") or [])
+                             if d.get("active")],
+            "blocking": doshas.get("has_blocking"),
+            "couple": {"groom": g["name"], "bride": b["name"]},
+            "paidSections": split["paid_sections"], "teasers": split["teasers"],
+            "price": S.price("kundali_match") // 100}
+    paid = entitled(user["id"], "kundali_match")
+    saved = _save_report(user["id"], None, "kundali_match",
+                         split["free_html"], split["paid_html"], meta, paid)
+    saved["price"] = meta["price"]
+    import shutil
+    shutil.rmtree(work, ignore_errors=True)
+    return saved
+
+
+def h_muhurat_events(user: dict, p: dict) -> dict:
+    from muhurat_checker import event_catalog
+    return {"events": event_catalog()}
+
+
+def h_muhurat(user: dict, p: dict) -> dict:
+    from muhurat_checker import check_muhurat
+    pc: dict = {}
+    chart_id = None
+    if p.get("dob") and p.get("tob"):
+        chart = get_or_create_chart(user["id"], p)
+        chart_id = chart["id"]
+        pc = precompute_for(chart)
+    res = check_muhurat(event_id=p["eventId"], target=_as_date(p["date"]), pc=pc,
+                        latitude=float(p.get("lat", 28.6)),
+                        longitude=float(p.get("lon", 77.2)),
+                        timezone=float(p.get("tz", 5.5)),
+                        place_name=p.get("place", "BirthPlace"),
+                        suggest_alternatives=True)
+    paid = entitled(user["id"], "muhurat")
+    free = {k: res.get(k) for k in ("available", "error", "verdict", "headline",
+                                    "summary", "event_label", "event_plain",
+                                    "target_date", "needs_partner_chart")}
+    free["checkCount"] = len(res.get("checks") or [])
+    free["alternativeCount"] = len(res.get("alternatives") or [])
+    return {"paid": paid, "date": p["date"], "eventId": p["eventId"],
+            "chartId": chart_id, "summary": free,
+            "detail": {k: res.get(k) for k in ("checks", "chart_notes", "panchang",
+                                               "day_windows", "alternatives")}
+            if paid else None,
+            "price": S.price("muhurat") // 100}
+
+
+def h_btr(user: dict, p: dict) -> dict:
+    from btr_rectify import rectify_birth_time
+    fields = {(k[4:] if k.startswith("btr_") else k): v
+              for k, v in (p.get("events") or {}).items() if v}
+    res = rectify_birth_time(
+        client_name=p.get("name", "Seeker"), dob=p["dob"], birth_time=p["tob"],
+        latitude=float(p["lat"]), longitude=float(p["lon"]),
+        timezone=float(p.get("tz", 5.5)), place_name=p.get("place", ""),
+        gender=int(p.get("gender", 0)), event_fields=fields,
+        custom_events=p.get("customEvents", ""), auto_apply=False)
+    paid = entitled(user["id"], "btr")
+    off = res.get("offset_minutes")
+    lt, lb = str(res.get("lagna_trial") or ""), str(res.get("lagna_best") or "")
+    return {
+        "paid": paid, "skipped": res.get("skipped"), "reason": res.get("reason"),
+        "trialTime": res.get("trial_time"), "confidence": res.get("confidence"),
+        "eventsUsed": res.get("events_used"),
+        "trialScore": res.get("trial_score"), "bestScore": res.get("best_score"),
+        "trialVerdict": res.get("trial_verdict"), "lagnaTrial": res.get("lagna_trial"),
+        "changesLagna": bool(lt and lb and lt.split()[0] != lb.split()[0]),
+        "movesBy": (None if off is None else
+                    ("under a minute" if abs(off) < 1 else
+                     f"about {abs(int(off))} minute{'s' if abs(int(off)) != 1 else ''}")),
+        "fineScanUsed": res.get("fine_scan_used"),
+        "suggestedTime": res.get("suggested_time") if paid else None,
+        "lagnaBest": res.get("lagna_best") if paid else None,
+        "offsetMinutes": off if paid else None,
+        "eventResults": res.get("best_event_results") if paid else None,
+        "funnel": res.get("funnel_best") if paid else None,
+        "message": res.get("message") if paid else None,
+        "price": S.price("btr") // 100,
+    }
+
+
+def h_future_event(user: dict, p: dict) -> dict:
+    from future_event_timing import predict_next_event
+    chart = get_or_create_chart(user["id"], p)
+    res = predict_next_event(
+        client_name=chart.get("person_name") or "Seeker", dob=str(chart["dob"]),
+        birth_time=str(chart["tob"]), latitude=float(chart["lat"]),
+        longitude=float(chart["lon"]), timezone=float(chart["tz_offset"]),
+        place_name=chart.get("place") or "", gender=int(chart.get("gender") or 0),
+        event_type=p["eventType"], consultation_date=p.get("consultationDate", ""))
+    paid = entitled(user["id"], "future_event")
+    return {"paid": paid, "eventType": p["eventType"],
+            "promised": res.get("promised"), "timingAvailable": res.get("timing_available"),
+            "window": res.get("next_window") if paid else None,
+            "alternates": res.get("alternates") if paid else None,
+            "remedies": res.get("remedies") if paid else None,
+            "error": res.get("error"), "price": S.price("future_event") // 100}
+
+
+HANDLERS = {
+    "palm": h_palm,
+    "chart_summary": h_chart_summary,
+    "numerology": h_numerology,
+    "full_report": h_full_report,
+    "horary": h_horary,
+    "daily": h_daily,
+    "kundali_match": h_kundali_match,
+    "muhurat": h_muhurat,
+    "muhurat_events": h_muhurat_events,
+    "btr": h_btr,
+    "future_event": h_future_event,
+}
+
+# Kinds whose result is small JSON and fast enough to run inline in the API
+# when the queue is empty. Everything else always goes through a worker.
+FAST_KINDS = {"muhurat_events"}

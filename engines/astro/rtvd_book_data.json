@@ -1,0 +1,150 @@
+{
+  "source": "Dr. K. Guru Rajesh - Rasi Tulya Vatsara Dasa (2016) / rules16.md",
+  "general_rules": [
+    "Prominence is given to the Rasi chart - whole-sign houses from lagna.",
+    "Karakatvas of signs, houses and planets have greater significance.",
+    "While judging a year, consider where the lord of the sign is placed first.",
+    "Next: nakshatra of the year-sign lord and its nakshatra lord's karakatva.",
+    "Then the sign itself - karakatvas of the house represented by the sign.",
+    "Position of the sign with reference to Chandra Lagna should also be considered.",
+    "When the year-lord owns two signs, events of the other house may surface strongly.",
+    "Certainty decreases: lord in bhava > lord in nakshatra of bhava lord > lord joins bhava lord > year sign is the bhava.",
+    "Two or more natural benefics on year sign or lord favour the year; two or more malefics stress it.",
+    "Year-lord with lords of 6th, 8th or 12th and malefics afflicts significations of lord's house.",
+    "Year-lord with trikona and kendra lords aspected by benefics favours significations.",
+    "Cancellation of debility often ignored for health, accident and death in this system.",
+    "Consider overlap with the following year; about one month at year boundary.",
+    "Always integrate Vimshottari Dasa and transits for precise forward dating."
+  ],
+  "topic_rules": {
+    "marriage": [
+      "Marriage can take place in the year indicated by the 7th house like 19, 31, 43 etc.",
+      "Years whose Rasi lord is placed in the 7th house or with the 7th lord may give marriage.",
+      "Years whose Rasi lords are joined with Venus, Jupiter and Moon may also materialize the event."
+    ],
+    "career": [
+      "Year whose Rasi lord placed in the 10th may prove beneficial for career.",
+      "Years indicated by the 1st, 4th and 10th houses may fructify career events.",
+      "Weak Venus or 7\" lord placed in the 2\u21224 house aspected by Mars and Saturn shall give widowhood in the years ruled by their Rasis or the 2\"\u00a2 house.",
+      "Thus the signs ruled by Jupiter and Saturn become the primary harbingers of marriage besides Venusian signs. The native, while doing his MS in USA, married his classmate on 26\" April,",
+      "The Involvement of the 6\u2122 house in these matters point to the probability of litigation in relation to immovable property and theft in case of vehicles. Financial Gains, Lotteries, Gamblings etc. Chart VIII."
+    ],
+    "children": [
+      "Years indicated by the 2nd, 5th, 9th and 11th houses may bestow children.",
+      "When Sun is in the year sign, some manuals read male-child symbolism."
+    ],
+    "wealth": [
+      "Years indicated by the 2nd, 9th and 11th houses favour financial gains.",
+      "Year-lord in 2nd or 11th strengthens income themes."
+    ],
+    "health": [
+      "Years of 6th, 8th and 12th houses need extra care for accidents and disease.",
+      "Cancellation of debility may be ignored for health reads in this system."
+    ],
+    "parents": [
+      "Father themes: years of 4th, 8th and 9th houses.",
+      "Mother themes: years of 3rd, 4th and 11th houses."
+    ],
+    "siblings": [
+      "Sibling events favour years of the 3rd and 11th houses."
+    ]
+  },
+  "topic_houses": {
+    "marriage": {
+      "primary": [
+        7
+      ],
+      "also": [
+        1,
+        4,
+        12
+      ],
+      "ages_note": "7, 19, 31, 43..."
+    },
+    "career": {
+      "primary": [
+        10
+      ],
+      "also": [
+        1,
+        4
+      ],
+      "ages_note": "10, 22, 34, 46..."
+    },
+    "children": {
+      "primary": [
+        2,
+        5
+      ],
+      "also": [
+        1,
+        9,
+        11
+      ],
+      "ages_note": "2, 5, 14, 17, 26, 29..."
+    },
+    "wealth": {
+      "primary": [
+        2,
+        9,
+        11
+      ],
+      "also": [
+        1,
+        4,
+        5,
+        10,
+        8
+      ],
+      "ages_note": "2, 9, 11 house years"
+    },
+    "health": {
+      "primary": [
+        6,
+        8,
+        12
+      ],
+      "also": [],
+      "ages_note": "6, 8, 12, 18, 20, 24..."
+    },
+    "parents": {
+      "father": [
+        4,
+        8,
+        9
+      ],
+      "mother": [
+        3,
+        4,
+        11
+      ],
+      "ages_note": "4/8/9 father; 3/11 mother"
+    },
+    "siblings": {
+      "primary": [
+        3,
+        11
+      ],
+      "also": [],
+      "ages_note": "3, 15, 27 and 11, 23, 35..."
+    },
+    "travel": {
+      "primary": [
+        9,
+        12
+      ],
+      "also": [
+        3,
+        7
+      ],
+      "ages_note": "9th and 12th house years"
+    }
+  },
+  "certainty_levels": [
+    "Level 1: year-lord occupies the target house",
+    "Level 2: year-lord in nakshatra of planet owning/occupying target house",
+    "Level 3: year-lord joins the target house lord",
+    "Level 4: active year-sign IS the target house from lagna"
+  ],
+  "methodology_lead": "Each calendar year activates one whole-sign house from your Ascendant. Judge the year-lord's placement, nakshatra, dual lordship, benefic/malefic mass, and Moon-lagna view - then triangulate Vimshottari and transits for dating."
+}

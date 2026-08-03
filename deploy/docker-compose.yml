@@ -1,0 +1,138 @@
+# Production stack. Scale by changing replica counts — nothing else.
+#
+#   docker compose up -d --build
+#   docker compose up -d --scale worker-light=6 --scale worker-heavy=3
+#
+# Why the split: a full report takes minutes, a chart summary milliseconds.
+# Separate worker pools stop the slow work from starving the fast work.
+
+x-app-env: &app-env
+  env_file: .env
+  environment:
+    ENV: prod
+    DATABASE_URL: postgresql+psycopg://${PG_USER:-astro}:${PG_PASSWORD}@postgres:5432/${PG_DB:-astro}
+    REDIS_URL: redis://redis:6379/0
+    ALLOWED_ORIGINS: https://${DOMAIN}
+    S3_BUCKET: ${S3_BUCKET:-}
+    S3_ENDPOINT: ${S3_ENDPOINT:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-astro}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB:-astro}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-astro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # tuned for an 8 GB box; shared_buffers ≈ 25% of RAM
+    command: >
+      postgres -c max_connections=200 -c shared_buffers=2GB
+               -c effective_cache_size=6GB -c work_mem=16MB
+               -c maintenance_work_mem=512MB -c random_page_cost=1.1
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # the queue must survive a restart: AOF on, and NEVER evict queue keys
+    command: >
+      redis-server --appendonly yes --appendfsync everysec
+                   --maxmemory 512mb --maxmemory-policy noeviction
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    <<: *app-env
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    expose: ["8080"]
+    volumes:
+      - reportstore:/app/storage        # only used when S3_BUCKET is unset
+
+  # heavy pool: full reports + birth-time rectification (minutes each)
+  worker-heavy:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+      args: {WITH_CONFLUENCE: "1"}
+    <<: *app-env
+    restart: unless-stopped
+    environment:
+      WORKER_GROUPS: heavy
+      CAP_FULL_REPORT: "4"
+      CAP_BTR: "2"
+    deploy:
+      replicas: 2
+      resources:
+        limits: {cpus: "2.0", memory: 4G}
+    depends_on: [postgres, redis]
+    volumes:
+      - reportstore:/app/storage
+
+  # light pool: palms, horary, daily, numerology, muhurat, matching
+  worker-light:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+      args: {WITH_CONFLUENCE: "0"}
+    <<: *app-env
+    restart: unless-stopped
+    environment:
+      WORKER_GROUPS: palm,light
+      CAP_PALM: "6"
+      CAP_DEFAULT: "12"
+    deploy:
+      replicas: 4
+      resources:
+        limits: {cpus: "1.0", memory: 2G}
+    depends_on: [postgres, redis]
+    volumes:
+      - reportstore:/app/storage
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../site:/srv/site:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on: [api]
+
+  # nightly retention sweep, partition roll, backup
+  cron:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    <<: *app-env
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "core.maintenance", "--loop"]
+    depends_on: [postgres, redis]
+    volumes:
+      - reportstore:/app/storage
+      - ./backups:/backups
+
+volumes:
+  pgdata:
+  redisdata:
+  reportstore:
+  caddydata:
+  caddyconfig:

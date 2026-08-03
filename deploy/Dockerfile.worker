@@ -1,0 +1,42 @@
+# Worker image — carries both engines. Big, but only workers need it.
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+      "sqlalchemy==2.0.*" "psycopg[binary]==3.2.*" "redis==5.2.*" \
+      "pydantic==2.9.*" "boto3==1.35.*" \
+      "mediapipe>=0.10.9" "opencv-python-headless>=4.8" "numpy>=1.24" \
+      "pillow>=10" "scipy>=1.10" \
+      # PyJHora MUST be 4.7.0: 4.6 lacks dhasa_level_index and
+      # kp_lords_for_longitude, 4.8.x changed the dasha row shape.
+      "PyJHora==4.7.0" "pyswisseph>=2.10.3" "pytz" "timezonefinder" "geopy" "geocoder"
+
+# sentence-transformers/torch are ONLY needed for the confluence report lane.
+# Kept in a separate layer so a light worker can skip ~2 GB.
+ARG WITH_CONFLUENCE=1
+RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
+      pip install --no-cache-dir "torch==2.4.*" --index-url https://download.pytorch.org/whl/cpu && \
+      pip install --no-cache-dir "sentence-transformers>=2.2"; \
+    fi
+
+# Swiss Ephemeris data — not shipped in the PyJHora wheel since 3.6.6.
+# Without it swisseph silently falls back to Moshier.
+COPY deploy/ephe/ /usr/local/lib/python3.12/site-packages/jhora/data/ephe/
+
+COPY core ./core
+COPY worker.py api.py ./
+COPY engines/palm_api ./palm_api
+COPY engines/astro/ ./
+COPY palm_report.py ./core/palm_report.py
+
+# warm the caches into the image so the first customer isn't the one who waits
+RUN python -c "from palm_api.pipeline import ensure_corpus; ensure_corpus()" || true
+RUN python -m palm_api.build_corpus 2>/dev/null || true
+
+ENV WORKER_GROUPS=heavy,palm,light ASTRO_HOTFIX=1
+CMD ["python", "worker.py"]

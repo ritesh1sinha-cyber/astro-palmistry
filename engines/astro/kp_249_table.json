@@ -1,0 +1,2243 @@
+[
+  {
+    "kp_number": 1,
+    "sign": "Aries",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 0.0,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 2,
+    "sign": "Aries",
+    "degree_in_sign": 0.777778,
+    "sidereal_lon": 0.777778,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 3,
+    "sign": "Aries",
+    "degree_in_sign": 3.0,
+    "sidereal_lon": 3.0,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 4,
+    "sign": "Aries",
+    "degree_in_sign": 3.666667,
+    "sidereal_lon": 3.666667,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 5,
+    "sign": "Aries",
+    "degree_in_sign": 4.777778,
+    "sidereal_lon": 4.777778,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 6,
+    "sign": "Aries",
+    "degree_in_sign": 5.555556,
+    "sidereal_lon": 5.555556,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 7,
+    "sign": "Aries",
+    "degree_in_sign": 7.555556,
+    "sidereal_lon": 7.555556,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 8,
+    "sign": "Aries",
+    "degree_in_sign": 9.333333,
+    "sidereal_lon": 9.333333,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 9,
+    "sign": "Aries",
+    "degree_in_sign": 11.444444,
+    "sidereal_lon": 11.444444,
+    "nakshatra": "Aswini",
+    "star_lord": "Ketu",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 10,
+    "sign": "Aries",
+    "degree_in_sign": 13.333333,
+    "sidereal_lon": 13.333333,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 11,
+    "sign": "Aries",
+    "degree_in_sign": 15.555556,
+    "sidereal_lon": 15.555556,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 12,
+    "sign": "Aries",
+    "degree_in_sign": 16.222222,
+    "sidereal_lon": 16.222222,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 13,
+    "sign": "Aries",
+    "degree_in_sign": 17.333333,
+    "sidereal_lon": 17.333333,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 14,
+    "sign": "Aries",
+    "degree_in_sign": 18.111111,
+    "sidereal_lon": 18.111111,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 15,
+    "sign": "Aries",
+    "degree_in_sign": 20.111111,
+    "sidereal_lon": 20.111111,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 16,
+    "sign": "Aries",
+    "degree_in_sign": 21.888889,
+    "sidereal_lon": 21.888889,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 17,
+    "sign": "Aries",
+    "degree_in_sign": 24.0,
+    "sidereal_lon": 24.0,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 18,
+    "sign": "Aries",
+    "degree_in_sign": 25.888889,
+    "sidereal_lon": 25.888889,
+    "nakshatra": "Bharani",
+    "star_lord": "Venus",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 19,
+    "sign": "Aries",
+    "degree_in_sign": 26.666667,
+    "sidereal_lon": 26.666667,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 20,
+    "sign": "Aries",
+    "degree_in_sign": 27.333333,
+    "sidereal_lon": 27.333333,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 21,
+    "sign": "Aries",
+    "degree_in_sign": 28.444444,
+    "sidereal_lon": 28.444444,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 22,
+    "sign": "Aries",
+    "degree_in_sign": 29.222222,
+    "sidereal_lon": 29.222222,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 23,
+    "sign": "Taurus",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 30.0,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 24,
+    "sign": "Taurus",
+    "degree_in_sign": 1.222222,
+    "sidereal_lon": 31.222222,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 25,
+    "sign": "Taurus",
+    "degree_in_sign": 3.0,
+    "sidereal_lon": 33.0,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 26,
+    "sign": "Taurus",
+    "degree_in_sign": 5.111111,
+    "sidereal_lon": 35.111111,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 27,
+    "sign": "Taurus",
+    "degree_in_sign": 7.0,
+    "sidereal_lon": 37.0,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 28,
+    "sign": "Taurus",
+    "degree_in_sign": 7.777778,
+    "sidereal_lon": 37.777778,
+    "nakshatra": "Krittika",
+    "star_lord": "Sun",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 29,
+    "sign": "Taurus",
+    "degree_in_sign": 10.0,
+    "sidereal_lon": 40.0,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 30,
+    "sign": "Taurus",
+    "degree_in_sign": 11.111111,
+    "sidereal_lon": 41.111111,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 31,
+    "sign": "Taurus",
+    "degree_in_sign": 11.888889,
+    "sidereal_lon": 41.888889,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 32,
+    "sign": "Taurus",
+    "degree_in_sign": 13.888889,
+    "sidereal_lon": 43.888889,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 33,
+    "sign": "Taurus",
+    "degree_in_sign": 15.666667,
+    "sidereal_lon": 45.666667,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 34,
+    "sign": "Taurus",
+    "degree_in_sign": 17.777778,
+    "sidereal_lon": 47.777778,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 35,
+    "sign": "Taurus",
+    "degree_in_sign": 19.666667,
+    "sidereal_lon": 49.666667,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 36,
+    "sign": "Taurus",
+    "degree_in_sign": 20.444444,
+    "sidereal_lon": 50.444444,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 37,
+    "sign": "Taurus",
+    "degree_in_sign": 22.666667,
+    "sidereal_lon": 52.666667,
+    "nakshatra": "Rohini",
+    "star_lord": "Moon",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 38,
+    "sign": "Taurus",
+    "degree_in_sign": 23.333333,
+    "sidereal_lon": 53.333333,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 39,
+    "sign": "Taurus",
+    "degree_in_sign": 24.111111,
+    "sidereal_lon": 54.111111,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 40,
+    "sign": "Taurus",
+    "degree_in_sign": 26.111111,
+    "sidereal_lon": 56.111111,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 41,
+    "sign": "Taurus",
+    "degree_in_sign": 27.888889,
+    "sidereal_lon": 57.888889,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 42,
+    "sign": "Gemini",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 60.0,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 43,
+    "sign": "Gemini",
+    "degree_in_sign": 1.888889,
+    "sidereal_lon": 61.888889,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 44,
+    "sign": "Gemini",
+    "degree_in_sign": 2.666667,
+    "sidereal_lon": 62.666667,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 45,
+    "sign": "Gemini",
+    "degree_in_sign": 4.888889,
+    "sidereal_lon": 64.888889,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 46,
+    "sign": "Gemini",
+    "degree_in_sign": 5.555556,
+    "sidereal_lon": 65.555556,
+    "nakshatra": "Mrigashira",
+    "star_lord": "Mars",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 47,
+    "sign": "Gemini",
+    "degree_in_sign": 6.666667,
+    "sidereal_lon": 66.666667,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 48,
+    "sign": "Gemini",
+    "degree_in_sign": 8.666667,
+    "sidereal_lon": 68.666667,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 49,
+    "sign": "Gemini",
+    "degree_in_sign": 10.444444,
+    "sidereal_lon": 70.444444,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 50,
+    "sign": "Gemini",
+    "degree_in_sign": 12.555556,
+    "sidereal_lon": 72.555556,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 51,
+    "sign": "Gemini",
+    "degree_in_sign": 14.444444,
+    "sidereal_lon": 74.444444,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 52,
+    "sign": "Gemini",
+    "degree_in_sign": 15.222222,
+    "sidereal_lon": 75.222222,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 53,
+    "sign": "Gemini",
+    "degree_in_sign": 17.444444,
+    "sidereal_lon": 77.444444,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 54,
+    "sign": "Gemini",
+    "degree_in_sign": 18.111111,
+    "sidereal_lon": 78.111111,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 55,
+    "sign": "Gemini",
+    "degree_in_sign": 19.222222,
+    "sidereal_lon": 79.222222,
+    "nakshatra": "Ardra",
+    "star_lord": "Rahu",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 56,
+    "sign": "Gemini",
+    "degree_in_sign": 20.0,
+    "sidereal_lon": 80.0,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 57,
+    "sign": "Gemini",
+    "degree_in_sign": 21.777778,
+    "sidereal_lon": 81.777778,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 58,
+    "sign": "Gemini",
+    "degree_in_sign": 23.888889,
+    "sidereal_lon": 83.888889,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 59,
+    "sign": "Gemini",
+    "degree_in_sign": 25.777778,
+    "sidereal_lon": 85.777778,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 60,
+    "sign": "Gemini",
+    "degree_in_sign": 26.555556,
+    "sidereal_lon": 86.555556,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 61,
+    "sign": "Gemini",
+    "degree_in_sign": 28.777778,
+    "sidereal_lon": 88.777778,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 62,
+    "sign": "Gemini",
+    "degree_in_sign": 29.444444,
+    "sidereal_lon": 89.444444,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 63,
+    "sign": "Cancer",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 90.0,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 64,
+    "sign": "Cancer",
+    "degree_in_sign": 0.555556,
+    "sidereal_lon": 90.555556,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 65,
+    "sign": "Cancer",
+    "degree_in_sign": 1.333333,
+    "sidereal_lon": 91.333333,
+    "nakshatra": "Purnavasu",
+    "star_lord": "Jupiter",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 66,
+    "sign": "Cancer",
+    "degree_in_sign": 3.333333,
+    "sidereal_lon": 93.333333,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 67,
+    "sign": "Cancer",
+    "degree_in_sign": 5.444444,
+    "sidereal_lon": 95.444444,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 68,
+    "sign": "Cancer",
+    "degree_in_sign": 7.333333,
+    "sidereal_lon": 97.333333,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 69,
+    "sign": "Cancer",
+    "degree_in_sign": 8.111111,
+    "sidereal_lon": 98.111111,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 70,
+    "sign": "Cancer",
+    "degree_in_sign": 10.333333,
+    "sidereal_lon": 100.333333,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 71,
+    "sign": "Cancer",
+    "degree_in_sign": 11.0,
+    "sidereal_lon": 101.0,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 72,
+    "sign": "Cancer",
+    "degree_in_sign": 12.111111,
+    "sidereal_lon": 102.111111,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 73,
+    "sign": "Cancer",
+    "degree_in_sign": 12.888889,
+    "sidereal_lon": 102.888889,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 74,
+    "sign": "Cancer",
+    "degree_in_sign": 14.888889,
+    "sidereal_lon": 104.888889,
+    "nakshatra": "Pushyami",
+    "star_lord": "Saturn",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 75,
+    "sign": "Cancer",
+    "degree_in_sign": 16.666667,
+    "sidereal_lon": 106.666667,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 76,
+    "sign": "Cancer",
+    "degree_in_sign": 18.555833,
+    "sidereal_lon": 108.555833,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 77,
+    "sign": "Cancer",
+    "degree_in_sign": 19.333333,
+    "sidereal_lon": 109.333333,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 78,
+    "sign": "Cancer",
+    "degree_in_sign": 21.555556,
+    "sidereal_lon": 111.555556,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 79,
+    "sign": "Cancer",
+    "degree_in_sign": 22.222222,
+    "sidereal_lon": 112.222222,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 80,
+    "sign": "Cancer",
+    "degree_in_sign": 23.333333,
+    "sidereal_lon": 113.333333,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 81,
+    "sign": "Cancer",
+    "degree_in_sign": 24.111111,
+    "sidereal_lon": 114.111111,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 82,
+    "sign": "Cancer",
+    "degree_in_sign": 26.111111,
+    "sidereal_lon": 116.111111,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 83,
+    "sign": "Cancer",
+    "degree_in_sign": 27.888889,
+    "sidereal_lon": 117.888889,
+    "nakshatra": "Aslesha",
+    "star_lord": "Mercury",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 84,
+    "sign": "Leo",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 120.0,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 85,
+    "sign": "Leo",
+    "degree_in_sign": 0.777778,
+    "sidereal_lon": 120.777778,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 86,
+    "sign": "Leo",
+    "degree_in_sign": 3.0,
+    "sidereal_lon": 123.0,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 87,
+    "sign": "Leo",
+    "degree_in_sign": 3.666667,
+    "sidereal_lon": 123.666667,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 88,
+    "sign": "Leo",
+    "degree_in_sign": 4.777778,
+    "sidereal_lon": 124.777778,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 89,
+    "sign": "Leo",
+    "degree_in_sign": 5.555556,
+    "sidereal_lon": 125.555556,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 90,
+    "sign": "Leo",
+    "degree_in_sign": 7.555556,
+    "sidereal_lon": 127.555556,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 91,
+    "sign": "Leo",
+    "degree_in_sign": 9.333333,
+    "sidereal_lon": 129.333333,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 92,
+    "sign": "Leo",
+    "degree_in_sign": 11.444444,
+    "sidereal_lon": 131.444444,
+    "nakshatra": "Magha",
+    "star_lord": "Ketu",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 93,
+    "sign": "Leo",
+    "degree_in_sign": 13.333333,
+    "sidereal_lon": 133.333333,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 94,
+    "sign": "Leo",
+    "degree_in_sign": 15.555556,
+    "sidereal_lon": 135.555556,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 95,
+    "sign": "Leo",
+    "degree_in_sign": 16.222222,
+    "sidereal_lon": 136.222222,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 96,
+    "sign": "Leo",
+    "degree_in_sign": 17.333333,
+    "sidereal_lon": 137.333333,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 97,
+    "sign": "Leo",
+    "degree_in_sign": 18.111111,
+    "sidereal_lon": 138.111111,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 98,
+    "sign": "Leo",
+    "degree_in_sign": 20.111111,
+    "sidereal_lon": 140.111111,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 99,
+    "sign": "Leo",
+    "degree_in_sign": 21.888889,
+    "sidereal_lon": 141.888889,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 100,
+    "sign": "Leo",
+    "degree_in_sign": 24.0,
+    "sidereal_lon": 144.0,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 101,
+    "sign": "Leo",
+    "degree_in_sign": 25.888889,
+    "sidereal_lon": 145.888889,
+    "nakshatra": "P. Phalguni",
+    "star_lord": "Venus",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 102,
+    "sign": "Leo",
+    "degree_in_sign": 26.666667,
+    "sidereal_lon": 146.666667,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 103,
+    "sign": "Leo",
+    "degree_in_sign": 27.333333,
+    "sidereal_lon": 147.333333,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 104,
+    "sign": "Leo",
+    "degree_in_sign": 28.444444,
+    "sidereal_lon": 148.444444,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 105,
+    "sign": "Leo",
+    "degree_in_sign": 29.222222,
+    "sidereal_lon": 149.222222,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 106,
+    "sign": "Virgo",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 150.0,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 107,
+    "sign": "Virgo",
+    "degree_in_sign": 1.222222,
+    "sidereal_lon": 151.222222,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 108,
+    "sign": "Virgo",
+    "degree_in_sign": 3.0,
+    "sidereal_lon": 153.0,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 109,
+    "sign": "Virgo",
+    "degree_in_sign": 5.111111,
+    "sidereal_lon": 155.111111,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 110,
+    "sign": "Virgo",
+    "degree_in_sign": 7.0,
+    "sidereal_lon": 157.0,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 111,
+    "sign": "Virgo",
+    "degree_in_sign": 7.777778,
+    "sidereal_lon": 157.777778,
+    "nakshatra": "U.Phalguni",
+    "star_lord": "Sun",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 112,
+    "sign": "Virgo",
+    "degree_in_sign": 10.0,
+    "sidereal_lon": 160.0,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 113,
+    "sign": "Virgo",
+    "degree_in_sign": 11.111111,
+    "sidereal_lon": 161.111111,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 114,
+    "sign": "Virgo",
+    "degree_in_sign": 11.888889,
+    "sidereal_lon": 161.888889,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 115,
+    "sign": "Virgo",
+    "degree_in_sign": 13.888889,
+    "sidereal_lon": 163.888889,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 116,
+    "sign": "Virgo",
+    "degree_in_sign": 15.666667,
+    "sidereal_lon": 165.666667,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 117,
+    "sign": "Virgo",
+    "degree_in_sign": 17.777778,
+    "sidereal_lon": 167.777778,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 118,
+    "sign": "Virgo",
+    "degree_in_sign": 19.666667,
+    "sidereal_lon": 169.666667,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 119,
+    "sign": "Virgo",
+    "degree_in_sign": 20.444444,
+    "sidereal_lon": 170.444444,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 120,
+    "sign": "Virgo",
+    "degree_in_sign": 22.666667,
+    "sidereal_lon": 172.666667,
+    "nakshatra": "Hasta",
+    "star_lord": "Moon",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 121,
+    "sign": "Virgo",
+    "degree_in_sign": 23.333333,
+    "sidereal_lon": 173.333333,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 122,
+    "sign": "Virgo",
+    "degree_in_sign": 24.111111,
+    "sidereal_lon": 174.111111,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 123,
+    "sign": "Virgo",
+    "degree_in_sign": 26.111111,
+    "sidereal_lon": 176.111111,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 124,
+    "sign": "Virgo",
+    "degree_in_sign": 27.888889,
+    "sidereal_lon": 177.888889,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 125,
+    "sign": "Libra",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 180.0,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 126,
+    "sign": "Libra",
+    "degree_in_sign": 1.888889,
+    "sidereal_lon": 181.888889,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 127,
+    "sign": "Libra",
+    "degree_in_sign": 2.666667,
+    "sidereal_lon": 182.666667,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 128,
+    "sign": "Libra",
+    "degree_in_sign": 4.888889,
+    "sidereal_lon": 184.888889,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 129,
+    "sign": "Libra",
+    "degree_in_sign": 5.555556,
+    "sidereal_lon": 185.555556,
+    "nakshatra": "Chitra",
+    "star_lord": "Mars",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 130,
+    "sign": "Libra",
+    "degree_in_sign": 6.666667,
+    "sidereal_lon": 186.666667,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 131,
+    "sign": "Libra",
+    "degree_in_sign": 8.666667,
+    "sidereal_lon": 188.666667,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 132,
+    "sign": "Libra",
+    "degree_in_sign": 10.444444,
+    "sidereal_lon": 190.444444,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 133,
+    "sign": "Libra",
+    "degree_in_sign": 12.555556,
+    "sidereal_lon": 192.555556,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 134,
+    "sign": "Libra",
+    "degree_in_sign": 14.444444,
+    "sidereal_lon": 194.444444,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 135,
+    "sign": "Libra",
+    "degree_in_sign": 15.222222,
+    "sidereal_lon": 195.222222,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 136,
+    "sign": "Libra",
+    "degree_in_sign": 17.444444,
+    "sidereal_lon": 197.444444,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 137,
+    "sign": "Libra",
+    "degree_in_sign": 18.111111,
+    "sidereal_lon": 198.111111,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 138,
+    "sign": "Libra",
+    "degree_in_sign": 19.222222,
+    "sidereal_lon": 199.222222,
+    "nakshatra": "Swati",
+    "star_lord": "Rahu",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 139,
+    "sign": "Libra",
+    "degree_in_sign": 20.0,
+    "sidereal_lon": 200.0,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 140,
+    "sign": "Libra",
+    "degree_in_sign": 21.777778,
+    "sidereal_lon": 201.777778,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 141,
+    "sign": "Libra",
+    "degree_in_sign": 23.888889,
+    "sidereal_lon": 203.888889,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 142,
+    "sign": "Libra",
+    "degree_in_sign": 25.777778,
+    "sidereal_lon": 205.777778,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 143,
+    "sign": "Libra",
+    "degree_in_sign": 26.555556,
+    "sidereal_lon": 206.555556,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 144,
+    "sign": "Libra",
+    "degree_in_sign": 28.777778,
+    "sidereal_lon": 208.777778,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 145,
+    "sign": "Libra",
+    "degree_in_sign": 29.444444,
+    "sidereal_lon": 209.444444,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 146,
+    "sign": "Scorpio",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 210.0,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 147,
+    "sign": "Scorpio",
+    "degree_in_sign": 0.555556,
+    "sidereal_lon": 210.555556,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 148,
+    "sign": "Scorpio",
+    "degree_in_sign": 1.333333,
+    "sidereal_lon": 211.333333,
+    "nakshatra": "Vishaka",
+    "star_lord": "Jupiter",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 149,
+    "sign": "Scorpio",
+    "degree_in_sign": 3.333333,
+    "sidereal_lon": 213.333333,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 150,
+    "sign": "Scorpio",
+    "degree_in_sign": 5.444444,
+    "sidereal_lon": 215.444444,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 151,
+    "sign": "Scorpio",
+    "degree_in_sign": 7.333333,
+    "sidereal_lon": 217.333333,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 152,
+    "sign": "Scorpio",
+    "degree_in_sign": 8.111111,
+    "sidereal_lon": 218.111111,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 153,
+    "sign": "Scorpio",
+    "degree_in_sign": 10.333333,
+    "sidereal_lon": 220.333333,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 154,
+    "sign": "Scorpio",
+    "degree_in_sign": 11.0,
+    "sidereal_lon": 221.0,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 155,
+    "sign": "Scorpio",
+    "degree_in_sign": 12.111111,
+    "sidereal_lon": 222.111111,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 156,
+    "sign": "Scorpio",
+    "degree_in_sign": 12.888889,
+    "sidereal_lon": 222.888889,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 157,
+    "sign": "Scorpio",
+    "degree_in_sign": 14.888889,
+    "sidereal_lon": 224.888889,
+    "nakshatra": "Anuradha",
+    "star_lord": "Saturn",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 158,
+    "sign": "Scorpio",
+    "degree_in_sign": 16.666667,
+    "sidereal_lon": 226.666667,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 159,
+    "sign": "Scorpio",
+    "degree_in_sign": 18.555556,
+    "sidereal_lon": 228.555556,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 160,
+    "sign": "Scorpio",
+    "degree_in_sign": 19.333333,
+    "sidereal_lon": 229.333333,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 161,
+    "sign": "Scorpio",
+    "degree_in_sign": 21.555556,
+    "sidereal_lon": 231.555556,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 162,
+    "sign": "Scorpio",
+    "degree_in_sign": 22.222222,
+    "sidereal_lon": 232.222222,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 163,
+    "sign": "Scorpio",
+    "degree_in_sign": 23.333333,
+    "sidereal_lon": 233.333333,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 164,
+    "sign": "Scorpio",
+    "degree_in_sign": 24.111111,
+    "sidereal_lon": 234.111111,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 165,
+    "sign": "Scorpio",
+    "degree_in_sign": 26.111111,
+    "sidereal_lon": 236.111111,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 166,
+    "sign": "Scorpio",
+    "degree_in_sign": 27.888889,
+    "sidereal_lon": 237.888889,
+    "nakshatra": "Jyeshta",
+    "star_lord": "Mercury",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 167,
+    "sign": "Sagittarius",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 240.0,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 168,
+    "sign": "Sagittarius",
+    "degree_in_sign": 0.777778,
+    "sidereal_lon": 240.777778,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 169,
+    "sign": "Sagittarius",
+    "degree_in_sign": 3.0,
+    "sidereal_lon": 243.0,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 170,
+    "sign": "Sagittarius",
+    "degree_in_sign": 3.666667,
+    "sidereal_lon": 243.666667,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 171,
+    "sign": "Sagittarius",
+    "degree_in_sign": 4.777778,
+    "sidereal_lon": 244.777778,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 172,
+    "sign": "Sagittarius",
+    "degree_in_sign": 5.888889,
+    "sidereal_lon": 245.888889,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 173,
+    "sign": "Sagittarius",
+    "degree_in_sign": 7.555556,
+    "sidereal_lon": 247.555556,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 174,
+    "sign": "Sagittarius",
+    "degree_in_sign": 9.333333,
+    "sidereal_lon": 249.333333,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 175,
+    "sign": "Sagittarius",
+    "degree_in_sign": 11.444444,
+    "sidereal_lon": 251.444444,
+    "nakshatra": "Mula",
+    "star_lord": "Ketu",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 176,
+    "sign": "Sagittarius",
+    "degree_in_sign": 13.333333,
+    "sidereal_lon": 253.333333,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 177,
+    "sign": "Sagittarius",
+    "degree_in_sign": 15.555556,
+    "sidereal_lon": 255.555556,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 178,
+    "sign": "Sagittarius",
+    "degree_in_sign": 16.222222,
+    "sidereal_lon": 256.222222,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 179,
+    "sign": "Sagittarius",
+    "degree_in_sign": 17.333333,
+    "sidereal_lon": 257.333333,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 180,
+    "sign": "Sagittarius",
+    "degree_in_sign": 18.111111,
+    "sidereal_lon": 258.111111,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 181,
+    "sign": "Sagittarius",
+    "degree_in_sign": 20.111111,
+    "sidereal_lon": 260.111111,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 182,
+    "sign": "Sagittarius",
+    "degree_in_sign": 21.888889,
+    "sidereal_lon": 261.888889,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 183,
+    "sign": "Sagittarius",
+    "degree_in_sign": 24.0,
+    "sidereal_lon": 264.0,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 184,
+    "sign": "Sagittarius",
+    "degree_in_sign": 25.888889,
+    "sidereal_lon": 265.888889,
+    "nakshatra": "Purvashadha",
+    "star_lord": "Venus",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 185,
+    "sign": "Sagittarius",
+    "degree_in_sign": 26.666667,
+    "sidereal_lon": 266.666667,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 186,
+    "sign": "Sagittarius",
+    "degree_in_sign": 27.333333,
+    "sidereal_lon": 267.333333,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 187,
+    "sign": "Sagittarius",
+    "degree_in_sign": 28.444444,
+    "sidereal_lon": 268.444444,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 188,
+    "sign": "Sagittarius",
+    "degree_in_sign": 29.222222,
+    "sidereal_lon": 269.222222,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 189,
+    "sign": "Capricorn",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 270.0,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 190,
+    "sign": "Capricorn",
+    "degree_in_sign": 1.222222,
+    "sidereal_lon": 271.222222,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 191,
+    "sign": "Capricorn",
+    "degree_in_sign": 3.0,
+    "sidereal_lon": 273.0,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 192,
+    "sign": "Capricorn",
+    "degree_in_sign": 5.111111,
+    "sidereal_lon": 275.111111,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 193,
+    "sign": "Capricorn",
+    "degree_in_sign": 7.0,
+    "sidereal_lon": 277.0,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 194,
+    "sign": "Capricorn",
+    "degree_in_sign": 7.777778,
+    "sidereal_lon": 277.777778,
+    "nakshatra": "Uttarashadha",
+    "star_lord": "Sun",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 195,
+    "sign": "Capricorn",
+    "degree_in_sign": 10.0,
+    "sidereal_lon": 280.0,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 196,
+    "sign": "Capricorn",
+    "degree_in_sign": 11.111111,
+    "sidereal_lon": 281.111111,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 197,
+    "sign": "Capricorn",
+    "degree_in_sign": 11.888889,
+    "sidereal_lon": 281.888889,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 198,
+    "sign": "Capricorn",
+    "degree_in_sign": 13.888889,
+    "sidereal_lon": 283.888889,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 199,
+    "sign": "Capricorn",
+    "degree_in_sign": 15.666667,
+    "sidereal_lon": 285.666667,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 200,
+    "sign": "Capricorn",
+    "degree_in_sign": 17.777778,
+    "sidereal_lon": 287.777778,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 201,
+    "sign": "Capricorn",
+    "degree_in_sign": 19.666667,
+    "sidereal_lon": 289.666667,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 202,
+    "sign": "Capricorn",
+    "degree_in_sign": 20.777778,
+    "sidereal_lon": 290.777778,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 203,
+    "sign": "Capricorn",
+    "degree_in_sign": 22.666667,
+    "sidereal_lon": 292.666667,
+    "nakshatra": "Shravana",
+    "star_lord": "Moon",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 204,
+    "sign": "Capricorn",
+    "degree_in_sign": 23.333333,
+    "sidereal_lon": 293.333333,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 205,
+    "sign": "Capricorn",
+    "degree_in_sign": 24.111111,
+    "sidereal_lon": 294.111111,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 206,
+    "sign": "Capricorn",
+    "degree_in_sign": 26.111111,
+    "sidereal_lon": 296.111111,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 207,
+    "sign": "Capricorn",
+    "degree_in_sign": 27.888889,
+    "sidereal_lon": 297.888889,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 208,
+    "sign": "Aquarius",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 300.0,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 209,
+    "sign": "Aquarius",
+    "degree_in_sign": 1.888889,
+    "sidereal_lon": 301.888889,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 210,
+    "sign": "Aquarius",
+    "degree_in_sign": 2.666667,
+    "sidereal_lon": 302.666667,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 211,
+    "sign": "Aquarius",
+    "degree_in_sign": 4.888889,
+    "sidereal_lon": 304.888889,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 212,
+    "sign": "Aquarius",
+    "degree_in_sign": 5.555556,
+    "sidereal_lon": 305.555556,
+    "nakshatra": "Dhanistha",
+    "star_lord": "Mars",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 213,
+    "sign": "Aquarius",
+    "degree_in_sign": 6.672222,
+    "sidereal_lon": 306.672222,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 214,
+    "sign": "Aquarius",
+    "degree_in_sign": 8.666667,
+    "sidereal_lon": 308.666667,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 215,
+    "sign": "Aquarius",
+    "degree_in_sign": 10.444444,
+    "sidereal_lon": 310.444444,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 216,
+    "sign": "Aquarius",
+    "degree_in_sign": 12.555556,
+    "sidereal_lon": 312.555556,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 217,
+    "sign": "Aquarius",
+    "degree_in_sign": 14.444444,
+    "sidereal_lon": 314.444444,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 218,
+    "sign": "Aquarius",
+    "degree_in_sign": 15.222222,
+    "sidereal_lon": 315.222222,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 219,
+    "sign": "Aquarius",
+    "degree_in_sign": 17.444444,
+    "sidereal_lon": 317.444444,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 220,
+    "sign": "Aquarius",
+    "degree_in_sign": 18.111111,
+    "sidereal_lon": 318.111111,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 221,
+    "sign": "Aquarius",
+    "degree_in_sign": 19.222222,
+    "sidereal_lon": 319.222222,
+    "nakshatra": "Shatabhisha",
+    "star_lord": "Rahu",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 222,
+    "sign": "Aquarius",
+    "degree_in_sign": 20.0,
+    "sidereal_lon": 320.0,
+    "nakshatra": "P.Bhadarapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 223,
+    "sign": "Aquarius",
+    "degree_in_sign": 21.777778,
+    "sidereal_lon": 321.777778,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 224,
+    "sign": "Aquarius",
+    "degree_in_sign": 23.888889,
+    "sidereal_lon": 323.888889,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 225,
+    "sign": "Aquarius",
+    "degree_in_sign": 25.777778,
+    "sidereal_lon": 325.777778,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 226,
+    "sign": "Aquarius",
+    "degree_in_sign": 26.555556,
+    "sidereal_lon": 326.555556,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 227,
+    "sign": "Aquarius",
+    "degree_in_sign": 28.777778,
+    "sidereal_lon": 328.777778,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 228,
+    "sign": "Aquarius",
+    "degree_in_sign": 29.444444,
+    "sidereal_lon": 329.444444,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 229,
+    "sign": "Pisces",
+    "degree_in_sign": 0.0,
+    "sidereal_lon": 330.0,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 230,
+    "sign": "Pisces",
+    "degree_in_sign": 0.555556,
+    "sidereal_lon": 330.555556,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 231,
+    "sign": "Pisces",
+    "degree_in_sign": 1.333333,
+    "sidereal_lon": 331.333333,
+    "nakshatra": "P. Bhadrapad",
+    "star_lord": "Jupiter",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 232,
+    "sign": "Pisces",
+    "degree_in_sign": 3.333333,
+    "sidereal_lon": 333.333333,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Saturn"
+  },
+  {
+    "kp_number": 233,
+    "sign": "Pisces",
+    "degree_in_sign": 5.444444,
+    "sidereal_lon": 335.444444,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 234,
+    "sign": "Pisces",
+    "degree_in_sign": 7.333333,
+    "sidereal_lon": 337.333333,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 235,
+    "sign": "Pisces",
+    "degree_in_sign": 8.111111,
+    "sidereal_lon": 338.111111,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 236,
+    "sign": "Pisces",
+    "degree_in_sign": 10.333333,
+    "sidereal_lon": 340.333333,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 237,
+    "sign": "Pisces",
+    "degree_in_sign": 11.0,
+    "sidereal_lon": 341.0,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 238,
+    "sign": "Pisces",
+    "degree_in_sign": 12.111111,
+    "sidereal_lon": 342.111111,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 239,
+    "sign": "Pisces",
+    "degree_in_sign": 12.888889,
+    "sidereal_lon": 342.888889,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 240,
+    "sign": "Pisces",
+    "degree_in_sign": 14.888889,
+    "sidereal_lon": 344.888889,
+    "nakshatra": "U. Bhadrapad",
+    "star_lord": "Saturn",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 241,
+    "sign": "Pisces",
+    "degree_in_sign": 16.666667,
+    "sidereal_lon": 346.666667,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Mercury"
+  },
+  {
+    "kp_number": 242,
+    "sign": "Pisces",
+    "degree_in_sign": 18.555556,
+    "sidereal_lon": 348.555556,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Ketu"
+  },
+  {
+    "kp_number": 243,
+    "sign": "Pisces",
+    "degree_in_sign": 19.333333,
+    "sidereal_lon": 349.333333,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Venus"
+  },
+  {
+    "kp_number": 244,
+    "sign": "Pisces",
+    "degree_in_sign": 21.555556,
+    "sidereal_lon": 351.555556,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Sun"
+  },
+  {
+    "kp_number": 245,
+    "sign": "Pisces",
+    "degree_in_sign": 22.222222,
+    "sidereal_lon": 352.222222,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Moon"
+  },
+  {
+    "kp_number": 246,
+    "sign": "Pisces",
+    "degree_in_sign": 23.333333,
+    "sidereal_lon": 353.333333,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Mars"
+  },
+  {
+    "kp_number": 247,
+    "sign": "Pisces",
+    "degree_in_sign": 24.111111,
+    "sidereal_lon": 354.111111,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Rahu"
+  },
+  {
+    "kp_number": 248,
+    "sign": "Pisces",
+    "degree_in_sign": 26.111111,
+    "sidereal_lon": 356.111111,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Jupiter"
+  },
+  {
+    "kp_number": 249,
+    "sign": "Pisces",
+    "degree_in_sign": 27.888889,
+    "sidereal_lon": 357.888889,
+    "nakshatra": "Revati",
+    "star_lord": "Mercury",
+    "sub_lord": "Saturn"
+  }
+]

@@ -1,0 +1,37 @@
+# secrets — never commit these
+.env
+deploy/.env
+*.pem
+*.key
+service-account*.json
+
+# runtime state
+storage/
+reports/
+_astro_sessions/
+*.db
+*.db-wal
+*.db-shm
+backups/
+
+# user data: palm photos and generated charts are personal information
+engines/palm_api/data/uploads/
+engines/palm_api/data/outputs/
+engines/astro/reports/
+
+# Swiss Ephemeris data files (large, licensed separately — see deploy/ephe/README)
+deploy/ephe/*.se1
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/

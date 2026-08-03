@@ -1,0 +1,36 @@
+# Vedic Astrology Report Generator — all dependencies
+# Python 3.10+ required
+
+# Web server
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+loguru>=0.7.0
+gunicorn>=23.0.0
+
+# Auth (retained from original bridge)
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+pydantic>=2.5.0
+
+# Job queue (retained, used as fallback)
+redis==5.2.1
+celery==5.4.0
+
+# Vedic chart engine (PyJHora / Swiss Ephemeris)
+pyswisseph>=2.10.3
+numpy>=1.24
+geocoder>=1.38.1
+geopy>=2.4.1
+pytz>=2024.1
+timezonefinder>=6.5.2
+requests>=2.32.3
+
+# Confluence semantic routing (offline MiniLM in models/)
+sentence-transformers>=2.2.0
+torch>=2.0.0
+
+# Palmistry lane (optional — comment out if CV not needed)
+opencv-python>=4.8
+mediapipe>=0.10.9

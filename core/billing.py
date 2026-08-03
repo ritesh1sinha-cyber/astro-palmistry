@@ -1,0 +1,307 @@
+"""
+Money and access.
+
+Two ideas keep this honest at scale:
+
+  1. `orders` says what was PAID. `entitlements` says what may be SEEN. They are
+     separate tables, so a refund revokes access without erasing payment history,
+     and a promo or support grant uses the same access path as a purchase.
+
+  2. A webhook is the ONLY thing that can mark an order paid, and it must carry
+     a valid gateway signature. Nothing the browser sends is trusted.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
+
+from sqlalchemy import text
+
+from .config import S
+from .db import engine, jdump, jrow, new_id, now, tx
+
+FREE_ITEMS = {"chart_summary", "numerology", "daily_free"}
+
+
+# ---------------------------------------------------------------------------
+# entitlements
+# ---------------------------------------------------------------------------
+def grant(user_id: str, item: str, *, ref_id: Optional[str] = None,
+          source: str = "order", order_id: Optional[str] = None,
+          days: Optional[int] = None) -> None:
+    expires = (now() + timedelta(days=days)) if days else None
+    with tx() as c:
+        existing = c.execute(text(
+            "SELECT id FROM entitlements WHERE user_id=:u AND item=:i"
+            " AND ((:r IS NULL AND ref_id IS NULL) OR ref_id = :r)"
+            " AND revoked_at IS NULL"),
+            {"u": user_id, "i": item, "r": ref_id}).fetchone()
+        if existing:
+            if expires:
+                c.execute(text("UPDATE entitlements SET expires_at = :e WHERE id = :id"),
+                          {"e": expires, "id": existing._mapping["id"]})
+            return
+        c.execute(text("INSERT INTO entitlements (id,user_id,item,ref_id,source,"
+                       "order_id,granted_at,expires_at)"
+                       " VALUES (:i,:u,:it,:r,:s,:o,:t,:e)"),
+                  {"i": new_id(), "u": user_id, "it": item, "r": ref_id,
+                   "s": source, "o": order_id, "t": now(), "e": expires})
+
+
+def revoke(user_id: str, item: str, ref_id: Optional[str] = None) -> None:
+    with tx() as c:
+        c.execute(text("UPDATE entitlements SET revoked_at = :t"
+                       " WHERE user_id=:u AND item=:i"
+                       " AND ((:r IS NULL AND ref_id IS NULL) OR ref_id = :r)"
+                       " AND revoked_at IS NULL"),
+                  {"t": now(), "u": user_id, "i": item, "r": ref_id})
+
+
+def entitled(user_id: str, item: str, ref_id: Optional[str] = None) -> bool:
+    """Item-specific grant, or an account-wide grant, or an active subscription."""
+    if item in FREE_ITEMS:
+        return True
+    with engine().connect() as c:
+        row = c.execute(text(
+            "SELECT 1 FROM entitlements WHERE user_id=:u AND item=:i"
+            "   AND (ref_id = :r OR ref_id IS NULL)"
+            "   AND revoked_at IS NULL"
+            "   AND (expires_at IS NULL OR expires_at > :now) LIMIT 1"),
+            {"u": user_id, "i": item, "r": ref_id, "now": now()}).fetchone()
+        if row:
+            return True
+        if item in ("daily", "muhurat", "horary"):
+            return is_subscribed(user_id, conn=c)
+    return False
+
+
+def is_subscribed(user_id: str, conn=None) -> bool:
+    q = text("SELECT 1 FROM subscriptions WHERE user_id=:u AND status='active'"
+             " AND current_period_end > :now LIMIT 1")
+    if conn is not None:
+        return conn.execute(q, {"u": user_id, "now": now()}).fetchone() is not None
+    with engine().connect() as c:
+        return c.execute(q, {"u": user_id, "now": now()}).fetchone() is not None
+
+
+def subscription_of(user_id: str) -> Optional[dict]:
+    with engine().connect() as c:
+        row = c.execute(text("SELECT * FROM subscriptions WHERE user_id=:u"
+                             " ORDER BY current_period_end DESC LIMIT 1"),
+                        {"u": user_id}).fetchone()
+    return jrow(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# usage metering (free tiers)
+# ---------------------------------------------------------------------------
+def use_quota(user_id: str, kind: str, limit: int, period: str) -> tuple[bool, int]:
+    """Consume one unit. Returns (allowed, remaining_after)."""
+    with tx() as c:
+        row = c.execute(text("SELECT used FROM usage_counters"
+                             " WHERE user_id=:u AND kind=:k AND period=:p"),
+                        {"u": user_id, "k": kind, "p": period}).fetchone()
+        used = row._mapping["used"] if row else 0
+        if used >= limit:
+            return False, 0
+        if row:
+            c.execute(text("UPDATE usage_counters SET used = used + 1, updated_at = :t"
+                           " WHERE user_id=:u AND kind=:k AND period=:p"),
+                      {"t": now(), "u": user_id, "k": kind, "p": period})
+        else:
+            c.execute(text("INSERT INTO usage_counters (user_id,kind,period,used,updated_at)"
+                           " VALUES (:u,:k,:p,1,:t)"),
+                      {"u": user_id, "k": kind, "p": period, "t": now()})
+        return True, limit - used - 1
+
+
+def quota_left(user_id: str, kind: str, limit: int, period: str) -> int:
+    with engine().connect() as c:
+        row = c.execute(text("SELECT used FROM usage_counters"
+                             " WHERE user_id=:u AND kind=:k AND period=:p"),
+                        {"u": user_id, "k": kind, "p": period}).fetchone()
+    return max(0, limit - (row._mapping["used"] if row else 0))
+
+
+def month_period() -> str:
+    return now().strftime("%Y-%m")
+
+
+# ---------------------------------------------------------------------------
+# credits (append-only ledger; users.credits is a cache of it)
+# ---------------------------------------------------------------------------
+def credit(user_id: str, delta: int, reason: str, ref_id: Optional[str] = None) -> int:
+    with tx() as c:
+        row = c.execute(text("SELECT credits FROM users WHERE id = :u"),
+                        {"u": user_id}).fetchone()
+        bal = (row._mapping["credits"] if row else 0) + delta
+        if bal < 0:
+            raise ValueError("insufficient credits")
+        c.execute(text("UPDATE users SET credits = :b WHERE id = :u"),
+                  {"b": bal, "u": user_id})
+        c.execute(text("INSERT INTO credit_ledger (user_id,delta,reason,ref_id,"
+                       "balance_after,created_at) VALUES (:u,:d,:r,:ref,:b,:t)"),
+                  {"u": user_id, "d": delta, "r": reason, "ref": ref_id,
+                   "b": bal, "t": now()})
+        return bal
+
+
+# ---------------------------------------------------------------------------
+# orders
+# ---------------------------------------------------------------------------
+def create_order(user_id: str, item: str, *, ref_id: Optional[str] = None,
+                 idempotency_key: Optional[str] = None) -> dict:
+    amount = S.price(item)
+    if idempotency_key:
+        with engine().connect() as c:
+            row = c.execute(text("SELECT * FROM orders WHERE idempotency_key = :k"),
+                            {"k": idempotency_key}).fetchone()
+            if row:
+                return _order_public(jrow(row))
+
+    oid, public = new_id(), "OD-" + uuid.uuid4().hex[:8].upper()
+    gw_order_id = None
+    if S.gateway == "razorpay" and S.razorpay_key_id:
+        gw_order_id = _razorpay_create_order(public, amount)
+
+    with tx() as c:
+        c.execute(text("INSERT INTO orders (id,public_id,user_id,item,ref_id,"
+                       "amount_paise,status,gateway,gateway_order_id,"
+                       "idempotency_key,created_at)"
+                       " VALUES (:i,:p,:u,:it,:r,:a,'created',:g,:go,:k,:t)"),
+                  {"i": oid, "p": public, "u": user_id, "it": item, "r": ref_id,
+                   "a": amount, "g": S.gateway, "go": gw_order_id,
+                   "k": idempotency_key, "t": now()})
+        row = c.execute(text("SELECT * FROM orders WHERE id = :i"), {"i": oid}).fetchone()
+    return _order_public(jrow(row))
+
+
+def _order_public(o: dict) -> dict:
+    out = {"orderId": o["public_id"], "item": o["item"],
+           "amount": o["amount_paise"] // 100,
+           "amountPaise": o["amount_paise"], "status": o["status"],
+           "gateway": o.get("gateway")}
+    if o.get("gateway_order_id"):
+        out["gatewayOrderId"] = o["gateway_order_id"]
+        out["keyId"] = S.razorpay_key_id
+    elif S.upi_id:
+        # fallback for pre-gateway testing only — a bare intent cannot be verified
+        out["upiIntentUrl"] = (
+            f"upi://pay?pa={S.upi_id}&pn={S.payee_name.replace(' ', '%20')}"
+            f"&am={o['amount_paise'] // 100}&cu=INR&tr={o['public_id']}")
+    return out
+
+
+def order_by_public(public_id: str) -> Optional[dict]:
+    with engine().connect() as c:
+        row = c.execute(text("SELECT * FROM orders WHERE public_id = :p"),
+                        {"p": public_id}).fetchone()
+    return jrow(row) if row else None
+
+
+def _razorpay_create_order(receipt: str, amount_paise: int) -> Optional[str]:
+    import base64
+    import urllib.request
+    auth = base64.b64encode(
+        f"{S.razorpay_key_id}:{S.razorpay_key_secret}".encode()).decode()
+    body = json.dumps({"amount": amount_paise, "currency": "INR",
+                       "receipt": receipt, "payment_capture": 1}).encode()
+    req = urllib.request.Request(
+        "https://api.razorpay.com/v1/orders", data=body,
+        headers={"Content-Type": "application/json", "Authorization": "Basic " + auth})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.load(resp).get("id")
+    except Exception:                                                # noqa: BLE001
+        return None      # order still exists locally; retry or fall back to UPI
+
+
+# ---------------------------------------------------------------------------
+# webhooks — the only path that grants access
+# ---------------------------------------------------------------------------
+def verify_razorpay_signature(raw_body: bytes, signature: str) -> bool:
+    if not S.razorpay_webhook_secret:
+        return False
+    expected = hmac.new(S.razorpay_webhook_secret.encode(), raw_body,
+                        hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, (signature or "").strip())
+
+
+def record_event(order_id: Optional[str], event_type: str, payload: dict,
+                 signature_ok: bool) -> None:
+    with tx() as c:
+        c.execute(text("INSERT INTO payment_events (order_id,gateway,event_type,"
+                       "signature_ok,payload,received_at)"
+                       " VALUES (:o,:g,:e,:s,:p,:t)"),
+                  {"o": order_id, "g": S.gateway, "e": event_type,
+                   "s": signature_ok, "p": jdump(payload), "t": now()})
+
+
+def mark_paid(public_id: str, *, gateway_payment_id: str = "") -> dict:
+    """Idempotent. Grants the entitlement the order was for."""
+    o = order_by_public(public_id)
+    if not o:
+        raise KeyError("order not found")
+    if o["status"] == "paid":
+        return {"ok": True, "already": True, "item": o["item"]}
+
+    with tx() as c:
+        c.execute(text("UPDATE orders SET status='paid', paid_at=:t,"
+                       " gateway_payment_id = COALESCE(NULLIF(:gp,''), gateway_payment_id)"
+                       " WHERE id = :i"),
+                  {"t": now(), "gp": gateway_payment_id, "i": o["id"]})
+
+    item, uid, ref = o["item"], o["user_id"], o.get("ref_id")
+
+    if item == "subscription":
+        _extend_subscription(uid)
+        grant(uid, "daily", source="subscription", order_id=o["id"], days=30)
+        grant(uid, "muhurat", source="subscription", order_id=o["id"], days=30)
+    else:
+        grant(uid, item, ref_id=ref, source="order", order_id=o["id"])
+        if ref:
+            from .db import report_mark_paid
+            report_mark_paid(ref)
+    return {"ok": True, "item": item, "userId": uid, "refId": ref}
+
+
+def refund(public_id: str) -> None:
+    o = order_by_public(public_id)
+    if not o:
+        raise KeyError("order not found")
+    with tx() as c:
+        c.execute(text("UPDATE orders SET status='refunded', refunded_at=:t WHERE id=:i"),
+                  {"t": now(), "i": o["id"]})
+    revoke(o["user_id"], o["item"], o.get("ref_id"))
+
+
+def _extend_subscription(user_id: str) -> None:
+    sub = subscription_of(user_id)
+    base = now()
+    if sub and sub.get("current_period_end"):
+        end = sub["current_period_end"]
+        if isinstance(end, str):
+            end = datetime.fromisoformat(end)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        base = max(base, end)
+    new_end = base + timedelta(days=30)
+    with tx() as c:
+        if sub:
+            c.execute(text("UPDATE subscriptions SET status='active',"
+                           " current_period_end=:e WHERE id=:i"),
+                      {"e": new_end, "i": sub["id"]})
+        else:
+            c.execute(text("INSERT INTO subscriptions (id,user_id,plan,status,"
+                           "current_period_end,created_at)"
+                           " VALUES (:i,:u,'daily_monthly','active',:e,:t)"),
+                      {"i": new_id(), "u": user_id, "e": new_end, "t": now()})
+    # reset the monthly horary allowance
+    with tx() as c:
+        c.execute(text("DELETE FROM usage_counters WHERE user_id=:u AND kind='horary'"),
+                  {"u": user_id})

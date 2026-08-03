@@ -1,0 +1,29 @@
+{
+  "source": "Predict with Saptamsha (V.P. Goel) - rules14.md + OCR",
+  "disclaimer": "Educational astrology only - not medical or fertility advice.",
+  "d7_final_say": "D7 confirms or denies D1 fifth-house promise for progeny.",
+  "child_house_sequences": {
+    "odd_lagna": [5, 7, 9, 11, 1, 3, 4, 6, 8, 10, 12],
+    "even_lagna": [9, 7, 5, 3, 1, 11, 10, 8, 6, 4, 2]
+  },
+  "timing_houses_d7": [1, 2, 5, 9, 10],
+  "timing_karakas_d1": ["5th lord", "Jupiter", "5th occupants"],
+  "analysis_themes": [
+    "d7_promise",
+    "saturn_delay",
+    "beeja_kshetra",
+    "santana_tithi",
+    "child_count",
+    "child_gender",
+    "child_timing",
+    "happiness_children",
+    "child_health",
+    "child_profession",
+    "grandchildren",
+    "twins",
+    "worthy_children",
+    "bond_strain"
+  ],
+  "gender_rule": "Goel Ch.8: lord of child-house -> D9 -> decider planet -> D7 sign/planet gender. Father chart weighs on sex; mother chart on count.",
+  "count_rule": "Walk child-house sequence from Goel; stop at Ketu-alone or malefic-only houses. Bahu Putra / Kakvandhya yogas modify band."
+}

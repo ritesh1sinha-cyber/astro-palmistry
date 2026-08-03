@@ -1,0 +1,1419 @@
+{
+  "engine": "pyswisseph MOSEPH",
+  "notes": [
+    "case_id 51 is synthetic (no historical event). case_id 9 planets[] omits nodes \u2014 retrograde check uses listed names only."
+  ],
+  "cases": [
+    {
+      "case_id": 2,
+      "label": "Chart 59 GameBoy",
+      "jd_ut": 2447908.625,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 178.6298,
+      "asc_deg_in_sign": 28.6298,
+      "moon_lon": 187.4472,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.94\u00b0\u21922.69\u00b0) to body 2",
+      "retrograde_bodies": [
+        "Mercury",
+        "Venus",
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus"
+      ],
+      "saturn_house": 4,
+      "mars_house": 3,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.94\u00b0\u21922.69\u00b0) to body 2) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 3,
+      "label": "Chart 1 baby",
+      "jd_ut": 2447014.5625,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "placidus",
+      "asc_deg": 350.3996,
+      "asc_deg_in_sign": 20.3996,
+      "moon_lon": 280.3472,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.96\u00b0\u21922.66\u00b0) to body 5",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus",
+        "Mars"
+      ],
+      "saturn_house": 9,
+      "mars_house": 6,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 4,
+      "label": "Chart 2A",
+      "jd_ut": 2447805.61042,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 93.5151,
+      "asc_deg_in_sign": 3.5151,
+      "moon_lon": 260.7153,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.96\u00b0\u21922.72\u00b0) to body 2",
+      "retrograde_bodies": [],
+      "combust_bodies": [
+        "Mercury",
+        "Mars"
+      ],
+      "saturn_house": 7,
+      "mars_house": 4,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "saturn_in_7th"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 5,
+      "label": "Chart 3 earthquake",
+      "jd_ut": 2447817.50347,
+      "lat": 37.1167,
+      "lon": -122.8833,
+      "house_system": "koch",
+      "asc_deg": 351.6369,
+      "asc_deg_in_sign": 21.6369,
+      "moon_lon": 69.0924,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 1.29\u00b0\u21921.02\u00b0) to body 3",
+      "retrograde_bodies": [],
+      "combust_bodies": [
+        "Mercury",
+        "Mars"
+      ],
+      "saturn_house": 10,
+      "mars_house": 7,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": true,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 6,
+      "label": "Chart 4 ValuJet",
+      "jd_ut": 2450215.26736,
+      "lat": 26.0,
+      "lon": -80.6667,
+      "house_system": "regiomontanus",
+      "asc_deg": 157.9567,
+      "asc_deg_in_sign": 7.9567,
+      "moon_lon": 341.5106,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.80\u00b0\u21922.52\u00b0) to body 5",
+      "retrograde_bodies": [
+        "Mercury",
+        "Jupiter",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Mars"
+      ],
+      "saturn_house": 7,
+      "mars_house": 9,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "combust"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 7,
+      "label": "Chart 6 house fire",
+      "jd_ut": 2442082.45694,
+      "lat": 34.3333,
+      "lon": -118.6,
+      "house_system": "koch",
+      "asc_deg": 104.8891,
+      "asc_deg_in_sign": 14.8891,
+      "moon_lon": 92.3799,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.72\u00b0\u21922.42\u00b0) to body 9",
+      "retrograde_bodies": [
+        "Venus",
+        "Saturn",
+        "Uranus",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Jupiter"
+      ],
+      "saturn_house": 12,
+      "mars_house": 11,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.72\u00b0\u21922.42\u00b0) to body 9) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 8,
+      "label": "Chart 6 Louis path",
+      "jd_ut": 2442082.45694,
+      "lat": 34.3333,
+      "lon": -118.6,
+      "house_system": "koch",
+      "asc_deg": 104.8891,
+      "asc_deg_in_sign": 14.8891,
+      "moon_lon": 92.3799,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.72\u00b0\u21922.42\u00b0) to body 9",
+      "retrograde_bodies": [
+        "Venus",
+        "Saturn",
+        "Uranus",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Jupiter"
+      ],
+      "saturn_house": 12,
+      "mars_house": 11,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 9,
+      "label": "Chart 7 Lilly children",
+      "jd_ut": 2318403.89583,
+      "lat": 51.5,
+      "lon": -0.1667,
+      "house_system": "regiomontanus",
+      "asc_deg": 153.7292,
+      "asc_deg_in_sign": 3.7292,
+      "moon_lon": 179.6983,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 0.80\u00b0\u21920.58\u00b0) to body 0",
+      "retrograde_bodies": [
+        "Saturn",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Mars"
+      ],
+      "saturn_house": 4,
+      "mars_house": 10,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 10,
+      "label": "Chart 8 secretary",
+      "jd_ut": 2447815.59861,
+      "lat": 39.0458,
+      "lon": -76.6419,
+      "house_system": "koch",
+      "asc_deg": 93.6585,
+      "asc_deg_in_sign": 3.6585,
+      "moon_lon": 40.5219,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.96\u00b0\u21922.66\u00b0) to body 9",
+      "retrograde_bodies": [],
+      "combust_bodies": [
+        "Mercury",
+        "Mars"
+      ],
+      "saturn_house": 7,
+      "mars_house": 4,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 11,
+      "label": "Chart 9 clicker",
+      "jd_ut": 2450271.6,
+      "lat": 41.2667,
+      "lon": -73.0667,
+      "house_system": "regiomontanus",
+      "asc_deg": 323.6631,
+      "asc_deg_in_sign": 23.6631,
+      "moon_lon": 6.6687,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 0.61\u00b0\u21920.34\u00b0) to body 6",
+      "retrograde_bodies": [
+        "Jupiter",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 1,
+      "mars_house": 4,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 12,
+      "label": "Chart 11 computer test",
+      "jd_ut": 2447729.01389,
+      "lat": 41.45,
+      "lon": -72.75,
+      "house_system": "koch",
+      "asc_deg": 149.7922,
+      "asc_deg_in_sign": 29.7922,
+      "moon_lon": 334.8553,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.92\u00b0\u21922.63\u00b0) to body 6",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 5,
+      "mars_house": 12,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.92\u00b0\u21922.63\u00b0) to body 6) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 13,
+      "label": "Chart 12 Presbytery",
+      "jd_ut": 2322694.20139,
+      "lat": 51.5,
+      "lon": -0.1667,
+      "house_system": "regiomontanus",
+      "asc_deg": 166.8574,
+      "asc_deg_in_sign": 16.8574,
+      "moon_lon": 193.7606,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.81\u00b0\u21922.53\u00b0) to body 4",
+      "retrograde_bodies": [
+        "Jupiter",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus"
+      ],
+      "saturn_house": 9,
+      "mars_house": 11,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.81\u00b0\u21922.53\u00b0) to body 4) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 14,
+      "label": "Chart 14 bewitched",
+      "jd_ut": 2322695.84167,
+      "lat": 51.5,
+      "lon": -0.1667,
+      "house_system": "regiomontanus",
+      "asc_deg": 64.4004,
+      "asc_deg_in_sign": 4.4004,
+      "moon_lon": 216.8417,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.73\u00b0\u21922.46\u00b0) to body 6",
+      "retrograde_bodies": [
+        "Jupiter",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus"
+      ],
+      "saturn_house": 12,
+      "mars_house": 3,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": true,
+      "json_conditions": [
+        "moon_in_via_combusta"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 15,
+      "label": "Chart 15 money",
+      "jd_ut": 2322768.20417,
+      "lat": 51.5,
+      "lon": -0.1667,
+      "house_system": "regiomontanus",
+      "asc_deg": 218.774,
+      "asc_deg_in_sign": 8.774,
+      "moon_lon": 80.4247,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.97\u00b0\u21922.70\u00b0) to body 4",
+      "retrograde_bodies": [
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Moon"
+      ],
+      "saturn_house": 7,
+      "mars_house": 10,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "combust"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 16,
+      "label": "Chart 16 stained glass",
+      "jd_ut": 2443761.39583,
+      "lat": 47.6833,
+      "lon": -116.7667,
+      "house_system": "koch",
+      "asc_deg": 257.7602,
+      "asc_deg_in_sign": 17.7602,
+      "moon_lon": 253.685,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 1.91\u00b0\u21921.63\u00b0) to body 8",
+      "retrograde_bodies": [],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 9,
+      "mars_house": 10,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "combust",
+        "intercepted"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 17,
+      "label": "Chart 17 marry",
+      "jd_ut": 2448669.59375,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "regiomontanus",
+      "asc_deg": 193.4508,
+      "asc_deg_in_sign": 13.4508,
+      "moon_lon": 130.0708,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 1.32\u00b0\u21921.02\u00b0) to body 6",
+      "retrograde_bodies": [
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 4,
+      "mars_house": 4,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 1.32\u00b0\u21921.02\u00b0) to body 6) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 18,
+      "label": "Chart 18 Lilly prison",
+      "jd_ut": 2322186.28681,
+      "lat": 51.5,
+      "lon": -0.1667,
+      "house_system": "regiomontanus",
+      "asc_deg": 84.8608,
+      "asc_deg_in_sign": 24.8608,
+      "moon_lon": 329.3754,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 0.94\u00b0\u21920.68\u00b0) to body 6",
+      "retrograde_bodies": [
+        "Mercury",
+        "Jupiter",
+        "Saturn",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Mars"
+      ],
+      "saturn_house": 11,
+      "mars_house": 6,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 0.94\u00b0\u21920.68\u00b0) to body 6) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 19,
+      "label": "Chart 19 AC",
+      "jd_ut": 2448066.16528,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 170.569,
+      "asc_deg_in_sign": 20.569,
+      "moon_lon": 104.0647,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.81\u00b0\u21922.53\u00b0) to body 4",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 5,
+      "mars_house": 7,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.81\u00b0\u21922.53\u00b0) to body 4) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 20,
+      "label": "Chart 20 loan",
+      "jd_ut": 2448086.07153,
+      "lat": 41.45,
+      "lon": -72.8333,
+      "house_system": "koch",
+      "asc_deg": 159.6317,
+      "asc_deg_in_sign": 9.6317,
+      "moon_lon": 356.673,
+      "moon_void_ephem": true,
+      "moon_void_note": "No applying major to Sun\u2013Pluto before sign exit (3\u00b0 orb, stepped)",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Jupiter"
+      ],
+      "saturn_house": 5,
+      "mars_house": 8,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "Stepped check agrees Moon VOC before sign exit (informational)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 21,
+      "label": "Chart 21 cat",
+      "jd_ut": 2450341.2375,
+      "lat": 51.5167,
+      "lon": -0.5667,
+      "house_system": "regiomontanus",
+      "asc_deg": 334.3182,
+      "asc_deg_in_sign": 4.3182,
+      "moon_lon": 192.3144,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.88\u00b0\u21922.63\u00b0) to body 8",
+      "retrograde_bodies": [
+        "Mercury",
+        "Saturn",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 1,
+      "mars_house": 6,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 22,
+      "label": "Chart 22 job",
+      "jd_ut": 2446971.20833,
+      "lat": 47.6833,
+      "lon": -116.7667,
+      "house_system": "koch",
+      "asc_deg": 150.9793,
+      "asc_deg_in_sign": 0.9793,
+      "moon_lon": 75.771,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 0.65\u00b0\u21920.44\u00b0) to body 3",
+      "retrograde_bodies": [
+        "Mercury",
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 4,
+      "mars_house": 11,
+      "early_asc_ephem": true,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "combust"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 23,
+      "label": "Chart 23 impedition",
+      "jd_ut": 2317584.10139,
+      "lat": 51.5,
+      "lon": -0.1667,
+      "house_system": "regiomontanus",
+      "asc_deg": 143.9329,
+      "asc_deg_in_sign": 23.9329,
+      "moon_lon": 171.3219,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.78\u00b0\u21922.53\u00b0) to body 5",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mars"
+      ],
+      "saturn_house": 4,
+      "mars_house": 8,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 24,
+      "label": "Chart 24 office",
+      "jd_ut": 2447673.16389,
+      "lat": 41.3,
+      "lon": -72.9167,
+      "house_system": "koch",
+      "asc_deg": 148.8011,
+      "asc_deg_in_sign": 28.8011,
+      "moon_lon": 316.1668,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.74\u00b0\u21922.49\u00b0) to body 3",
+      "retrograde_bodies": [
+        "Mercury",
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Jupiter"
+      ],
+      "saturn_house": 5,
+      "mars_house": 11,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.74\u00b0\u21922.49\u00b0) to body 3) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 26,
+      "label": "Chart 26A Lilly houses",
+      "jd_ut": 2317966.25208,
+      "lat": 51.5167,
+      "lon": -0.1,
+      "house_system": "regiomontanus",
+      "asc_deg": 193.7857,
+      "asc_deg_in_sign": 13.7857,
+      "moon_lon": 169.375,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.09\u00b0\u21921.85\u00b0) to body 6",
+      "retrograde_bodies": [
+        "Mars",
+        "Saturn",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus"
+      ],
+      "saturn_house": 3,
+      "mars_house": 11,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.09\u00b0\u21921.85\u00b0) to body 6) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 27,
+      "label": "Chart 26A outcome",
+      "jd_ut": 2317966.25208,
+      "lat": 51.5167,
+      "lon": -0.1,
+      "house_system": "regiomontanus",
+      "asc_deg": 193.7857,
+      "asc_deg_in_sign": 13.7857,
+      "moon_lon": 169.375,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.09\u00b0\u21921.85\u00b0) to body 6",
+      "retrograde_bodies": [
+        "Mars",
+        "Saturn",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus"
+      ],
+      "saturn_house": 3,
+      "mars_house": 11,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 28,
+      "label": "Chart 30 eyeglasses",
+      "jd_ut": 2448880.97292,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "regiomontanus",
+      "asc_deg": 181.5049,
+      "asc_deg_in_sign": 1.5049,
+      "moon_lon": 30.8126,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 1.01\u00b0\u21920.77\u00b0) to body 4",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Jupiter"
+      ],
+      "saturn_house": 5,
+      "mars_house": 10,
+      "early_asc_ephem": true,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "early_asc",
+        "intercepted"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 30,
+      "label": "Chart 31 Palchus",
+      "jd_ut": 1895887.34597,
+      "lat": 24.0667,
+      "lon": 32.95,
+      "house_system": "porphyry",
+      "asc_deg": 57.1135,
+      "asc_deg_in_sign": 27.1135,
+      "moon_lon": 329.5749,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon within orb 2.72\u00b0 of major aspect at sign end",
+      "retrograde_bodies": [],
+      "combust_bodies": [],
+      "saturn_house": 4,
+      "mars_house": 1,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 31,
+      "label": "Chart 35 theft",
+      "jd_ut": 2447860.18264,
+      "lat": 41.3,
+      "lon": -72.9167,
+      "house_system": "koch",
+      "asc_deg": 313.5626,
+      "asc_deg_in_sign": 13.5626,
+      "moon_lon": 261.7516,
+      "moon_void_ephem": true,
+      "moon_void_note": "No applying major to Sun\u2013Pluto before sign exit (3\u00b0 orb, stepped)",
+      "retrograde_bodies": [
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 11,
+      "mars_house": 9,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "void"
+      ],
+      "void_validation_notes": [
+        "Stepped check agrees Moon VOC before sign exit (informational)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 32,
+      "label": "Chart 35 ruler debate",
+      "jd_ut": 2447860.18264,
+      "lat": 41.3,
+      "lon": -72.9167,
+      "house_system": "koch",
+      "asc_deg": 313.5626,
+      "asc_deg_in_sign": 13.5626,
+      "moon_lon": 261.7516,
+      "moon_void_ephem": true,
+      "moon_void_note": "No applying major to Sun\u2013Pluto before sign exit (3\u00b0 orb, stepped)",
+      "retrograde_bodies": [
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 11,
+      "mars_house": 9,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "Stepped check agrees Moon VOC before sign exit (informational)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 33,
+      "label": "Chart 35 thief",
+      "jd_ut": 2447860.18264,
+      "lat": 41.3,
+      "lon": -72.9167,
+      "house_system": "koch",
+      "asc_deg": 313.5626,
+      "asc_deg_in_sign": 13.5626,
+      "moon_lon": 261.7516,
+      "moon_void_ephem": true,
+      "moon_void_note": "No applying major to Sun\u2013Pluto before sign exit (3\u00b0 orb, stepped)",
+      "retrograde_bodies": [
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 11,
+      "mars_house": 9,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "Stepped check agrees Moon VOC before sign exit (informational)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 34,
+      "label": "Chart 38 keys",
+      "jd_ut": 2447870.30972,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 44.141,
+      "asc_deg_in_sign": 14.141,
+      "moon_lon": 37.6899,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 0.44\u00b0\u21920.14\u00b0) to body 5",
+      "retrograde_bodies": [
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 9,
+      "mars_house": 7,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 35,
+      "label": "Chart 39 Nick",
+      "jd_ut": 2447681.95833,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 96.4968,
+      "asc_deg_in_sign": 6.4968,
+      "moon_lon": 82.2006,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.93\u00b0\u21922.67\u00b0) to body 3",
+      "retrograde_bodies": [
+        "Mercury",
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Moon",
+        "Jupiter"
+      ],
+      "saturn_house": 7,
+      "mars_house": 1,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.93\u00b0\u21922.67\u00b0) to body 3) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 36,
+      "label": "Chart 40 Tommy",
+      "jd_ut": 2447697.46458,
+      "lat": 41.3,
+      "lon": -72.9167,
+      "house_system": "koch",
+      "asc_deg": 252.7741,
+      "asc_deg_in_sign": 12.7741,
+      "moon_lon": 276.7948,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.91\u00b0\u21922.64\u00b0) to body 8",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Jupiter"
+      ],
+      "saturn_house": 2,
+      "mars_house": 8,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 37,
+      "label": "Chart 41 jail",
+      "jd_ut": 2447791.29444,
+      "lat": 41.3,
+      "lon": -72.9167,
+      "house_system": "koch",
+      "asc_deg": 280.8722,
+      "asc_deg_in_sign": 10.8722,
+      "moon_lon": 85.03,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.98\u00b0\u21922.73\u00b0) to body 0",
+      "retrograde_bodies": [
+        "Mercury"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Mars"
+      ],
+      "saturn_house": 12,
+      "mars_house": 9,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.98\u00b0\u21922.73\u00b0) to body 0) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 39,
+      "label": "Chart 44 Michael",
+      "jd_ut": 2447037.33403,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 272.1444,
+      "asc_deg_in_sign": 2.1444,
+      "moon_lon": 217.1108,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 0.64\u00b0\u21920.40\u00b0) to body 3",
+      "retrograde_bodies": [
+        "Jupiter",
+        "Uranus",
+        "Neptune"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus",
+        "Mars"
+      ],
+      "saturn_house": 12,
+      "mars_house": 8,
+      "early_asc_ephem": true,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": true,
+      "json_conditions": [
+        "early_asc",
+        "retrograde",
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 0.64\u00b0\u21920.40\u00b0) to body 3) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 41,
+      "label": "Chart 47 meds",
+      "jd_ut": 2447869.61042,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 144.3501,
+      "asc_deg_in_sign": 24.3501,
+      "moon_lon": 27.3407,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 1.98\u00b0\u21921.70\u00b0) to body 3",
+      "retrograde_bodies": [
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury"
+      ],
+      "saturn_house": 5,
+      "mars_house": 4,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 43,
+      "label": "Chart 49 toilet",
+      "jd_ut": 2447883.61319,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 155.8958,
+      "asc_deg_in_sign": 5.8958,
+      "moon_lon": 215.1412,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 0.52\u00b0\u21920.28\u00b0) to body 3",
+      "retrograde_bodies": [
+        "Jupiter"
+      ],
+      "combust_bodies": [],
+      "saturn_house": 5,
+      "mars_house": 4,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": true,
+      "json_conditions": [
+        "retrograde"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 44,
+      "label": "Chart 50 published",
+      "jd_ut": 2447710.54583,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 292.3867,
+      "asc_deg_in_sign": 22.3867,
+      "moon_lon": 99.0454,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.05\u00b0\u21921.80\u00b0) to body 0",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Moon"
+      ],
+      "saturn_house": 12,
+      "mars_house": 7,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde",
+        "combust"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 45,
+      "label": "Chart 51 ad",
+      "jd_ut": 2448048.16111,
+      "lat": 44.95,
+      "lon": -93.1,
+      "house_system": "koch",
+      "asc_deg": 141.2133,
+      "asc_deg_in_sign": 21.2133,
+      "moon_lon": 224.11,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 1.51\u00b0\u21921.27\u00b0) to body 9",
+      "retrograde_bodies": [
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "combust_bodies": [],
+      "saturn_house": 6,
+      "mars_house": 8,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": true,
+      "json_conditions": [
+        "void"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 1.51\u00b0\u21921.27\u00b0) to body 9) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    },
+    {
+      "case_id": 47,
+      "label": "Chart 53 Rachel",
+      "jd_ut": 2447990.24306,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 133.9718,
+      "asc_deg_in_sign": 13.9718,
+      "moon_lon": 183.1006,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 0.55\u00b0\u21920.31\u00b0) to body 5",
+      "retrograde_bodies": [
+        "Pluto"
+      ],
+      "combust_bodies": [],
+      "saturn_house": 6,
+      "mars_house": 7,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "retrograde"
+      ],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 48,
+      "label": "Chart 3 follow-on",
+      "jd_ut": 2447817.50347,
+      "lat": 37.1167,
+      "lon": -122.8833,
+      "house_system": "koch",
+      "asc_deg": 351.6369,
+      "asc_deg_in_sign": 21.6369,
+      "moon_lon": 69.0924,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 1.29\u00b0\u21921.02\u00b0) to body 3",
+      "retrograde_bodies": [],
+      "combust_bodies": [
+        "Mercury",
+        "Mars"
+      ],
+      "saturn_house": 10,
+      "mars_house": 7,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": true,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 52,
+      "label": "Chart 59 phone",
+      "jd_ut": 2447908.625,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 178.6298,
+      "asc_deg_in_sign": 28.6298,
+      "moon_lon": 187.4472,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.94\u00b0\u21922.69\u00b0) to body 2",
+      "retrograde_bodies": [
+        "Mercury",
+        "Venus",
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus"
+      ],
+      "saturn_house": 4,
+      "mars_house": 3,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [],
+      "void_validation_notes": [],
+      "mismatches": []
+    },
+    {
+      "case_id": 53,
+      "label": "Chart 59 GameBoy",
+      "jd_ut": 2447908.625,
+      "lat": 41.3167,
+      "lon": -73.0167,
+      "house_system": "koch",
+      "asc_deg": 178.6298,
+      "asc_deg_in_sign": 28.6298,
+      "moon_lon": 187.4472,
+      "moon_void_ephem": false,
+      "moon_void_note": "Moon applies (res 2.94\u00b0\u21922.69\u00b0) to body 2",
+      "retrograde_bodies": [
+        "Mercury",
+        "Venus",
+        "Jupiter"
+      ],
+      "combust_bodies": [
+        "Mercury",
+        "Venus"
+      ],
+      "saturn_house": 4,
+      "mars_house": 3,
+      "early_asc_ephem": false,
+      "intercepted_ephem": true,
+      "via_combusta_7th_ephem": false,
+      "moon_via_combusta_lon": false,
+      "json_conditions": [
+        "void",
+        "combust"
+      ],
+      "void_validation_notes": [
+        "JSON tags void; stepped major-aspect check: not VOC (Moon applies (res 2.94\u00b0\u21922.69\u00b0) to body 2) \u2014 Lilly/manual VOC often disagrees with strict software (orbs, outers, dissociate aspects)."
+      ],
+      "mismatches": []
+    }
+  ]
+}
