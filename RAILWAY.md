@@ -84,6 +84,23 @@ Expect 29 checks. Two will differ from local:
    (Vercel rewrites cannot read env vars, so it must be a literal), commit, redeploy.
 3. Set `ALLOWED_ORIGINS` on Railway to the Vercel URL.
 
+## If the deploy fails, check these first
+
+**`FileNotFoundError: PyJHora source not found`** — `PYJHORA_SRC` is unset. The
+image now sets it to `/usr/local/lib/python3.12/site-packages`; if you overrode
+the variable, that is the value it needs.
+
+**Startup crash on `CREATE EXTENSION`** — the schema needs `pgcrypto` and
+`citext`. Railway's Postgres allows both for the default user. If yours does not,
+run them once from the database's Query tab as a superuser, then redeploy.
+
+**A palm reading dies with no error in the log** — that is an out-of-memory kill.
+mediapipe holds ~1 GB while it runs. Raise the service memory, or test the
+astrology features first: they are far lighter.
+
+**Healthcheck fails but logs look fine** — the first boot creates the schema and
+partitions. `healthcheckTimeout` is already 300 s in `railway.json`; don't lower it.
+
 ## What to expect on the free tier
 
 - **Build time** ~10 min; the image is ~1.2 GB without torch.

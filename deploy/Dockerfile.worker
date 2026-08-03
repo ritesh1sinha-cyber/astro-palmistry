@@ -46,7 +46,17 @@ RUN if ls /tmp/ephe/*.se1 >/dev/null 2>&1; then \
 
 # warm the rule corpora into the image so the first customer isn't the one who waits
 RUN python -c "from palm_api.pipeline import ensure_corpus; ensure_corpus()" || true
-RUN python -m build_corpus 2>/dev/null || true
+
+# fail the BUILD, not the first customer, if the astrology engine can't import
+RUN PYJHORA_SRC=/usr/local/lib/python3.12/site-packages python -c "\
+import astro_precompute, vedic_confluence_report, numerology_report, \
+       kundali_match, muhurat_checker, btr_rectify, astro_voice, astro_split; \
+print('astrology engine imports OK')"
+
+# natal_from_pyjhora._ensure_pyjhora() looks for the PyJHora SOURCE tree and
+# raises FileNotFoundError without it. pip installs `jhora/` straight into
+# site-packages, so that directory is the source root.
+ENV PYJHORA_SRC=/usr/local/lib/python3.12/site-packages
 
 ENV INLINE_WORKER=1 INLINE_WORKER_THREADS=2 \
     WORKER_GROUPS=heavy,palm,light ASTRO_HOTFIX=1 \
