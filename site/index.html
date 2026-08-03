@@ -913,7 +913,7 @@ footer{border-top:1px solid var(--line-2);padding:36px 0 24px;color:var(--muted-
    ============================================================ */
 const CONFIG = {
   brand:        'AI Powered Astro Palmistry',
-  apiBase:      '',                      // e.g. 'https://api.yoursite.com'  ('' = mock mode)
+  apiBase:      '',                      // '' = same origin (Vercel proxies /api/* to the backend)
   googleClientId:'',                     // Google Cloud OAuth 2.0 Web Client ID ('' = demo login)
   contactEmail: 'hello@astropalmistry.ai',
   contactPhone: '+91 90000 00000',
@@ -934,7 +934,11 @@ const CONFIG = {
   astroPrices:      { full_report:1499, horary:99, future_event:199,
                       kundali_match:299, muhurat:49, subscription:199 }
 };
-const MOCK = !CONFIG.apiBase;
+// Demo mode is EXPLICIT. It must never be inferred from an empty apiBase:
+// in production apiBase is '' precisely because the API is same-origin (Vercel
+// proxies /api/* to the backend), and inferring mock there would serve invented
+// readings to real customers.
+const MOCK = CONFIG.liveApi === false;
 
 /* ---------- tiny helpers ---------- */
 const $  = s => document.querySelector(s);

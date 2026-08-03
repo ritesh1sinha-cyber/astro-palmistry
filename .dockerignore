@@ -2,7 +2,6 @@
 .git
 .github
 *.md
-!requirements*.txt
 storage/
 reports/
 backups/
@@ -13,8 +12,14 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
-site/                    # the frontend is deployed separately (Vercel)
-deploy/ephe/             # licensed data, provided at runtime — see README
+
+# the frontend deploys separately (Vercel)
+site/
+
+# licensed ephemeris data — installed at runtime, see deploy/ephe/README.md
+deploy/ephe/
+
+# user data must never enter an image
 engines/palm_api/data/uploads/
 engines/palm_api/data/outputs/
 engines/astro/reports/

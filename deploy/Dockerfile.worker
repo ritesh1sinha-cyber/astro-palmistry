@@ -63,9 +63,26 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
   CMD python -c "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.getenv('PORT','8080')+'/health')"
 
-# If EPHE_PATH points at a directory holding *.se1 (e.g. a mounted volume),
-# install them before boot. Otherwise start straight away.
-COPY deploy/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# The entrypoint is written inline rather than COPYed. Railway did not provide
+# deploy/ in the build context (the directory holding this Dockerfile), and a
+# build should not depend on how a platform resolves that.
+#
+# It installs Swiss Ephemeris data at boot when EPHE_PATH points at a directory
+# holding *.se1 — e.g. a mounted volume. Without it swisseph uses its built-in
+# model: accurate to a fraction of a degree, just not bit-identical to JHora.
+RUN printf '%s\n' \
+  '#!/bin/sh' \
+  'set -e' \
+  'DEST="/usr/local/lib/python3.12/site-packages/jhora/data/ephe"' \
+  'if [ -n "$EPHE_PATH" ] && ls "$EPHE_PATH"/*.se1 >/dev/null 2>&1; then' \
+  '  mkdir -p "$DEST"' \
+  '  cp "$EPHE_PATH"/*.se1 "$DEST"/' \
+  '  echo "[entrypoint] installed $(ls "$EPHE_PATH"/*.se1 | wc -l) ephemeris files"' \
+  'else' \
+  '  echo "[entrypoint] no ephemeris data (set EPHE_PATH for JHora-exact positions)"' \
+  'fi' \
+  'exec "$@"' \
+  > /entrypoint.sh && chmod +x /entrypoint.sh && sh -n /entrypoint.sh
+
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8080}"]
