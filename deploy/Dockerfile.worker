@@ -26,35 +26,34 @@ RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
       pip install "sentence-transformers>=2.2"; \
     fi
 
-# product layer
-COPY core ./core
-COPY api.py worker.py e2e_check.py ./
-
-# engines, imported unchanged.
+# ---------------------------------------------------------------------------
+# One COPY of the whole context, deliberately.
 #
-# Both use the same COPY form: no trailing slash, explicit destination. The
-# earlier `COPY engines/astro/ ./` (contents-into-workdir) failed on Railway with
-# `"/engines/astro": not found` while the palm_api line beside it succeeded, so
-# the difference is that form — not the files, which are present in the repo.
-# PYTHONPATH keeps the modules importable by their own names, exactly as the
-# engine expects (`import astro_precompute`, not `astro_engine.astro_precompute`).
-COPY engines/palm_api ./palm_api
-COPY engines/astro ./astro_engine
-ENV PYTHONPATH=/app:/app/astro_engine
+# Three builds failed on path-specific COPYs that Railway did not provide in the
+# build context — deploy/ephe/, deploy/entrypoint.sh, and engines/astro — while
+# sibling paths (core, api.py, engines/palm_api) arrived fine. Rather than keep
+# guessing at one platform's context rules, copy everything and let
+# .dockerignore decide what to leave out.
+#
+# It also converts an opaque "not found" build error into a precise diagnostic:
+# the assertion below names exactly what failed to arrive.
+# ---------------------------------------------------------------------------
+COPY . .
 
-# Swiss Ephemeris (*.se1) is deliberately NOT copied here. Those files are
-# gitignored (large, licensed separately), so in a clean clone the directory is
-# empty and a COPY of it fails the build — which is exactly what happened.
-# Without them swisseph uses its built-in Moshier model: accurate to a fraction
-# of a degree, just not bit-identical to JHora. To get parity, see
-# deploy/ephe/README.md — add them to a volume and point EPHE_PATH at it.
+# `import palm_api` and `import astro_precompute` both resolve, with the engines
+# left exactly where the repo puts them.
+ENV PYTHONPATH=/app:/app/engines:/app/engines/astro
+
+# fail loudly and specifically if the context was incomplete
+RUN python -c "import pathlib,sys; \
+missing=[q for q in ('engines/palm_api/pipeline.py','engines/astro/astro_precompute.py','core/handlers.py','api.py') if not pathlib.Path(q).exists()]; \
+sys.exit('BUILD CONTEXT INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('build context complete')"
 
 # warm the rule corpora into the image so the first customer isn't the one who waits
 RUN python -c "from palm_api.pipeline import ensure_corpus; ensure_corpus()" || true
 
 # fail the BUILD, not the first customer, if the astrology engine can't import
-RUN PYTHONPATH=/app:/app/astro_engine \
-    PYJHORA_SRC=/usr/local/lib/python3.12/site-packages python -c "\
+RUN PYJHORA_SRC=/usr/local/lib/python3.12/site-packages python -c "\
 import astro_precompute, vedic_confluence_report, numerology_report, \
        kundali_match, muhurat_checker, btr_rectify, astro_voice, astro_split; \
 print('astrology engine imports OK')"

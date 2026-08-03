@@ -64,9 +64,10 @@ services:
     volumes:
       - storage:/data
       # live-edit the product layer without rebuilding the 1.2 GB image.
-      # The engines stay baked in; remove these two lines for a clean-image test.
+      # The engines stay baked in; comment these out for a clean-image test.
       - ./core:/app/core:ro
       - ./api.py:/app/api.py:ro
+      - ./e2e_check.py:/app/e2e_check.py:ro
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}

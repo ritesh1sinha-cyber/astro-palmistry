@@ -107,10 +107,17 @@ The entrypoint installs them at boot and logs how many it found.
 
 ## If something goes wrong
 
-**Build fails on a `COPY`** — check what the log names. `COPY engines/astro/ ./`
-(contents-into-workdir, trailing slash) failed on Railway while the line beside
-it worked; both now use the explicit-destination form. Building locally gives you
-the real error in seconds instead of a PaaS log.
+**Build fails on a `COPY`** — this build is the decisive test. Railway failed
+three times on path-specific COPYs it did not place in the build context
+(`deploy/ephe/`, `deploy/entrypoint.sh`, `engines/astro`) while sibling paths
+arrived fine. The Dockerfile now does a single `COPY . .` and asserts the context
+is complete, so:
+
+* **builds locally, failed on Railway** → a Railway build-context quirk, not the
+  Dockerfile. Deploy from a registry image instead of Railway's builder, or use a
+  host that builds the context faithfully.
+* **fails locally too, with `BUILD CONTEXT INCOMPLETE`** → the assertion names
+  the missing path and we fix the repo.
 
 **A palm reading dies with no error** — an out-of-memory kill. mediapipe holds
 ~1 GB. Give Docker Desktop at least 4 GB (Settings → Resources).
