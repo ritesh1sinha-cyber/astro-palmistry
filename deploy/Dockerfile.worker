@@ -34,15 +34,12 @@ COPY api.py worker.py e2e_check.py ./
 COPY engines/palm_api ./palm_api
 COPY engines/astro/ ./
 
-# Swiss Ephemeris data, when present (see deploy/ephe/README.md). Without it
-# swisseph falls back to Moshier — accurate, but not identical to JHora.
-COPY deploy/ephe/ /tmp/ephe/
-RUN if ls /tmp/ephe/*.se1 >/dev/null 2>&1; then \
-      mkdir -p /usr/local/lib/python3.12/site-packages/jhora/data/ephe && \
-      cp /tmp/ephe/*.se1 /usr/local/lib/python3.12/site-packages/jhora/data/ephe/ && \
-      echo "ephemeris files installed"; \
-    else echo "NOTE: no .se1 files — swisseph will use its built-in model"; fi \
-    && rm -rf /tmp/ephe
+# Swiss Ephemeris (*.se1) is deliberately NOT copied here. Those files are
+# gitignored (large, licensed separately), so in a clean clone the directory is
+# empty and a COPY of it fails the build — which is exactly what happened.
+# Without them swisseph uses its built-in Moshier model: accurate to a fraction
+# of a degree, just not bit-identical to JHora. To get parity, see
+# deploy/ephe/README.md — add them to a volume and point EPHE_PATH at it.
 
 # warm the rule corpora into the image so the first customer isn't the one who waits
 RUN python -c "from palm_api.pipeline import ensure_corpus; ensure_corpus()" || true
@@ -66,5 +63,9 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
   CMD python -c "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.getenv('PORT','8080')+'/health')"
 
-# Railway/Render inject $PORT; compose leaves it at 8080
+# If EPHE_PATH points at a directory holding *.se1 (e.g. a mounted volume),
+# install them before boot. Otherwise start straight away.
+COPY deploy/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8080}"]

@@ -1,0 +1,21 @@
+# keep the build context small and predictable
+.git
+.github
+*.md
+!requirements*.txt
+storage/
+reports/
+backups/
+*.db
+*.db-wal
+*.db-shm
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+site/                    # the frontend is deployed separately (Vercel)
+deploy/ephe/             # licensed data, provided at runtime — see README
+engines/palm_api/data/uploads/
+engines/palm_api/data/outputs/
+engines/astro/reports/
+engines/astro/_astro_sessions/
