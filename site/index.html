@@ -369,6 +369,25 @@ input[type=file]{display:none}
   border:1px dashed var(--gold-dim);background:rgba(232,183,91,.07);border-radius:14px;
   padding:12px 16px;font-size:13.5px;color:var(--gold-soft);margin-top:14px
 }
+.placeholder-field{position:relative}
+.placelist{
+  position:absolute;z-index:40;left:0;right:0;top:calc(100% + 4px);
+  background:var(--ink-2);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 18px 40px rgba(0,0,0,.5);overflow:hidden;max-height:264px;
+  overflow-y:auto
+}
+.placelist button{
+  display:block;width:100%;text-align:left;background:none;border:0;
+  color:var(--paper);font:inherit;padding:10px 13px;cursor:pointer;
+  border-bottom:1px solid var(--line-2)
+}
+.placelist button:last-child{border-bottom:0}
+.placelist button:hover,.placelist button[aria-selected="true"]{
+  background:rgba(201,162,39,.14)}
+.placelist .pl-main{font-size:13.5px}
+.placelist .pl-sub{font-size:11.5px;color:var(--muted)}
+.placenote{font-size:11.5px;color:var(--muted);margin-top:4px}
+.placenote b{color:var(--gold-soft)}
 .promobar{
   background:linear-gradient(90deg,rgba(201,162,39,.16),rgba(201,162,39,.05));
   border-bottom:1px solid var(--line);padding:10px 0
@@ -571,7 +590,7 @@ footer{border-top:1px solid var(--line-2);padding:36px 0 24px;color:var(--muted-
    <div class="grid g2">
     <div>
      <div class="field"><label for="fName">Name</label><input class="inp" id="fName" placeholder="Your name" autocomplete="name"><div class="err">Please enter your name</div></div>
-     <div class="field"><label for="fAge">Age</label><input class="inp" id="fAge" type="number" min="10" max="110" inputmode="numeric" placeholder="e.g. 29"><div class="err">Enter an age between 10 and 110</div></div>
+     <div class="field"><label for="fDob">Date of birth</label><input class="inp" id="fDob" type="date"><div class="err">Please pick your date of birth</div></div>
     </div>
     <div>
      <div class="field"><label>Gender</label>
@@ -1008,6 +1027,156 @@ function go(v){
   if(v==='read') syncFlow();
 }
 
+/* ---------- date fields ----------
+   Native date inputs open a picker only when the small calendar icon is hit, and
+   with no range they open on the current year — so entering 1985 means scrolling
+   back four decades. Bounding the range and opening on any click in the field is
+   the whole fix; showPicker() is Chrome/Edge/Safari, and where it is missing the
+   input still behaves normally. */
+function wireDates(){
+  const today = new Date().toISOString().slice(0,10);
+  document.querySelectorAll('input[type="date"]').forEach(el => {
+    if(!el.max) el.max = today;                 // nobody is born tomorrow
+    if(!el.min) el.min = '1900-01-01';
+    el.addEventListener('focus', () => {
+      if(typeof el.showPicker === 'function'){ try{ el.showPicker(); }catch(e){} }
+    });
+    el.addEventListener('click', () => {
+      if(typeof el.showPicker === 'function'){ try{ el.showPicker(); }catch(e){} }
+    });
+  });
+  // Time fields benefit from the same thing.
+  document.querySelectorAll('input[type="time"]').forEach(el => {
+    el.addEventListener('click', () => {
+      if(typeof el.showPicker === 'function'){ try{ el.showPicker(); }catch(e){} }
+    });
+  });
+}
+
+/* ---------- birth place -> coordinates ----------
+   Asking a customer for their latitude is asking them to do our job, and it
+   invites a silent wrong answer: a mistyped longitude still produces a
+   confident, completely different chart and nothing downstream can tell.
+
+   /api/place resolves against the world-cities table PyJHora already ships, so
+   there is no key, no rate limit and no network call. If it is unavailable the
+   fields stay editable by hand — the form must never become unusable because a
+   lookup failed. */
+
+function wirePlace(placeId, latId, lonId, tzId){
+  const place = document.getElementById(placeId);
+  const lat = document.getElementById(latId);
+  const lon = document.getElementById(lonId);
+  const tz  = tzId ? document.getElementById(tzId) : null;
+  if(!place || !lat || !lon) return;
+
+  const field = place.closest('.field') || place.parentElement;
+  if(field) field.classList.add('placeholder-field');
+  let note = field && field.querySelector('.placenote');
+  if(field && !note){
+    note = document.createElement('div');
+    note.className = 'placenote';
+    field.appendChild(note);
+  }
+  let list = null, timer = null, rows = [], idx = -1, lastQuery = '';
+
+  const close = () => { if(list){ list.remove(); list = null; } idx = -1; };
+
+  function apply(r){
+    place.value = r.label;
+    lat.value = r.latitude;
+    lon.value = r.longitude;
+    if(tz && r.timezone != null) tz.value = r.timezone;
+    // Clear any "Required" state the form validator set.
+    [place, lat, lon].forEach(el => el.classList.remove('bad'));
+    if(note) note.innerHTML = `<b>${r.latitude}, ${r.longitude}</b> · UTC${
+      r.timezone >= 0 ? '+' : ''}${r.timezone} — filled from ${esc(r.label)}`;
+    close();
+    if(typeof checkReady === 'function') try{ checkReady(); }catch(e){}
+  }
+
+  function draw(){
+    close();
+    if(!rows.length || !field) return;
+    list = document.createElement('div');
+    list.className = 'placelist';
+    list.setAttribute('role','listbox');
+    rows.forEach((r, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role','option');
+      b.innerHTML = `<div class="pl-main">${esc(r.label)}</div>
+        <div class="pl-sub">${r.latitude}, ${r.longitude} · UTC${
+          r.timezone >= 0 ? '+' : ''}${r.timezone}</div>`;
+      // mousedown, not click: blur fires first on click and would close the list
+      // before the handler ran.
+      b.addEventListener('mousedown', ev => { ev.preventDefault(); apply(r); });
+      list.appendChild(b);
+    });
+    field.appendChild(list);
+  }
+
+  async function lookup(q){
+    if(q === lastQuery) return rows;
+    lastQuery = q;
+    try{
+      const r = await fetch(CONFIG.apiBase + '/api/place?q=' + encodeURIComponent(q));
+      if(!r.ok) return [];
+      const d = await r.json();
+      if(d.unavailable && note) note.textContent =
+        'Place lookup is unavailable — enter latitude and longitude by hand.';
+      return d.results || [];
+    }catch(e){ return []; }
+  }
+
+  place.setAttribute('autocomplete','off');
+  place.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = place.value.trim();
+    if(q.length < 2){ close(); return; }
+    timer = setTimeout(async () => { rows = await lookup(q); draw(); }, 250);
+  });
+
+  place.addEventListener('keydown', ev => {
+    if(!list) return;
+    const btns = [...list.querySelectorAll('button')];
+    if(ev.key === 'ArrowDown' || ev.key === 'ArrowUp'){
+      ev.preventDefault();
+      idx = ev.key === 'ArrowDown' ? Math.min(idx + 1, btns.length - 1)
+                                   : Math.max(idx - 1, 0);
+      btns.forEach((b,i) => b.setAttribute('aria-selected', i === idx));
+      btns[idx].scrollIntoView({block:'nearest'});
+    } else if(ev.key === 'Enter' && idx >= 0){
+      ev.preventDefault(); apply(rows[idx]);
+    } else if(ev.key === 'Escape'){ close(); }
+  });
+
+  // Typing a city and tabbing away should just work — that is what "automatic"
+  // means. Only fills when the top match is unambiguous, so a vague query does
+  // not silently pick a city on the wrong continent.
+  place.addEventListener('blur', async () => {
+    setTimeout(async () => {
+      close();
+      const q = place.value.trim();
+      if(q.length < 2) return;
+      if(lat.value && lon.value) return;
+      const found = await lookup(q);
+      if(!found.length) {
+        if(note) note.textContent =
+          'No match for that place — enter latitude and longitude by hand.';
+        return;
+      }
+      const top = found[0];
+      const unambiguous = found.length === 1
+        || top.score >= 90
+        || top.label.toLowerCase().startsWith(q.toLowerCase());
+      if(unambiguous) apply(top);
+      else if(note) note.textContent =
+        'Several places match — pick one from the list.';
+    }, 120);
+  });
+}
+
 /* ---------- launch offer ----------
    The bar is driven entirely by the API: it renders only while the code is
    valid and has places left, so it retires itself at 500 with no deploy. The
@@ -1101,8 +1270,17 @@ function syncFlow(){
     el.className = n<step ? 'done' : n===step ? 'now' : ''; });
   if(step===2 && S.details) fillDetails();
 }
+function ageFromDob(iso){
+  if(!iso) return 0;
+  const d = new Date(iso + 'T00:00:00'), now = new Date();
+  if(isNaN(d)) return 0;
+  let a = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if(m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
+  return a;
+}
 function fillDetails(){
-  $('#fName').value=S.details.name||''; $('#fAge').value=S.details.age||'';
+  $('#fName').value=S.details.name||''; $('#fDob').value=S.details.dob||'';
   $('#fDom').value=S.details.dominant||'right';
   $$('#genderPills .pill').forEach(p=>p.setAttribute('aria-pressed', p.dataset.val===S.details.gender));
 }
@@ -1112,14 +1290,18 @@ $$('#genderPills .pill').forEach(p=>p.onclick=()=>{
 });
 function bad(sel,on){ $(sel).closest('.field').classList.toggle('bad',on); return !on; }
 function saveDetails(){
-  const name=$('#fName').value.trim(), age=+$('#fAge').value,
+  const name=$('#fName').value.trim(), dob=$('#fDob').value,
         g=$('#genderPills .pill[aria-pressed="true"]');
+  const age = ageFromDob(dob);
   let ok=true;
   ok = bad('#fName', !name) && ok;
-  ok = bad('#fAge', !(age>=10&&age<=110)) && ok;
+  // A date outside a plausible human range is a typo, not a birthday.
+  ok = bad('#fDob', !(dob && age>=1 && age<=120)) && ok;
   const gf=$('#genderPills').closest('.field'); gf.classList.toggle('bad',!g); if(!g) ok=false;
   if(!ok) return toast('Please complete the highlighted fields');
-  S.details={ name, age, gender:g.dataset.val, dominant:$('#fDom').value }; save(); syncFlow();
+  // `age` stays in the payload so nothing downstream changes; `dob` is new and
+  // is what makes the chart cross-check possible.
+  S.details={ name, dob, age, gender:g.dataset.val, dominant:$('#fDom').value }; save(); syncFlow();
   toast('Saved — now your palms');
 }
 
@@ -1241,11 +1423,18 @@ async function api(path,opts={}){
     ...opts });
   if(!r.ok){
     // Carry the server's own sentence. FastAPI puts it in `detail`, and our
-    // handlers raise UserError precisely so it is readable by a person.
-    let detail='';
-    try{ detail=(await r.json()).detail||''; }catch(e){}
-    throw Object.assign(new Error(detail||('HTTP '+r.status)),
-                        {status:r.status, detail});
+    // handlers raise UserError precisely so it is readable by a person. When the
+    // body is NOT json — an nginx 413/502/504 page, say — keep a snippet, because
+    // a bare "rejected that request" tells whoever is debugging nothing.
+    let detail = '', bodyText = '';
+    try{
+      bodyText = await r.text();
+      try{ detail = (JSON.parse(bodyText).detail) || ''; }catch(e){}
+    }catch(e){}
+    const err = new Error(detail || ('HTTP ' + r.status));
+    err.status = r.status; err.detail = detail;
+    err.bodyText = (bodyText || '').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,180);
+    throw err;
   }
   return r.json();
 }
@@ -1263,7 +1452,8 @@ async function submitReading(){
   const b=$('#submitBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Submitting…';
   try{
     const payload={ userId:S.user.id, email:S.user.email, name:S.details.name,
-      gender:S.details.gender, age:S.details.age, dominant:S.details.dominant,
+      gender:S.details.gender, age:S.details.age, dob:S.details.dob,
+      dominant:S.details.dominant,
       leftHand:S.imgs.left, rightHand:S.imgs.right };
     const job = MOCK ? mockEnqueue() : await api('/api/job',{method:'POST',
       body:JSON.stringify({kind:'palm', payload})});
@@ -1272,11 +1462,16 @@ async function submitReading(){
     console.error(e);
     // Say what actually happened. "Could not reach" sent me looking at the
     // network for an auth bug.
-    toast(e && e.status === 401
-      ? 'Sign-in expired. Sign out and back in, then try again.'
-      : (e && e.message && !/^HTTP /.test(e.message)
-          ? e.message
-          : 'The reading service rejected that request. Please try again.'));
+    // Always show the status. A message that does not identify the failure sends
+    // whoever is debugging to the wrong place — which is exactly what happened
+    // with the earlier "could not reach the reading service".
+    const st = e && e.status;
+    toast(st === 401 ? 'Sign-in expired. Sign out and back in, then try again.'
+      : st === 413 ? 'Those photos are too large for the server to accept (413).'
+      : (e && e.detail) ? e.detail
+      : (e && e.message && !/^HTTP /.test(e.message)) ? e.message
+      : `Reading service error${st ? ' ' + st : ''}${
+          e && e.bodyText ? ' — ' + e.bodyText : ''}`);
     b.disabled=false; b.textContent='Reveal my reading';
   }
 }
@@ -2058,6 +2253,13 @@ function renderAstroResult(kind, r){
   $('#cPhone').textContent=CONFIG.contactPhone; $('#cPhone').href='tel:'+CONFIG.contactPhone.replace(/\s/g,'');
   $('#cWa').href='https://wa.me/'+CONFIG.whatsapp;
   paintAuth(); initGoogle(); syncFlow(); checkReady(); paintPromo();
+  // Birth place -> lat/lon/tz on all three forms. The matching form has no UTC
+  // field of its own (the handler defaults it), so only place/lat/lon are wired
+  // there.
+  wireDates();
+  wirePlace('aPlace','aLat','aLon','aTz');
+  wirePlace('gPlace','gLat','gLon',null);
+  wirePlace('bPlace','bLat','bLon',null);
   if(S.user&&S.details&&S.reading) renderReading();
   $$('.logo')[0].addEventListener('keypress',e=>{ if(e.key==='Enter') go('home'); });
 })();

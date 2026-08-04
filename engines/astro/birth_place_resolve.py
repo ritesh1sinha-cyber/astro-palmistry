@@ -43,7 +43,13 @@ def normalize_place_query(raw: str) -> str:
 
 
 def _csv_path(pyjhora_src=None) -> str:
-    _ensure_pyjhora(pyjhora_src or DEFAULT_PYJHORA_SRC)
+    # Pass None through, NOT the default: _ensure_pyjhora resolves
+    # PYJHORA_SRC -> DEFAULT itself, and handing it the default explicitly
+    # bypassed the env var. That made every place lookup raise
+    # "PyJHora source not found" anywhere the package is not at the default
+    # path -- which includes our own Docker image, where PYJHORA_SRC points at
+    # site-packages. Place resolution was broken in production, not just locally.
+    _ensure_pyjhora(pyjhora_src)
     from jhora import const
     return const._world_city_csv_file
 
@@ -235,7 +241,13 @@ def resolve_birth_place(
                 "timezone": top["timezone"],
             }
 
-    _ensure_pyjhora(pyjhora_src or DEFAULT_PYJHORA_SRC)
+    # Pass None through, NOT the default: _ensure_pyjhora resolves
+    # PYJHORA_SRC -> DEFAULT itself, and handing it the default explicitly
+    # bypassed the env var. That made every place lookup raise
+    # "PyJHora source not found" anywhere the package is not at the default
+    # path -- which includes our own Docker image, where PYJHORA_SRC points at
+    # site-packages. Place resolution was broken in production, not just locally.
+    _ensure_pyjhora(pyjhora_src)
     from jhora import utils
 
     utils.use_database_for_world_cities(True)

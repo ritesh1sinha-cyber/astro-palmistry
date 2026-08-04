@@ -366,6 +366,32 @@ def order_status(public_id: str, user: dict = Depends(current_user)):
             "amount": o["amount_paise"] // 100}
 
 
+@app.get("/api/place")
+def place_lookup(q: str = "", limit: int = 8):
+    """City name -> coordinates and UTC offset. Public, and no network call.
+
+    Asking a customer for their latitude is asking them to do our job. Worse, it
+    invites a silent wrong answer: a mistyped longitude still produces a
+    confident, completely different chart, and nothing downstream can tell.
+
+    This resolves against the world-cities table PyJHora already ships, so it
+    needs no Google key, no rate limit and no internet — which also means it
+    cannot become a runtime dependency that takes the form down.
+    """
+    q = (q or "").strip()
+    if len(q) < 2:
+        return {"query": q, "results": []}
+    try:
+        from birth_place_resolve import search_places
+        rows = search_places(q, limit=max(1, min(int(limit), 20)))
+    except Exception as exc:                                         # noqa: BLE001
+        # The form must stay usable by hand if the table is unavailable.
+        print(f"[api] place lookup unavailable: {type(exc).__name__}: {exc}",
+              flush=True)
+        return {"query": q, "results": [], "unavailable": True}
+    return {"query": q, "results": rows}
+
+
 class PromoIn(BaseModel):
     code: str
 
