@@ -337,6 +337,78 @@ def translate_jargon(html: str, *, keep_original: bool = True) -> str:
     return _map_text_nodes(html, convert)
 
 
+# ---------------------------------------------------------------------------
+# 1c. Analyst voice → customer voice
+# ---------------------------------------------------------------------------
+# These reports were built for an astrologer to read before a consultation, and
+# the framing still says so: "Technical confluence", "Methods read: 15",
+# "Running clock", "votes reconcile". None of it is wrong; all of it puts the
+# reader outside the reading, looking at the apparatus.
+#
+# The benchmark cuts both ways. AstroSage never shows machinery — but its copy
+# is undated and interchangeable ("As you are born on Wednesday, you'll have an
+# attractive face and features"): every reader with that weekday gets the same
+# sentence. Our advantage is specificity — real dates, real disagreement between
+# methods, real confidence levels. So the goal is not to hide the rigour, it is
+# to state it as something the reader OWNS rather than something we performed.
+#
+# Facts are untouched here: no number, date or verdict appears in any
+# replacement that was not in the original.
+REPHRASE: list[tuple[str, str]] = [
+    (r"<strong>Technical confluence\.</strong>\s*(\d+) independent techniques "
+     r"were read and cross-checked\.\s*Where several agree, confidence rises\.",
+     r"<strong>Your chart, read \1 different ways.</strong> Each method works "
+     r"from your birth details alone and reaches its own conclusion. Where "
+     r"they land on the same answer, you can act on it — and this report "
+     r"shows you exactly where they agree and where they do not."),
+    (r"\bTechnical confluence\b", "How your chart was read"),
+    (r"\bMethods read\b", "Ways your chart was read"),
+    (r"\bAll systems cross-checked · one reconciled answer\b",
+     "Every method, reconciled into one answer"),
+    (r"Each specialist sub-report \(([^)]*)\) contributes statements about "
+     r"your life\.\s*Statements that mean the same thing are grouped, and when "
+     r"several independent methods agree the confluence verdict gains "
+     r"confidence\.\s*Each life-area table below shows exactly which method "
+     r"said what, and how the votes reconcile\.",
+     r"Your chart was read separately by \1 — each one a complete method in "
+     r"its own right. Where they say the same thing in different words, that "
+     r"agreement is what makes a finding trustworthy. Every section below "
+     r"shows you which methods spoke and whether they agreed."),
+    (r"\bthe confluence verdict\b", "the combined answer"),
+    (r"\bConfluence verdict\b", "Combined answer"),
+    (r"\bconfluence verdict\b", "combined answer"),
+    (r"\bRunning clock:", "Where you are right now:"),
+    (r"\bNext dasha windows\b", "What is coming next"),
+    (r"\bChart activation\b", "What this period switches on"),
+    (r"\bLinked houses:", "This also touches:"),
+    (r"\bhow the votes reconcile\b", "how they compare"),
+    (r"\bvote\b", "verdict"),
+    (r"\bComputed independently from your birth chart\.",
+     "Worked out from your birth details alone."),
+    (r"\bFor guidance, not a substitute for a personal consultation\.",
+     "Guidance, not a replacement for sitting down with someone."),
+    (r"\bEducational astrology only\.", "Offered as guidance."),
+    (r"\bthis division of life\b", "this part of your life"),
+    (r"\bThis division of life\b", "This part of your life"),
+    (r"\bindication\)", "sign)"),
+    (r"\bconfirm with\b", "worth checking against"),
+]
+
+
+def rephrase(html: str) -> str:
+    """Analyst framing → the reader's own reading."""
+    def convert(text: str) -> str:
+        for pat, rep in REPHRASE:
+            text = re.sub(pat, rep, text)
+        return text
+    # applied to the whole document, not just text nodes: the first pattern
+    # spans a <strong> boundary, which is exactly where the analyst framing sits
+    out = html
+    for pat, rep in REPHRASE[:1]:
+        out = re.sub(pat, rep, out, flags=re.S)
+    return _map_text_nodes(out, convert)
+
+
 # third person / clinical → second person
 HUMANISE = [
     (r"\bThe native's\b", "Your"), (r"\bthe native's\b", "your"),
@@ -554,7 +626,10 @@ def first_name(name: str) -> str:
 def chart_opening(ctx: dict) -> str:
     """A paragraph that could only have been written for this chart."""
     fn = first_name(ctx.get("name", ""))
-    lag = ctx.get("lagna") or "your rising sign"
+    # No placeholder here: `... or "your rising sign"` fed the sentence
+    # "your rising sign was rising". If the sign is unknown, the clause is
+    # dropped instead (see `rising_clause` below).
+    lag = ctx.get("lagna") or ""
     nak = ctx.get("nakshatra") or ""
     lord = ctx.get("lagna_lord") or ""
     moon = ctx.get("moon_sign") or ""
@@ -565,13 +640,26 @@ def chart_opening(ctx: dict) -> str:
     place = ctx.get("place") or ""
     tob = ctx.get("tob") or ""
 
-    openers = [
-        f"{fn}, the sky over {place} at {tob} on the day you were born put "
-        f"<b>{lag}</b> on the eastern horizon",
-        f"{fn}, at the moment you drew your first breath in {place}, "
-        f"<b>{lag}</b> was rising",
-        f"{fn}, your chart begins where <b>{lag}</b> met the horizon over {place} at {tob}",
-    ]
+    if lag:
+        openers = [
+            f"{fn}, the sky over {place} at {tob} on the day you were born put "
+            f"<b>{lag}</b> on the eastern horizon",
+            f"{fn}, at the moment you drew your first breath in {place}, "
+            f"<b>{lag}</b> was rising",
+            f"{fn}, your chart begins where <b>{lag}</b> met the horizon over "
+            f"{place} at {tob}",
+        ]
+    else:
+        # The rising sign is unknown — so do not gesture at it. Every one of
+        # these still says something only this chart could support.
+        openers = [
+            f"{fn}, your chart is set for {place} at {tob} on the day you "
+            f"were born",
+            f"{fn}, this reading starts from the sky over {place} at the hour "
+            f"you arrived",
+            f"{fn}, everything below is drawn from {place}, {tob}, on your "
+            f"birth day",
+        ]
     open_ = _pick(openers, ctx)
 
     if nak:
@@ -662,8 +750,35 @@ def numerology_opening(ctx: dict) -> str:
     return f"<p>{_pick(openers, ctx)}</p>"
 
 
+def match_opening(ctx: dict) -> str:
+    """For a two-person report. The natal opening addresses only one of them."""
+    couple = ctx.get("name") or "You both"
+    names = [n.strip() for n in re.split(r"\s*&\s*|\s+and\s+", couple) if n.strip()]
+    a = names[0] if names else "You"
+    b = names[1] if len(names) > 1 else "your partner"
+    lead = _pick([
+        f"{a} and {b} — two charts, read side by side.",
+        f"This is {a} and {b}'s charts held up against each other.",
+        f"{a} and {b}: what the two charts do when you put them together.",
+    ], ctx)
+    body = _pick([
+        "Compatibility is not one number. The score below is the classical "
+        "count, and everything after it explains what that count is actually "
+        "made of — where the two of you fit easily, and where the effort will "
+        "have to be deliberate.",
+        "The guna score is the headline, but it is the detail underneath that "
+        "tells you what married life would ask of each of you. Both are here.",
+        "A score settles nothing on its own. What follows is which parts of "
+        "the two charts agree, which pull against each other, and what that "
+        "means in practice.",
+    ], ctx, salt=3)
+    return f"<p>{lead} {body}</p>"
+
+
 OPENINGS = {
     "full_report": chart_opening,
+    "kundali_match": match_opening,
+    "match": match_opening,
     "chart": chart_opening,
     "daily": chart_opening,
     "palm": palm_opening,
@@ -717,8 +832,14 @@ BADGE = ("<div style=\"font-size:12px;letter-spacing:.14em;text-transform:upperc
 
 def personalise(html: str, ctx: dict, kind: str = "full_report") -> str:
     """Strip machinery, humanise the voice, and lead with a personal opening."""
-    out = strip_citations(humanise(strip_machinery(html or "")),
+    # Order matters. Leaks go first — there is no point translating the jargon
+    # in a paragraph that ends in a session UUID. Jargon is translated last of
+    # the text passes so the citation stripper still sees the method names it
+    # matches on ("BNN", "Jaimini") before they are renamed.
+    out = strip_citations(humanise(strip_machinery(strip_leaks(html or ""))),
                           hide_system_names=os.getenv("HIDE_SYSTEM_NAMES", "1") == "1")
+    if os.getenv("PLAIN_ENGLISH", "1") == "1":
+        out = translate_jargon(rephrase(out))
 
     opener_fn = OPENINGS.get(kind, chart_opening)
     opening = opener_fn(ctx)

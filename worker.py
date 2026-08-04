@@ -46,6 +46,9 @@ signal.signal(signal.SIGTERM, _graceful)
 signal.signal(signal.SIGINT, _graceful)
 
 
+from core.errors import UserError
+
+
 def friendly(exc: Exception) -> str:
     msg = str(exc)
     low = msg.lower()
@@ -56,8 +59,11 @@ def friendly(exc: Exception) -> str:
         return "Both palms are needed for a reading."
     if "hand_landmarker" in low or "mediapipe" in low:
         return "The image analyser is unavailable right now. Please try again shortly."
-    if isinstance(exc, (KeyError, ValueError)) and len(msg) < 120:
-        return f"We could not complete this: {msg}"
+    # Only messages someone wrote FOR a reader are shown. The old rule passed
+    # through any short ValueError, which put "invalid literal for int() with
+    # base 10: 'male'" in front of a paying customer.
+    if isinstance(exc, UserError):
+        return msg
     return "We could not complete this reading. Please try again."
 
 

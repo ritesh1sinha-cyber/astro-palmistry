@@ -26,6 +26,9 @@ from .config import S
 _engine: Optional[Engine] = None
 
 
+from core.errors import gender_code
+
+
 def engine() -> Engine:
     global _engine
     if _engine is None:
@@ -242,7 +245,7 @@ def get_or_create_chart(user_id: str, p: dict) -> dict:
                   {"i": cid, "u": user_id, "l": p.get("label"),
                    "pn": p.get("name"), "dob": p["dob"], "tob": p["tob"],
                    "tz": p.get("tz", 5.5), "lat": p["lat"], "lon": p["lon"],
-                   "pl": p.get("place"), "g": int(p.get("gender", 0)),
+                   "pl": p.get("place"), "g": gender_code(p.get("gender")),
                    "h": h, "t": now()})
         return jrow(c.execute(text("SELECT * FROM charts WHERE id=:i"),
                              {"i": cid}).fetchone())

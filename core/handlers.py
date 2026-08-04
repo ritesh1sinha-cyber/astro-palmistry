@@ -30,6 +30,9 @@ from .store import report_keys, store
 # ---------------------------------------------------------------------------
 # shared helpers
 # ---------------------------------------------------------------------------
+from core.errors import UserError, gender_code
+
+
 def _as_date(v) -> date:
     if isinstance(v, date):
         return v
@@ -47,7 +50,7 @@ def precompute_for(chart: dict) -> dict:
         chart.get("person_name") or "Seeker", str(chart["dob"]),
         birth_time=str(chart["tob"]), latitude=float(chart["lat"]),
         longitude=float(chart["lon"]), timezone=float(chart["tz_offset"]),
-        place_name=chart.get("place") or "", gender=int(chart.get("gender") or 0))
+        place_name=chart.get("place") or "", gender=gender_code(chart.get("gender")))
     precompute_put(chart["chart_hash"], pc)
     return pc
 
@@ -129,13 +132,14 @@ def h_palm(user: dict, p: dict) -> dict:
                 data = data.split(",", 1)[1]
             raw = base64.b64decode(data)
             if len(raw) < 2048:
-                raise ValueError("one of the palm images is unreadable")
+                raise UserError("One of the palm photos is unreadable. Retake it in "
+                                "bright light with the hand flat and open.")
             # filename carries the hand: palm_api._guess_hand reads it from there
             f = tmp / f"{run_id}_{hand}palm.jpg"
             f.write_bytes(raw)
             paths.append(f)
         if len(paths) < 2:
-            raise ValueError("both palms are required")
+            raise UserError("Both palms are needed for a reading.")
 
         raw_result = analyze_image_paths(
             [str(x) for x in paths],
@@ -208,7 +212,7 @@ def h_numerology(user: dict, p: dict) -> dict:
     import astro_voice as V
     from numerology_report import generate_numerology_html
     y, m, d = (int(x) for x in p["dob"].split("-"))
-    sex = {0: "Male", 1: "Female"}.get(int(p.get("gender", 0)), "—")
+    sex = {0: "Male", 1: "Female"}[gender_code(p.get("gender"))]
     html, slug = generate_numerology_html(p.get("name", "Seeker"), date(y, m, d), sex, None)
     html = V.personalise(html, {"name": p.get("name", "Seeker"), "dob": p["dob"]},
                          "numerology")
@@ -220,6 +224,17 @@ def h_numerology(user: dict, p: dict) -> dict:
 def h_full_report(user: dict, p: dict) -> dict:
     import astro_split as SP
     import astro_voice as V
+    # The confluence engine groups findings with SentenceTransformer
+    # embeddings. torch + sentence-transformers are excluded from the default
+    # worker image (~2 GB), which made this — the most expensive report we
+    # sell — fail outright on the default build. Install a lexical stand-in
+    # first so the report is produced either way; it is lower quality, and
+    # `semantic_fallback.degraded()` says so.
+    try:
+        import semantic_fallback
+        semantic_fallback.install()
+    except Exception:                                    # never block a report
+        pass
     from vedic_confluence_report import generate_confluence_reports
 
     chart = get_or_create_chart(user["id"], p)
@@ -231,19 +246,51 @@ def h_full_report(user: dict, p: dict) -> dict:
     pc_path = work / "precomputed.json"
     pc_path.write_text(json.dumps(pc, default=str), encoding="utf-8")
 
+    # Build the twelve specialist lane reports FIRST. Without them the
+    # confluence found 0/12 on disk, capped its own confidence at MODERATE and
+    # printed a red "Partial pass" banner to the customer. They cost ~0.5s
+    # against a warm precompute — the flagship was running thin for nothing.
+    try:
+        import lane_builder
+        lanes = lane_builder.build_lanes(
+            work, slug=slug, client_name=chart.get("person_name") or "Seeker",
+            dob=str(chart["dob"]), birth_time=str(chart["tob"]),
+            latitude=float(chart["lat"]), longitude=float(chart["lon"]),
+            timezone=float(chart["tz_offset"]),
+            place_name=chart.get("place") or "",
+            gender=gender_code(chart.get("gender")),
+            precomputed_path=str(pc_path), budget_seconds=240)
+    except Exception as exc:                        # never block the report
+        print(f"[full_report] lane build failed entirely: {exc}", flush=True)
+        lanes = {"built": [], "failed": {"all": str(exc)}}
+
     conf_path, user_path, _focus, _payload = generate_confluence_reports(
         "", str(work), chart.get("person_name") or "Seeker", str(chart["dob"]), slug,
         client_question=p.get("question", ""), precomputed_path=str(pc_path),
         birth_time=str(chart["tob"]), latitude=float(chart["lat"]),
         longitude=float(chart["lon"]), timezone=float(chart["tz_offset"]),
-        place_name=chart.get("place") or "", gender=int(chart.get("gender") or 0))
+        place_name=chart.get("place") or "", gender=gender_code(chart.get("gender")))
 
-    conf = SP.split_confluence(V.personalise(
-        Path(conf_path).read_text(encoding="utf-8", errors="ignore"), ctx, "full_report"))
+    def _html(value: str) -> str:
+        """The generator hands back a path OR the document itself.
+
+        Which one depends on whether it could write to the output directory,
+        and the handler assumed "path" — so a 90-second report ended in
+        `OSError: File name too long`, the whole HTML document having been
+        passed to open(). Both shapes are now accepted.
+        """
+        if not value:
+            return ""
+        if "<" in value[:200] or len(value) > 512:
+            return value
+        f = Path(value)
+        return f.read_text(encoding="utf-8", errors="ignore") if f.is_file() else ""
+
+    conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
     urep = {"free_html": "", "paid_html": "", "paid_sections": []}
-    if user_path and Path(user_path).is_file():
-        urep = SP.split_user_report(V.personalise(
-            Path(user_path).read_text(encoding="utf-8", errors="ignore"), ctx, "full_report"))
+    user_html = _html(user_path)
+    if user_html:
+        urep = SP.split_user_report(V.personalise(user_html, ctx, "full_report"))
 
     meta = {"freeSections": conf["free_sections"],
             "paidSections": conf["paid_sections"] + urep.get("paid_sections", []),
@@ -377,7 +424,8 @@ def h_kundali_match(user: dict, p: dict) -> dict:
         out_path=out)
     html = V.personalise(out.read_text(encoding="utf-8", errors="ignore"),
                          {"name": f"{g['name']} & {b['name']}", "dob": g["dob"],
-                          "place": g["place_name"], "tob": g["birth_time"]}, "chart")
+                          "place": g["place_name"], "tob": g["birth_time"]},
+                         "kundali_match")
     split = SP.split_report(html, ("kundali milan", "final verdict", "layer 1",
                                    "ashtakoota", "prepared for"),
                             locked_note="Your guna score is above. Unlock the dosha "
@@ -446,13 +494,19 @@ def h_muhurat(user: dict, p: dict) -> dict:
 
 def h_btr(user: dict, p: dict) -> dict:
     from btr_rectify import rectify_birth_time
+    raw = p.get("events") or {}
+    if isinstance(raw, list):
+        # [{"date": ..., "type": ...}] — what an API client writes without
+        # reading the form. The site posts {event_name: date}.
+        raw = {e.get("type") or e.get("event") or f"event{i}": e.get("date")
+               for i, e in enumerate(raw) if isinstance(e, dict)}
     fields = {(k[4:] if k.startswith("btr_") else k): v
-              for k, v in (p.get("events") or {}).items() if v}
+              for k, v in raw.items() if v}
     res = rectify_birth_time(
         client_name=p.get("name", "Seeker"), dob=p["dob"], birth_time=p["tob"],
         latitude=float(p["lat"]), longitude=float(p["lon"]),
         timezone=float(p.get("tz", 5.5)), place_name=p.get("place", ""),
-        gender=int(p.get("gender", 0)), event_fields=fields,
+        gender=gender_code(p.get("gender")), event_fields=fields,
         custom_events=p.get("customEvents", ""), auto_apply=False)
     paid = entitled(user["id"], "btr")
     off = res.get("offset_minutes")
@@ -485,7 +539,7 @@ def h_future_event(user: dict, p: dict) -> dict:
         client_name=chart.get("person_name") or "Seeker", dob=str(chart["dob"]),
         birth_time=str(chart["tob"]), latitude=float(chart["lat"]),
         longitude=float(chart["lon"]), timezone=float(chart["tz_offset"]),
-        place_name=chart.get("place") or "", gender=int(chart.get("gender") or 0),
+        place_name=chart.get("place") or "", gender=gender_code(chart.get("gender")),
         event_type=p["eventType"], consultation_date=p.get("consultationDate", ""))
     paid = entitled(user["id"], "future_event")
     return {"paid": paid, "eventType": p["eventType"],
