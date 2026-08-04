@@ -85,13 +85,26 @@ def priority_for(*, paid: bool, subscribed: bool) -> int:
 # ---------------------------------------------------------------------------
 # enqueue / dequeue
 # ---------------------------------------------------------------------------
+def _dumps(job: dict) -> str:
+    """Serialise a job for Redis.
+
+    `default=str` is not cosmetic. `users.id` is a UUID column in Postgres, so
+    psycopg returns a `uuid.UUID` and json.dumps raises
+    "Object of type UUID is not JSON serializable". On SQLite that same column is
+    TEXT and the value is already a str — so every SQLite test passed while the
+    Postgres stack failed on the first job it was ever handed. Dates and Decimals
+    arrive the same way from a real database.
+    """
+    return json.dumps(job, default=str)
+
+
 def enqueue(*, kind: str, user_id: str, payload: dict, priority: int = 5) -> dict:
     pid = "J-" + uuid.uuid4().hex[:10].upper()
     now = time.time()
-    job = {"jobId": pid, "kind": kind, "userId": user_id, "status": "queued",
+    job = {"jobId": pid, "kind": kind, "userId": str(user_id), "status": "queued",
            "priority": priority, "payload": payload, "queuedAt": now}
     p = r().pipeline()
-    p.hset(_job(pid), mapping={"json": json.dumps(job)})
+    p.hset(_job(pid), mapping={"json": _dumps(job)})
     p.expire(_job(pid), S.job_ttl_seconds)
     # score packs priority into the integer part and time into the fraction,
     # so within a priority band it is strictly FIFO
@@ -179,7 +192,7 @@ def claim(group: str, worker_id: str) -> Optional[dict]:
 
 def save(job: dict) -> None:
     p = r().pipeline()
-    p.hset(_job(job["jobId"]), mapping={"json": json.dumps(job)})
+    p.hset(_job(job["jobId"]), mapping={"json": _dumps(job)})
     p.expire(_job(job["jobId"]), S.job_ttl_seconds)
     p.execute()
 

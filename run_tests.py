@@ -35,6 +35,8 @@ def have(module: str) -> bool:
 # (label, argv, needs)  — `needs` is a module that must be importable
 SUITES: list[tuple[str, list[str], str]] = [
     ("promo codes and the bundle", [sys.executable, "core/promo_test.py"], ""),
+    ("queue serialises real DB types",
+     [sys.executable, "core/queue_test.py"], ""),
     ("no-longevity chokepoint",
      [sys.executable, "engines/astro/no_longevity.py"], ""),
     ("fact guard (rewrites keep facts)",
