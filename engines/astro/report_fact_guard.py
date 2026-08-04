@@ -179,6 +179,7 @@ def visible_text(source: str) -> str:
 # fact extraction
 # ---------------------------------------------------------------------------
 
+_TIME = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b")
 _ISO = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 _DMY = re.compile(
     r"\b(\d{1,2})\s+([A-Za-z]{3,9})\.?,?\s+(\d{4})\b")
@@ -190,8 +191,19 @@ _YEAR = re.compile(r"\b(1[89]\d{2}|20\d{2}|21\d{2})\b")
 _HOUSE_ORD = re.compile(
     r"\b(\d{1,2})(?:st|nd|rd|th)\s+(?:house|bhava)\b", re.I)
 _HOUSE_H = re.compile(r"\b(\d{1,2})H\b")
-_HOUSE_WORD = re.compile(r"\bhouses?\s+((?:\d{1,2})(?:\s*[,&and]+\s*\d{1,2})*)", re.I)
+_HOUSE_WORD = re.compile(
+    r"\bhouses?(?:\(s\))?\s+"
+    r"((?:\d{1,2}(?:st|nd|rd|th)?)(?:\s*(?:,|&|and)\s*\d{1,2}(?:st|nd|rd|th)?)*)",
+    re.I)
 _HOUSE_PAREN = re.compile(r"\((\d{1,2})(?:st|nd|rd|th)\)")
+# Houses are also written as bare ordinals when the context makes it obvious:
+# "Moon as 2nd lord", "it rules your 5th and 12th". The guard could not see
+# those, so rephrasing them into an explicit "house" read as an invented fact.
+_HOUSE_LORD = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)\s+lord\b", re.I)
+_HOUSE_RULES = re.compile(
+    r"\brules?\s+(?:your\s+|the\s+)?"
+    r"((?:\d{1,2}(?:st|nd|rd|th))(?:\s*(?:,|&|and)\s*\d{1,2}(?:st|nd|rd|th))*)",
+    re.I)
 
 _VARGA = re.compile(r"\bD-?(\d{1,3})\b")
 _FRACTION = re.compile(r"\b(\d{1,4})\s*/\s*(\d{1,4})\b")
@@ -294,6 +306,13 @@ def facts(source: str, *, ignore_leaks: bool = True) -> FactSet:
             return True
         return False
 
+    def clock(m):
+        # Seconds are noise on a birth time; normalise so "12:56:00" and
+        # "12:56" are one fact and dropping ":00" is not a lost number.
+        fs.add("time", f"{int(m[1]):02d}:{m[2]}")
+        return True
+
+    _eat(_TIME, clock)
     _eat(_ISO, iso)
     _eat(_DMY, dmy)
     _eat(_MDY, mdy)
@@ -321,6 +340,8 @@ def facts(source: str, *, ignore_leaks: bool = True) -> FactSet:
     _eat(_HOUSE_H, house)
     _eat(_HOUSE_WORD, houses)
     _eat(_HOUSE_PAREN, house)
+    _eat(_HOUSE_LORD, house)
+    _eat(_HOUSE_RULES, houses)
 
     def varga(m):
         fs.add("varga", f"D{int(m[1])}")
@@ -431,8 +452,8 @@ class Diff:
 # legitimately shift in *count* when one glyph becomes one sentence. What may
 # not happen is a direction appearing that was never there, or the only
 # instance of a direction vanishing.
-HARD = ("date", "month", "year", "house", "varga", "fraction", "percent",
-        "degree", "number", "planet", "sign", "nakshatra", "dignity")
+HARD = ("date", "month", "year", "time", "house", "varga", "fraction",
+        "percent", "degree", "number", "planet", "sign", "nakshatra", "dignity")
 
 
 def diff(before: str, after: str, *,

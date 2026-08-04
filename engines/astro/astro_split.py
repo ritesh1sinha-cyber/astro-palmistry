@@ -37,10 +37,31 @@ USER_REPORT_FREE = (
 )
 
 HORARY_FREE = (
+    # The reconciled answer block is free by design. A question tab that
+    # charges before showing any answer is a slot machine; what is worth
+    # paying for is the audit trail behind the answer, not the answer itself.
+    "your question",
+    "why the chart says that",
+    "what actually moves this",
+    "what tips a close chart your way",
     "short answer in plain words",
     "prashna chart details",
     "significators",
-    "judgment",          # the verdict itself is the hook
+    "judgment",
+)
+
+# Kundali matching: the score is the hook, the doshas and what to do about a
+# cautioned match are the product.
+MATCH_FREE = (
+    "kundali milan", "final verdict", "layer 1", "ashtakoota", "prepared for",
+)
+
+# Numerology currently ships 100% free with no upsell path at all. These are
+# the sections that stay free once a paid tier exists; the forward-looking
+# material (personal-year forecast, name analysis, favourable dates) is what
+# the paid tier would add.
+NUMEROLOGY_FREE = (
+    "your numbers", "core numbers", "personality", "life path", "destiny",
 )
 
 SECTION_RE = re.compile(

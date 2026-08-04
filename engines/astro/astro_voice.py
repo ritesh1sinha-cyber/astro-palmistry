@@ -844,6 +844,18 @@ def personalise(html: str, ctx: dict, kind: str = "full_report") -> str:
                           hide_system_names=os.getenv("HIDE_SYSTEM_NAMES", "1") == "1")
     if os.getenv("PLAIN_ENGLISH", "1") == "1":
         out = translate_jargon(rephrase(out))
+    # Seams and repetition are the last passes: they clean up the prose that
+    # the earlier stages produced, not just what the engine emitted.
+    try:
+        import astro_seams
+        out = astro_seams.smooth(out, real_name=ctx.get("name") or "")
+    except Exception:
+        pass
+    try:
+        import astro_variation
+        out = astro_variation.vary(out, ctx)
+    except Exception:
+        pass
 
     opener_fn = OPENINGS.get(kind, chart_opening)
     opening = opener_fn(ctx)
