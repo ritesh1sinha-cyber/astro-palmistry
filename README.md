@@ -1,4 +1,6 @@
-# Astro Palmistry — production stack
+# GrahaRekha — production stack
+
+Your planets, read from your hand. graharekha.co.in
 
 Palmistry + Vedic astrology as a paid product, built to carry 1 lakh+ users.
 

@@ -92,7 +92,7 @@ class Settings:
     razorpay_key_secret: str = os.getenv("RAZORPAY_KEY_SECRET", "")
     razorpay_webhook_secret: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
     upi_id: str = os.getenv("UPI_ID", "")
-    payee_name: str = os.getenv("PAYEE_NAME", "Astro Palmistry")
+    payee_name: str = os.getenv("PAYEE_NAME", "GrahaRekha")
 
     # --- retention ---------------------------------------------------------
     report_retention_days: int = _int("REPORT_RETENTION_DAYS", 365)

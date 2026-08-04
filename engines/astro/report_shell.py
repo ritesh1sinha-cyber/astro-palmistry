@@ -192,7 +192,7 @@ def page(title: str, body: str, *, eyebrow: str = "", heading: str = "",
                 "and are not scientifically validated methods of prediction. "
                 "Not a substitute for medical, legal, financial or "
                 "psychological advice. We never estimate anyone's remaining "
-                "years.</footer>")
+                "years. GrahaRekha · graharekha.co.in</footer>")
     return (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>'
             f'<meta name="viewport" content="width=device-width,initial-scale=1"/>'
             f"<title>{esc(title)}</title>{FONTS}"

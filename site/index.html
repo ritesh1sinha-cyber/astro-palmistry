@@ -3,22 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AI Powered Astro Palmistry — Read your palm, decode your path</title>
+<title>GrahaRekha — your planets, read from your hand</title>
 <meta name="description" content="Upload or capture your palms and receive an AI-assisted palmistry reading. Life, head, heart and fate lines decoded — plus a full future report.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#07061a; --ink-2:#0e0b2b; --ink-3:#161235;
-  --gold:#e8b75b; --gold-soft:#f4d79b; --gold-dim:rgba(232,183,91,.35);
-  --violet:#8b7bd8; --rose:#d98ba6;
+  /* Navy-black rather than purple-black — the same family as the landing
+     page hero, so the two do not read as different brands. */
+  --ink:#0f1119; --ink-2:#171a2e; --ink-3:#1e2138;
+  /* One accent, matched to the reports (#c9a227). The violet and rose were
+     a second and third accent doing no work, and they read as mystical
+     rather than considered. */
+  --gold:#c9a227; --gold-soft:#e3c76d; --gold-dim:rgba(201,162,39,.35);
+  --violet:#c9a227; --rose:#c9a227;
   --paper:#f6f1e6; --muted:rgba(246,241,230,.62); --muted-2:rgba(246,241,230,.4);
-  --line:rgba(232,183,91,.18); --line-2:rgba(246,241,230,.1);
+  --line:rgba(201,162,39,.20); --line-2:rgba(246,241,230,.1);
   --ok:#7ad4a5; --warn:#f0a05a; --err:#f07a7a;
   --r:16px; --r-lg:26px;
   --sans:'Inter',system-ui,-apple-system,sans-serif;
-  --serif:'Cormorant Garamond',Georgia,serif;
+  --serif:'Fraunces',Georgia,serif;
   --shell:min(1160px,100%);
 }
 *{box-sizing:border-box}
@@ -364,9 +369,29 @@ input[type=file]{display:none}
   border:1px dashed var(--gold-dim);background:rgba(232,183,91,.07);border-radius:14px;
   padding:12px 16px;font-size:13.5px;color:var(--gold-soft);margin-top:14px
 }
-.reportframe{
-  width:100%;height:640px;border:1px solid var(--line-2);border-radius:18px;background:#fff;margin-top:16px
+.promobar{
+  background:linear-gradient(90deg,rgba(201,162,39,.16),rgba(201,162,39,.05));
+  border-bottom:1px solid var(--line);padding:10px 0
 }
+.promobar .wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  justify-content:center;text-align:center}
+.promobar b{color:var(--gold-soft)}
+.promobar .left{font-size:12.5px;color:var(--muted)}
+.promobar code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.16em;border:1px dashed var(--gold-dim);border-radius:8px;
+  padding:3px 10px;color:var(--gold)}
+.reportframe{
+  width:100%;height:min(78vh,900px);border:0;border-radius:14px;
+  background:#fbfaf8;margin-top:16px;display:block
+}
+/* The reading is a light editorial document; mounting it on paper rather
+   than cutting a white hole in dark chrome is what makes the two designs
+   read as one product. */
+.readingmount{
+  background:#fbfaf8;border-radius:18px;padding:10px;margin-top:16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.35)
+}
+.readingmount .reportframe{margin-top:0}
 .dailycard{border:1px solid var(--line-2);border-radius:var(--r);padding:18px;background:rgba(7,6,26,.45);margin-top:14px}
 .dailycard h4{font-family:var(--serif);font-size:20px;margin:0 0 8px}
 .dolist{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px}
@@ -446,7 +471,7 @@ footer{border-top:1px solid var(--line-2);padding:36px 0 24px;color:var(--muted-
     <path d="M16 30.5c-1.6-2-3.2-4.2-3.6-6.4-.3-1.6 1.6-2.6 2.6-1.3l1.6 2V13.4a1.6 1.6 0 0 1 3.2 0v6.3m0 0v-8.6a1.6 1.6 0 0 1 3.2 0v8.2m0-.4v-6.4a1.6 1.6 0 0 1 3.2 0v7.1m0-.3v-3.9a1.6 1.6 0 0 1 3.2 0v9.1c0 4.6-3.4 8.1-7.6 8.1-2.6 0-4.3-.9-5.8-2.6" stroke="url(#gg)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="30.5" cy="12" r="1.6" fill="#f4d79b"/><circle cx="35" cy="18" r="1" fill="#f4d79b" opacity=".7"/><circle cx="10" cy="15" r="1" fill="#f4d79b" opacity=".6"/>
    </svg>
-   <span><b>Astro Palmistry</b><span>AI Powered</span></span>
+   <span><b>GrahaRekha</b><span>graha · planet &nbsp;rekha · line</span></span>
   </div>
   <nav class="tabs" id="tabs">
    <button onclick="go('home')" data-v="home">Home</button>
@@ -459,6 +484,10 @@ footer{border-top:1px solid var(--line-2);padding:36px 0 24px;color:var(--muted-
  </div>
 </header>
 
+<!-- Launch offer. Hidden unless /api/promo/{code} says the code is live AND has
+     places left, so it disappears by itself at 500 without a deploy. -->
+<div id="promoBar" hidden></div>
+
 <main>
 
 <!-- ================= HOME ================= -->
@@ -466,12 +495,17 @@ footer{border-top:1px solid var(--line-2);padding:36px 0 24px;color:var(--muted-
  <div class="wrap hero">
   <div class="hero-grid">
    <div>
-    <div class="eyebrow">AI Powered · Ancient Craft</div>
-    <h1>Your palm already<em>knows the story.</em></h1>
-    <p class="lede">Upload or capture both palms and our AI reads the life, head, heart and fate lines the way a seasoned palmist would — mapping everything that has shaped you up to today. Then unlock what lies ahead.</p>
+    <div class="eyebrow">Twelve methods · one verdict</div>
+    <h1>Astrology survived 5,000 years.<em>So why do predictions keep failing?</em></h1>
+    <p class="lede">Because your astrologer read <b>one branch</b>. There are a
+     dozen — Vedic, KP, Jaimini, Nadi, Yogini, Ashtakavarga, Western, palmistry,
+     numerology — and each one is a complete method that can be right on its own
+     and wrong about you. We run all of them on your chart and show you where
+     they agree, where they disagree, and the planet behind every sentence.
+     <b>No birth time? Your hands work.</b></p>
     <div class="hero-cta">
-     <button class="btn btn-gold" onclick="go('read')"><svg width="18" height="18"><use href="#i-hand"/></svg> Read my palm — free</button>
-     <button class="btn btn-ghost" onclick="go('contact')">Talk to an astrologer</button>
+     <button class="btn btn-gold" onclick="go('read')"><svg width="18" height="18"><use href="#i-hand"/></svg> Read my chart — free</button>
+     <button class="btn btn-ghost" onclick="go('read')">I don't know my birth time</button>
     </div>
     <div class="trust">
      <span><i class="dot"></i> Reading up to today — free</span>
@@ -482,11 +516,11 @@ footer{border-top:1px solid var(--line-2);padding:36px 0 24px;color:var(--muted-
    <div class="palm-art">
     <svg viewBox="0 0 300 340" fill="none" aria-hidden="true">
      <path d="M96 300c-14-16-27-34-31-53-3-13 13-22 22-11l14 17V116a13 13 0 0 1 26 0v52m0 0V96a13 13 0 0 1 26 0v66m0-3V99a13 13 0 0 1 26 0v58m0-2v-32a13 13 0 0 1 26 0v75c0 38-28 67-63 67-21 0-36-7-46-21" stroke="url(#gg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"/>
-     <path d="M104 195c22 6 36 22 41 44" stroke="#d98ba6" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>
-     <path d="M100 213c26 2 44 15 53 34" stroke="#8b7bd8" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>
+     <path d="M104 195c22 6 36 22 41 44" stroke="#c9a227" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>
+     <path d="M100 213c26 2 44 15 53 34" stroke="#e3c76d" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>
      <path d="M112 250c16-3 30 3 39 16" stroke="#f4d79b" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>
-     <circle cx="145" cy="239" r="3" fill="#f4d79b"/><circle cx="163" cy="216" r="2.4" fill="#d98ba6"/><circle cx="122" cy="266" r="2.2" fill="#8b7bd8"/>
-     <circle cx="240" cy="60" r="2" fill="#f4d79b" opacity=".8"/><circle cx="264" cy="102" r="1.4" fill="#f4d79b" opacity=".6"/><circle cx="40" cy="70" r="1.6" fill="#f4d79b" opacity=".6"/><circle cx="62" cy="40" r="1.2" fill="#d98ba6" opacity=".7"/>
+     <circle cx="145" cy="239" r="3" fill="#f4d79b"/><circle cx="163" cy="216" r="2.4" fill="#c9a227"/><circle cx="122" cy="266" r="2.2" fill="#e3c76d"/>
+     <circle cx="240" cy="60" r="2" fill="#f4d79b" opacity=".8"/><circle cx="264" cy="102" r="1.4" fill="#f4d79b" opacity=".6"/><circle cx="40" cy="70" r="1.6" fill="#f4d79b" opacity=".6"/><circle cx="62" cy="40" r="1.2" fill="#c9a227" opacity=".7"/>
      <path d="M240 60l24 42M40 70l22-30" stroke="#f4d79b" stroke-width=".7" opacity=".35"/>
     </svg>
     <div class="float-chip fc1">Heart line<small>Depth · 82%</small></div>
@@ -871,7 +905,7 @@ footer{border-top:1px solid var(--line-2);padding:36px 0 24px;color:var(--muted-
 
 <footer><div class="wrap">
  <div class="foot-row">
-  <div>© <span id="yr"></span> AI Powered Astro Palmistry</div>
+  <div>© <span id="yr"></span> GrahaRekha · graharekha.co.in</div>
   <div style="display:flex;gap:18px;flex-wrap:wrap">
    <a href="#" onclick="go('contact');return false">Contact</a>
    <a href="#" onclick="toast('Privacy policy — link your hosted page here');return false">Privacy</a>
@@ -912,14 +946,14 @@ footer{border-top:1px solid var(--line-2);padding:36px 0 24px;color:var(--muted-
    live is in CONFIG below — nothing else is hardcoded.
    ============================================================ */
 const CONFIG = {
-  brand:        'AI Powered Astro Palmistry',
+  brand:        'GrahaRekha',
   apiBase:      '',                      // '' = same origin (Vercel proxies /api/* to the backend)
   googleClientId:'',                     // Google Cloud OAuth 2.0 Web Client ID ('' = demo login)
-  contactEmail: 'hello@astropalmistry.ai',
+  contactEmail: 'admin@graharekha.co.in',
   contactPhone: '+91 90000 00000',
   whatsapp:     '919000000000',          // digits only, with country code
-  upiId:        'astropalmistry@upi',
-  payeeName:    'Astro Palmistry',
+  upiId:        '',                      // set your real UPI id, or leave blank to use the gateway only
+  payeeName:    'GrahaRekha',
   price:        499,
   priceStrike:  999,
   currency:     '₹',
@@ -974,6 +1008,48 @@ function go(v){
   if(v==='read') syncFlow();
 }
 
+/* ---------- launch offer ----------
+   The bar is driven entirely by the API: it renders only while the code is
+   valid and has places left, so it retires itself at 500 with no deploy. The
+   count is real — it comes from the same counter the redemption enforces. */
+const PROMO_CODE = 'FIRST500';
+
+async function paintPromo(){
+  const bar = $('#promoBar');
+  if(!bar) return;
+  let st;
+  try{ st = await astroApi('/api/promo/' + PROMO_CODE); }
+  catch(e){ bar.hidden = true; return; }
+  if(!st || !st.valid){ bar.hidden = true; return; }
+  const claimed = S.user && S.user.promoClaimed;
+  bar.hidden = false;
+  bar.className = 'promobar';
+  bar.innerHTML = `<div class="wrap">
+    <span><b>First ${st.total} get everything free.</b></span>
+    <code>${esc(st.code)}</code>
+    <span class="left">${st.remaining} of ${st.total} places left</span>
+    ${claimed ? '<span class="left">already on your account ✓</span>'
+      : `<button class="btn btn-gold btn-sm" onclick="redeemPromo()">Claim it</button>`}
+  </div>`;
+}
+
+async function redeemPromo(){
+  if(!S.user){ toast('Sign in first, then claim'); go('read'); return; }
+  try{
+    // astroApi(path, body) takes a plain object and stringifies it itself, and
+    // infers POST from the presence of a body.
+    await astroApi('/api/promo/redeem', { code: PROMO_CODE });
+    S.user.promoClaimed = true; save();
+    toast('Unlocked — every reading is yours ✦');
+    paintPromo(); paintAuth();
+  }catch(e){
+    // An exhausted or already-used code is a normal outcome with a readable
+    // message from the API, not an error to swallow.
+    toast(astroErr(e));
+    paintPromo();
+  }
+}
+
 /* ---------- auth ---------- */
 function paintAuth(){
   const h=$('#hauth');
@@ -987,7 +1063,7 @@ function paintAuth(){
 }
 function setUser(u){ S.user=u; save(); paintAuth(); syncFlow(); toast('Welcome, '+u.name.split(' ')[0]+' ✦'); }
 function demoLogin(){
-  setUser({ id:'demo-'+Date.now(), name:'Guest Seeker', email:'guest@astropalmistry.ai',
+  setUser({ id:'demo-'+Date.now(), name:'Guest Seeker', email:'guest@graharekha.co.in',
     picture:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#161235"/><text x="20" y="26" font-size="16" fill="#e8b75b" text-anchor="middle" font-family="serif">G</text></svg>') });
 }
 function logout(){ S.user=null; S.reading=null; S.readingId=null; S.unlocked=false; S.details=null; S.imgs={left:null,right:null}; save(); paintAuth(); ['left','right'].forEach(clearHand); $('#s-result').innerHTML=''; syncFlow(); toast('Signed out'); }
@@ -1548,7 +1624,7 @@ async function astroAuth(){
   try{
     const r = S.user && S.user.idToken
       ? await astroApi('/api/auth/google', { idToken: S.user.idToken })
-      : await astroApi('/api/auth/dev', { email:(S.user&&S.user.email)||'guest@astropalmistry.ai',
+      : await astroApi('/api/auth/dev', { email:(S.user&&S.user.email)||'guest@graharekha.co.in',
                                                  name:(S.user&&S.user.name)||'Guest Seeker' });
     ASTRO.token = r.token; ASTRO.user = r.user; return r.token;
   }catch(e){ throw new Error('Sign-in with the astrology service failed'); }
@@ -1668,7 +1744,14 @@ function renderAstroQueue(j, kind){
 }
 
 function frameFor(link){
-  return `<iframe class="reportframe" src="${ASTRO.base + link}" title="Your report" loading="lazy"></iframe>`;
+  // Mounted on paper. The reading is a light editorial document and the app
+  // chrome is dark; framing it rather than cutting a white hole in the page is
+  // what makes the two designs read as one product.
+  return `<div class="readingmount"><iframe class="reportframe" src="${ASTRO.base + link}"
+      title="Your reading" loading="lazy"></iframe></div>
+    <div style="text-align:center;margin-top:10px">
+      <a class="btn btn-ghost btn-sm" href="${ASTRO.base + link}" target="_blank"
+         rel="noopener noreferrer">Open full screen</a></div>`;
 }
 
 function astroPayCard(item, price, refId, sections, teasers){
@@ -1943,7 +2026,7 @@ function renderAstroResult(kind, r){
   $('#cEmail').textContent=CONFIG.contactEmail; $('#cEmail').href='mailto:'+CONFIG.contactEmail;
   $('#cPhone').textContent=CONFIG.contactPhone; $('#cPhone').href='tel:'+CONFIG.contactPhone.replace(/\s/g,'');
   $('#cWa').href='https://wa.me/'+CONFIG.whatsapp;
-  paintAuth(); initGoogle(); syncFlow(); checkReady();
+  paintAuth(); initGoogle(); syncFlow(); checkReady(); paintPromo();
   if(S.user&&S.details&&S.reading) renderReading();
   $$('.logo')[0].addEventListener('keypress',e=>{ if(e.key==='Enter') go('home'); });
 })();

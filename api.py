@@ -31,7 +31,7 @@ from core.db import (engine, extend_partitions, init_schema, job_get,
                      report_get, reports_for_user, tx)
 from core.store import store
 
-app = FastAPI(title="Astro Palmistry API", version="3.0")
+app = FastAPI(title="GrahaRekha API", version="3.0")
 app.add_middleware(CORSMiddleware, allow_origins=S.allowed_origins,
                    allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
