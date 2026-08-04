@@ -189,8 +189,31 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
     if nearest and best and nearest["start"] == best["start"]:
         nearest = None
 
+    # Lines for the free view: which planet owns each house of the question,
+    # where it sits, in what condition. Facts, no conclusion drawn.
+    chart_lines = []
+    for h in topic.houses:
+        info = hl.get(str(h)) or {}
+        lord = info.get("lord", "")
+        if not lord:
+            continue
+        dig = str(info.get("lord_dignity") or "").replace("_", " ")
+        sits = info.get("lord_house")
+        detail = dig
+        if sits:
+            detail += ", placed in your " + _ord(sits)
+        if lord in topic.significators:
+            detail += "; also a classical significator for this question"
+        chart_lines.append((_ord(h) + " house — " + lord, detail))
+
+    vim_now = CF.vimshottari_at(pc, start)
+    yog_now = (CF.yogini_at(pc, start) or {}).get("lord", "")
+    now_label = f"{vim_now.get('md','')}-{vim_now.get('ad','')}" + (
+        f", lunar cycle on {yog_now}" if yog_now else "")
+
     strong = [w for w in windows if w["strong"]]
     return {"topic": topic, "question": question, "promise": promise,
+            "chart_lines": chart_lines, "now_label": now_label,
             "windows": windows, "best": best, "nearest": nearest,
             "strong_count": len(strong), "horizon": years,
             "start": start}
@@ -204,8 +227,91 @@ def _area_for(house: int) -> str:
 
 # ---------------------------------------------------------------------------
 
+def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
+    """The free view: the chart's working, with the verdict withheld.
+
+    Operator's call, and commercially it is the right one — if the answer is
+    free, nobody buys the reading. What keeps it from being a bait-and-switch is
+    that the free half is genuinely substantial: the reader sees which planets
+    rule the question, where they sit and in what condition, which periods are
+    running, and what is crossing those houses today with what strength.
+    Everything except the conclusion those facts point to.
+    """
+    topic = result["topic"]
+    who = (name or "").split()[0] if name else ""
+    windows = result["windows"]
+
+    rows = "".join(
+        "<li><b>{}</b> — {}</li>".format(_e(a), _e(b))
+        for a, b in (result.get("chart_lines") or []))
+
+    live = [w for w in windows if w["start"] <= result["start"]]
+    transit_rows = "".join(
+        "<li><b>{}</b> is crossing your {} house from {} right now, carrying "
+        "<b>{} of 8</b> classical support points there.</li>".format(
+            _e(w["planet"]), _ord(w["house"]), _e(w["sign"]), w["bav"])
+        for w in live[:2])
+
+    transit_block = ""
+    if transit_rows:
+        transit_block = (
+            '<div class="evidence"><span class="ev-label">What is crossing '
+            'those houses today</span><ul class="qa-why">'
+            + transit_rows + "</ul></div>")
+
+    return """
+<section class="qa">
+  <div class="qa-asked"><b>You asked:</b> {question}</div>
+  <p class="qa-lede">{who}here is exactly what your chart is doing on this
+  question. The dates and the answer are in the paid reading — everything below
+  is the working, so you can see this is your chart being read and not a
+  template.</p>
+
+  <div class="qa-promise">
+    <b>{label}</b> is read from your {houses} houses. {note}
+  </div>
+
+  <div class="evidence">
+    <span class="ev-label">The planets that govern your question</span>
+    <ul class="qa-why">{rows}</ul>
+  </div>
+
+  {transit_block}
+
+  <div class="evidence">
+    <span class="ev-label">Periods running right now</span>
+    <ul class="qa-why">
+      <li>{now_label}</li>
+      <li>{agreement} on whether your chart favours this at all.</li>
+    </ul>
+  </div>
+
+  <div class="qa-window locked">
+    <div class="qa-wlabel">The answer itself</div>
+    <p class="blurred">Yes — the strongest window falls between XXXXXXX XXXX and
+    XXXXXXX XXXX, with a nearer partial window before it, because XXXXXXX
+    crosses your XXth at N of 8 while the XXXXXXX period runs.</p>
+    <p><b>{n} windows were found and scored across the next {horizon}
+    years.</b> The unlock gives you every date, which of them your chart
+    actually backs, and what to do inside each one — ₹{price}.</p>
+  </div>
+</section>""".format(
+        question=_e(result["question"]),
+        who=_e(who + ", ") if who else "",
+        label=_e(topic.label),
+        houses=_e(", ".join(_ord(h) for h in topic.houses)),
+        note=_e(topic.note),
+        rows=rows,
+        transit_block=transit_block,
+        now_label=_e(result.get("now_label", "")),
+        agreement=_e(result["promise"]["agreement"]),
+        n=len(windows), horizon=result["horizon"], price=price)
+
+
 def render(result: dict, *, name: str = "", paid: bool = False,
            price: int = 1499) -> str:
+    if not paid:
+        return render_free(result, name=name, price=price)
     topic, best = result["topic"], result["best"]
     nearest = result.get("nearest")
     who = (name or "").split()[0] if name else ""

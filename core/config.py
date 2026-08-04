@@ -65,6 +65,11 @@ class Settings:
         "muhurat":        _int("PRICE_MUHURAT", 4900),
         "btr":            _int("PRICE_BTR", 99900),
         "subscription":   _int("PRICE_SUB", 19900),
+        # Everything, one payment. Separately these come to Rs 4,544, so the
+        # bundle is priced to be the obvious choice rather than a token
+        # discount — and it front-loads the rectification, which every other
+        # reading depends on.
+        "bundle_all":     _int("PRICE_BUNDLE", 210000),
     })
     free_daily_readings: int = _int("FREE_DAILY", 3)
     sub_horary_per_month: int = _int("SUB_HORARY", 3)

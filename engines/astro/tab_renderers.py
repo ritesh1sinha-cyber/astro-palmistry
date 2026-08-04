@@ -20,7 +20,7 @@ Pretending they are the same shape would be worse than letting each be itself.
 from __future__ import annotations
 
 import html as _html
-from typing import Any
+from typing import Any, Optional
 
 # ---------------------------------------------------------------------------
 
@@ -216,23 +216,77 @@ def _reduce(n: int) -> int:
     return n
 
 
-def numerology_numbers(name: str, dob) -> dict:
-    """Life path from the date, expression from the name."""
-    digits = [int(c) for c in f"{dob:%Y%m%d}"]
-    life = _reduce(sum(digits))
-    letters = {c: (i % 9) + 1 for i, c in enumerate("abcdefghijklmnopqrstuvwxyz")}
-    expr = _reduce(sum(letters.get(c, 0) for c in name.lower() if c.isalpha()))
+VOWELS = set("aeiou")
+
+#: Chaldean values — the system Indian numerology actually uses. 9 is never
+#: assigned to a letter in Chaldean, which is why it differs from Pythagorean.
+CHALDEAN = {**{c: 1 for c in "aij"}, **{c: 2 for c in "bkr"},
+            **{c: 3 for c in "cgls"}, **{c: 4 for c in "dmt"},
+            **{c: 5 for c in "ehnx"}, **{c: 6 for c in "uvw"},
+            **{c: 7 for c in "oz"}, **{c: 8 for c in "fp"}}
+
+PERSONAL_YEAR = {
+    1: ("A starting year", "Begin things. What you start now sets the tone for eight more years."),
+    2: ("A patience year", "Partnerships and waiting. Forcing anything this year costs double."),
+    3: ("An expression year", "Being seen, speaking, creating. Visibility comes easily now."),
+    4: ("A building year", "Unglamorous, structural work. The year that makes the next three possible."),
+    5: ("A change year", "Movement, travel, disruption. Do not sign long leases you cannot exit."),
+    6: ("A responsibility year", "Family and duty come first, whether you planned it or not."),
+    7: ("A withdrawal year", "Study, reflection, health. A poor year to push, a good one to prepare."),
+    8: ("A money and power year", "The harvest year of the cycle. Ask for what you are owed."),
+    9: ("A clearing year", "Endings and letting go. Do not start something you want to keep."),
+}
+
+LUCKY = {
+    1: ("Sunday", "gold, orange", "Sun"), 2: ("Monday", "white, cream", "Moon"),
+    3: ("Thursday", "yellow", "Jupiter"), 4: ("Saturday", "grey, khaki", "Rahu"),
+    5: ("Wednesday", "green", "Mercury"), 6: ("Friday", "white, pastels", "Venus"),
+    7: ("Monday", "sea green", "Ketu"), 8: ("Saturday", "black, deep blue", "Saturn"),
+    9: ("Tuesday", "red", "Mars"),
+}
+
+CHALLENGE = {
+    1: "Being told what to do. You will quietly sabotage a role that has no autonomy.",
+    2: "Saying no. You absorb other people's decisions and call it agreement.",
+    3: "Finishing. Starting is easy for you and closing is not.",
+    4: "Flexibility. You will defend a plan past the point it still makes sense.",
+    5: "Staying. Boredom reads to you as a reason to leave.",
+    6: "Boundaries. You will carry someone who could carry themselves.",
+    7: "Letting people in. You solve things alone that would be faster shared.",
+    8: "Scale creep. You take on the bigger version before the smaller one works.",
+    9: "Holding on. You keep loyalties past their usefulness.",
+}
+
+
+def numerology_numbers(name: str, dob, *, today=None) -> dict:
+    """Life path, expression, soul urge, personality, birthday, personal year."""
+    from datetime import date as _date
+    today = today or _date.today()
+    letters = [c for c in name.lower() if c.isalpha()]
+    life = _reduce(sum(int(c) for c in f"{dob:%Y%m%d}"))
+    expr = _reduce(sum(CHALDEAN.get(c, 0) for c in letters))
+    soul = _reduce(sum(CHALDEAN.get(c, 0) for c in letters if c in VOWELS))
+    persona = _reduce(sum(CHALDEAN.get(c, 0) for c in letters if c not in VOWELS))
     birthday = _reduce(dob.day)
-    return {"life_path": life, "expression": expr, "birthday": birthday}
+    # personal year runs birthday to birthday, not January to January
+    year = today.year if (today.month, today.day) >= (dob.month, dob.day) \
+        else today.year - 1
+    p_year = _reduce(dob.day + dob.month + _reduce(year))
+    return {"life_path": life, "expression": expr, "soul_urge": soul,
+            "personality": persona, "birthday": birthday,
+            "personal_year": p_year, "year_from": year}
 
 
 def render_numerology(name: str, dob, *, paid: bool = False,
-                      price: int = 199) -> str:
-    nums = numerology_numbers(name, dob)
+                      price: int = 199, today=None) -> str:
+    nums = numerology_numbers(name, dob, today=today)
     cards = ""
     for key, label, note in (
         ("life_path", "Life path", "from your date of birth — the arc you are on"),
         ("expression", "Expression", "from your full name — how you land on others"),
+        ("soul_urge", "Soul urge", "from the vowels — what you actually want"),
+        ("personality", "Outer personality",
+         "from the consonants — what strangers meet first"),
         ("birthday", "Birthday number", "from the day itself — your working style"),
     ):
         n = nums[key]
@@ -264,11 +318,32 @@ def render_numerology(name: str, dob, *, paid: bool = False,
         correction is a real technique rather than a superstition.</li>
     </ul>
   </div>
+  <div class="num-year">
+    <div class="ev-label">Your personal year right now — free</div>
+    <h4>{nums['personal_year']} · {_e(PERSONAL_YEAR.get(nums['personal_year'], ('',''))[0])}</h4>
+    <p>{_e(PERSONAL_YEAR.get(nums['personal_year'], ('',''))[1])}</p>
+    <p class="fine">This runs birthday to birthday, not January to January —
+    it began on your {dob:%d %B} in {nums['year_from']} and turns over on the
+    next one.</p>
+  </div>
+
+  <div class="num-extra">
+    <div><span>Your day</span><b>{_e(LUCKY.get(nums['life_path'], ('',''))[0])}</b></div>
+    <div><span>Your colours</span><b>{_e(LUCKY.get(nums['life_path'], ('','',''))[1])}</b></div>
+    <div><span>Ruling planet</span><b>{_e(LUCKY.get(nums['life_path'], ('','',''))[2])}</b></div>
+  </div>
+
+  <div class="evidence"><span class="ev-label">The thing your numbers make hard
+  for you</span>
+    <p style="font-size:.88rem;margin:8px 0 0">{_e(CHALLENGE.get(nums['life_path'], ''))}</p>
+  </div>
+
   {'' if paid else f'''
   <div class="tab-cta">
-    <p>Your numbers also carry a <b>personal year</b> that changes every
-    birthday, favourable dates for signing and starting, and a name-correction
-    analysis. ₹{price}.</p>
+    <p><b>What the unlock adds:</b> your next three personal years dated in
+    advance, favourable dates for signing, starting and travelling, a
+    name-correction analysis with the exact spelling that balances your chart,
+    and compatibility scoring against another person's numbers. ₹{price}.</p>
   </div>'''}
 </section>"""
 
@@ -277,7 +352,8 @@ def render_numerology(name: str, dob, *, paid: bool = False,
 # Palmistry
 # ---------------------------------------------------------------------------
 
-def render_palm(public: dict, *, paid: bool = False, price: int = 499) -> str:
+def render_palm(public: dict, *, paid: bool = False, price: int = 499,
+                overlays: Optional[dict] = None) -> str:
     meta = public.get("meta") or {}
     scores = public.get("scores") or {}
     past = public.get("past") or []
@@ -294,6 +370,25 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499) -> str:
     image — we would rather tell you than quietly read a blurred line.</p>
     {'<ul>' + ''.join(f'<li>{_e(a)}</li>' for a in advice[:3]) + '</ul>' if advice else ''}
   </div>"""
+
+    # Showing the marked-up palms is the strongest trust signal in this tab:
+    # the reader can see their own hand with the lines the engine actually
+    # traced, which is not something a generic reading could fake.
+    ov = overlays or {}
+    overlay_block = ""
+    if ov:
+        imgs = "".join(
+            f'<figure><img src="{_e(u)}" alt="{_e(h)} palm with detected lines"/>'
+            f'<figcaption>{_e(h.title())} hand — lines and mounts as detected</figcaption>'
+            f'</figure>' for h, u in ov.items() if u)
+        if imgs:
+            overlay_block = (
+                '<div class="palm-shots"><div class="ev-label">Your palms, as '
+                'the engine read them</div><div class="palm-imgs">' + imgs
+                + '</div><p class="fine">These are your own photographs with the '
+                  'lines the reading is based on drawn on top. If a line looks '
+                  'wrong to you, the reading of it will be wrong too — retake '
+                  'and run it again.</p></div>')
 
     score_rows = "".join(f"""
       <li><span>{_e(k.replace('_', ' ').title())}</span>
@@ -319,6 +414,7 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499) -> str:
     <span class="tab-kind">Palm reading</span>
     <h2>{_e(public.get('summary') or 'What your hands show')}</h2>
   </div>
+  {overlay_block}
   {quality_note}
   <div class="evidence"><span class="ev-label">Measured from your palms</span>
     <ul class="palm-scores">{score_rows}</ul>
