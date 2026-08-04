@@ -380,10 +380,12 @@ def mark_chart_zones_on_palm(
     overlay = bgr.copy()
     marked: list[dict[str, Any]] = []
 
-    # House sector outlines (dashed) for longevity review
+    # House sector outlines (dashed) for house-zone review
     if draw_house_zones:
         house_boxes = house_overlay_zones(mounts, w, h)
-        house_labels = {"h5": "5th", "h6": "6th", "h8": "8th-LONG", "h10": "10th"}
+        # "8th-LONG" used to be drawn onto the customer's own palm photograph.
+        # No lifespan labelling anywhere in this product, including overlays.
+        house_labels = {"h5": "5th", "h6": "6th", "h8": "8th", "h10": "10th"}
         for hid, box in house_boxes.items():
             x0, y0, x1, y1 = box
             col = ZONE_COLORS.get(hid, (180, 180, 180))

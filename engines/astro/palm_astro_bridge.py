@@ -28,18 +28,22 @@ but only on the chart side, and says so.
 Two things had to be worked around, and they are worth stating plainly because
 they cap how good this lane can be:
 
-* `astro_palmistry_anchor_engine.MAIN_LINE` and `SUB_PLANET` are keyed by
-  (planet, house) and their nine keys are, exactly, the nine planet placements
-  of the primary test chart — Jupiter@8, Mercury@10, Venus@10, Ketu@5, Mars@11,
-  Rahu@11, Saturn@6, Moon@4, Sun@9. They are one client's reading hardcoded as
-  if it were book doctrine. Any other chart hits 1-2 of the nine and falls to
-  `_fallback_main`, whose output is "Mark venus mount/zone for Venus as line-lord
-  of house 7." So the anchor engine is used here for the *structure* it computes
-  (which mount is line-lord of which zone, and the sub-planet ordering) and its
-  interpretive strings are deliberately not surfaced. The prose in this module
-  is built from `HOUSE_PALM` / `DIGNITY_PALM` / `NODE_PALM` instead, which are
-  keyed on house and dignity and therefore vary with the chart rather than
-  with one person's chart.
+* `astro_palmistry_anchor_engine.MAIN_LINE` and `SUB_PLANET` USED TO BE keyed by
+  (planet, house), and their nine keys were exactly the nine placements of the
+  primary test chart — Jupiter@8, Mercury@10, Venus@10, Ketu@5, Mars@11, Rahu@11,
+  Saturn@6, Moon@4, Sun@9. Measured, they fired 9/9 for that chart and 5/108
+  across twelve random ones, and when they did fire for a stranger they asserted
+  the original chart's dignities and co-tenants as if they were the reader's.
+  That has since been fixed at the source: those tables are now empty and the
+  anchor engine composes every reading per chart from planet→mount,
+  house→zone and dignity→tone, with anchor/sub relationships derived from the
+  two real placements. See `anchor_engine_test.py`.
+
+  This module still builds its own prose from `HOUSE_PALM` / `DIGNITY_PALM` /
+  `NODE_PALM` rather than surfacing the anchor engine's strings — not because the
+  engine's strings are untrustworthy now, but because this lane needs its own
+  voice and its own vote. The anchor engine is used here for the *structure* it
+  computes: which mount is line-lord of which zone, and the sub-planet ordering.
 * `astro_palmistry_chart_lane.COMBO_RULES` — nine book-backed combination rules
   with predicates over the normalised chart — is dead code. It is defined and
   never evaluated by anything in the repo. It is wired here.

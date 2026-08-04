@@ -1,17 +1,67 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Anchor planet (line main) + sub-planet house readings per Astro-Palmistry book.
+Anchor planet (line main) + sub-planet house readings.
 
-If Jupiter is in 8th, Jupiter is the line-lord for the 8th-house palm zone.
-Each other planet in its house is a sub-planet with its own palm mark and book meaning.
-Confluence merges themes across anchors and sub-planets.
+If Jupiter is in the 8th, Jupiter is the line-lord for the 8th-house palm zone.
+Every other planet in its house is a sub-planet with its own palm mark. The
+confluence merges themes across anchors and sub-planets.
+
+WHY THIS FILE WAS REWRITTEN
+---------------------------
+The first version keyed its readings off hand-written `MAIN_LINE` and
+`SUB_PLANET` tables of (planet, house) pairs. Those nine pairs were exactly one
+test subject's nine placements, which was measurable and bad:
+
+    that chart:        MAIN_LINE fired 9/9   (100%)
+    12 random charts:  MAIN_LINE fired 5/108 (5%)
+
+So 95% of real readers got generic fallback prose, and the 5% who did hit an
+entry could be told things about their chart that were false, because the
+entry's text asserted the ORIGINAL chart's facts. Measured on the same 12
+charts, two such assertions landed in a single reading:
+
+    "Mars in 11th with moolatrikona"  -> that Mars was in a neutral sign
+    "Rahu co-tenant amplifies..."     -> that Rahu was in the 6th, not the 11th
+
+A table cannot know a stranger's dignities or co-tenants, so it must not claim
+them. Everything is now COMPOSED per chart from three layers that are true for
+everybody:
+
+    1. PLANET_MOUNT  planet -> its mount on the palm      (classical palmistry)
+    2. HOUSE_ZONE    house  -> theme + the lines that carry it   (both systems)
+    3. DIGNITY       dignity -> tone and strength wording        (Jyotish)
+
+Relationships between an anchor and a sub-planet are likewise DERIVED from the
+two actual placements (conjunction, opposition, trine, dusthana-from-anchor)
+rather than looked up, so they are true by construction.
+
+Longevity is deliberately absent. The 8th house is read as a health-and-upheaval
+zone, and `no_longevity.scrub()` is the final gate on every string this module
+emits, so no lifespan language can survive even if a caller adds some.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from astro_palmistry_zone_cv import DOMAIN_ZONES, cv_finding_sentence
+from astro_palmistry_zone_cv import DOMAIN_ZONES as _CV_DOMAIN_ZONES
+from astro_palmistry_zone_cv import cv_finding_sentence
+
+# The CV module keeps a "longevity" domain whose zones (h8, life line) are the
+# right places to LOOK for 8th-house material. We still inspect them — we just
+# report them as health and upheaval. Folding them into health here means the
+# zones are not orphaned now that the longevity domain is never emitted.
+DOMAIN_ZONES: dict[str, list[str]] = {
+    d: list(z) for d, z in _CV_DOMAIN_ZONES.items() if d != "longevity"
+}
+DOMAIN_ZONES["health"] = list(dict.fromkeys(
+    DOMAIN_ZONES.get("health", []) + _CV_DOMAIN_ZONES.get("longevity", [])))
+
+try:
+    from no_longevity import scrub as _scrub
+except Exception:                                                    # noqa: BLE001
+    def _scrub(text: Any) -> str:                                    # type: ignore
+        return str(text or "")
 
 PLANET_ZONE: dict[str, str] = {
     "Sun": "sun",
@@ -33,162 +83,198 @@ HOUSE_THEMES: dict[int, str] = {
     5: "children, romance, creativity",
     6: "health, service, debts",
     7: "marriage, partnership",
-    8: "longevity, legacies, sudden turns",
+    # Never "longevity". The 8th is read as upheaval and inherited matters;
+    # lifespan is out of scope for this product by policy, and no_longevity
+    # scrubs the output as a backstop.
+    8: "upheaval, inheritance, sudden turns",
     9: "luck, father-guru, dharma",
     10: "career, status, authority",
     11: "gains, friends, fulfilment",
-    12: "expenses, foreign, secret sorrows",
+    12: "expenses, foreign lands, private strain",
 }
 
-MAIN_LINE: dict[tuple[str, int], dict[str, str]] = {
-    ("Jupiter", 8): {
-        "palm": "Jupiter mount rayed; fate line bends toward Saturn; 8th-zone cross on life/heart lines.",
-        "life": "Longevity and legacies house active. Debilitated Jupiter here is malefic for children and grandfather (book p.317). Alone in 8th/6th/10th stresses kalpayu themes.",
-        "domain": "longevity",
-        "tone": "caution",
-    },
-    ("Mercury", 10): {
-        "palm": "Mercury mount under little finger; fate and Sun lines toward career sector.",
-        "life": "Karma bhava. Debilitated Mercury: twisted career line, weak pinky mount; status through discipline.",
-        "domain": "career",
-        "tone": "caution",
-    },
-    ("Venus", 10): {
-        "palm": "Venus mount full; girdle of Venus; Sun/fate lines to Apollo sector.",
-        "life": "Exalted Venus in 10th supports public career, comfort, arts or finance visibility.",
-        "domain": "career",
-        "tone": "support",
-    },
-    ("Ketu", 5): {
-        "palm": "Upper Mars (Ketu sector) + Venus/Moon mounts; heart and children lines.",
-        "life": "Ketu in 5th: children, ears, spine, knees; maternal uncle themes (book).",
-        "domain": "children",
-        "tone": "caution",
-    },
-    ("Mars", 11): {
-        "palm": "Plain of Mars and gain branches on heart/life lines; Venus/Sun mounts.",
-        "life": "Mars in 11th with moolatrikona: gains, elder siblings, fulfilled desires; Rahu co-tenant amplifies node marks.",
-        "domain": "gains",
-        "tone": "support",
-    },
-    ("Rahu", 11): {
-        "palm": "Zone above Heart line (Rahu) plus 11th gain lines on Sun/Venus mounts.",
-        "life": "Rahu in 11th: unconventional gains; check Rahu zone for heavy cross-lines.",
-        "domain": "gains",
-        "tone": "mixed",
-    },
-    ("Saturn", 6): {
-        "palm": "Saturn mount; Hepatica/health lines; upper Mars sector.",
-        "life": "Service, debt, enemy house. Saturn here: fate line bars, chronic strain themes.",
-        "domain": "health",
-        "tone": "caution",
-    },
-    ("Moon", 4): {
-        "palm": "Mount of Moon at percussion; heart line base toward Luna; fate branches.",
-        "life": "Mother, home, property. Moon in 4th: domestic comfort or worry per mount clarity.",
-        "domain": "home",
-        "tone": "mixed",
-    },
-    ("Sun", 9): {
-        "palm": "Sun mount, intuition/travel lines, ring of Solomon area.",
-        "life": "Bhagya house: father, guru, long travel; Sun line toward Libra/Venus sector if strong.",
-        "domain": "luck",
-        "tone": "support",
-    },
+# ---------------------------------------------------------------------------
+# Layer 1 — planet to mount. Classical palmistry, identical for every hand.
+# ---------------------------------------------------------------------------
+PLANET_MOUNT: dict[str, tuple[str, str]] = {
+    "Sun": ("mount of the Sun, under the ring finger",
+            "recognition and the work being seen"),
+    "Moon": ("mount of the Moon at the percussion",
+             "imagination, moods and travel"),
+    "Mars": ("plain and mounts of Mars, either side of the palm",
+             "courage, resistance and appetite for a fight"),
+    "Mercury": ("mount of Mercury, under the little finger",
+                "speech, negotiation and commerce"),
+    "Jupiter": ("mount of Jupiter, under the index finger",
+                "authority, ambition and belief"),
+    "Venus": ("mount of Venus, the ball of the thumb",
+              "affection, vitality and pleasure"),
+    "Saturn": ("mount of Saturn, under the middle finger",
+               "discipline, solitude and endurance"),
+    "Rahu": ("zone above the heart line",
+             "hunger for what is out of reach"),
+    "Ketu": ("lower percussion below the Moon mount",
+             "detachment and what is being let go"),
 }
 
-SUB_PLANET: dict[tuple[str, int], dict[str, str]] = {
-    ("Ketu", 5): {
-        "palm": "Upper Mars grille; Venus mount children lines.",
-        "life": "Children/creativity house stressed per chart; ears, spine, knees themes.",
-        "domain": "children",
-        "tone": "caution",
-    },
-    ("Mercury", 10): {
-        "palm": "Little-finger mount; fate line twist.",
-        "life": "Career and reputation; debility makes Mercury malefic when 8th is also afflicted.",
-        "domain": "career",
-        "tone": "caution",
-    },
-    ("Venus", 10): {
-        "palm": "Strong Venus mount; clean girdle.",
-        "life": "Public comfort and career grace; exaltation supports arts, partnership, finance.",
-        "domain": "career",
-        "tone": "support",
-    },
-    ("Jupiter", 8): {
-        "palm": "Jupiter mount + fate toward Saturn.",
-        "life": "8th-house anchor: legacies, sudden events; debilitated = malefic for progeny line.",
-        "domain": "longevity",
-        "tone": "caution",
-    },
-    ("Saturn", 6): {
-        "palm": "Saturn mount barred; health lines.",
-        "life": "Service, illness, enemies; dusthana Saturn strains fate line.",
-        "domain": "health",
-        "tone": "caution",
-    },
-    ("Mars", 11): {
-        "palm": "Plain of Mars active; gain branches.",
-        "life": "Gains through courage, friends, elder siblings; strong Mars supports income lines.",
-        "domain": "gains",
-        "tone": "support",
-    },
-    ("Rahu", 11): {
-        "palm": "Rahu zone above heart; Sun/Venus gain lines.",
-        "life": "Gains through unconventional paths; co-tenant with Mars doubles Plain of Mars activity.",
-        "domain": "gains",
-        "tone": "mixed",
-    },
-    ("Moon", 4): {
-        "palm": "Luna mount; life branch toward Moon.",
-        "life": "Mother, home, vehicles; Moon mount fullness = domestic stability.",
-        "domain": "home",
-        "tone": "mixed",
-    },
-    ("Sun", 9): {
-        "palm": "Sun line to mount; travel marks.",
-        "life": "Luck, father, dharma; strong Sun line toward Venus/Libra = reasonable income (book).",
-        "domain": "luck",
-        "tone": "support",
-    },
+# ---------------------------------------------------------------------------
+# Layer 2 — house to the palm lines that carry it, plus the life question it
+# asks. General to any chart.
+# ---------------------------------------------------------------------------
+HOUSE_ZONE: dict[int, tuple[str, str]] = {
+    1: ("the life line where it leaves the thumb", "how much stamina you start with"),
+    2: ("the head line's early third and the Mercury mount",
+        "what you earn and what you say"),
+    3: ("the short branches rising off the life line",
+        "nerve, siblings and paperwork"),
+    4: ("the base of the fate line and the Moon mount",
+        "home, mother and the roof over you"),
+    5: ("the fine lines under the heart line toward Venus",
+        "children, romance and what you make"),
+    6: ("the health line and the barred part of the Saturn mount",
+        "illness, service and who opposes you"),
+    7: ("the marriage lines on the percussion below the little finger",
+        "partnership and who you bind yourself to"),
+    8: ("crossings on the life and fate lines",
+        "upheaval, inherited matters and what arrives without warning"),
+    9: ("the intuition line and the travel lines toward the Moon mount",
+        "luck, teachers and long journeys"),
+    10: ("the fate line where it climbs to the Saturn mount",
+         "career and public standing"),
+    11: ("the branches rising to the Jupiter and Sun mounts",
+         "gains, friends and desires actually met"),
+    12: ("the faint lines toward the wrist and under the Moon mount",
+         "expense, foreign ground and private strain"),
 }
 
-RELATIVE_SUB: dict[tuple[str, int], list[tuple[tuple[str, int], str]]] = {
-    ("Jupiter", 8): [
-        (("Ketu", 5), "With Jupiter anchoring 8th, Ketu in 5th pulls children stress onto upper-Mars and Venus mounts while 8th Jupiter strains progeny/grandfather line (book)."),
-        (("Mercury", 10), "8th malefic Jupiter makes Mercury in 10th more troubled: career fate line twisted, pinky mount weak (book: Mercury malefic when 8th afflicted)."),
-        (("Venus", 10), "Venus exalted in 10th partly rescues career mount despite Jupiter@8 strain on legacy line."),
-        (("Saturn", 6), "Saturn in 6th with Jupiter@8: health/service bars on fate line; dusthana echo on both mounts."),
-        (("Mars", 11), "Mars+Rahu in 11th offsets some 8th Jupiter loss through active Plain of Mars and Rahu zone."),
-        (("Moon", 4), "Moon in 4th home zone vs 8th Jupiter: property comfort parallel to legacy/sudden-turn stress."),
-        (("Sun", 9), "Sun in 9th luck house supports dharma/travel lines while Jupiter@8 handles legacy separately."),
-        (("Rahu", 11), "Rahu with Mars in 11th: mark Rahu above heart and Plain of Mars together."),
-    ],
+# House to the confluence domain. 8 maps to health, not longevity.
+HOUSE_DOMAIN: dict[int, str] = {
+    1: "health", 2: "gains", 3: "gains", 4: "home", 5: "children",
+    6: "health", 7: "home", 8: "health", 9: "luck", 10: "career",
+    11: "gains", 12: "health",
 }
+
+# ---------------------------------------------------------------------------
+# Layer 3 — dignity to tone and to how the mount should read.
+# ---------------------------------------------------------------------------
+DIGNITY: dict[str, tuple[str, str, str]] = {
+    # dignity -> (tone, strength phrase, expected mount appearance)
+    "exalted": ("support", "at its strongest",
+                "full and clearly formed"),
+    "moolatrikona": ("support", "on comfortable ground",
+                     "well shaped and firm"),
+    "own_sign": ("support", "in its own sign",
+                 "clean and well defined"),
+    "friendly_sign": ("mixed", "reasonably placed",
+                      "adequately formed"),
+    "neutral_sign": ("mixed", "neither helped nor hindered",
+                     "ordinary, neither full nor flat"),
+    "enemy_sign": ("caution", "on difficult ground",
+                   "flat or crossed"),
+    "debilitated": ("caution", "at its weakest",
+                    "flat, or cut by fine cross-lines"),
+}
+DUSTHANA = (6, 8, 12)
 
 TONE_SCORE = {"support": 2, "mixed": 0, "caution": -2}
 
-
-def _fallback_main(planet: str, house: int, dignity: str, sign: str) -> dict[str, str]:
-    zone = PLANET_ZONE.get(planet, "mars")
-    return {
-        "palm": f"Mark {zone} mount/zone for {planet} as line-lord of house {house}.",
-        "life": f"{planet} in {sign} ({dignity.replace('_', ' ')}) rules {HOUSE_THEMES.get(house, 'house matters')} on the palm.",
-        "domain": HOUSE_THEMES.get(house, "general").split(",")[0].strip(),
-        "tone": "caution" if dignity == "debilitated" else "mixed",
-    }
+# Kept for backward compatibility with callers that imported these names. They
+# are intentionally empty: a lookup table of (planet, house) prose cannot know a
+# stranger's dignities or co-tenants, which is how the old version put false
+# statements into real readings. `palm_astro_bridge` imports PLANET_ZONE only.
+MAIN_LINE: dict[tuple[str, int], dict[str, str]] = {}
+SUB_PLANET: dict[tuple[str, int], dict[str, str]] = {}
+RELATIVE_SUB: dict[tuple[str, int], list[tuple[tuple[str, int], str]]] = {}
 
 
-def _fallback_sub(planet: str, house: int, dignity: str, sign: str) -> dict[str, str]:
-    zone = PLANET_ZONE.get(planet, "mars")
-    return {
-        "palm": f"Sub-zone: {zone} for {planet} in house {house}.",
-        "life": f"{planet} in {sign} ({dignity.replace('_', ' ')}) affects {HOUSE_THEMES.get(house, 'this life area')}.",
-        "domain": HOUSE_THEMES.get(house, "general").split(",")[0].strip(),
-        "tone": "caution" if dignity == "debilitated" else ("support" if dignity == "exalted" else "mixed"),
-    }
+def _tone(dignity: str, house: int) -> str:
+    """Dignity sets the tone; a dusthana house pulls a neutral one down."""
+    tone = DIGNITY.get(dignity, ("mixed", "", ""))[0]
+    if house in DUSTHANA and tone == "mixed":
+        return "caution"
+    return tone
 
+
+def _reading(planet: str, house: int, dignity: str, sign: str,
+             *, role: str) -> dict[str, str]:
+    """Compose one placement's palm zone and life reading from the chart.
+
+    Every clause is derived from the four arguments, so nothing can be asserted
+    that this chart does not contain. That is the whole point of the rewrite.
+    """
+    mount, mount_gov = PLANET_MOUNT.get(
+        planet, ("plain of Mars", "drive and resistance"))
+    lines, question = HOUSE_ZONE.get(
+        house, ("the fate line", HOUSE_THEMES.get(house, "this area of life")))
+    tone, strength, appearance = DIGNITY.get(
+        dignity, ("mixed", "placed without strong help or harm",
+                  "ordinary in form"))
+    theme = HOUSE_THEMES.get(house, "this area of life")
+
+    if role == "main":
+        palm = (f"{planet} is the line-lord here, so read the {mount} together "
+                f"with {lines}. In a chart like yours that mount should look "
+                f"{appearance}.")
+    else:
+        palm = (f"Read the {mount} against {lines} — {appearance} is what this "
+                f"placement predicts.")
+
+    hard = house in DUSTHANA
+    # "shows up in" rather than "is working through": mount_gov is a list of
+    # nouns ("authority, ambition and belief"), so a copula forces a
+    # subject-verb agreement error that no table edit can fix.
+    life = (f"{planet} sits in your {_ord(house)} house in {sign}, "
+            f"{strength}. That house governs {theme}, so {mount_gov} shows up "
+            f"in {question}.")
+    if tone == "caution" and hard:
+        life += (" A difficult house and a weak placement together: expect "
+                 "this area to ask for effort rather than hand anything over.")
+    elif tone == "caution":
+        life += (" The placement is under strain, so progress here is earned "
+                 "rather than given.")
+    elif tone == "support" and hard:
+        life += (" A strong planet in a hard house — the difficulty is real "
+                 "but you are equipped for it.")
+    elif tone == "support":
+        life += " This is one of the better-supported parts of your chart."
+
+    return {"palm": palm, "life": life,
+            "domain": HOUSE_DOMAIN.get(house, "health"), "tone": tone}
+
+
+def _ord(n: int) -> str:
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def _relation(a_planet: str, a_house: int, s_planet: str, s_house: int,
+              s_dignity: str) -> str:
+    """Derive the anchor/sub relationship from the two real placements.
+
+    Replaces a lookup table whose entries described one specific chart. Because
+    this is computed, it is true for whatever chart it is handed.
+    """
+    if a_house == s_house:
+        return (f"{s_planet} shares the {_ord(a_house)} house with {a_planet}, "
+                f"so both read on the same palm zone and their themes arrive "
+                f"together rather than separately.")
+    gap = (s_house - a_house) % 12
+    if gap == 6:
+        return (f"{s_planet} sits opposite {a_planet}, {_ord(s_house)} against "
+                f"{_ord(a_house)} — the two pull against each other, and the "
+                f"palm usually shows one zone fuller than the other.")
+    if gap in (4, 8):
+        return (f"{s_planet} makes a supporting trine to {a_planet} from the "
+                f"{_ord(s_house)}, so it eases what {a_planet} is carrying.")
+    if gap in (2, 10):
+        return (f"{s_planet} in the {_ord(s_house)} works quietly alongside "
+                f"{a_planet}, close enough to help but not to dominate.")
+    if s_house in DUSTHANA:
+        extra = " and weakly placed" if s_dignity in (
+            "debilitated", "enemy_sign") else ""
+        return (f"{s_planet} lies in the {_ord(s_house)}, a difficult house{extra}, "
+                f"so it complicates rather than supports {a_planet}'s area.")
+    return (f"{s_planet} in the {_ord(s_house)} is largely independent of "
+            f"{a_planet} — read its own mount on its own terms.")
 
 def build_anchor_analysis(planets: dict[str, dict], lagna: str) -> dict[str, Any]:
     plist = sorted(
@@ -199,31 +285,27 @@ def build_anchor_analysis(planets: dict[str, dict], lagna: str) -> dict[str, Any
     anchors: list[dict[str, Any]] = []
     for planet, info in plist:
         h = int(info["house"])
-        main = MAIN_LINE.get((planet, h)) or _fallback_main(planet, h, info["dignity"], info["sign"])
+        main = _reading(planet, h, info["dignity"], info["sign"], role="main")
         subs: list[dict[str, Any]] = []
         for sp, si in plist:
             if sp == planet:
                 continue
             sh = int(si["house"])
-            sub = SUB_PLANET.get((sp, sh)) or _fallback_sub(sp, sh, si["dignity"], si["sign"])
-            rel = ""
-            for (ap, ah), pairs in RELATIVE_SUB.items():
-                if ap == planet and ah == h:
-                    for (rp, rh), msg in pairs:
-                        if rp == sp and rh == sh:
-                            rel = msg
-                            break
+            sub = _reading(sp, sh, si["dignity"], si["sign"], role="sub")
             subs.append({
                 "planet": sp,
                 "sign": si["sign"],
                 "house": sh,
                 "dignity": si["dignity"],
                 "zone_id": PLANET_ZONE.get(sp, "mars"),
-                "palm": sub["palm"],
-                "life": sub["life"],
+                "palm": _scrub(sub["palm"]),
+                "life": _scrub(sub["life"]),
                 "domain": sub["domain"],
                 "tone": sub["tone"],
-                "relative_to_anchor": rel,
+                # Derived from the two real placements, so it cannot describe
+                # some other chart's geometry.
+                "relative_to_anchor": _scrub(
+                    _relation(planet, h, sp, sh, si["dignity"])),
             })
         anchors.append({
             "planet": planet,
@@ -232,8 +314,8 @@ def build_anchor_analysis(planets: dict[str, dict], lagna: str) -> dict[str, Any
             "dignity": info["dignity"],
             "zone_id": PLANET_ZONE.get(planet, "mars"),
             "role": "line_main",
-            "palm": main["palm"],
-            "life": main["life"],
+            "palm": _scrub(main["palm"]),
+            "life": _scrub(main["life"]),
             "domain": main["domain"],
             "tone": main["tone"],
             "sub_planets": subs,
@@ -271,12 +353,27 @@ def apply_cv_evidence(analysis: dict[str, Any], zone_metrics: dict[str, dict[str
             sz = s["zone_id"]
             s["cv_finding"] = cv_finding_sentence(sz, zone_metrics.get(sz, {}), s.get("tone") == "caution") if has_photos else "No palm photo supplied."
 
-    ketu_a = next((x for x in anchors if x["planet"] == "Ketu" and x["house"] == 5), None)
-    jup_a = next((x for x in anchors if x["planet"] == "Jupiter" and x["house"] == 8), None)
-    if ketu_a and jup_a:
-        for s in jup_a.get("sub_planets", []):
-            if s["planet"] == "Ketu" and s["house"] == 5 and s.get("relative_to_anchor"):
-                ketu_a["chart_link"] = s["relative_to_anchor"]
+    # Cross-link each anchor to the most significant OTHER placement in its own
+    # domain. The old version hardcoded Ketu@5 against Jupiter@8 — the two
+    # placements belonging to the chart this file was written against, so the
+    # link appeared for one person and for nobody else.
+    for a in anchors:
+        best: tuple[int, str, str] = (-1, "", "")
+        for other in anchors:
+            if other is a or other["domain"] != a["domain"]:
+                continue
+            # Prefer a conjunction, then an opposition, then anything strong.
+            gap = (other["house"] - a["house"]) % 12
+            weight = 3 if gap == 0 else (2 if gap == 6 else 1)
+            if other["tone"] == "caution":
+                weight += 1
+            if weight > best[0]:
+                best = (weight, other["planet"],
+                        _relation(a["planet"], a["house"], other["planet"],
+                                  other["house"], other["dignity"]))
+        if best[0] > 0:
+            a["chart_link"] = _scrub(best[2])
+            a["chart_link_with"] = f"{best[1]}@{next(o['house'] for o in anchors if o['planet'] == best[1])}"
 
     # One note per planet@house per domain (deduped)
     domain_entries: dict[str, dict[tuple[str, int, str], str]] = {}
@@ -292,7 +389,9 @@ def apply_cv_evidence(analysis: dict[str, Any], zone_metrics: dict[str, dict[str
         dom = a["domain"]
         _add(dom, a["planet"], a["house"], "chart", f"{a['planet']}@{a['house']} (chart): {a['life'][:100]}")
         if a.get("chart_link"):
-            _add(dom, a["planet"], a["house"], "link", f"{a['planet']}@{a['house']} (vs Jupiter@8): {a['chart_link'][:120]}")
+            vs = a.get("chart_link_with", "chart")
+            _add(dom, a["planet"], a["house"], "link",
+                 f"{a['planet']}@{a['house']} (vs {vs}): {a['chart_link'][:120]}")
         _add(dom, a["planet"], a["house"], "print", f"{a['planet']}@{a['house']} (print): {a['cv_finding']}")
         for s in a.get("sub_planets", []):
             sd = s["domain"]
@@ -346,13 +445,23 @@ def apply_cv_evidence(analysis: dict[str, Any], zone_metrics: dict[str, dict[str
                 f"Readable zones: {', '.join(z for z in zone_hits if z not in unclear) or 'none'}."
             )
             conf = "moderate"
-        elif stress_confirmed and chart_score <= 0:
+        elif stress_confirmed and chart_score < 0:
             verdict = (
                 f"Chart stress for {dom} is visible on your print - dense lines in "
                 f"{', '.join(stress_confirmed)} zone(s)."
             )
             conf = "moderate-high"
-        elif sparse and chart_score <= 0:
+        elif stress_confirmed and chart_score == 0:
+            # A score of zero means the methods came out NEUTRAL, not stressed.
+            # The old branch used `<= 0`, so it reported "chart stress" for every
+            # merely-mixed area — a warning the chart never actually gave.
+            verdict = (
+                f"Your chart is neutral on {dom}, but the print shows dense lines "
+                f"in {', '.join(stress_confirmed)} - worth watching rather than "
+                f"worrying about."
+            )
+            conf = "moderate"
+        elif sparse and chart_score < 0:
             verdict = (
                 f"Chart flags {dom} stress but print shows sparse lines in "
                 f"{', '.join(sparse)} - pattern not heavy on this photo."
@@ -385,7 +494,6 @@ DOMAIN_TITLES: dict[str, str] = {
     "gains": "Gains, friends & fulfilment",
     "health": "Health, service & stamina",
     "home": "Home, mother & property",
-    "longevity": "Longevity & legacy",
     "luck": "Luck, travel & dharma",
 }
 
@@ -584,7 +692,8 @@ def anchor_analysis_html(analysis: dict[str, Any], cv_marked: list[dict] | None 
             f'({a["sign"]}, {a["dignity"].replace("_", " ")})</h3>'
             f'<p class="body"><strong>Chart palm zone:</strong> {a["palm"]}</p>'
             f'<p class="body"><strong>Chart reading:</strong> {a["life"]}</p>'
-            + (f'<p class="body"><strong>Vs Jupiter@8:</strong> {a["chart_link"]}</p>' if a.get("chart_link") else "")
+            + (f'<p class="body"><strong>Vs {a.get("chart_link_with", "the rest of the chart")}:</strong> '
+               f'{a["chart_link"]}</p>' if a.get("chart_link") else "")
             + f'{cv_block}'
             '<table class="tl"><tr><th>Sub-planet</th><th>House</th><th>Chart</th><th>Print (CV)</th></tr>'
         )

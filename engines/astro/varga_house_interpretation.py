@@ -35,7 +35,7 @@ HOUSE_LABELS: dict[tuple[str, int], str] = {
         5: "Children, creativity & intelligence",
         6: "Health, enemies, debt & daily struggle",
         7: "Marriage, partner & business partnerships",
-        8: "Longevity, sudden changes & inheritance",
+        8: "Upheaval, sudden changes & inheritance",
         9: "Father, luck, religion & long travel",
         10: "Career, status & public reputation",
         11: "Elder siblings, income & gains",
@@ -63,7 +63,7 @@ HOUSE_LABELS: dict[tuple[str, int], str] = {
         5: "Second younger sibling & planning mind",
         6: "Obstacles, rivalry & sibling health stress",
         7: "Desires, partnerships & sibling-related bonds",
-        8: "Longevity stress, crises & sibling loss themes",
+        8: "Crises, upheaval & strain among siblings",
         9: "Elder siblings, luck & support from them",
         10: "Career action & siblings' public path",
         11: "Elder co-born, gains & fulfilment through siblings",
@@ -91,7 +91,7 @@ HOUSE_LABELS: dict[tuple[str, int], str] = {
         5: "Birth of children & parent–child relationship",
         6: "Conception obstacles & children's health rivals",
         7: "Children's marriage & progeny from second union",
-        8: "Children's longevity & hidden progeny stress",
+        8: "Hidden strain around children",
         9: "Grandchildren & fortune through children",
         10: "Children's career & public standing",
         11: "Fulfilment of progeny wishes & children's success",
@@ -105,13 +105,14 @@ HOUSE_LABELS: dict[tuple[str, int], str] = {
         5: "Romance, affection, children after marriage & creative bond",
         6: "Obstacles, health stress & rivals affecting marriage",
         7: "Spouse, marriage quality & partnership itself",
-        8: "Mangalya, longevity themes & hidden side of marriage",
+        8: "Mangalya and the hidden side of marriage",
         9: "Dharma in marriage, luck through spouse & spiritual path",
         10: "Spouse's career, your public image as a couple & karma",
         11: "Gains through marriage & fulfilment of partnership wishes",
         12: "Bed pleasure, foreign spouse, expenses & spiritual retreat in union",
     }.items()},
 }
+
 
 
 def _ordinal(n: int) -> str:
@@ -140,6 +141,19 @@ try:
         for _h, _sig in (_c.get("house_sigs") or {}).items():
             HOUSE_LABELS.setdefault((_v, _h), _short_label(_sig) or f"House {_h}")
 except Exception:  # noqa: BLE001 - corpus optional at import
+    pass
+
+# Scrub the titles AFTER the corpus merge. These strings are shown to the
+# reader, and the corpus 8th-house entries carry the tradition's own
+# "longevity / death" wording — which this product never puts in front of a
+# customer. Running the scrub here (rather than on the literal above) also means
+# a future corpus edit cannot reintroduce lifespan wording through the back door.
+try:
+    from no_longevity import scrub as _scrub_title
+
+    HOUSE_LABELS = {k: (_scrub_title(v).strip().rstrip(",.- ") or v)
+                    for k, v in HOUSE_LABELS.items()}
+except Exception:  # noqa: BLE001
     pass
 
 
