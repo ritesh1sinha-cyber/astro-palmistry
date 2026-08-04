@@ -89,7 +89,10 @@ def tabs() -> list[tuple[str, str, dict]]:
              "place": RITESH["place"], "gender": RITESH["gender"]}
     return [
         ("Chart snapshot", "chart_summary", dict(chart)),
-        ("Full report", "full_report", dict(chart)),
+        # with a question: the full report answers it too, and that path was
+        # never exercised until this line existed
+        ("Full report", "full_report", dict(
+            chart, question="Will my career move forward this year?")),
         # horaryPayload(): a horary chart is cast for the MOMENT OF ASKING,
         # so it takes the question's date/time/place, not the birth details.
         ("Ask a question", "horary", {

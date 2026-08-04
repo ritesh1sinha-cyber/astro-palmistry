@@ -235,7 +235,17 @@ def h_full_report(user: dict, p: dict) -> dict:
         semantic_fallback.install()
     except Exception:                                    # never block a report
         pass
-    from vedic_confluence_report import generate_confluence_reports
+    generate_confluence_reports = None
+    if os.getenv("ASTRO_HOTFIX", "1") == "1":
+        try:
+            import astro_hotfix
+            generate_confluence_reports = (
+                astro_hotfix.confluence_remedy_fix().generate_confluence_reports)
+        except Exception as exc:                                  # noqa: BLE001
+            print(f"[handlers] confluence remedy patch unavailable: "
+                  f"{type(exc).__name__}: {exc}", flush=True)
+    if generate_confluence_reports is None:
+        from vedic_confluence_report import generate_confluence_reports
 
     chart = get_or_create_chart(user["id"], p)
     pc = precompute_for(chart)
@@ -311,6 +321,7 @@ def h_horary(user: dict, p: dict) -> dict:
     import astro_voice as V
 
     htmls, verdicts = {}, {}
+    western_judgment: dict = {}
     vgen = None
     if os.getenv("ASTRO_HOTFIX", "1") == "1":
         try:
@@ -336,6 +347,7 @@ def h_horary(user: dict, p: dict) -> dict:
         h, j = wgen(p["question"], p["qDate"], p["qTime"], p.get("location", "Hyderabad"))
         htmls["western"] = h
         verdicts["western"] = {k: j.get(k) for k in ("verdict", "confidence")}
+        western_judgment = j
     except Exception as exc:                                          # noqa: BLE001
         verdicts["western"] = {"error": f"{type(exc).__name__}: {exc}"}
     if not htmls:
@@ -355,11 +367,27 @@ def h_horary(user: dict, p: dict) -> dict:
         paid_sections += [f"{tag.title()}: {t}" for t in sp["paid_sections"]]
         teasers.update({f"{tag.title()}: {k}": v for k, v in sp["teasers"].items()})
 
-    meta = {"verdicts": verdicts, "paidSections": paid_sections, "teasers": teasers,
+    # ONE answer, not two engines arguing. Western 60 / Vedic 40; on a genuine
+    # contradiction Western's direction wins and confidence drops to low. The
+    # per-engine workings still exist behind the paywall for anyone who wants
+    # to check them — they just no longer lead with a disagreement.
+    answer_html, answer = "", {}
+    try:
+        from horary_answer import build_answer_html
+        answer_html, answer = build_answer_html(
+            question=p["question"], verdicts=verdicts,
+            western_judgment=western_judgment, asked=ctx["asked"],
+            name=user.get("name") or "", full_report_price=S.price("full_report") // 100)
+    except Exception as exc:                                          # noqa: BLE001
+        print(f"[handlers] horary answer layer failed: {type(exc).__name__}: {exc}",
+              flush=True)
+
+    meta = {"verdicts": verdicts, "answer": answer,
+            "paidSections": paid_sections, "teasers": teasers,
             "question": p["question"], "asked": ctx["asked"],
             "price": S.price("horary") // 100}
     saved = _save_report(user["id"], None, "horary",
-                         "".join(s["free_html"] for s in splits.values()),
+                         answer_html + "".join(s["free_html"] for s in splits.values()),
                          "".join(s["paid_html"] for s in splits.values()), meta, paid)
     saved["price"] = meta["price"]
     return saved

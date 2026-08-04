@@ -374,6 +374,10 @@ REPHRASE: list[tuple[str, str]] = [
      r"its own right. Where they say the same thing in different words, that "
      r"agreement is what makes a finding trustworthy. Every section below "
      r"shows you which methods spoke and whether they agreed."),
+    (r"Live Chart Techniques \(Main Question Engine\)",
+     "Your question, answered technique by technique"),
+    (r"\bMain Question Engine\b", "your question"),
+    (r"\bLive Chart Techniques\b", "What the live chart shows"),
     (r"\bthe confluence verdict\b", "the combined answer"),
     (r"\bConfluence verdict\b", "Combined answer"),
     (r"\bconfluence verdict\b", "combined answer"),

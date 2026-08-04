@@ -77,3 +77,22 @@ def horary_glyph_fix():
         "vedic_horary_report_patched", _locate("vedic_horary_report"),
         [(f"'{glyphs}'[i]", "(chr(9312 + i) if i < 20 else str(i + 1))")],
     )
+
+
+def confluence_remedy_fix():
+    """Return a confluence module that keeps remedies on the question answer.
+
+    The full report answers the customer's question through the main-question
+    engine and calls it with `skip_remedy=True`. So the one place a worried
+    person reads a direct answer about their own question was also the one
+    place with the "what to do about it" removed.
+
+    Product rule from the operator: an unfavourable answer always carries a
+    remedy. Patched in memory, like the glyph fix, so the engine file stays
+    untouched.
+    """
+    return _patch_module(
+        "vedic_confluence_report_remedied", _locate("vedic_confluence_report"),
+        [("render_main_question_embed_html(main_q_result, skip_remedy=True)",
+          "render_main_question_embed_html(main_q_result, skip_remedy=False)")],
+    )
