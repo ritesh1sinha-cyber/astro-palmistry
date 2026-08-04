@@ -243,7 +243,16 @@ JARGON_TABLE = [
     ("Jai:", "Sign cycle:"),
     ("Yog:", "Lunar cycle:"),
     ("AK ", "Defining planet "),
+    # the rest of the karaka shorthand, which the karaka lane writes inline
+    ("AmK ", "Career indicator "),
+    ("BK ", "Sibling indicator "),
+    ("MK ", "Mother indicator "),
+    ("PiK ", "Father indicator "),
+    ("PK ", "Children indicator "),
+    ("GK ", "Obstacle indicator "),
+    ("DK ", "Spouse indicator "),
     ("CSL-", "Sub-lord "),
+    ("CSL ", "cusp sub-lord "),
 ]
 
 # Nodes whose text is markup, code or already-translated tooltip content.
@@ -484,6 +493,7 @@ AUTHORS = (
     "Avasthi", "Woods", "Manley", "Sanjay Rath", "Iranganti Rangacharya",
     "Rangacharya", "Santhanam", "Sharma", "Jha", "Ramachandra Pandey",
     "VP Jain", "V.P. Jain", "Louis", "Lilly",
+    "Ravichandran",          # cited by name inside the sub-lord lane's prose
 )
 
 # method names that carry a person's name — replaced, not deleted, so the

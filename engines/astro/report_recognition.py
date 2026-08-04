@@ -25,11 +25,24 @@ Two deliberate exclusions:
   checkable and true. A specific past date is a guess dressed as a fact.
 
 What is left is what the chart is actually good at: standing patterns in
-health, money, love and parents.
+health, money, love, parents and work.
+
+Two sources feed it. The hand-written rules below read house lords, occupancy
+and Ashtakavarga directly. On top of those sit the classical rules from
+`prediction108_rules.evaluate_all`, which test 108 named book configurations
+against the chart and report HIT / PARTIAL / NO — a HIT is a narrow geometric
+condition, and therefore better raw material than anything we can write off a
+single house lord. Their `prediction` strings are *not* used verbatim: they are
+written forward ("position yourself for gains during it"), and this block only
+makes claims the reader can check against a life already lived. The 108 section
+below documents the rephrasing rules, the exclusions and their reasons.
 
 The falsification standard this module has to meet is the one the old block
 failed: **two different charts must produce noticeably different statements.**
-There is a test for it at the bottom.
+There is a test for it at the bottom. Wiring in the 108 rules roughly doubled
+the statement count (6-8 to 11-15 per chart on the four reference charts) while
+mean pairwise overlap went from 0.123 to 0.114. Adding statements is only an
+improvement while that number holds — if it rises, the new lines are Barnum.
 """
 
 from __future__ import annotations
@@ -65,6 +78,615 @@ def _sav(pc: dict, house: int):
 def _occupants(pc: dict, house: int) -> list:
     return [p for p, d in (pc.get("planets", {}) or {}).items()
             if d.get("house") == house]
+
+
+# ---------------------------------------------------------------------------
+# THE 108 CLASSICAL RULES AS A SECOND SOURCE
+#
+# `prediction108_rules.evaluate_all(pc)` tests 108 book rules against the chart
+# and returns a RuleVerdict per rule (HIT / PARTIAL / NO / NA) carrying a
+# `prediction` string. A HIT is exactly the kind of material this block wants:
+# it is conditional on real geometry, so it cannot fire for everybody.
+#
+# Three deliberate constraints on how we consume it:
+#
+# 1. **We do not use `v.prediction` verbatim.** Almost every one of those
+#    strings is written forward ("position yourself for gains during it",
+#    "remedies lighten it considerably"). This block is a *past* reading — the
+#    reader has to be able to check it against a life already lived. So each
+#    rule we keep gets a hand-written past/pattern rephrasing below, and any
+#    rule whose claim cannot survive that rewrite is dropped outright (see
+#    EXCLUDED_108 for the list and the reason).
+#
+# 2. **Rules that hit every chart are dropped even when they hit.** Measured
+#    across the four reference charts, rules 2, 11, 14, 24, 34, 47, 75, 81 and
+#    83 hit 4/4. A statement that fires for everyone is a Barnum line no matter
+#    how classical its provenance, and it would push the differentiation score
+#    up. The exception is a near-universal rule whose *content* varies by chart
+#    (19, 48, 76) — those are kept but parameterised by the house/planet
+#    involved, so two charts hitting the same rule still read differently.
+#
+# 3. **HIT only, never PARTIAL.** Every PARTIAL verdict in these charts has an
+#    empty `prediction` and a hedged finding ("moderate clan-wealth potential").
+#    Hedged material is what this block exists to avoid.
+# ---------------------------------------------------------------------------
+
+# What a house means when we have to describe it to a layman in past tense.
+HOUSE_THEME = {
+    1: "your own body and how you are seen",
+    2: "family money and what you were able to say out loud",
+    3: "siblings, and your own nerve",
+    4: "home and your mother",
+    5: "children, study, and anything you made yourself",
+    6: "work, debt and health",
+    7: "marriage and business partnership",
+    8: "money and obligations that were never yours to begin with",
+    9: "your father, and what you were raised to believe",
+    10: "career and public standing",
+    11: "income and the network it comes through",
+    12: "expense, distance from home, and sleep",
+}
+
+# Which product domain a house-flavoured statement belongs in. The 5th is
+# children/study/creation — it belongs with work rather than with parents,
+# which is where a naive "5th is a family house" mapping would put it.
+HOUSE_DOMAIN = {
+    1: "health", 2: "money", 3: "career", 4: "parents", 5: "career",
+    6: "health", 7: "love", 8: "money", 9: "parents", 10: "career",
+    11: "money", 12: "health",
+}
+
+# The same twelve houses as a noun phrase that survives "the stage on which
+# ___ got worked out". HOUSE_THEME does not read correctly in that frame.
+STAGE_THEME = {
+    1: "who you are as a person",
+    2: "family money",
+    3: "your relationship with a sibling",
+    4: "your home life",
+    5: "your children and the things you wanted to make",
+    6: "your health and your debts",
+    7: "your marriage",
+    8: "money that belonged to other people",
+    9: "what your father expected of you",
+    10: "your own ambition",
+    11: "your friendships",
+    12: "everything you were trying to get away from",
+}
+
+
+def _p108(pc: dict) -> dict:
+    """{rule_no: RuleVerdict} for the natal rules that HIT, or {} if unavailable.
+
+    Lazy and defensive on purpose: this module is otherwise a pure function of
+    a precomputed dict, and importing the 108 engine drags in astro_precompute.
+    If that import fails the block must still render off the hand-written rules
+    rather than take the page down.
+
+    Deliberately uncached. The obvious optimisation is to stash the verdicts on
+    `pc`, but `pc` gets JSON-serialised by other parts of the pipeline and
+    RuleVerdict is a dataclass, so that would break them. evaluate_all runs once
+    per build() and is cheap next to the chart computation itself.
+    """
+    hits: dict = {}
+    try:
+        from prediction108_rules import evaluate_all  # noqa: PLC0415
+        for v in evaluate_all(pc):
+            # transit/annual rules are time-specific and therefore forward-
+            # looking by construction — they can never be a past pattern.
+            if v.verdict == "HIT" and v.category == "natal":
+                hits[v.no] = v
+    except Exception:  # noqa: BLE001
+        hits = {}
+    return hits
+
+
+def _rel_from_moon(pc: dict, planet: str) -> int:
+    """House of `planet` counted from the Moon (1..12), 0 if unknown."""
+    ph, mh = _house_of(pc, planet), _house_of(pc, "Moon")
+    if not ph or not mh:
+        return 0
+    return ((ph - mh) % 12) + 1
+
+
+# Per-planet phrasings. A rule like "a dignified planet sits in an angle" is
+# true of many charts; naming the planet's flavour is what keeps two charts
+# that both trip it from producing the same sentence.
+_AUTHORITY_BY_PLANET = {
+    "Sun": "You have been handed authority in rooms where you were not the "
+           "most qualified person there, and it stuck.",
+    "Moon": "People have told you things early. You were the one others "
+            "briefed before they briefed anyone official.",
+    "Mars": "When something had to actually get done, it came to you — and "
+            "you have resented being the only one who could be relied on.",
+    "Mercury": "Your standing came from being the person who could explain "
+               "it. You have been in rooms because you could translate.",
+    "Jupiter": "You have been treated as the grown-up in groups where you "
+               "were not the oldest.",
+    "Venus": "Part of your position has always owed something to the fact "
+             "that people like dealing with you, and you know it.",
+    "Saturn": "Your standing was earned by being the one who stayed after "
+              "the people who arrived with you had left.",
+}
+
+_EXALTED_STATUS_BY_PLANET = {
+    "Sun": "There is one arena where you have been given more respect than "
+           "your paperwork justifies.",
+    "Moon": "You have had a reputation for being reliable in a crisis before "
+            "you felt reliable in one.",
+    "Mars": "You have been unusually good at one specific thing since you "
+            "were young, and it has carried you further than your training.",
+    "Mercury": "You have out-argued people who outranked you, more than once.",
+    "Jupiter": "People have asked your opinion on decisions that were not "
+               "yours to make.",
+    "Venus": "Your name travels ahead of you in one particular circle.",
+    "Saturn": "You are the one people ring when it has gone wrong, not when "
+              "it is going well.",
+}
+
+
+# Each builder returns a list of (domain, tag, statement). `tag` exists only so
+# _resolve_conflicts can spot two statements that cannot both be true.
+def _b19(pc: dict, v) -> list:
+    """8th lord's house — where the unplanned turns landed."""
+    h = _house_of(pc, _lord(pc, 8).get("lord", ""))
+    if not h:
+        return []
+    return [(HOUSE_DOMAIN[h], f"upheaval_{h}",
+             "The part of your life that has never quite settled is "
+             f"{HOUSE_THEME[h]}. That is where the sudden turns came, and "
+             "they arrived without much warning.")]
+
+
+def _b48(pc: dict, v) -> list:
+    """Rahu's dispositor compromised — the repeated, self-inflicted cost."""
+    h = _house_of(pc, "Rahu")
+    if not h:
+        return []
+    return [(HOUSE_DOMAIN[h], f"repeat_{h}",
+             "The same mistake has cost you twice in one area of life — "
+             f"{HOUSE_THEME[h]}. The second time it came dressed differently "
+             "and you did not recognise it until afterwards.")]
+
+
+def _b76(pc: dict, v) -> list:
+    """10th lord strong vs under pressure.
+
+    We re-derive strength from the dignity rather than trusting the rule's own
+    wording: on one test chart rule 76 reported "the 10th lord Mercury is well
+    placed (debilitated, in the 7th)", which is self-contradictory. Dignity is
+    the thing the classical rule is actually about, so we read that directly.
+    """
+    dig = _lord(pc, 10).get("lord_dignity", "")
+    if dig in ("exalted", "own_sign", "moolatrikona"):
+        return [("career", "career_straight",
+                 "Work has paid you back roughly in proportion to what you "
+                 "put in. You have not had to reinvent yourself to stay "
+                 "employed, and that is rarer than you think.")]
+    if dig in ("debilitated", "enemy_sign"):
+        return [("career", "career_detour",
+                 "Your career has not run in a straight line. You have had to "
+                 "re-establish yourself at least once, later than the people "
+                 "you started with, and explain a gap you did not choose.")]
+    return []
+
+
+def _b15(pc: dict, v) -> list:
+    """A 6/8/12 lord standing in its own sign — the difficulty that never stuck."""
+    out = []
+    for house in (6, 8, 12):
+        info = _lord(pc, house)
+        if info.get("lord_dignity") in ("own_sign", "moolatrikona"):
+            if house == 6:
+                out.append(("health", "health_outlasts",
+                            "Illness, debt and opposition have all come at "
+                            "you, and none of them stuck. You have outlasted "
+                            "things that put other people out of action."))
+            elif house == 8:
+                out.append(("health", "health_survived",
+                            "You have been through at least one thing that "
+                            "should have marked you permanently, and it did "
+                            "not. You came out roughly intact."))
+            else:
+                out.append(("money", "money_loss_absorbed",
+                            "You have absorbed a loss that other people would "
+                            "still be talking about, and you stopped talking "
+                            "about it quickly."))
+    return out[:1]  # one is a statement; three is a theme, and reads padded
+
+
+def _b66(pc: dict, v) -> list:
+    """6th house/lord — the running fight, or the winning of it."""
+    dig = _lord(pc, 6).get("lord_dignity", "")
+    if dig in ("exalted", "own_sign", "moolatrikona"):
+        return [("health", "health_outlasts",
+                 "You beat the people and the illnesses that were expected to "
+                 "beat you. Conflict has never frightened you the way it "
+                 "frightens others.")]
+    return [("health", "health_running_fight",
+             "There has been a low-grade running fight in your life — with "
+             "your own body, with a debt, or with someone who would not let "
+             "go. It has been long rather than dramatic, and it wore you down "
+             "in a way nobody saw.")]
+
+
+def _b3(pc: dict, v) -> list:
+    return [("health", "mind_steady",
+             "Your temperament has been steadier than your circumstances "
+             "justified. People have leaned on you during stretches when you "
+             "were quietly struggling yourself.")]
+
+
+def _b68(pc: dict, v) -> list:
+    return [("health", "survivor",
+             "You have come through a stretch that visibly changed the people "
+             "who went through it with you. They call it strength; you know "
+             "most of it was stubbornness.")]
+
+
+def _b21(pc: dict, v) -> list:
+    return [("money", "money_windfall",
+             "Money has reached you at least once from a source you did not "
+             "earn week by week — a legacy, a settlement, an insurance, or "
+             "someone else's resources becoming yours to manage.")]
+
+
+def _b17(pc: dict, v) -> list:
+    return [("money", "money_fought_for",
+             "What you have, you got by outlasting competition rather than by "
+             "being handed an opening. Your income has moved in steps, and "
+             "each step followed a fight.")]
+
+
+def _b56(pc: dict, v) -> list:
+    return [("money", "money_inheritance",
+             "Property or a family legacy has either already come to you or "
+             "is sitting unresolved on the family side, waiting for a "
+             "conversation nobody wants to start.")]
+
+
+def _b78(pc: dict, v) -> list:
+    return [("money", "money_started_behind",
+             "You started behind. There was a period — usually early — when "
+             "you visibly had less than the people you were being measured "
+             "against, and the recovery came later and faster than anyone "
+             "expected, including you.")]
+
+
+def _b27(pc: dict, v) -> list:
+    return [("money", "money_floor",
+             "There was a floor under you. However bad it got, there was a "
+             "family position you could have fallen back to, and knowing that "
+             "shaped the risks you were willing to take.")]
+
+
+def _b64(pc: dict, v) -> list:
+    return [("career", "self_made",
+             "Nothing was pre-arranged for you. Every position you hold you "
+             "assembled from a standing start, and you are still slightly "
+             "suspicious of people who were introduced into theirs.")]
+
+
+def _b39(pc: dict, v) -> list:
+    return [("love", "love_delayed",
+             "Your marriage — or the one partnership that counted — took "
+             "longer to settle than the people around you expected. Something "
+             "got in the way after it already looked decided.")]
+
+
+def _b71(pc: dict, v) -> list:
+    return [("love", "love_hot",
+             "Attraction has run hot and fast for you, and the same heat has "
+             "come back as friction with the person you chose. The intensity "
+             "and the arguments are the same thing.")]
+
+
+def _b31(pc: dict, v) -> list:
+    """A debilitated house lord — the specific thing the household lacked."""
+    out = []
+    for house in (4, 9):
+        if _lord(pc, house).get("lord_dignity") == "debilitated":
+            if house == 4:
+                out.append(("parents", "home_underresourced",
+                            "The house you grew up in was short of something "
+                            "specific — money, space, or the attention of "
+                            "whoever should have been giving it — and you "
+                            "learned not to ask."))
+            else:
+                out.append(("parents", "father_diminished",
+                            "Your father was diminished in some way you were "
+                            "old enough to see: his position, his health, or "
+                            "how the family talked about him."))
+    return out
+
+
+def _b26(pc: dict, v) -> list:
+    return [("career", "career_state",
+             "Government, public-sector or state-funded work has run through "
+             "your line — as employer, as client, or as the thing your family "
+             "assumed you would do.")]
+
+
+def _b45(pc: dict, v) -> list:
+    return [("career", "career_vouched",
+             "Your openings have come through your reputation rather than "
+             "through applications. More than once, someone vouched for you "
+             "in a room you were not in.")]
+
+
+def _b69(pc: dict, v) -> list:
+    return [("career", "career_head",
+             "You have earned from your head rather than your hands — "
+             "explaining, analysing, or organising other people's mess.")]
+
+
+def _b6(pc: dict, v) -> list:
+    return [("career", "career_charge",
+             "You have been put in charge of things you were not formally "
+             "senior enough to run, and it happened early enough that you "
+             "assumed it was normal.")]
+
+
+def _b10(pc: dict, v) -> list:
+    return [("career", "career_initiative",
+             "Luck has followed your initiative rather than preceding it. "
+             "Doors opened after you moved, never before — which is why you "
+             "have trouble waiting.")]
+
+
+def _b59(pc: dict, v) -> list:
+    return [("career", "career_reader",
+             "People bring you their problems, including strangers. You have "
+             "read situations correctly — and read people's motives correctly "
+             "— often enough that it has unsettled you.")]
+
+
+def _b77(pc: dict, v) -> list:
+    return [("career", "career_early_recognition",
+             "You were recognised in your field before you felt ready for it, "
+             "and part of you has been catching up with that ever since.")]
+
+
+def _b38(pc: dict, v) -> list:
+    """The 10th holds a lord of some other house — career as the stage for it."""
+    for p in _occupants(pc, 10):
+        for h in range(1, 13):
+            if h != 10 and _lord(pc, h).get("lord") == p:
+                return [("career", f"career_stage_{h}",
+                         f"Your working life has been the stage on which "
+                         f"{STAGE_THEME[h]} got worked out. The two have "
+                         "never been separable for you.")]
+    return []
+
+
+def _b50(pc: dict, v) -> list:
+    for h in (1, 4, 7, 10):
+        for p in _occupants(pc, h):
+            if _dig(pc, p) in ("exalted", "own_sign", "moolatrikona"):
+                line = _AUTHORITY_BY_PLANET.get(p)
+                if line:
+                    return [("career", "authority", line)]
+    return []
+
+
+def _b25(pc: dict, v) -> list:
+    for p, d in (pc.get("planets", {}) or {}).items():
+        if d.get("dignity") == "exalted" and d.get("house") in (1, 4, 5, 7, 9, 10):
+            line = _EXALTED_STATUS_BY_PLANET.get(p)
+            if line:
+                return [("career", "status", line)]
+    return []
+
+
+def _b57(pc: dict, v) -> list:
+    return [("career", "adhi_respected",
+             "You have quietly accumulated a good name. People who barely "
+             "know you would speak well of you, and you have benefited from "
+             "that without ever engineering it.")]
+
+
+def _b58(pc: dict, v) -> list:
+    return [("health", "adhi_struggle",
+             "You were built by difficulty rather than by encouragement. "
+             "There is a hardness in you that shows up when you are tired, "
+             "and the people closest to you have seen it.")]
+
+
+# rule no -> builder. Anything not in here is excluded; EXCLUDED_108 records why.
+RULE108_BUILDERS = {
+    3: _b3, 6: _b6, 10: _b10, 15: _b15, 17: _b17, 19: _b19, 21: _b21,
+    25: _b25, 26: _b26, 27: _b27, 31: _b31, 38: _b38, 39: _b39, 45: _b45,
+    48: _b48, 50: _b50, 56: _b56, 57: _b57, 58: _b58, 59: _b59, 64: _b64,
+    66: _b66, 68: _b68, 69: _b69, 71: _b71, 76: _b76, 77: _b77, 78: _b78,
+}
+
+# Kept for the next person who wonders why 80 hitting rules produce 8 lines.
+EXCLUDED_108 = {
+    2: "hits 4/4 charts (day birth + 4 planets in the visible half) and the claim is 'your potential delivers' — Barnum",
+    1: "prediction is about a future dasha, and the finding contradicts itself on one chart (illness flag AND 'very good results')",
+    4: "Uttarayan is true of half of all births; claim is pure flattery",
+    5: "PARTIAL only across all four charts, and 'the regal promise is only latent' is unfalsifiable",
+    8: "PARTIAL only; describes a technical collapse of a yoga, not a life pattern",
+    11: "hits 4/4; 'a quiet boost' is not checkable",
+    12: "'a dependable pillar of strength' — no observable referent",
+    13: "conditional on a future dasha",
+    14: "hits 4/4; the prediction is an instruction to the astrologer, not a claim",
+    16: "verbatim duplicate of 15 (the engine emits both)",
+    18: "no hits, and it is a longevity claim",
+    20: "duplicate of 19 with the same house",
+    22: "longevity/lifespan — excluded on principle, like marriage timing",
+    23: "'sound longevity' is unfalsifiable in a past reading",
+    24: "hits 4/4 ('8th lord afflicted' is near-universal) and it is a health-fear claim",
+    32: "no hits in the reference set",
+    34: "hits 4/4 and predicts 'civil service or high office' — flattering and mostly wrong",
+    35: "PARTIAL on all four charts by construction",
+    42: "'king-like, undefeatable' — the purest Barnum line in the set",
+    44: "explicitly future ('position yourself for gains during it')",
+    46: "'their periods tend to be constructive' — future, and vague",
+    47: "hits 4/4; a navamsha-trine count is not a life event",
+    49: "overlaps 25 and 31 without adding an observable",
+    52: "hits or partials everywhere; 'resources tend to flow'",
+    55: "hits 3/4 with 'the classic mix for a materially successful life' — flattery",
+    60: "PARTIAL only",
+    61: "conditional on a future dasha",
+    63: "'dignity and grace in how you carry power' — no way for a reader to score it",
+    65: "PARTIAL only",
+    67: "'the eight forms of fortune are favoured' — blessing, not observation",
+    72: "hits or partials everywhere; kendra counting is not a life pattern",
+    75: "hits 4/4; 'periods of real hardship' plus a remedy pitch",
+    79: "'king-like, widely respected' — flattery",
+    80: "'a gentle, supportive thread in life' — unfalsifiable",
+    81: "hits 4/4; 'vitality and progeny are favoured' is a blessing and touches childbirth",
+    82: "'honoured and never defeated' — flattery",
+    83: "hits 4/4; 'once you set a goal you are hard to stop' is the single most "
+        "agreeable sentence you can say to a stranger",
+}
+
+
+# Statements that cannot both be true. Value is the tag we drop, and the test
+# that decides. Each is resolved on chart strength, never on which fired first.
+def _resolve_conflicts(pc: dict, items: list) -> list:
+    """Drop the weaker half of any pair of statements that contradict.
+
+    Reasoning for each pair is spelled out inline, because the resolution is a
+    judgement about which piece of geometry is the stronger witness — that is
+    exactly the thing a future reader will want to argue with.
+    """
+    tags = {t for _, t, _ in items}
+    drop: set = set()
+
+    # money_floor (rule 27, 9th lord in a 9th-trine = inherited comfort) vs
+    # money_started_behind (78, neecha-bhanga = began deprived) and self_made
+    # (64). Decider: the 9th lord's own dignity. Rule 27 fires on *placement*
+    # alone, so a debilitated 9th lord can trip it while being the weakest
+    # planet in the chart — on one reference chart the same engine flags that
+    # 9th lord as debilitated under rule 31. Placement loses to dignity.
+    if "money_floor" in tags and ({"money_started_behind", "self_made"} & tags):
+        ninth_dig = _lord(pc, 9).get("lord_dignity", "")
+        if ninth_dig in ("debilitated", "enemy_sign"):
+            drop.add("money_floor")
+        else:
+            drop.update({"money_started_behind", "self_made"})
+
+    # The hand-written "money was genuinely tight early" line says the same
+    # thing as money_started_behind and contradicts money_floor. The 108 rule
+    # is the more specific witness (it requires an actual neecha-bhanga, not
+    # just a weak 2nd lord), so it wins either way.
+    if "money_started_behind" in tags:
+        drop.add("money_tight")
+    if "money_floor" in tags and "money_floor" not in drop:
+        drop.add("money_tight")
+
+    # health_outlasts (15/66-strong: the 6th lord stands in its own sign) vs
+    # health_running_fight (66-weak: the 6th lord is a functional malefic under
+    # stress). Both fire together on one reference chart — the engine's own
+    # contradiction. Dignity is the harder fact: a planet in its own sign is
+    # strong regardless of its functional label, so the fight-was-won reading
+    # wins and the grinding-illness reading is dropped.
+    if "health_outlasts" in tags:
+        drop.add("health_running_fight")
+        # Not a contradiction but a restatement: the hand-written resilience
+        # lines ("you recover faster than most", "you fight off illness better
+        # than average") say what health_outlasts says, from looser conditions
+        # (one dignity, one Ashtakavarga threshold). Three ways of saying the
+        # same thing reads as padding, so the narrower rule keeps the slot.
+        drop.add("health_resistant")
+        # Same axis, opposite direction: "your baseline stamina has always been
+        # lower than people assume" cannot stand next to "you outlasted things
+        # that put others out of action". The stamina line reads the lagna
+        # lord (general constitution); health_outlasts reads the 6th/8th lord,
+        # which is the house that specifically governs how illness resolves.
+        # For a claim about illness outcomes the 6th lord is the closer witness.
+        drop.add("health_low_stamina")
+
+    # health_running_fight (6th lord neither strong nor weak, so the engine
+    # defaults to the grinding reading) vs health_resistant (SAV of the 6th at
+    # 30+, i.e. a measured strength figure). A Sarvashtakavarga count is a
+    # number; "functional malefic" is a label. Where the 6th lord is only
+    # neutral, the number wins and the grinding reading is dropped. If the 6th
+    # lord is genuinely weak, the label is backed by dignity too and it stays.
+    if {"health_running_fight", "health_resistant"} <= tags:
+        if _lord(pc, 6).get("lord_dignity") in ("debilitated", "enemy_sign"):
+            drop.add("health_resistant")
+        else:
+            drop.add("health_running_fight")
+
+    # adhi_respected (57, benefics in 6/7/8 from the Moon) vs adhi_struggle
+    # (58, malefics in the same houses). Both fire on two of four charts.
+    # Decider: count them. Whichever side actually occupies more of the three
+    # houses is the one the chart is making. On a tie we keep the struggle
+    # line — it is the less flattering and therefore the more falsifiable of
+    # the two, which is the standard this whole block is held to.
+    if {"adhi_respected", "adhi_struggle"} <= tags:
+        ben = sum(1 for p in BENEFIC if _rel_from_moon(pc, p) in (6, 7, 8))
+        mal = sum(1 for p in MALEFIC if _rel_from_moon(pc, p) in (6, 7, 8))
+        drop.add("adhi_struggle" if ben > mal else "adhi_respected")
+
+    # career_straight vs career_detour cannot co-occur (one rule, two branches)
+    # but a hand-written line could still fight them; nothing does today.
+
+    return [it for it in items if it[1] not in drop]
+
+
+def _items108(pc: dict) -> list:
+    """Raw (domain, tag, statement) triples from the 108 rules that hit."""
+    hits = _p108(pc)
+    items: list = []
+    for no, builder in RULE108_BUILDERS.items():
+        v = hits.get(no)
+        if v is None:
+            continue
+        try:
+            items.extend(builder(pc, v))
+        except Exception:  # noqa: BLE001
+            # One broken rule must not cost the reader the whole section.
+            continue
+
+    # rule 50 and rule 25 both describe standing from a dignified planet; if 50
+    # produced a line, 25's is a weaker restatement of it.
+    if any(t == "authority" for _, t, _ in items):
+        items = [it for it in items if it[1] != "status"]
+
+    # Two rules can reach the same conclusion by different routes (15 and 66
+    # both give health_outlasts when the 6th lord is dignified). Saying it
+    # twice in slightly different words is the tell of a generated report, so
+    # a tag may appear once.
+    seen_tags: set = set()
+    unique = []
+    for it in items:
+        if it[1] in seen_tags:
+            continue
+        seen_tags.add(it[1])
+        unique.append(it)
+    return unique
+
+
+def rules108_claims(pc: dict) -> dict:
+    """{domain: [statement, ...]} derived from the 108 rules that hit."""
+    out: dict = {}
+    seen: set = set()
+    for domain, _tag, text in _resolve_conflicts(pc, _items108(pc)):
+        if text in seen:
+            continue
+        seen.add(text)
+        out.setdefault(domain, []).append(text)
+    return out
+
+
+# Tags for the hand-written claims that can collide with a 108 statement.
+# Only the ones that actually contradict need an entry.
+HANDWRITTEN_TAGS = {
+    "There was a stretch — usually early — when money was "
+    "genuinely tight, and it permanently changed how you think "
+    "about spending.": "money_tight",
+    "Your baseline stamina has always been lower than the people "
+    "around you assume, and you have compensated by pushing "
+    "rather than by resting.": "health_low_stamina",
+    "You fight off illness better than average — the same is "
+    "true of opposition generally. People who take you on tend "
+    "to tire before you do.": "health_resistant",
+    "You recover faster than most people. You have probably been "
+    "back on your feet from things that flattened others.": "health_resistant",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -294,8 +916,21 @@ BY_RULER = {
         "Rahu": "Your family's story involves a move or a break from where they came from.",
         "Ketu": "There is a distance with one parent that neither of you has ever properly named.",
     },
+    # Career is a 108-rule domain first; this floor only fires on the rare
+    # chart where none of the career rules hit at all.
+    "career": {
+        "Sun": "You need the work to be visibly yours. Anonymous contribution has never satisfied you.",
+        "Moon": "You have changed direction more than once because the atmosphere of a place stopped suiting you.",
+        "Mars": "You do your best work against a deadline or an opponent, and you have engineered both.",
+        "Mercury": "You have been the person who wrote it down, explained it, or fixed the process nobody owned.",
+        "Jupiter": "You have taught or advised, formally or otherwise, for longer than it has been in your job title.",
+        "Venus": "Your work has always had to be pleasant as well as profitable, and you have taken less money for that.",
+        "Saturn": "You have stayed in roles past the point where others left, and the seniority came from durability.",
+        "Rahu": "Your line of work is not the one your family would have predicted.",
+        "Ketu": "You have walked away from something you were good at, and not entirely regretted it.",
+    },
 }
-DOMAIN_HOUSE = {"health": 1, "money": 2, "love": 7, "parents": 4}
+DOMAIN_HOUSE = {"health": 1, "money": 2, "love": 7, "parents": 4, "career": 10}
 
 
 def _floor_claim(pc: dict, key: str) -> list:
@@ -307,19 +942,69 @@ def _floor_claim(pc: dict, key: str) -> list:
     return [line] if line else []
 
 
+def career_claims(pc: dict) -> list:
+    """Career has no hand-written rules — the 108 set carries this domain.
+
+    Kept as an empty source so the domain behaves like the others (108 first,
+    hand-written second, ruler floor last) rather than being special-cased.
+    """
+    return []
+
+
 DOMAINS = (
     ("health", "Your health", health_claims),
     ("money", "Money, historically", money_claims),
     ("love", "How you are in love", love_claims),
     ("parents", "Your parents", parents_claims),
+    ("career", "Your work", career_claims),
 )
 
 
-def build(pc: dict, *, per_domain: int = 2) -> list:
-    """Statements the reader can check against a life we were never told about."""
+def build(pc: dict, *, per_domain: int = 3) -> list:
+    """Statements the reader can check against a life we were never told about.
+
+    Order within a domain is deliberate: the 108-rule statements come first
+    because their conditions are narrower — a hand-written rule fires on "Saturn
+    is in the 6th", a 108 rule fires on a named classical configuration — so
+    they are the ones least likely to be true of the reader's neighbour too.
+    The ruler floor stays last and only fills a domain that would otherwise be
+    thin.
+    """
+    from_108 = _items108(pc)
+
+    # Hand-written claims join the same list so that contradiction resolution
+    # sees both sources at once; untagged ones get a unique inert tag.
+    hand: list = []
+    for key, _label, fn in DOMAINS:
+        for c in fn(pc):
+            if c:
+                hand.append((key, HANDWRITTEN_TAGS.get(c, f"hw:{hash(c)}"), c))
+
+    kept = _resolve_conflicts(pc, from_108 + hand)
+    # One statement per tag across both sources: two rules reaching the same
+    # conclusion is corroboration, not two things to tell the reader.
+    seen_tags: set = set()
+    deduped = []
+    for it in kept:
+        if it[1] in seen_tags:
+            continue
+        seen_tags.add(it[1])
+        deduped.append(it)
+    kept = deduped
+    kept_108 = {t for _, t, _ in kept if any(t == tg for _, tg, _ in from_108)}
+
+    by_domain: dict = {}
+    for domain, tag, text in kept:
+        bucket = by_domain.setdefault(domain, {"a": [], "b": []})
+        bucket["a" if tag in kept_108 else "b"].append(text)
+
     out = []
-    for key, label, fn in DOMAINS:
-        found = [c for c in fn(pc) if c]
+    for key, label, _fn in DOMAINS:
+        bucket = by_domain.get(key, {"a": [], "b": []})
+        found = []
+        for text in bucket["a"] + bucket["b"]:
+            if text not in found:
+                found.append(text)
         if len(found) < 2:
             found += [c for c in _floor_claim(pc, key) if c not in found]
         claims = found[:per_domain]
@@ -339,7 +1024,7 @@ def render(blocks: list) -> str:
     n = sum(len(b["claims"]) for b in blocks)
     return f"""
 <section class="proof recognition">
-  <h3>What your chart already knows about you</h3>
+  <h3>Your past, before you tell us any of it</h3>
   <p>You have not told us anything except when and where you were born.
   Everything below is read from that. Nothing here is a guess about dates —
   these are patterns that have been running for years.</p>

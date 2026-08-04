@@ -254,31 +254,32 @@ LANE_COLLECTORS: list[tuple[str, Callable]] = [
 ]
 
 
+def _isolated(meta: dict, lane_name: str, fn: Callable, *args) -> list[LaneClaim]:
+    """Run one collector so that its failure costs only its own claims.
+
+    The chart-driven lanes (KVS, Goel, Longevity, Ashtakavarga) used to run
+    outside the try/except, so a single raise there lost every other lane's
+    claims as well. Everything goes through the same gate now.
+    """
+    try:
+        batch = fn(*args)
+    except Exception as exc:
+        meta[lane_name] = 0
+        meta[f"{lane_name}_error"] = f"{type(exc).__name__}: {exc}"[:120]
+        return []
+    meta[lane_name] = len(batch)
+    return batch
+
+
 def collect_all_lanes(extracted: str, name: str, dob: str, pc: dict | None = None) -> tuple[list[LaneClaim], dict]:
     pc = pc or precompute(extracted, name, dob)
     claims: list[LaneClaim] = []
     meta: dict[str, int] = {}
     for lane_name, fn in LANE_COLLECTORS:
-        try:
-            if lane_name == "Bhardwaj":
-                batch = fn(extracted, name, dob, pc)
-            else:
-                batch = fn(extracted, name, dob, pc)
-            claims.extend(batch)
-            meta[lane_name] = len(batch)
-        except Exception as exc:
-            meta[lane_name] = 0
-            meta[f"{lane_name}_error"] = str(exc)[:120]
-    kvs = collect_kvs(pc)
-    claims.extend(kvs)
-    meta["KVS"] = len(kvs)
-    disease = collect_disease(pc)
-    claims.extend(disease)
-    meta["Goel"] = len(disease)
-    longevity = collect_longevity(pc)
-    claims.extend(longevity)
-    meta["Longevity"] = len(longevity)
-    av_claims = collect_ashtakavarga(extracted, name, dob, pc)
-    claims.extend(av_claims)
-    meta["Ashtakavarga"] = len(av_claims)
+        claims.extend(_isolated(meta, lane_name, fn, extracted, name, dob, pc))
+    claims.extend(_isolated(meta, "KVS", collect_kvs, pc))
+    claims.extend(_isolated(meta, "Goel", collect_disease, pc))
+    claims.extend(_isolated(meta, "Longevity", collect_longevity, pc))
+    claims.extend(_isolated(meta, "Ashtakavarga", collect_ashtakavarga,
+                            extracted, name, dob, pc))
     return _normalize_claims(claims), meta

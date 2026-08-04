@@ -28,6 +28,23 @@ Dasha works the same way. Vimshottari alone is a single opinion. Yogini carries
 its own tone, and Jaimini's sign-based periods move independently. Where all
 three agree, we say so and the confidence is high. Where they split, the reader
 is told it is a mixed window rather than being handed false certainty.
+
+On top of those six, every **specialist lane** the codebase already runs now
+votes as well — the nadi lane, the sub-lord lane, the karaka lane, the
+modern-technique lane, the disease lane, the lifespan lane, the birth-star lane
+and the point-score lane. They were computing full readings for other reports
+and contributing nothing here, which meant the verdict a customer sees was
+built from a fraction of what we actually know about the chart.
+
+Two rules keep that from turning into noise:
+
+* **One vote per lane, per area.** A lane that files twelve claims about career
+  does not get twelve votes; it gets one, whose strength is the balance of its
+  own claims. Otherwise the loudest pipeline decides the verdict.
+* **A lane that has nothing directional to say abstains.** Lanes emit a lot of
+  descriptive, tone-neutral material. Counting that as a zero vote would drag
+  every area towards "mixed" — which destroys the signal rather than adding to
+  it — so a lane only votes when it actually leans.
 """
 
 from __future__ import annotations
@@ -45,6 +62,77 @@ AREA_VARGA = {
     "health": ("D30", "the health chart"),
     "learning": ("D24", "the learning chart"),
     "inner": ("D20", "the spiritual chart"),
+}
+
+# A single varga is one opinion too. Each area gets a second, classically
+# related division to cross-examine the first, and D9 checks every area
+# (below) because navamsha confirms or denies whatever D1 promised.
+#   D5  standing, authority, fame — and the merit (purva punya) behind children
+#   D6  illness, debts, enemies            D7  progeny
+#   D11 gains                              D16 vehicles, comforts
+#   D45 paternal line and character — the 9th-house matters this product files
+#       under "learning and luck"
+#   D60 the sum of past karma
+AREA_VARGA_CROSS = {
+    "career": "D5", "money": "D11", "love": "D7", "home": "D16",
+    "children": "D5", "health": "D6", "learning": "D45", "inner": "D60",
+}
+
+VARGA_PHRASE = {
+    "D2": "the wealth division", "D4": "the home division",
+    "D5": "the standing division", "D6": "the illness division",
+    "D7": "the children division", "D9": "the ninth-part chart",
+    "D10": "the career division", "D11": "the gains division",
+    "D16": "the comforts division", "D20": "the spiritual division",
+    "D24": "the learning division", "D30": "the health division",
+    "D45": "the paternal-line division", "D60": "the past-karma division",
+}
+
+# The lanes speak for themselves in the evidence, but never under their own
+# names — same convention as SYSTEM_RENAMES in astro_voice: the customer is
+# told which technique spoke, in words they can read.
+LANE_METHOD = {
+    "BNN": "the nadi method",
+    "KP": "the sub-lord method",
+    "Jaimini": "the karaka method",
+    "Mehta": "the modern-technique method",
+    "Bhardwaj": "the case-book method",
+    "Goel": "the disease-indication method",
+    "KVS": "the birth-star method",
+    "Longevity": "the lifespan method",
+    "Ashtakavarga": "the point-score method",
+}
+LANE_METHOD_FALLBACK = "a further classical method"
+
+# The lanes speak in the eleven domains of lane_claim.SECTION_TO_DOMAIN; this
+# product sells eight life areas. Most map one-to-one. The rest are placed on
+# the house that classically owns them rather than being thrown away:
+#   father  -> 9th house, which is also this product's "learning and luck"
+#   mother  -> 4th house, which is this product's "home"
+#   family  -> siblings and household, read with home
+#   personality -> temperament, which is what the inner-life card is about
+DOMAIN_TO_AREAS = {
+    "career": ("career",),
+    "finance": ("money",),
+    "marriage": ("love",),
+    "property": ("home",),
+    "children": ("children",),
+    "health": ("health",),
+    "mother": ("home",),
+    "family": ("home",),
+    "father": ("learning",),
+    "personality": ("inner",),
+}
+
+# "future" and "travel" are grab-bags — 9th-house fortune, 12th-house moksha,
+# and pure dasha commentary all land there. Route them by the section that
+# produced them; a claim that is only about timing belongs to no life area and
+# is counted as unrouted rather than smeared across all eight.
+FUTURE_SECTION_AREAS = {
+    "travel": ("learning",), "gems_kl_9th": ("learning",), "ch09": ("learning",),
+    "spiritual": ("inner",), "gems_kl_12th_moksha": ("inner",),
+    "gems_kl_12th_devotion": ("inner",), "remedies": ("inner",),
+    "ch13": ("inner",),
 }
 
 BENEFIC = ("Jupiter", "Venus", "Mercury", "Moon")
@@ -104,6 +192,10 @@ def _varga_sign(pc: dict, varga: str, planet: str) -> str:
     return (pc.get("divisional", {}).get(varga) or {}).get(planet, "")
 
 
+def _sign_in(pc: dict, planet: str) -> str:
+    return (pc.get("planets", {}).get(planet) or {}).get("sign", "")
+
+
 def _dignity_in(planet: str, sign: str) -> float:
     if not sign:
         return 0.0
@@ -117,6 +209,185 @@ def _dignity_in(planet: str, sign: str) -> float:
 
 
 # ---------------------------------------------------------------------------
+# the specialist lanes
+# ---------------------------------------------------------------------------
+
+# Running every lane costs a full pass over the book pipelines, so it happens
+# once per chart and every area reads the same result.
+_LANE_CACHE: dict[tuple, tuple] = {}
+
+
+def _chart_key(pc: dict) -> tuple:
+    m = pc.get("meta", {}) or {}
+    return (m.get("client", ""), m.get("dob", ""), m.get("birth_time", ""),
+            m.get("birth_place", ""), m.get("ayanamsa", ""))
+
+
+def _areas_for_claim(claim) -> tuple:
+    """Which of the eight product areas a lane claim speaks to."""
+    if claim.domain in ("future", "travel"):
+        return FUTURE_SECTION_AREAS.get(str(claim.section_id).lower(), ())
+    return DOMAIN_TO_AREAS.get(claim.domain, ())
+
+
+def lane_readings(pc: dict) -> tuple:
+    """Every specialist lane's claims, bucketed by area then lane, cached.
+
+    Returns ({area: {lane: [claim, ...]}}, meta) where meta carries each lane's
+    claim count, any collector that failed, and the claims that belong to no
+    life area — kept visible so a routing gap shows up as a number instead of
+    quietly shrinking the evidence.
+    """
+    key = _chart_key(pc)
+    if key in _LANE_CACHE:
+        return _LANE_CACHE[key]
+
+    meta: dict = {}
+    claims: list = []
+    m = pc.get("meta", {}) or {}
+    if m.get("client") and m.get("dob"):
+        try:
+            from lane_collectors import collect_all_lanes
+            # The collectors only touch the extracted source when they have no
+            # precompute; we always have one, so the path is not needed.
+            claims, meta = collect_all_lanes("", m["client"], m["dob"], pc)
+        except Exception as exc:            # a broken import must not kill a report
+            meta = {"lanes_error": f"{type(exc).__name__}: {exc}"[:160]}
+    else:
+        meta = {"lanes_error": "precompute carries no client/dob"}
+
+    buckets: dict = {}
+    unrouted: dict = {}
+    for c in claims:
+        areas = _areas_for_claim(c)
+        if not areas:
+            unrouted[c.domain] = unrouted.get(c.domain, 0) + 1
+            continue
+        for area in areas:
+            buckets.setdefault(area, {}).setdefault(c.lane, []).append(c)
+    meta["unrouted"] = unrouted
+    meta["claims_routed"] = sum(len(v) for a in buckets.values() for v in a.values())
+
+    _LANE_CACHE[key] = (buckets, meta)
+    return buckets, meta
+
+
+def _plain(text: str) -> str:
+    """Lane prose as the customer may see it: no acronyms, no book citations.
+
+    The lanes write for an analyst — "6th CSL", "SAV 23", "(Ravichandran)".
+    That is fine in their own reports, which run this same cleanup on the way
+    out; the evidence line under a card has to go through it too.
+    """
+    from astro_voice import strip_citations, translate_jargon
+    # keep_original=False: the <abbr> tooltip form is for body prose, and an
+    # evidence line is already a one-liner squeezed under a verdict.
+    return " ".join(translate_jargon(
+        strip_citations(text, hide_system_names=True),
+        keep_original=False).split())
+
+
+def _clip(text: str, limit: int = 240) -> str:
+    """Trim on a sentence boundary — a claim cut mid-word reads as a bug."""
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    stop = max(cut.rfind(". "), cut.rfind("; "), cut.rfind(" — "))
+    return (cut[:stop + 1] if stop > 80 else cut.rsplit(" ", 1)[0]) + "…"
+
+
+def lane_votes(pc: dict, area_key: str) -> list:
+    """One vote per specialist lane for this area.
+
+    A lane's strength is the balance of its own claims over everything it said
+    about the area, so twelve mildly positive claims do not outweigh one strong
+    one from another lane, and a lane that is mostly descriptive votes softly.
+    """
+    buckets, _meta = lane_readings(pc)
+    votes: list = []
+    for lane, claims in sorted(buckets.get(area_key, {}).items()):
+        pos = [c for c in claims if c.direction == "positive"]
+        cau = [c for c in claims if c.direction == "caution"]
+        if not pos and not cau:
+            continue                         # nothing to lean on — abstain
+        # A lane that reaches the same conclusion across several of its own
+        # sections is surer than one that mentions the area once in passing —
+        # and several lanes carry exactly one permanently amber section
+        # (the illness rule in the sub-lord lane fires on every chart), which
+        # at full strength was a constant negative rather than a reading.
+        depth = 0.8 if len(claims) == 1 else 1.0
+        value = 1.6 * depth * (len(pos) - len(cau)) / len(claims)
+        lead = (pos if len(pos) >= len(cau) else cau)[0]
+        because = _clip(_plain(lead.text))
+        if lead.timing:
+            because += f" ({_plain(lead.timing)})"
+        if len(claims) > 1:
+            because += f" [{len(claims)} readings from this method]"
+        votes.append(Vote(LANE_METHOD.get(lane, LANE_METHOD_FALLBACK),
+                          max(-2.0, min(2.0, value)), because))
+    return votes
+
+
+# ---------------------------------------------------------------------------
+
+def _varga_vote(pc: dict, lord: str, varga: str, method: str) -> Optional[Vote]:
+    """How the house lord fares in one division."""
+    vsign = _varga_sign(pc, varga, lord)
+    if not vsign:
+        return None
+    v = _dignity_in(lord, vsign)
+    return Vote(method, v,
+                f"in {VARGA_PHRASE.get(varga, varga)}, {lord} sits in {vsign}"
+                + (" — exalted there" if v >= 2 else
+                   " — debilitated there" if v <= -2 else
+                   " — in its own sign" if v > 0 else " — neither strong nor weak there"))
+
+
+def divisional_votes(pc: dict, area_key: str, lord: str) -> list:
+    """The governing division, a classical cross-check, and D9 over the top.
+
+    One varga was never enough: a lord can look strong in D10 and collapse in
+    navamsha, and the classical rule is that D9 confirms or denies whatever D1
+    promised. Vargottama — the same sign in D1 and D9 — is the strongest single
+    confirmation there is, and it is invisible to a dignity read alone.
+    """
+    votes: list = []
+    if not lord:
+        return votes
+    primary, primary_name = AREA_VARGA.get(area_key, ("", ""))
+    if primary:
+        v = _varga_vote(pc, lord, primary, primary_name)
+        if v:
+            votes.append(v)
+
+    cross = AREA_VARGA_CROSS.get(area_key, "")
+    if cross and cross != primary:
+        v = _varga_vote(pc, lord, cross, "the cross-check chart")
+        if v:
+            votes.append(v)
+
+    if primary != "D9":
+        d9, d1 = _d9_sign(pc, lord), _sign_in(pc, lord)
+        if d9:
+            if d9 == d1:
+                votes.append(Vote(
+                    "the confirmation chart", 1.8,
+                    f"{lord} holds {d9} in both the birth chart and the "
+                    f"ninth-part chart — the classics treat that repetition as "
+                    f"the strongest single sign that the promise here is real"))
+            else:
+                dig = _dignity_in(lord, d9)
+                votes.append(Vote(
+                    "the confirmation chart", dig,
+                    f"the ninth-part chart puts {lord} in {d9}"
+                    + (" — the birth-chart promise is confirmed and strengthened"
+                       if dig >= 2 else
+                       " — the ninth-part chart does not back the birth chart here"
+                       if dig <= -2 else
+                       " — its own sign there, so the promise holds" if dig > 0
+                       else " — neither confirming nor denying")))
+    return votes
+
 
 def area_votes(pc: dict, area_key: str, house: int) -> list:
     """Every method's independent read of one life area."""
@@ -152,19 +423,8 @@ def area_votes(pc: dict, area_key: str, house: int) -> list:
             + (" — above average" if score >= 30
                else " — below average" if score <= 25 else " — average")))
 
-    # 3. The divisional chart that governs this area
-    varga, varga_name = AREA_VARGA.get(area_key, ("", ""))
-    if varga and lord:
-        vsign = _varga_sign(pc, varga, lord)
-        if vsign:
-            v = _dignity_in(lord, vsign)
-            votes.append(Vote(
-                varga_name,
-                v,
-                f"in {varga_name}, {lord} sits in {vsign}"
-                + (" — exalted there" if v >= 2 else
-                   " — debilitated there" if v <= -2 else
-                   " — in its own sign" if v > 0 else "")))
+    # 3. The divisional charts — governing varga, cross-check, and D9
+    votes.extend(divisional_votes(pc, area_key, lord))
 
     # 4. Who actually sits in the house
     occupants = [p for p, d in planets.items() if d.get("house") == house]
@@ -192,6 +452,9 @@ def area_votes(pc: dict, area_key: str, house: int) -> list:
                    or "strength" in y.lower())
         votes.append(Vote("chart combinations",
                           1.5 if good else -0.5, yogas[0]))
+
+    # 6. The specialist lanes — everything else the engines already know
+    votes.extend(lane_votes(pc, area_key))
     return votes
 
 
@@ -205,18 +468,39 @@ def area_verdict(pc: dict, area_key: str, house: int) -> dict:
     score = sum(v.value for v in votes) / len(votes)
     direction = "up" if score >= 0.5 else ("down" if score <= -0.5 else "mixed")
 
+    # Agreement is measured over the methods that actually took a side. With
+    # a dozen methods voting, counting abstentions against the majority made
+    # every area read "low confidence" — and a confidence chip that always says
+    # low tells the customer nothing. A method with no opinion is not a
+    # dissenter. (It also fixed the inverse bug: three neutral votes used to
+    # score "3 of 3 agree, high" on a verdict of mixed.)
     total = len(votes)
-    ups = sum(1 for v in votes if v.direction == "up")
-    downs = sum(1 for v in votes if v.direction == "down")
-    same = sum(1 for v in votes if v.direction == direction)
-    ratio = same / total
-    confidence = "high" if ratio >= 0.8 else ("moderate" if ratio >= 0.6 else "low")
-    if direction == "mixed" and ups and downs:
+    decided = [v for v in votes if v.direction != "mixed"]
+    ups = sum(1 for v in decided if v.direction == "up")
+    downs = sum(1 for v in decided if v.direction == "down")
+    same = sum(1 for v in decided if v.direction == direction)
+    ratio = same / len(decided) if decided else 0.0
+    if direction == "mixed":
+        confidence = "low"                  # we are not confident, by definition
+    elif ratio >= 0.75 and len(decided) >= 4:
+        confidence = "high"
+    elif ratio >= 0.6:
+        confidence = "moderate"
+    else:
+        confidence = "low"
+    if direction == "mixed":
         # A genuine split is a finding, not a failure — and reporting it as
         # "0 of 5 methods agree" made a real result look like a broken one.
-        agreement = f"the methods split {ups}–{downs} here"
+        if ups and downs:
+            agreement = f"the methods split {ups}–{downs} here"
+        elif ups or downs:
+            # Everything that leans, leans one way, but not hard enough to call.
+            agreement = (f"{ups or downs} of {total} methods lean "
+                         f"{'positive' if ups else 'negative'}, the rest are neutral")
+        else:
+            agreement = f"none of the {total} methods takes a side"
     else:
-        agreement = f"{same} of {total} methods agree"
+        agreement = f"{same} of {len(decided)} methods with a view agree"
     return {"direction": direction, "score": round(score, 2), "votes": votes,
             "agreement": agreement, "confidence": confidence}
 
