@@ -808,10 +808,10 @@ def navamsa_sign(sign: str, deg_in_sign: float) -> str:
 
 def d9_sign(pc: dict, planet: str) -> str | None:
     """Navamsha sign from PyJHora D9 block, else compute from D1."""
-    d9 = pc.get("divisional", {}).get("D9", {})
+    d9 = pc.get("divisional") or {}.get("D9", {})
     if planet in d9 and d9[planet] in SIGNS:
         return d9[planet]
-    pl = pc.get("planets", {}).get(planet, {})
+    pl = pc.get("planets") or {}.get(planet, {})
     if pl.get("sign") in SIGNS:
         return navamsa_sign(pl["sign"], pl.get("degree_in_sign", 0.0))
     return pl.get("navamsha_sign") or None
@@ -1410,8 +1410,8 @@ def precompute_from_chart(parsed: dict, client_name: str, dob_str: str, *, sourc
     rtvd = compute_rtvd(dob, lagna_sign, planets) if lagna_sign else {}
     longevity = compute_longevity(planets, lagna_sign, vimsh_mds) if lagna_sign else {}
     karakas = compute_cara_karakas(planets)
-    divisional = parsed.get("divisional", {})
-    chara_dasha = parsed.get("chara_dasha", {})
+    divisional = parsed.get("divisional") or {}
+    chara_dasha = parsed.get("chara_dasha") or {}
     jaimini = build_jaimini_block(planets, lagna_sign, karakas, divisional, chara_dasha) if lagna_sign else {}
     numerology = compute_numerology(client_name, dob)
     mrityu = check_mrityu_bhaga(planets)
@@ -1567,9 +1567,9 @@ def build_lane_instructions(planets, lagna, lagna_sign, house_lords,
     ll_sign = pillar.get("lagna_lord_sign","?")
     ll_house = pillar.get("lagna_lord_house","?")
     ll_dig = pillar.get("lagna_lord_dignity","?")
-    cur_md = vimsh.get("current_md",{})
-    cur_yogini = yogini.get("current_yogini",{})
-    cur_rtvd = rtvd.get("current_year",{})
+    cur_md = vimsh.get("current_md") or {}
+    cur_yogini = yogini.get("current_yogini") or {}
+    cur_rtvd = rtvd.get("current_year") or {}
     mk1 = longevity.get("maraka_1",{})
     mk2 = longevity.get("maraka_2",{})
 

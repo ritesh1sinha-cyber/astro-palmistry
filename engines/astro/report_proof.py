@@ -1,4 +1,19 @@
-"""Prove the method on the customer's past before predicting their future.
+"""RETIRED AS A PROOF DEVICE — see report_recognition.py.
+
+    This asked the customer for four dates and then announced which planetary
+    period each fell in. It scored 4/4 on the test chart and looked superb.
+
+    It was worthless, and measurably so: feeding it FABRICATED dates scored 76%
+    on average and a perfect 4/4 in 35% of random trials. The customer supplies
+    the fact, we supply the rationalisation. That is cold reading.
+
+    What survives here is the event-collection form, which BTR genuinely needs
+    as input for birth-time rectification. It is no longer presented to anyone
+    as evidence that the method works.
+
+Original docstring follows.
+
+Prove the method on the customer's past before predicting their future.
 
 Every paid competitor at the top of this market does one thing we did not:
 they test the technique against events that have already happened. Kamal Kapoor
