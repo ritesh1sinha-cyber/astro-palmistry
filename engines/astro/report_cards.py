@@ -326,7 +326,7 @@ DIRECTION_LABEL = {"up": "favourable", "mixed": "mixed", "down": "under strain"}
 def render(pc: dict, *, name: str = "", question_html: str = "",
            price: int = 1499, today: Optional[date] = None,
            paid: bool = False, proof_html: str = "",
-           daily_html: str = "") -> str:
+           daily_html: str = "", timing_html: str = "") -> str:
     today = today or date.today()
     cards = build_cards(pc, today=today)
     timeline = build_timeline(pc, today=today)
@@ -494,6 +494,22 @@ font-weight:600;margin-bottom:5px}}
 .windows{{list-style:none;margin:10px 0 0;padding:0;font-size:.85rem}}
 .windows li{{display:flex;gap:10px;padding:6px 0;border-top:1px solid #e0dcd4}}
 .windows b{{min-width:96px;font-variant-numeric:tabular-nums}}
+.windows-list{{list-style:none;margin:0;padding:0}}
+.win{{background:#fff;border:1px solid var(--line);border-left-width:4px;
+border-radius:12px;padding:16px 18px;margin-bottom:12px}}
+.win.up{{border-left-color:var(--up)}}
+.win.down{{border-left-color:var(--down)}}
+.win.mixed{{border-left-color:var(--mixed)}}
+.win-when{{font-size:.74rem;font-weight:600;letter-spacing:.04em;
+color:var(--muted);font-variant-numeric:tabular-nums}}
+.win-head{{font-family:Fraunces,serif;font-size:1.05rem;margin:4px 0 6px;
+font-weight:600}}
+.win-tag{{font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;
+color:var(--muted);font-family:Inter,sans-serif;font-weight:600}}
+.win-lead{{margin:0 0 10px;font-size:.94rem}}
+.win-why{{margin:0;padding-left:16px;font-size:.83rem;color:#3d4250}}
+.win-why li{{margin:4px 0}}
+.personal p{{margin:8px 0 0;font-size:.83rem;color:#3d4250}}
 .dasha-conf{{margin-top:14px;border-top:1px solid rgba(255,255,255,.18);
 padding-top:12px}}
 .dsys{{display:flex;justify-content:space-between;font-size:.82rem;
@@ -547,7 +563,9 @@ footer{{margin-top:40px;font-size:.74rem;color:var(--muted);text-align:center}}
 <p class="sec-note">Ordered by how strongly your chart speaks — not by convention.</p>
 {cards_html}
 
-<h3 class="sec">What comes next</h3>
+{timing_html}
+
+<h3 class="sec">The full period sequence</h3>
 <p class="sec-note">Your own timing sequence, with real dates.</p>
 <ol class="timeline">{tl}</ol>
 

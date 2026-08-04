@@ -84,6 +84,14 @@ def _e(t: Any) -> str:
     return _html.escape(str(t or ""))
 
 
+def _suffix(n: Any) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return ""
+    return "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
 def sunrise_local(day: date, lat: float, lon: float, tz: float) -> datetime:
     """Rough local sunrise. Minutes-accurate is plenty for hora guidance."""
     n = day.timetuple().tm_yday
@@ -170,17 +178,44 @@ def build(reading: dict, *, lat: float = 25.6, lon: float = 85.1,
     if tara == "caution":
         wanted, avoid = ("Jupiter", "Venus"), ("Mars", "Saturn", "Sun")
 
+    # The personalisation IS the product, so say it out loud. A sun-sign column
+    # gives the same line to a twelfth of India. This is the Moon measured
+    # against THIS person's birth Moon and rising sign: house_from_moon,
+    # tarabala (today's star counted from their birth star) and chandrabala
+    # are all functions of their chart, not of the calendar.
+    natal = reading.get("natal_moon") or {}
+    tara_name = (reading.get("tarabala") or {}).get("name", "")
+    personal = []
+    if moon.get("house_from_moon"):
+        personal.append(
+            f"The Moon is in your <b>{moon['house_from_moon']}"
+            f"{_suffix(moon['house_from_moon'])} house counted from your own "
+            f"birth Moon</b> in {natal.get('sign', '')} — not from a sun sign.")
+    if tara_name and natal.get("nakshatra"):
+        personal.append(
+            f"Today's star is <b>{tara_name}</b> counted from your birth star "
+            f"{natal.get('nakshatra')}. Someone born a day either side of you "
+            f"gets a different reading.")
+    if moon.get("house_from_lagna"):
+        personal.append(
+            f"From your rising sign it falls in the "
+            f"<b>{moon['house_from_lagna']}"
+            f"{_suffix(moon['house_from_lagna'])}</b>, which is the part of "
+            f"life today actually lands on.")
+
     return {
         "date": day,
         "headline": headline,
         "house_note": house_note,
         "moon": f"{moon.get('sign','')} · {moon.get('nakshatra','')}",
+        "personal": personal,
         "dos": dos, "donts": donts,
         "windows": pick_windows(day, lat, lon, tz, wanted=wanted, avoid=avoid),
     }
 
 
 def render(card: dict) -> str:
+    personal = "".join(f"<p>{x}</p>" for x in card.get("personal", []))
     dos = "".join(f"<div>{_e(x)}</div>" for x in card["dos"])
     donts = "".join(f"<div>{_e(x)}</div>" for x in card["donts"])
     wins = "".join(
@@ -192,6 +227,7 @@ def render(card: dict) -> str:
   <h3>{_e(card['headline'])}</h3>
   <p style="font-size:.86rem;margin:0 0 4px">{_e(card['house_note'])}</p>
   <p style="font-size:.78rem;color:#6a7080;margin:0">Moon today: {_e(card['moon'])}</p>
+  <div class="personal">{personal}</div>
   <div class="dodont">
     <div class="do"><div class="t">Do</div>{dos}</div>
     <div class="dont"><div class="t">Don't</div>{donts}</div>
