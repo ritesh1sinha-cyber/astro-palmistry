@@ -98,6 +98,34 @@ LEAK_STRIPS: list[tuple[str, str]] = [
 
     # placeholder identity: the internal handle used while testing
     (r"<dt>\s*Client\s*</dt>\s*<dd>\s*(?:ritxx|ritz|sample|test)\s*</dd>", ""),
+
+    # 'The handbook tale "Intricacies of Karma: The Goldsmith's Journey" is
+    # metaphorical folklore, not literal history.' — found in the KVS and KP
+    # lanes on 7 of 7 charts in the lane sweep. It names a source book, quotes a
+    # chapter title, and then apologises for it, all in the reader's own
+    # reading. The sentences AFTER it carry the actual meaning ("the story turns
+    # on trust and betrayal…"), so only the framing sentence goes.
+    (r"\s*The\s+handbook\s+tale\s*“[^”]*”\s*is\s+metaphorical\s+"
+     r"folklore,?\s*not\s+literal\s+history\.?", ""),
+    (r"\s*The\s+handbook\s+tale\s*\"[^\"]*\"\s*is\s+metaphorical\s+folklore,?"
+     r"\s*not\s+literal\s+history\.?", ""),
+    (r"\s*The\s+handbook\s+(?:tale|story)\s*[“\"][^”\"]*[”\"]\s*",
+     " The old story "),
+    # Rewrite only the NOUN, leaving the article untouched, so the original
+    # capitalisation survives: "The handbook says" -> "The tradition holds",
+    # "the handbook" -> "the tradition". Matching "The handbook" as a unit does
+    # not work here because these patterns are applied with re.I, so a
+    # capitalised variant also matches lower-case text and forces a capital
+    # into the middle of a sentence.
+    (r"\bhandbook\s+(?:says|notes|states|records)\b", "tradition holds"),
+    (r"\bhandbook\b", "tradition"),
+
+    # "Book OCR longevity scan finds no strict…" — the customer does not need to
+    # know a book was scanned, and strip_citations only removed the "OCR",
+    # leaving the equally revealing "Book … scan".
+    (r"\bBook\s+OCR\s+(\w+)\s+scan\b", r"chart \1 check"),
+    (r"\bBook\s+OCR\b", "chart"),
+    (r"\bOCR\s+(?:scan|pass|extract)\b", "chart check"),
 ]
 
 

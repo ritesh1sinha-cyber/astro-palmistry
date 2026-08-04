@@ -30,6 +30,50 @@ from __future__ import annotations
 import re
 from typing import Any
 
+#: The tradition's own death vocabulary, reworded rather than deleted.
+#:
+#: A lane sweep across seven lanes and seven charts found 24 claims carrying
+#: death vocabulary that this module was blind to, because it only knew the
+#: English word "longevity". Three phrases reached the reader intact:
+#:
+#:     "The Moon is the prime killer but will give these results..."
+#:     "The strongest life-risk lords for your rising sign are..."
+#:     "...no strict Mrityu Bhaga degree hits at birth"
+#:
+#: And where the old `\bmaraka\b[^.;]*` rule DID fire it deleted to the end of
+#: the clause, so "Peak maraka configuration - maximum health vigilance and
+#: upaya" became "Peak." — the warning gone and the useful advice with it. That
+#: is the opposite of the instruction, which was to convert an 8th-house signal
+#: into a health-awareness window plus a remedy.
+#:
+#: So: reword the vocabulary, and reserve deletion for claims that are
+#: genuinely about a span (numbers, ages, "will die"). Order matters — these run
+#: before BANNED, so a reworded sentence is no longer a candidate for deletion.
+#: "Sensitive degree" is the standard neutral rendering of Mrityu Bhaga, and is
+#: already the wording the longevity lane uses elsewhere.
+REWORD = [
+    (r"\bmaraka[-\s]awareness\b", "health-awareness"),
+    (r"\bmaraka\s+configuration\b", "health-sensitive configuration"),
+    (r"\bmaraka\s+(lords?|planets?|periods?)\b", r"health-sensitive \1"),
+    (r"\bmaraka\b", "health-sensitive"),
+    (r"\bmarana[-\s]karaka\b", "health-sensitive indicator"),
+    (r"\bmarana\b", "health-sensitive"),
+    # Match the trailing noun too, or "Mrityu Bhaga degree hits" rewrites to
+    # "sensitive degree degree hits".
+    (r"\bmrityu\s+bhaga\s+degrees?\b", "sensitive degree"),
+    (r"\bmrityu\s+bhaga\b", "sensitive degree"),
+    (r"\bmrityu\b", "sensitive-degree"),
+    (r"\blife[-\s]risk\s+(lords?|planets?|periods?)\b", r"health-sensitive \1"),
+    (r"\blife[-\s]risk\b", "health-sensitive"),
+    (r"\bprime\s+killers?\b", "prime health-sensitive lord"),
+    (r"\bthe\s+killers?\b", "the health-sensitive lord"),
+    (r"\bkiller\s+(lords?|planets?)\b", r"health-sensitive \1"),
+    (r"\bkillers?\b", "health-sensitive lord"),
+    (r"\bbadhaka(sthana)?\b", "obstruction point"),
+    (r"\bkhara\b", "difficult"),
+]
+_REWORD = [(re.compile(p, re.I), r) for p, r in REWORD]
+
 #: Phrases that must never survive. Ordered longest-first so the specific
 #: patterns win before the general ones widen.
 BANNED = [
@@ -39,7 +83,8 @@ BANNED = [
     r"\blongevity\s*(?:estimate|confluence|span|range|verdict)?\b[^.;]*",
     r"\bkalpayu\b[^.;]*", r"\bpoornayu\b[^.;]*", r"\bmadhyayu\b[^.;]*",
     r"\balpayu\b[^.;]*",
-    r"\bmaraka\b[^.;]*",
+    # NOTE: `maraka` is handled by REWORD above, which keeps the window and the
+    # remedy. Deleting to the end of the clause here destroyed both.
     r"\b(?:expected|estimated|probable)\s+(?:age|years)\s+(?:of\s+)?(?:death|passing|end)\b[^.;]*",
     r"\b(?:date|time|year)\s+of\s+death\b[^.;]*",
     r"\bwill\s+(?:die|pass\s+away|not\s+survive)\b[^.;]*",
@@ -69,11 +114,29 @@ SOFTEN = [
 ]
 
 
+def _match_case(m: "re.Match[str]", replacement: str) -> str:
+    """Expand a REWORD replacement, preserving the original's capitalisation.
+
+    Without this, "Maraka lord Saturn activates..." at the start of a sentence
+    becomes "health-sensitive lord Saturn activates..." — lower-case mid-report,
+    which reads as a bug to anyone paying attention.
+    """
+    out = m.expand(replacement)
+    original = m.group(0)
+    if original[:1].isupper() and out[:1].islower():
+        out = out[:1].upper() + out[1:]
+    return out
+
+
 def scrub(text: Any) -> str:
     """Remove any lifespan claim, then tidy what the removal left behind."""
     if text is None:
         return ""
     out = str(text)
+    # Reword the tradition's death vocabulary BEFORE the deleting patterns run,
+    # so a sentence that can be saved is saved.
+    for pat, rep in _REWORD:
+        out = pat.sub(lambda m, _r=rep: _match_case(m, _r), out)
     for pat, rep in SOFTEN:
         out = pat.sub(rep, out)
     for pat in _BANNED:
@@ -87,6 +150,10 @@ def scrub(text: Any) -> str:
     out = re.sub(r"(?:[,;:]\s*){2,}", ", ", out)
     out = re.sub(r"^\s*[,;:.\-–—]\s*", "", out)
     out = re.sub(r"\.\s*\.", ".", out)
+    # A reworded phrase can abut the noun it replaced. Only collapse the words
+    # this module introduces — a blanket dedup would eat legitimate English.
+    out = re.sub(r"\b(degree|lord|health-sensitive)(\s+\1)+\b", r"\1", out,
+                 flags=re.I)
     # sentences that lost their subject
     out = re.sub(r"(?<![A-Za-z])\.\s*", ". ", out)
     return out.strip()

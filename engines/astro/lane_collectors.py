@@ -172,7 +172,30 @@ def collect_jaimini(extracted: str, name: str, dob: str, pc: dict | None = None)
     return out
 
 
+def _ensure_encoder() -> None:
+    """Install the lexical fallback when sentence-transformers is absent.
+
+    Measured across seven charts, the Bhardwaj lane returned ZERO claims for
+    every one of them — including the development chart — because
+    `local_models.load_sentence_transformer` raises ModuleNotFoundError and
+    `_isolated` swallowed it as "this lane had nothing to say". So the
+    nine-method confluence had been quietly voting with eight.
+
+    `semantic_fallback.install()` already existed and was already called on the
+    HTML-report path (lane_builder, core.handlers) — but not here, on the path
+    that feeds the confluence vote. With it installed the lane yields 10 claims
+    per chart and they differentiate. Cheap to call, idempotent, and a no-op
+    when the real encoder is present.
+    """
+    try:
+        import semantic_fallback
+        semantic_fallback.install()
+    except Exception:                                                # noqa: BLE001
+        pass
+
+
 def collect_bhardwaj(extracted: str, name: str, dob: str, pc: dict | None = None) -> list[LaneClaim]:
+    _ensure_encoder()
     from bhardwaj_semantic import BhardwajSemanticEngine, build_chart_signals, load_corpus
     from vedic_bhardwaj_report import BhardwajChart, _load_book
 
@@ -272,6 +295,7 @@ def _isolated(meta: dict, lane_name: str, fn: Callable, *args) -> list[LaneClaim
 
 
 def collect_all_lanes(extracted: str, name: str, dob: str, pc: dict | None = None) -> tuple[list[LaneClaim], dict]:
+    _ensure_encoder()      # before any lane runs; Mehta's semantic pass wants it too
     pc = pc or precompute(extracted, name, dob)
     claims: list[LaneClaim] = []
     meta: dict[str, int] = {}

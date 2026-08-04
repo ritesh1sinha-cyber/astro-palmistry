@@ -10,6 +10,33 @@ from nakshatra_karmic_data import chart_stars, short_title, summarize_tale, them
 if TYPE_CHECKING:
     from kp_chart import KPChart
 
+#: The moral pressure each theme puts on the reader, keyed on the tale's own
+#: dominant theme.
+#:
+#: This replaces a hardcoded clause — "skilled hands and comfort do not excuse
+#: broken trust or hidden debt" — which was written for the Goldsmith tale and
+#: then appended to EVERY reader's birth-star reading. A lane sweep found it in
+#: 7 of 7 charts, so a Mula native was being told about their "skilled hands".
+#: Same failure as the anchor engine's tables: prose fitted to one case, shipped
+#: to everyone.
+_LESSON = {
+    "trust and betrayal": "the tale's warning is that comfort never excuses a "
+                          "broken confidence",
+    "greed and debt": "the tale's warning is that an unpaid debt keeps its own "
+                      "accounts",
+    "duty and service": "the tale's warning is that duty done for credit stops "
+                        "being service",
+    "loss and grief": "the tale's warning is that grief avoided becomes grief "
+                      "deferred",
+    "redemption": "the tale's warning is that repair has to be made where the "
+                  "harm was done",
+    "relationship knots": "the tale's warning is that charm is not character",
+    "health and worry": "the tale's warning is that a body ignored eventually "
+                        "insists",
+    "wealth and craft": "the tale's warning is that a shortcut in the craft "
+                        "shows up in the work",
+}
+
 _HABITS = {
     "trust and betrayal": "Choose transparency in close bonds; do not tolerate quiet double-dealing.",
     "greed and debt": "Return what is not yours and keep financial vows clean.",
@@ -49,23 +76,32 @@ def human_birth_star(pc: dict) -> tuple[str, str]:
     tale = moon["tale"]
     nak, pada = moon["nakshatra"], moon["pada"]
     if tale.get("fallback_pada"):
-        pada_note = f" (OCR gap - using adjacent {_ordinal(tale['fallback_pada'])} pada text)"
+        pada_note = (f" — read with the neighbouring "
+                     f"{_ordinal(tale['fallback_pada'])} pada, which shares "
+                     f"this star's story")
     else:
         pada_note = ""
     tags = theme_tags(tale.get("body", ""))
-    title = short_title(tale)
     theme_line = ", ".join(tags) if tags else "karmic consequence and choice"
     habit = _HABITS.get(tags[0], "Act with integrity when comfort tempts you to cut corners.")
     moral = (tale.get("moral") or "").strip()
     if moral and len(moral) > 220:
         moral = moral[:217].rsplit(" ", 1)[0] + "..."
+    lesson = _LESSON.get(tags[0] if tags else "",
+                         "the tale's warning is that a choice made quietly "
+                         "still has consequences")
     parts = [
-        f"Your birth star is {nak} ({_ordinal(pada)} pada{pada_note}). "
-        f"The handbook tale \"{title}\" is metaphorical folklore, not literal history.",
-        f"The story turns on {theme_line}: skilled hands and comfort do not excuse broken trust or hidden debt.",
+        f"Your birth star is {nak} ({_ordinal(pada)} pada{pada_note}).",
+        f"The old story carried with this star turns on {theme_line} — "
+        f"{lesson}.",
     ]
     if moral:
-        parts.append(moral)
+        # The corpus moral is third-person narrative about the tale's character
+        # ("his existence remained a testament to..."). Dropped in unframed it
+        # reads as a statement about the READER — and for a woman it arrives in
+        # the wrong gender, which the voice layer cannot fix because the pronoun
+        # is genuinely about someone else. Naming whose story it is repairs both.
+        parts.append(f"In the tale itself: {moral}")
     parts.append(
         f"In this life the echo is emotional: {_chart_echo(pc, tags)} "
         f"Practical habit: {habit}"
@@ -79,8 +115,9 @@ def human_birth_star(pc: dict) -> tuple[str, str]:
         lt_theme = lt_tags[0] if lt_tags else "body-path emphasis"
         parts.insert(
             3,
-            f"Rising star {lagna['nakshatra']} {_ordinal(lagna['pada'])} pada adds a public-body layer - "
-            f"{short_title(lt)} themes ({lt_theme}) colour how others read your path, not only your inner Moon story.",
+            f"Rising star {lagna['nakshatra']} {_ordinal(lagna['pada'])} pada "
+            f"adds a public layer — {lt_theme} colours how others read your "
+            f"path, not only your inner Moon story.",
         )
     fact = f"Moon {nak} pada {pada}, story #{tale.get('story_id', '?')}"
     return " ".join(parts), fact
