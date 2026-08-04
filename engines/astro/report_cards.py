@@ -152,7 +152,7 @@ class Card:
     action: str = ""
     mantra: str = ""
     agreement: str = ""            # confluence, reduced to a chip
-    locked: bool = False
+    locked: bool = False           # kept for callers that still gate whole cards
 
 
 def _d(value: Any) -> Optional[date]:
@@ -198,50 +198,32 @@ def _dasha_touches(pc: dict, house: int, lords: list) -> bool:
     return False
 
 
-def score_area(pc: dict, area: Area) -> tuple[str, list, float]:
-    """Verdict for one life area, with the evidence that produced it."""
+def score_area(pc: dict, area: Area) -> tuple:
+    """Verdict for one life area — six methods voting, not one.
+
+    Reading the house lord's dignity alone was the original approach, and on a
+    real chart it produced a confidently wrong answer: Mercury debilitated
+    reads as "recognition lags", while the neecha bhanga cancellation from
+    exalted Venus classically inverts exactly that into strength. The vote is
+    what catches it.
+    """
+    try:
+        import report_confluence as CF
+        verdict = CF.area_verdict(pc, area.key, area.house)
+        evidence = [f"<b>{v.method.capitalize()}</b> — {v.because}"
+                    for v in verdict["votes"]]
+        return verdict["direction"], evidence, verdict["score"], verdict
+    except Exception:
+        pass
+
+    # fall back to the single-method read rather than failing a report
     hl = pc.get("house_lords", {})
     info = hl.get(str(area.house)) or {}
-    lord = info.get("lord") or ""
-    lord_house = info.get("lord_house")
     dignity = str(info.get("lord_dignity") or "").lower()
-    planets = pc.get("planets", {})
-
     score = DIGNITY_WEIGHT.get(dignity, 0.0)
-
-    # Ashtakavarga: the classical numeric strength of the house itself.
-    sav = (pc.get("ashtakavarga", {}) or {}).get("sav") or []
-    sav_score = None
-    if len(sav) >= area.house:
-        sav_score = sav[area.house - 1]
-        score += 1 if sav_score >= 30 else (-1 if sav_score <= 25 else 0)
-
-    if str(info.get("functional") or "").startswith("functional_benefic"):
-        score += 0.5
-    elif str(info.get("functional") or "").startswith("functional_malefic"):
-        score -= 0.5
-
-    # A house with its lord in an angle or trine behaves better than the
-    # dignity alone suggests.
-    if lord_house in (1, 4, 5, 7, 9, 10):
-        score += 0.5
-    elif lord_house in (6, 8, 12):
-        score -= 1
-
     direction = "up" if score >= 1.5 else ("down" if score <= -1 else "mixed")
-
-    evidence = []
-    if lord:
-        where = f"your {lord_house}{_ord(lord_house)}" if lord_house else "your chart"
-        evidence.append(
-            f"<b>{lord}</b> rules this area and sits {DIGNITY_PLAIN.get(dignity, 'here')} "
-            f"in {where} — {PLANET_VOICE.get(lord, 'its own themes')}")
-    if sav_score is not None:
-        evidence.append(
-            f"Classical strength score for this house: <b>{sav_score} of 56</b>"
-            + (" — above average" if sav_score >= 30 else
-               " — below average" if sav_score <= 25 else " — middling"))
-    return direction, evidence, score
+    lord = info.get("lord") or ""
+    return direction, [f"<b>{lord}</b> rules this area"], score, {}
 
 
 def _ord(n: Any) -> str:
@@ -253,7 +235,7 @@ def _ord(n: Any) -> str:
 
 
 def build_cards(pc: dict, *, today: Optional[date] = None,
-                free_areas: int = 2) -> list:
+                free_areas: int = 0) -> list:
     """One card per life area, ordered so the sharpest reading leads."""
     today = today or date.today()
     vim = pc.get("vimshottari", {}) or {}
@@ -267,7 +249,7 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
 
     cards = []
     for area in AREAS:
-        direction, evidence, score = score_area(pc, area)
+        direction, evidence, score, verdict = score_area(pc, area)
         live = _dasha_touches(pc, area.house, [md_lord, ad_lord])
         ev = list(evidence)
         ev.append(f"Running now: <b>{period_line}</b>"
@@ -280,6 +262,7 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
             window=window, evidence=ev,
             action=ACTIONS.get(lord, "") if direction != "up" else "",
             mantra=MANTRA.get(lord, "") if direction == "down" else "",
+            agreement=(verdict or {}).get("agreement", ""),
         )
         cards.append((abs(score) + (1 if live else 0), card))
 
@@ -287,7 +270,13 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
     # statement about their life on line one, not the 1st house by convention
     cards.sort(key=lambda kv: -kv[0])
     ordered = [c for _, c in cards]
-    for c in ordered[free_areas:]:
+    # free_areas=0 is the default now: EVERY headline is free, and the paywall
+    # sits on the dated window and the remedy inside each card. Locking whole
+    # cards hid whichever areas the chart happened to speak loudest about —
+    # on a test chart that meant Career was hidden and Children was free.
+    # Seeing the whole picture and paying for "when" and "what to do" is both
+    # a better hook and an honest one.
+    for c in ordered[free_areas:] if free_areas else []:
         c.locked = True
     return ordered
 
@@ -335,7 +324,9 @@ DIRECTION_LABEL = {"up": "favourable", "mixed": "mixed", "down": "under strain"}
 
 
 def render(pc: dict, *, name: str = "", question_html: str = "",
-           price: int = 1499, today: Optional[date] = None) -> str:
+           price: int = 1499, today: Optional[date] = None,
+           paid: bool = False, proof_html: str = "",
+           daily_html: str = "") -> str:
     today = today or date.today()
     cards = build_cards(pc, today=today)
     timeline = build_timeline(pc, today=today)
@@ -345,27 +336,72 @@ def render(pc: dict, *, name: str = "", question_html: str = "",
     moon = (pc.get("planets", {}).get("Moon") or {})
     first = (name or "").split()[0] if name else "You"
 
+    # Three timing systems, not one. Vimshottari alone is a single opinion;
+    # Yogini carries its own tone and Jaimini's sign periods move
+    # independently. Agreement between them is the honest confidence signal.
+    dasha_html = personality_html = ""
+    try:
+        import report_confluence as CF
+        dc = CF.dasha_confluence(pc, today)
+        rows = "".join(
+            f'<div class="dsys"><span>{_e(r["system"])}</span>'
+            f'<b>{_e(r["label"])}</b></div>' for r in dc["readings"])
+        verdict = {"up": "All three are pointing the same way, and it is a "
+                         "supportive way.",
+                   "down": "The timing systems agree this is a demanding "
+                           "stretch rather than an easy one.",
+                   "mixed": "The systems do not fully agree here — which "
+                            "usually means a period that rewards patience "
+                            "over big moves."}[dc["direction"]]
+        dasha_html = (f'<div class="dasha-conf">{rows}'
+                      f'<div class="dagree">{_e(dc["agreement"])} · '
+                      f'{_e(verdict)}</div></div>')
+
+        pers = CF.personality(pc)
+        traits = "".join(f"<li>{_e(t)}</li>" for t in pers["traits"])
+        yogas = "".join(f"<li>{_e(y)}</li>" for y in pers["yogas"])
+        personality_html = f"""
+<h3 class="sec">Who your chart says you are</h3>
+<p class="sec-note">Read this first. If it does not describe you, nothing
+after it is worth your money.</p>
+<div class="card persona">
+  <ul class="traits">{traits}</ul>
+  {f'<div class="yogas"><span class="ev-label">Standing combinations in your chart</span><ul>{yogas}</ul></div>' if yogas else ''}
+</div>"""
+    except Exception:
+        pass
+
     def card_html(c: Card) -> str:
-        if c.locked:
-            return f"""
-<article class="card locked" data-verdict="{c.direction}">
-  <div class="card-top"><span class="area">{_e(c.label)}</span>
-    <span class="pill {c.direction}">{DIRECTION_LABEL[c.direction]}</span></div>
-  <p class="claim blurred">{_e(c.headline)}</p>
-  <div class="lock">Unlock to read</div>
-</article>"""
+        # Evidence is shown, never hidden behind a toggle. It is the proof the
+        # reading is computed from THIS chart rather than written for anyone —
+        # collapsing it hides the one thing that separates us from a horoscope
+        # column.
         ev = "".join(f"<li>{e}</li>" for e in c.evidence)
-        act = (f'<div class="action"><span class="act-label">What helps</span>'
-               f'<p>{_e(c.action)}</p>'
-               + (f'<p class="mantra">{_e(c.mantra)}</p>' if c.mantra else "")
-               + "</div>") if c.action else ""
+
+        if paid:
+            when = f'<div class="when">{_e(c.window)}</div>'
+            act = (f'<div class="action"><span class="act-label">What helps</span>'
+                   f'<p>{_e(c.action)}</p>'
+                   + (f'<p class="mantra">{_e(c.mantra)}</p>' if c.mantra else "")
+                   + "</div>") if c.action else ""
+        else:
+            when = ('<div class="when locked-inline">'
+                    '<span class="lockicon">•</span> Exact dates in the full reading</div>')
+            act = ('<div class="action locked-inline">'
+                   '<span class="act-label">What helps</span>'
+                   '<p class="blurred">{}</p></div>'.format(_e(c.action))
+                   ) if c.action else ""
+
         return f"""
 <article class="card" data-verdict="{c.direction}">
   <div class="card-top"><span class="area">{_e(c.label)}</span>
     <span class="pill {c.direction}">{DIRECTION_LABEL[c.direction]}</span></div>
   <p class="claim">{_e(c.headline)}</p>
-  <div class="when">{_e(c.window)}</div>
-  <details><summary>Why the chart says this</summary><ul>{ev}</ul></details>
+  {when}
+  <div class="evidence">
+    <span class="ev-label">Why your chart says this</span>
+    {f'<span class="agree">{_e(c.agreement)}</span>' if c.agreement else ''}
+    <ul>{ev}</ul></div>
   {act}
 </article>"""
 
@@ -426,8 +462,50 @@ details li{{margin:6px 0}}
 font-weight:600;color:var(--mixed)}}
 .action p{{margin:6px 0 0;font-size:.88rem}}
 .mantra{{font-style:italic;color:var(--muted);font-size:.82rem!important}}
-.locked .blurred{{filter:blur(5px);user-select:none;opacity:.55}}
-.lock{{font-size:.76rem;font-weight:600;color:var(--muted);margin-top:6px}}
+.blurred{{filter:blur(4.5px);user-select:none;opacity:.6}}
+.locked-inline .lockicon{{color:var(--mixed);font-weight:700}}
+.when.locked-inline{{color:var(--mixed);font-weight:600}}
+.evidence{{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}}
+.ev-label{{font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;
+font-weight:600;color:var(--muted)}}
+.agree{{float:right;font-size:.66rem;font-weight:600;color:var(--muted);
+background:#f1efea;border-radius:99px;padding:2px 9px}}
+.evidence ul{{margin:8px 0 0;padding-left:18px;font-size:.85rem;color:#3d4250}}
+.evidence li{{margin:6px 0}}
+.proof{{background:#fff;border:2px solid var(--ink);border-radius:14px;
+padding:22px;margin:26px 0}}
+.proof h3{{font-family:Fraunces,serif;font-size:1.22rem;margin:0 0 8px;font-weight:600}}
+.proof p{{font-size:.9rem;margin:0 0 12px}}
+.proof .hits{{list-style:none;margin:14px 0 0;padding:0}}
+.proof .hits li{{display:flex;gap:10px;align-items:flex-start;padding:9px 0;
+border-top:1px solid var(--line);font-size:.88rem}}
+.proof .tick{{color:var(--up);font-weight:700}}
+.proof .miss{{color:var(--muted);font-weight:700}}
+.daily{{background:#f2efe9;border-radius:14px;padding:20px 22px;margin:26px 0}}
+.daily .lbl{{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+font-weight:600;color:var(--muted)}}
+.daily h3{{font-family:Fraunces,serif;font-size:1.16rem;margin:8px 0 10px;font-weight:600}}
+.dodont{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}}
+@media(max-width:520px){{.dodont{{grid-template-columns:1fr}}}}
+.dodont div{{background:#fff;border-radius:10px;padding:10px 12px;font-size:.84rem}}
+.dodont .t{{font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;
+font-weight:600;margin-bottom:5px}}
+.do .t{{color:var(--up)}} .dont .t{{color:var(--down)}}
+.windows{{list-style:none;margin:10px 0 0;padding:0;font-size:.85rem}}
+.windows li{{display:flex;gap:10px;padding:6px 0;border-top:1px solid #e0dcd4}}
+.windows b{{min-width:96px;font-variant-numeric:tabular-nums}}
+.dasha-conf{{margin-top:14px;border-top:1px solid rgba(255,255,255,.18);
+padding-top:12px}}
+.dsys{{display:flex;justify-content:space-between;font-size:.82rem;
+padding:3px 0;opacity:.9}}
+.dsys span{{opacity:.65}}
+.dagree{{margin-top:9px;font-size:.8rem;opacity:.8}}
+.persona .traits{{list-style:none;margin:0;padding:0}}
+.persona .traits li{{font-family:Fraunces,serif;font-size:1.02rem;
+line-height:1.45;padding:9px 0;border-bottom:1px solid var(--line)}}
+.persona .traits li:last-child{{border-bottom:0}}
+.yogas{{margin-top:12px;background:#f6f4ef;border-radius:10px;padding:12px 14px}}
+.yogas ul{{margin:8px 0 0;padding-left:18px;font-size:.84rem}}
 ol.timeline{{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}}
 ol.timeline li{{position:relative;padding:0 0 20px 20px}}
 ol.timeline li::before{{content:"";position:absolute;left:-7px;top:5px;width:12px;
@@ -458,8 +536,13 @@ footer{{margin-top:40px;font-size:.74rem;color:var(--muted);text-align:center}}
       to {_e(_pretty(_d(ad.get('end'))))}</h2>
   <p>{_e(PLANET_VOICE.get(md.get('md_lord',''),''))} sets the background;
      {_e(PLANET_VOICE.get(ad.get('ad_lord',''),''))} is what you are feeling week to week.</p>
+  {dasha_html}
 </div>
 
+{personality_html}
+
+{proof_html}
+{daily_html}
 <h3 class="sec">What this period is doing to each part of your life</h3>
 <p class="sec-note">Ordered by how strongly your chart speaks — not by convention.</p>
 {cards_html}
