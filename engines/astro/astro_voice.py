@@ -52,6 +52,291 @@ STRIP_PATTERNS = [
     r"life-event dates were not supplied[^<]*",
 ]
 
+# ---------------------------------------------------------------------------
+# 1a. Leaks — machinery that escaped into the customer's copy
+# ---------------------------------------------------------------------------
+# Found by auditing the real report set, not imagined. Each entry is
+# (pattern, replacement): a replacement rather than a deletion wherever the
+# surrounding sentence still has something true to say, because a half-deleted
+# sentence reads worse than the leak did.
+#
+# None of these carry a fact. They are paths, ids, build instructions and
+# advice to go use somebody else's astrology software.
+LEAK_STRIPS: list[tuple[str, str]] = [
+    # <dt>Source</dt><dd><code>precomputed:/home/oppo/.../input/ritxx</code></dd>
+    # — a full filesystem path and session UUID, printed in the header of the
+    # KP and BNN reports where the customer reads it first.
+    (r"<dt>\s*Source\s*</dt>\s*<dd>.*?</dd>", ""),
+    (r"\bSource\s+precomputed:[^\s<]*", ""),
+    (r"precomputed:(?:/[\w.\-]+)+/?", ""),
+    (r"(?:^|(?<=[\s:=(\"']))/(?:[\w.\-]+/){2,}[\w.\-]+", ""),
+    (r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", ""),
+
+    # "Rebuild corpus: python3 build_bhardwaj_data.py" — build instructions for
+    # a corpus the customer will never rebuild.
+    (r"\s*(?:Rebuild(?:\s+corpus)?:\s*)?<code>\s*python3?[^<]*</code>\.?", ""),
+    (r"\s*Rebuild(?:\s+corpus)?:\s*python3?\s+[\w.]+\.py\.?", ""),
+    (r"\s*Engine:\s*\+?\s*[\w\s]*?\d*\.\s*(?=</p>|$)", ""),
+
+    # "the plain-language version for the client is user_report_ritxx.html"
+    (r"\s*This is the analyst view\s*—\s*the plain-language version for the "
+     r"client is\s*<em>[^<]*</em>\.?", ""),
+    (r"\s*the plain-language version for the client is[^.<]*\.?", ""),
+    (r"\b\w+_(?:ritxx|ritz|sample|test)\w*\.(?:html|json|csv|png)\b", ""),
+
+    # "cross-check in your software" — the customer has no software. They paid
+    # for this to BE the software. Replaced, not deleted: the surrounding line
+    # is telling them where the dates come from, which is worth keeping.
+    (r"cross[- ]check\s+important\s+dates\s+in\s+your\s+software",
+     "each date below is computed from your own chart"),
+    (r"cross[- ]check\s+in\s+your\s+software",
+     "computed directly from your own chart"),
+    (r"cross[- ]check\s+(?:these|the)\s+[\w\s]{0,20}in\s+your\s+software",
+     "computed directly from your own chart"),
+    (r"from your extract\s*[-—]\s*", "— "),
+    (r"\bfrom your (?:Vimshottari )?extract\b", "from your chart"),
+
+    # placeholder identity: the internal handle used while testing
+    (r"<dt>\s*Client\s*</dt>\s*<dd>\s*(?:ritxx|ritz|sample|test)\s*</dd>", ""),
+]
+
+
+def leak_removals(html: str) -> list[str]:
+    """The fact tokens that stripping leaks legitimately takes with it.
+
+    Deleting a session UUID deletes digits; deleting "Engine: Vedic Confluence
+    2" deletes a 2. Those are machinery, not the customer's facts — but the
+    guard cannot know that, and a guard you routinely override is a guard you
+    have switched off.
+
+    So the declaration is computed, not asserted: only tokens found *inside the
+    spans the leak patterns actually matched* are exempt. Anything else that
+    disappears is still a failure. On the first run over the real report set
+    this caught a pattern of mine that was eating one digit too many.
+    """
+    try:
+        from report_fact_guard import facts
+    except ImportError:      # guard is a dev-time tool; never break a report
+        return []
+    # Patterns are applied in sequence and later ones match text the earlier
+    # ones produced, so the declaration has to walk the same sequence. Scanning
+    # all patterns against the original HTML misses exactly those cascades —
+    # which is how the Bhardwaj "Engine: … 2." removal stayed undeclared.
+    declared: list[str] = []
+    stage = html
+    for pat, rep in LEAK_STRIPS:
+        for m in re.finditer(pat, stage, flags=re.S | re.I):
+            before = facts(m.group(0), ignore_leaks=False).counts
+            after = facts(re.sub(pat, rep, m.group(0), flags=re.S | re.I),
+                          ignore_leaks=False).counts
+            for key, n in (before - after).items():
+                declared.extend([key] * n)
+        stage = re.sub(pat, rep, stage, flags=re.S | re.I)
+    return declared
+
+
+def strip_leaks(html: str) -> str:
+    """Remove machinery that escaped into the customer's copy.
+
+    Runs before every other voice stage: there is no point polishing the tone
+    of a paragraph that ends in a session UUID.
+    """
+    out = html
+    for pat, rep in LEAK_STRIPS:
+        out = re.sub(pat, rep, out, flags=re.S | re.I)
+    # a <dl> or <p> emptied by the strips above should not leave a gap
+    out = re.sub(r"<p[^>]*>\s*[.·—-]?\s*</p>", "", out)
+    out = re.sub(r"<code>\s*</code>", "", out)
+    out = re.sub(r"\(\s*\)", "", out)
+    out = re.sub(r"[ \t]{2,}", " ", out)
+    return out
+
+# ---------------------------------------------------------------------------
+# 1b. Jargon — say it in English, keep the Sanskrit as provenance
+# ---------------------------------------------------------------------------
+# The audit counted 2,266 untranslated terms across the report set: `lagna`
+# 923 times, `antardasha` 274, `bindu` 148. Every one of them is a moment where
+# the reader stops being told about themselves and starts reading someone
+# else's shop-talk.
+#
+# The terms are translated, not deleted. Deleting them would cost the reading
+# its authority — the Sanskrit is *why* this looks like real astrology rather
+# than a horoscope column. So the plain word is what you read, and the original
+# survives as a tooltip: "rising sign" that reveals "Lagna" on hover.
+#
+# Ordered longest-first: `antardasha` must be consumed before `dasha`, and
+# `lagna lord` before `lagna`, or the short form eats the long one's stem.
+JARGON_TERMS: list[tuple[str, str]] = [
+    # timing vocabulary — the single biggest source of confusion
+    ("md-ad", "main and sub-period"),
+    ("mahadasa-antardasa", "main and sub-period"),
+    ("pratyantardasha", "micro-period"),
+    ("pratyantardasa", "micro-period"),
+    ("pratyantar", "micro-period"),
+    ("antardasha", "sub-period"),
+    ("antardasa", "sub-period"),
+    ("antar dasha", "sub-period"),
+    ("mahadasha", "main period"),
+    ("mahadasa", "main period"),
+    ("maha dasha", "main period"),
+    ("vimshottari", "the main timing cycle"),
+    ("yogini dasha", "the lunar timing cycle"),
+    ("chara dasha", "the sign-based timing cycle"),
+    ("antar", "sub-period"),
+    ("dasha", "period"),
+    ("dasa", "period"),
+    ("vargas", "divisional charts"),
+    ("varga", "divisional chart"),
+
+    # chart anatomy
+    ("lagna lord", "ruler of your rising sign"),
+    ("lagnesha", "ruler of your rising sign"),
+    ("ascendant lord", "ruler of your rising sign"),
+    ("lagna", "rising sign"),
+    ("bhava", "house"),
+    ("graha", "planet"),
+    ("rashi", "sign"),
+    ("rasi", "sign"),
+    ("navamsha", "the marriage chart"),
+    ("dashamsha", "the career chart"),
+    ("saptamsha", "the children chart"),
+    ("drekkana", "the siblings chart"),
+
+    # house families
+    ("kendra houses", "the four pillar houses"),
+    ("trikona houses", "the three fortune houses"),
+    ("dusthana houses", "the three pressure houses"),
+    ("upachaya houses", "the growth houses"),
+    ("kendra", "pillar house"),
+    ("trikona", "fortune house"),
+    ("dusthana", "pressure house"),
+    ("upachaya", "growth house"),
+
+    # scoring vocabulary
+    ("ashtakavarga", "the transit scoring system"),
+    ("bindus", "points"),
+    ("bindu", "point"),
+    ("sav", "sign score"),
+    ("bav", "planet score"),
+
+    # the karakas
+    ("atmakaraka", "your defining planet"),
+    ("amatyakaraka", "your career indicator"),
+    ("bhratrikaraka", "your sibling indicator"),
+    ("matrikaraka", "your mother indicator"),
+    ("putrakaraka", "your children indicator"),
+    ("gnatikaraka", "your obstacle indicator"),
+    ("darakaraka", "your spouse indicator"),
+
+    # misc
+    ("ayanamsa", "zodiac alignment"),
+    ("ayanāṃśa", "zodiac alignment"),
+    ("yoga", "combination"),
+    ("swakshetra", "in its own sign"),
+    ("moolatrikona", "in its best sign"),
+    ("vakri", "retrograde"),
+]
+
+# Table headers use three-letter method tags the reader has no key for.
+JARGON_TABLE = [
+    ("Vim:", "Main cycle:"),
+    ("Jai:", "Sign cycle:"),
+    ("Yog:", "Lunar cycle:"),
+    ("AK ", "Defining planet "),
+    ("CSL-", "Sub-lord "),
+]
+
+# Nodes whose text is markup, code or already-translated tooltip content.
+_PROTECTED = re.compile(
+    r"<(script|style|code|pre|abbr)\b[^>]*>.*?</\1>", re.S | re.I)
+
+
+def _map_text_nodes(html: str, fn) -> str:
+    """Apply `fn` to visible text only — never inside a tag or a code block.
+
+    A blunt re.sub over the whole document would rewrite class names, `title`
+    attributes and anything inside <code>, producing broken markup that looks
+    fine until a specific report renders.
+    """
+    out: list[str] = []
+    pos = 0
+    for block in _PROTECTED.finditer(html):
+        out.append(_map_outside_tags(html[pos:block.start()], fn))
+        out.append(block.group(0))
+        pos = block.end()
+    out.append(_map_outside_tags(html[pos:], fn))
+    return "".join(out)
+
+
+def _map_outside_tags(chunk: str, fn) -> str:
+    parts = re.split(r"(<[^>]+>)", chunk)
+    return "".join(p if p.startswith("<") else fn(p) for p in parts)
+
+
+_FAMILY = {"kendra": "pillar", "trikona": "fortune",
+           "dusthana": "pressure", "upachaya": "growth"}
+_FAMILY_RE = re.compile(
+    r"\b(kendra|trikona|dusthana|upachaya)"
+    r"(?:\s*/\s*(kendra|trikona|dusthana|upachaya))?\s+"
+    r"(\d{1,2})(st|nd|rd|th)\b", re.I)
+
+
+def _house_families(text: str) -> str:
+    """"kendra/trikona 10th" → "the 10th house (a pillar and fortune house)".
+
+    Word-for-word substitution produces "pillar house / fortune house 10th",
+    which is not English. House families need the whole phrase rebuilt.
+    """
+    def sub(m: re.Match) -> str:
+        names = [_FAMILY[m[1].lower()]]
+        if m[2]:
+            names.append(_FAMILY[m[2].lower()])
+        joined = " and ".join(names)
+        return f"the {m[3]}{m[4]} house (a {joined} house)"
+    return _FAMILY_RE.sub(sub, text)
+
+
+def translate_jargon(html: str, *, keep_original: bool = True) -> str:
+    """Sanskrit and method shorthand → plain English, provenance preserved.
+
+    One pass, one combined pattern. Applying the terms in a loop meant each
+    substitution's output was re-scanned by every later term, so the <abbr>
+    wrapper inserted for "varga" got chewed up by the rule for "vargas" and
+    emitted `divisional chart ">divisional charts`. A single alternation,
+    longest-first, makes replacement text untouchable by construction.
+    """
+    lookup = {term.lower(): plain for term, plain in JARGON_TERMS}
+    alternation = "|".join(
+        re.escape(term) for term, _ in
+        sorted(JARGON_TERMS, key=lambda kv: -len(kv[0])))
+    pattern = re.compile(rf"\b({alternation})(s?)\b", re.I)
+
+    def convert(text: str) -> str:
+        text = _house_families(text)
+
+        def sub(m: re.Match) -> str:
+            original = m.group(0)
+            plain = lookup[m.group(1).lower()]
+            # Capitalise from POSITION, not from the source term. Copying the
+            # source's capital gave "lords in The marriage chart", because the
+            # corpus writes "Navamsha" as a proper noun and the plain-English
+            # rendering is not one.
+            before = text[:m.start()].rstrip()
+            if (not before) or before[-1] in ".!?:>":
+                plain = plain[:1].upper() + plain[1:]
+            if not keep_original:
+                return plain
+            return (f'<abbr class="jargon" title="{original.strip()}">'
+                    f'{plain}</abbr>')
+
+        text = pattern.sub(sub, text)
+        for tag, plain in JARGON_TABLE:
+            text = text.replace(tag, plain)
+        return text
+
+    return _map_text_nodes(html, convert)
+
+
 # third person / clinical → second person
 HUMANISE = [
     (r"\bThe native's\b", "Your"), (r"\bthe native's\b", "your"),
