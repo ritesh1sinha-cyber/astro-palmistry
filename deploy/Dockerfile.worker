@@ -7,31 +7,39 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+        build-essential git libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
         postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # ---------------------------------------------------------------------------
-# One COPY of the whole context, deliberately.
+# Fetch the source straight from the public GitHub repo at build time.
 #
-# Every build that used a path-specific COPY eventually failed on Railway:
-# deploy/ephe/, deploy/entrypoint.sh, engines/astro, and even a bare file —
-# requirements.worker.txt arrived "not found" while requirements.api.txt, its
-# sibling in the same directory, made it. Stop depending on individual paths:
-# copy everything and let .dockerignore decide what to leave out.
+# Every attempt to ship the source via the build context failed on Railway with
+# an inconsistent set of "not found" errors: deploy/ephe/, engines/astro, a
+# bare requirements.worker.txt, and finally EVERY file at once (even api.py at
+# the repo root) while a sibling file had been present in a previous build.
+# The context Railway uploads is not reliably our repo, so we stop using it.
 #
-# Trade-off: requirements install from the same context, so there is no layer
-# caching for a pure-requirements change. Correctness beats caching.
+# This Dockerfile references no build-context files at all — no COPY, no ADD —
+# so a broken context cannot break the build. The clone runs from the builder
+# over the network and the assertion below verifies what actually arrived.
+#
+# Trade-off: cloning on every deploy costs a little time but never depends on
+# Railway shipping the context intact.
 # ---------------------------------------------------------------------------
-COPY . .
+ARG GIT_REPO=https://github.com/ritesh1sinha-cyber/astro-palmistry.git
+ARG GIT_REF=main
+RUN git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" . && rm -rf .git
 
-# fail loudly and specifically if the context was incomplete — before spending
-# minutes installing wheels from files that may have failed to arrive
+# Show what the clone delivered, then fail loudly and specifically if anything
+# the runtime needs did not arrive.
 RUN python -c "import pathlib,sys; \
+print('--- /app listing ---'); \
+[print('  '+str(p)) for p in sorted(pathlib.Path('.').iterdir())]; \
 missing=[q for q in ('requirements.api.txt','requirements.worker.txt','engines/palm_api/pipeline.py','engines/astro/astro_precompute.py','core/handlers.py','api.py') if not pathlib.Path(q).exists()]; \
-sys.exit('BUILD CONTEXT INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('build context complete')"
+sys.exit('SOURCE CLONE INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('source complete')"
 
 RUN pip install -r requirements.worker.txt
 
@@ -70,9 +78,8 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
   CMD python -c "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.getenv('PORT','8080')+'/health')"
 
-# The entrypoint is written inline rather than COPYed. Railway did not provide
-# deploy/ in the build context (the directory holding this Dockerfile), and a
-# build should not depend on how a platform resolves that.
+# The entrypoint is written inline rather than COPYed, so it cannot be missed
+# by a broken build context.
 #
 # It installs Swiss Ephemeris data at boot when EPHE_PATH points at a directory
 # holding *.se1 — e.g. a mounted volume. Without it swisseph uses its built-in
