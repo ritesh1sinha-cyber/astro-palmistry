@@ -104,19 +104,28 @@ def _stone_row(item: dict) -> str:
 def render(block: dict, *, paid: bool = False, price: int = 0,
            heading: str = "What you can actually do about it",
            lede: str = "") -> str:
-    """The remedy card. Leads with action, is explicit about what to avoid."""
+    """Remedies are paid. The refusals are free, and they do the selling.
+
+    Operator's call and it is the sharper play: telling someone which stone is
+    *wrong* for them costs us nothing and proves we are not just moving
+    inventory. Every jeweller in the country will sell a Gemini a yellow
+    sapphire; being the one who says "not you, not this stone, and here is the
+    classical reason" is the whole trust argument in one paragraph.
+
+    So the free view shows only the avoid list. The stones that would help, the
+    metal, the finger, the day to begin, and the practical action all sit behind
+    the paywall.
+    """
     if not block:
         return ""
+    avoid = block.get("avoid") or []
+    mantra_only = block.get("mantra_only") or []
+    wear = block.get("wear") or []
     practical = block.get("practical")
-    stones = (block.get("wear") or []) + (block.get("mantra_only") or []) \
-        + (block.get("avoid") or [])
-    if not practical and not stones:
-        return ""
 
-    shown = stones if paid else stones[:1]
-    hidden = max(0, len(stones) - len(shown))
-
-    return f"""
+    if paid:
+        stones = wear + mantra_only + avoid
+        return f"""
 <section class="remedy-card">
   <div class="ev-label">{_e(heading)}</div>
   {f'<p class="remedy-lede">{_e(lede)}</p>' if lede else ''}
@@ -124,13 +133,46 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
     <div class="remedy-do-label">Start here — no belief required</div>
     <p>{_e(practical)}</p>
   </div>''' if practical else ''}
-  {f'''<ul class="stones">{''.join(_stone_row(s) for s in shown)}</ul>''' if shown else ''}
-  {f'''<div class="remedy-locked">
-    <b>{hidden} more stone{'s' if hidden != 1 else ''} assessed for your chart</b>
-    — including which ones are actively wrong for you, with metal, finger and
-    the day to begin. {f'₹{price}' if price else ''}
-  </div>''' if hidden and not paid else ''}
+  <ul class="stones">{''.join(_stone_row(st) for st in stones)}</ul>
   <p class="fine">A remedy is not a lever that overrides the chart. It works the
   way preparation works — it changes what you are ready for when the timing
   turns.</p>
+</section>"""
+
+    # --- free view: refusals only ------------------------------------------
+    refused = avoid + mantra_only
+    helpful_count = len(wear)
+
+    if not refused:
+        # Nothing is contraindicated, which is itself worth saying.
+        body = f"""
+  <p class="remedy-lede">Nothing in your chart is actively harmed by a
+  gemstone — which is less common than you would think, and good news.</p>
+  <div class="remedy-locked">
+    <b>{helpful_count} stone{'s' if helpful_count != 1 else ''} assessed as
+    suitable for you</b>, with metal, finger and the day to begin, plus the
+    practical steps that matter more than any of them.
+    {f'₹{price}' if price else ''}
+  </div>"""
+    else:
+        body = f"""
+  <p class="remedy-lede">Before anything we would sell you, here is what you
+  should <b>not</b> wear. This is free because it is the part most people are
+  never told.</p>
+  <ul class="stones">{''.join(_stone_row(st) for st in refused)}</ul>
+  <div class="remedy-locked">
+    <b>What you should wear is the other half.</b>
+    {helpful_count} stone{'s' if helpful_count != 1 else ''} came back suitable
+    for your chart — with the metal, the finger, the day to begin and the trial
+    period — alongside the mantras, the charity, and the practical action that
+    matters more than any stone.
+    {f'₹{price}' if price else ''}
+  </div>"""
+
+    return f"""
+<section class="remedy-card">
+  <div class="ev-label">Gemstones — what is wrong for you, free</div>
+  {body}
+  <p class="fine">Any jeweller will sell you the stone for your sign. Almost
+  none will check whether your chart can carry it.</p>
 </section>"""

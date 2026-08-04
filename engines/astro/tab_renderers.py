@@ -280,6 +280,14 @@ def numerology_numbers(name: str, dob, *, today=None) -> dict:
 def render_numerology(name: str, dob, *, paid: bool = False,
                       price: int = 199, today=None) -> str:
     nums = numerology_numbers(name, dob, today=today)
+    # The Lo Shu grid is the only visual in numerology, and the empty cells are
+    # what make people ask questions. It belongs in the free half.
+    lo_shu_html = ""
+    try:
+        import lo_shu
+        lo_shu_html = lo_shu.render(lo_shu.build(dob), dob, paid=paid, price=price)
+    except Exception:
+        pass
     cards = ""
     for key, label, note in (
         ("life_path", "Life path", "from your date of birth — the arc you are on"),
@@ -319,13 +327,30 @@ def render_numerology(name: str, dob, *, paid: bool = False,
     </ul>
   </div>
   <div class="num-year">
-    <div class="ev-label">Your personal year right now — free</div>
+    <div class="ev-label">Your numerology period this year — free</div>
     <h4>{nums['personal_year']} · {_e(PERSONAL_YEAR.get(nums['personal_year'], ('',''))[0])}</h4>
     <p>{_e(PERSONAL_YEAR.get(nums['personal_year'], ('',''))[1])}</p>
     <p class="fine">This runs birthday to birthday, not January to January —
     it began on your {dob:%d %B} in {nums['year_from']} and turns over on the
     next one.</p>
   </div>
+
+  <div class="num-future">
+    <div class="ev-label">The years after this one</div>
+    <ul class="num-seq">
+      <li><span>{nums['year_from'] + 1}</span>
+        <b class="blurred">Year {(nums['personal_year'] % 9) + 1} — locked</b></li>
+      <li><span>{nums['year_from'] + 2}</span>
+        <b class="blurred">Year {((nums['personal_year'] + 1) % 9) + 1} — locked</b></li>
+      <li><span>{nums['year_from'] + 3}</span>
+        <b class="blurred">Year {((nums['personal_year'] + 2) % 9) + 1} — locked</b></li>
+    </ul>
+    <p class="fine">The nine-year cycle is fixed, so these are already
+    determined — including which of them is your money year and which one you
+    should not start anything in.</p>
+  </div>
+
+  {lo_shu_html}
 
   <div class="num-extra">
     <div><span>Your day</span><b>{_e(LUCKY.get(nums['life_path'], ('',''))[0])}</b></div>
@@ -353,7 +378,8 @@ def render_numerology(name: str, dob, *, paid: bool = False,
 # ---------------------------------------------------------------------------
 
 def render_palm(public: dict, *, paid: bool = False, price: int = 499,
-                overlays: Optional[dict] = None) -> str:
+                overlays: Optional[dict] = None,
+                raw: Optional[dict] = None) -> str:
     meta = public.get("meta") or {}
     scores = public.get("scores") or {}
     past = public.get("past") or []
@@ -374,6 +400,17 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499,
     # Showing the marked-up palms is the strongest trust signal in this tab:
     # the reader can see their own hand with the lines the engine actually
     # traced, which is not something a generic reading could fake.
+    # Shape, fingers and the special marks are free: a reader can verify all
+    # three by turning their own palm over, which is why they build more trust
+    # than any prediction could.
+    marks_html = ""
+    try:
+        import palm_marks
+        marks_html = palm_marks.render(palm_marks.build(raw or {}),
+                                       paid=paid, price=price)
+    except Exception:
+        pass
+
     ov = overlays or {}
     overlay_block = ""
     if ov:
@@ -416,6 +453,7 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499,
   </div>
   {overlay_block}
   {quality_note}
+  {marks_html}
   <div class="evidence"><span class="ev-label">Measured from your palms</span>
     <ul class="palm-scores">{score_rows}</ul>
     <p class="fine">{meta.get('rulesSearched', 0)} classical rules were checked
@@ -425,6 +463,11 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499,
   </div>
   <h3 class="tab-sec">What your hand says has already happened</h3>
   <ul class="palm-list">{past_rows}</ul>
+  {'' if paid else '''<div class="remedy-locked">
+    <b>The line-by-line analysis is the locked half</b> — every break, island,
+    chain and crossing on each major line, dated by position, plus what the
+    mounts add. That is where a palm reading stops being a personality sketch.
+  </div>'''}
   <h3 class="tab-sec">What it says is ahead</h3>
   <ul class="palm-list">{future_rows}</ul>
   {'' if paid else f'''
