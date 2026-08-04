@@ -455,7 +455,29 @@ def area_votes(pc: dict, area_key: str, house: int) -> list:
 
     # 6. The specialist lanes — everything else the engines already know
     votes.extend(lane_votes(pc, area_key))
+
+    # 7. The palm correlation. Every method above reads the same nine planets,
+    # so they disagree about interpretation and never about evidence. This one
+    # states what the hand should physically show and can be checked against an
+    # object that took no part in building the chart, which is why it is worth
+    # a vote of its own even when no photograph was supplied.
+    votes.extend(palm_votes(pc, area_key))
     return votes
+
+
+def palm_votes(pc: dict, area_key: str, palm_features: Any = None) -> list:
+    """The palm-correlation lane's single vote, or none.
+
+    Imported at call time and only for ImportError: the bridge pulls in OpenCV
+    through the palmistry zone module, and a machine without it should lose this
+    one lane rather than every confluence verdict in the product. Any other
+    exception is a real bug and is left to surface.
+    """
+    try:
+        from palm_astro_bridge import palm_votes as _pv
+    except ImportError:
+        return []
+    return _pv(pc, area_key, palm_features)
 
 
 def area_verdict(pc: dict, area_key: str, house: int) -> dict:

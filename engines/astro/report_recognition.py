@@ -48,6 +48,7 @@ improvement while that number holds — if it rises, the new lines are Barnum.
 from __future__ import annotations
 
 import html as _html
+import re
 from typing import Any
 
 BENEFIC = ("Jupiter", "Venus", "Mercury", "Moon")
@@ -551,7 +552,7 @@ def _resolve_conflicts(pc: dict, items: list) -> list:
     judgement about which piece of geometry is the stronger witness — that is
     exactly the thing a future reader will want to argue with.
     """
-    tags = {t for _, t, _ in items}
+    tags = {it[1] for it in items}
     drop: set = set()
 
     # money_floor (rule 27, 9th lord in a 9th-trine = inherited comfort) vs
@@ -627,8 +628,26 @@ def _resolve_conflicts(pc: dict, items: list) -> list:
     return [it for it in items if it[1] not in drop]
 
 
+def _verdict_finding(v: Any) -> str:
+    """The geometry that fired a 108 rule — the best evidence we have.
+
+    RuleVerdict carries a `finding` describing the actual placement it matched
+    on. That is strictly better evidence than anything we could reconstruct, so
+    prefer it and fall back to a generic derivation only when it is absent.
+    """
+    for attr in ("finding", "reason", "because", "detail", "evidence"):
+        text = getattr(v, attr, "") or ""
+        if isinstance(text, str) and len(text.strip()) > 8:
+            # These are analyst notes; strip the rule bookkeeping a reader does
+            # not need while keeping the placement itself.
+            out = re.sub(r"^\s*(Rule\s*#?\d+\s*[:·-]\s*)", "", text.strip())
+            out = re.sub(r"\s+", " ", out)
+            return out[:220]
+    return ""
+
+
 def _items108(pc: dict) -> list:
-    """Raw (domain, tag, statement) triples from the 108 rules that hit."""
+    """(domain, tag, statement, why) from the 108 rules that hit."""
     hits = _p108(pc)
     items: list = []
     for no, builder in RULE108_BUILDERS.items():
@@ -636,14 +655,21 @@ def _items108(pc: dict) -> list:
         if v is None:
             continue
         try:
-            items.extend(builder(pc, v))
+            why = _verdict_finding(v)
+            for it in builder(pc, v):
+                # A builder may already supply its own derivation; the rule's
+                # own finding wins only when it does not.
+                if len(it) >= 4 and it[3]:
+                    items.append(tuple(it[:4]))
+                else:
+                    items.append((it[0], it[1], it[2], why))
         except Exception:  # noqa: BLE001
             # One broken rule must not cost the reader the whole section.
             continue
 
     # rule 50 and rule 25 both describe standing from a dignified planet; if 50
     # produced a line, 25's is a weaker restatement of it.
-    if any(t == "authority" for _, t, _ in items):
+    if any(it[1] == "authority" for it in items):
         items = [it for it in items if it[1] != "status"]
 
     # Two rules can reach the same conclusion by different routes (15 and 66
@@ -689,6 +715,79 @@ HANDWRITTEN_TAGS = {
 }
 
 
+
+# ---------------------------------------------------------------------------
+# Technical backing for every statement
+# ---------------------------------------------------------------------------
+# A claim the reader cannot trace is indistinguishable from a guess, and
+# prediction quality is what this product sells. So each statement carries the
+# placement that produced it. It proves the sentence came from THIS chart, and
+# it lets a sceptical reader hand the reasoning to an astrologer and have it
+# checked — which is a thing we should want them to be able to do.
+
+def _ord_n(n: Any) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return ""
+    return f"{n}" + ("th" if 10 <= n % 100 <= 20
+                     else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
+
+
+def _dig_plain(d: Any) -> str:
+    return {
+        "exalted": "exalted", "moolatrikona": "in its best sign",
+        "own_sign": "in its own sign", "friendly_sign": "well placed",
+        "neutral_sign": "neutrally placed", "enemy_sign": "on difficult ground",
+        "debilitated": "debilitated",
+    }.get(str(d or "").lower(), str(d or "").replace("_", " "))
+
+
+def why_planet(pc: dict, planet: str, *, note: str = "") -> str:
+    """"Saturn in your 6th house, in its own sign" — the traceable form."""
+    if not planet:
+        return note
+    info = (pc.get("planets", {}) or {}).get(planet) or {}
+    house, sign = info.get("house"), info.get("sign")
+    bits = [planet]
+    if house:
+        bits.append(f"in your {_ord_n(house)} house")
+    if sign:
+        bits.append(f"({sign})")
+    dig = _dig_plain(info.get("dignity"))
+    if dig and dig != "neutrally placed":
+        bits.append(f"— {dig}")
+    out = " ".join(bits)
+    return f"{out}. {note}" if note else out
+
+
+def why_lord(pc: dict, house: int, *, note: str = "") -> str:
+    """"Your 2nd lord Moon sits in the 4th, neutrally placed"."""
+    info = (pc.get("house_lords", {}) or {}).get(str(house)) or {}
+    lord, lh = info.get("lord"), info.get("lord_house")
+    if not lord:
+        return note
+    bits = [f"Your {_ord_n(house)} lord {lord}"]
+    if lh:
+        bits.append(f"sits in the {_ord_n(lh)}")
+    dig = _dig_plain(info.get("lord_dignity"))
+    if dig:
+        bits.append(f", {dig}")
+    out = " ".join(bits).replace(" ,", ",")
+    return f"{out}. {note}" if note else out
+
+
+def why_sav(pc: dict, house: int) -> str:
+    sav = (pc.get("ashtakavarga", {}) or {}).get("sav") or []
+    if len(sav) >= house:
+        v = sav[house - 1]
+        band = ("above average" if v >= 30 else
+                "below average" if v <= 25 else "average")
+        return (f"Classical strength score for your {_ord_n(house)} house: "
+                f"{v} of 56 — {band}")
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # HEALTH — 6th house, ascendant lord, and who sits where
 # ---------------------------------------------------------------------------
@@ -701,40 +800,49 @@ def health_claims(pc: dict) -> list:
     ll_dig = _dig(pc, lagna_lord)
 
     if "Saturn" in occ6:
-        out.append("Whatever goes wrong with your health tends to be slow and "
+        out.append(("Whatever goes wrong with your health tends to be slow and "
                    "recurring rather than sudden — it builds for months, and it "
-                   "usually shows up first as stiffness, sleep or the lower back.")
+                   "usually shows up first as stiffness, sleep or the lower back.",
+                    why_planet(pc, "Saturn", note="Saturn in the 6th slows illness down and makes it recur.")))
     if "Mars" in occ6:
-        out.append("Your health problems arrive fast and hot — inflammation, "
+        out.append(("Your health problems arrive fast and hot — inflammation, "
                    "fevers, sudden injuries — and they clear almost as quickly "
-                   "as they came.")
+                   "as they came.",
+                    why_planet(pc, "Mars", note="Mars in the 6th brings heat and speed to illness.")))
     if "Ketu" in occ6 or "Rahu" in occ6:
-        out.append("You have had at least one health complaint that took an "
-                   "unusually long time to diagnose correctly.")
+        out.append(("You have had at least one health complaint that took an "
+                   "unusually long time to diagnose correctly.",
+                    "A node (Rahu or Ketu) sits in your 6th house — classically the signature of a complaint that resists diagnosis."))
     if "Moon" in occ6 or _house_of(pc, "Moon") in (6, 8, 12):
-        out.append("Your stomach is where your stress goes first. When life is "
+        out.append(("Your stomach is where your stress goes first. When life is "
                    "difficult, digestion is the thing that tells you before you "
-                   "have admitted it to yourself.")
+                   "have admitted it to yourself.",
+                    why_planet(pc, "Moon", note="The Moon governs digestion and the stomach; its house here ties mood to gut.")))
 
     if ll_dig in ("debilitated", "enemy_sign"):
-        out.append("Your baseline stamina has always been lower than the people "
+        out.append(("Your baseline stamina has always been lower than the people "
                    "around you assume, and you have compensated by pushing "
-                   "rather than by resting.")
+                   "rather than by resting.",
+                    why_lord(pc, 1, note="The ascendant lord carries physical vitality.")))
     elif ll_dig in ("exalted", "own_sign", "moolatrikona"):
-        out.append("You recover faster than most people. You have probably been "
-                   "back on your feet from things that flattened others.")
+        out.append(("You recover faster than most people. You have probably been "
+                   "back on your feet from things that flattened others.",
+                    why_lord(pc, 1, note="A strong ascendant lord is the classical marker of recovery.")))
 
     if _house_of(pc, "Sun") in (1, 5, 8):
-        out.append("Heat, eyes or blood pressure — one of those three is the "
-                   "thing you have been told to watch.")
+        out.append(("Heat, eyes or blood pressure — one of those three is the "
+                   "thing you have been told to watch.",
+                    why_planet(pc, "Sun", note="The Sun governs eyes, heat and circulation.")))
     if _house_of(pc, "Jupiter") in (6, 8, 12):
-        out.append("You put on weight when life gets comfortable, and it comes "
-                   "off only when something forces the issue.")
+        out.append(("You put on weight when life gets comfortable, and it comes "
+                   "off only when something forces the issue.",
+                    why_planet(pc, "Jupiter", note="Jupiter expands whatever it touches, including the body.")))
     s6 = _sav(pc, 6)
     if s6 is not None and s6 >= 30:
-        out.append("You fight off illness better than average — the same is "
+        out.append(("You fight off illness better than average — the same is "
                    "true of opposition generally. People who take you on tend "
-                   "to tire before you do.")
+                   "to tire before you do.",
+                    why_sav(pc, 6)))
     return out
 
 
@@ -748,37 +856,46 @@ def money_claims(pc: dict) -> list:
     occ2, occ11, occ12 = _occupants(pc, 2), _occupants(pc, 11), _occupants(pc, 12)
 
     if second.get("lord_house") == 11 or eleventh.get("lord_house") == 2:
-        out.append("Your money has come through people rather than through "
+        out.append(("Your money has come through people rather than through "
                    "salary alone — introductions, networks, someone who thought "
-                   "of you.")
+                   "of you.",
+                    "Your 2nd and 11th lords exchange houses — wealth routes through the network rather than the wage."))
     if "Rahu" in occ11:
-        out.append("Your best earnings have come from something slightly "
-                   "unconventional, or from outside your home state or country.")
+        out.append(("Your best earnings have come from something slightly "
+                   "unconventional, or from outside your home state or country.",
+                    why_planet(pc, "Rahu", note="Rahu in the 11th points gains at the unfamiliar and the foreign.")))
     if "Saturn" in occ2 or second.get("lord") == "Saturn":
-        out.append("You accumulate slowly and you are careful with money in a "
-                   "way that looks like anxiety to people who earn more easily.")
+        out.append(("You accumulate slowly and you are careful with money in a "
+                   "way that looks like anxiety to people who earn more easily.",
+                    why_lord(pc, 2, note="Saturn on wealth accumulates by delay, not by luck.")))
     if occ12 and any(p in MALEFIC for p in occ12):
-        out.append("Money leaves you in large single amounts rather than "
+        out.append(("Money leaves you in large single amounts rather than "
                    "draining away — a medical bill, a family obligation, one "
-                   "big commitment at a time.")
+                   "big commitment at a time.",
+                    "A malefic sits in your 12th house — the house of outgoings — which classically empties in lumps rather than trickles."))
     if second.get("lord_dignity") in ("debilitated", "enemy_sign"):
-        out.append("There was a stretch — usually early — when money was "
+        out.append(("There was a stretch — usually early — when money was "
                    "genuinely tight, and it permanently changed how you think "
-                   "about spending.")
+                   "about spending.",
+                    why_lord(pc, 2)))
     if "Jupiter" in occ2 or "Jupiter" in occ11:
-        out.append("Money has arrived at the moment you needed it more than "
+        out.append(("Money has arrived at the moment you needed it more than "
                    "once, in a way that was hard to plan for and easy to be "
-                   "grateful for.")
+                   "grateful for.",
+                    why_planet(pc, "Jupiter", note="Jupiter on a wealth house is the classical rescue placement.")))
     if _house_of(pc, "Mercury") in (2, 10, 11):
-        out.append("You earn from what you know rather than from what you own "
-                   "— your income is tied to your own head, not to assets.")
+        out.append(("You earn from what you know rather than from what you own "
+                   "— your income is tied to your own head, not to assets.",
+                    why_planet(pc, "Mercury", note="Mercury on an earning house ties income to intellect.")))
     s2, s11 = _sav(pc, 2), _sav(pc, 11)
     if s2 is not None and s11 is not None and s11 > s2 + 3:
-        out.append("You are better at earning than at holding. Income has "
-                   "rarely been the problem; what stays is.")
+        out.append(("You are better at earning than at holding. Income has "
+                   "rarely been the problem; what stays is.",
+                    (why_sav(pc, 11) + " — against " + why_sav(pc, 2).split(": ")[-1])))
     elif s2 is not None and s2 >= 30:
-        out.append("Once money reaches you it tends to stay. You are not a "
-                   "person who loses what they have built.")
+        out.append(("Once money reaches you it tends to stay. You are not a "
+                   "person who loses what they have built.",
+                    why_sav(pc, 2)))
     return out
 
 
@@ -977,8 +1094,14 @@ def build(pc: dict, *, per_domain: int = 3) -> list:
     hand: list = []
     for key, _label, fn in DOMAINS:
         for c in fn(pc):
-            if c:
-                hand.append((key, HANDWRITTEN_TAGS.get(c, f"hw:{hash(c)}"), c))
+            if not c:
+                continue
+            # A builder may return a bare string or (text, why). Normalising
+            # here keeps every builder free to add its derivation later without
+            # a coordinated change.
+            text, why = (c if isinstance(c, tuple) else (c, ""))
+            hand.append((key, HANDWRITTEN_TAGS.get(text, f"hw:{hash(text)}"),
+                         text, why))
 
     kept = _resolve_conflicts(pc, from_108 + hand)
     # One statement per tag across both sources: two rules reaching the same
@@ -991,22 +1114,32 @@ def build(pc: dict, *, per_domain: int = 3) -> list:
         seen_tags.add(it[1])
         deduped.append(it)
     kept = deduped
-    kept_108 = {t for _, t, _ in kept if any(t == tg for _, tg, _ in from_108)}
+    tags_108 = {it[1] for it in from_108}
+    kept_108 = {it[1] for it in kept if it[1] in tags_108}
 
     by_domain: dict = {}
-    for domain, tag, text in kept:
+    for it in kept:
+        domain, tag, text = it[0], it[1], it[2]
+        why = it[3] if len(it) > 3 else ""
         bucket = by_domain.setdefault(domain, {"a": [], "b": []})
-        bucket["a" if tag in kept_108 else "b"].append(text)
+        bucket["a" if tag in kept_108 else "b"].append((text, why))
 
     out = []
     for key, label, _fn in DOMAINS:
         bucket = by_domain.get(key, {"a": [], "b": []})
-        found = []
-        for text in bucket["a"] + bucket["b"]:
-            if text not in found:
-                found.append(text)
+        found: list = []
+        seen_text: set = set()
+        for text, why in bucket["a"] + bucket["b"]:
+            if text in seen_text:
+                continue
+            seen_text.add(text)
+            found.append((text, why))
         if len(found) < 2:
-            found += [c for c in _floor_claim(pc, key) if c not in found]
+            for c in _floor_claim(pc, key):
+                pair = c if isinstance(c, tuple) else (c, why_lord(pc, DOMAIN_HOUSE.get(key, 1)))
+                if pair[0] not in seen_text:
+                    seen_text.add(pair[0])
+                    found.append(pair)
         claims = found[:per_domain]
         if claims:
             out.append({"key": key, "label": label, "claims": claims})
@@ -1016,10 +1149,16 @@ def build(pc: dict, *, per_domain: int = 3) -> list:
 def render(blocks: list) -> str:
     if not blocks:
         return ""
+    def one(c) -> str:
+        text, why = (c if isinstance(c, tuple) else (c, ""))
+        return (f'<p class="recog-claim">{_e(text)}</p>'
+                + (f'<p class="recog-why"><span>Why</span> {_e(why)}</p>'
+                   if why else ""))
+
     sections = "".join(f"""
   <div class="recog-block">
     <div class="recog-label">{_e(b['label'])}</div>
-    {''.join(f'<p class="recog-claim">{_e(c)}</p>' for c in b['claims'])}
+    {''.join(one(c) for c in b['claims'])}
   </div>""" for b in blocks)
     n = sum(len(b["claims"]) for b in blocks)
     return f"""
@@ -1056,7 +1195,8 @@ def differentiation(charts: list) -> dict:
     for pc in charts:
         claims = set()
         for b in build(pc, per_domain=99):
-            claims.update(b["claims"])
+            claims.update(c[0] if isinstance(c, tuple) else c
+                          for c in b["claims"])
         sets.append(claims)
     pairs, overlaps = 0, 0.0
     for i in range(len(sets)):
