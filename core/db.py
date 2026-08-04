@@ -120,6 +120,18 @@ CREATE TABLE IF NOT EXISTS enquiries (
   id TEXT PRIMARY KEY, user_id TEXT, name TEXT, phone TEXT, email TEXT,
   message TEXT, status TEXT DEFAULT 'new', created_at TEXT);
 CREATE TABLE IF NOT EXISTS waitlist (email TEXT PRIMARY KEY, topic TEXT, created_at TEXT);
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL,
+  item TEXT NOT NULL DEFAULT 'bundle_all',
+  max_redemptions INTEGER NOT NULL CHECK (max_redemptions > 0),
+  redeemed_count INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1, expires_at TEXT, note TEXT, created_at TEXT,
+  CHECK (redeemed_count <= max_redemptions));
+CREATE TABLE IF NOT EXISTS promo_redemptions (
+  id TEXT PRIMARY KEY, code_id TEXT NOT NULL, user_id TEXT NOT NULL,
+  item TEXT NOT NULL, redeemed_at TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_promo_once
+  ON promo_redemptions(code_id, user_id);
 CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT, action TEXT NOT NULL,
   subject TEXT, detail TEXT, created_at TEXT);

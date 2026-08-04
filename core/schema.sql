@@ -240,6 +240,36 @@ CREATE TABLE IF NOT EXISTS waitlist (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Promo codes. `redeemed_count` is a cache of promo_redemptions; the CHECK is
+-- the cap's last line of defence, so even a hand-written UPDATE cannot
+-- over-issue. The redemption path guards in its WHERE clause instead of
+-- relying on this, because a CHECK violation is an error, not a refusal.
+CREATE TABLE IF NOT EXISTS promo_codes (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code            TEXT UNIQUE NOT NULL,
+    item            TEXT NOT NULL DEFAULT 'bundle_all',
+    max_redemptions INTEGER NOT NULL CHECK (max_redemptions > 0),
+    redeemed_count  INTEGER NOT NULL DEFAULT 0 CHECK (redeemed_count >= 0),
+    active          SMALLINT NOT NULL DEFAULT 1,
+    expires_at      TIMESTAMPTZ,
+    note            TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_promo_cap CHECK (redeemed_count <= max_redemptions)
+);
+
+CREATE TABLE IF NOT EXISTS promo_redemptions (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code_id     UUID NOT NULL REFERENCES promo_codes(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item        TEXT NOT NULL,
+    redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- One per person, decided by the database rather than by a SELECT that can be
+-- overtaken under load.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_promo_once
+    ON promo_redemptions (code_id, user_id);
+CREATE INDEX IF NOT EXISTS ix_promo_red_user ON promo_redemptions (user_id);
+
 CREATE TABLE IF NOT EXISTS audit_log (
     id         BIGSERIAL PRIMARY KEY,
     actor      TEXT,

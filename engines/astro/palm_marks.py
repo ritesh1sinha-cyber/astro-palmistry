@@ -128,9 +128,15 @@ def build(raw: dict) -> dict:
             fingers.append(FINGER_NOTE[key])
 
     found = []
-    for mark in (raw.get("special_marks") or []):
+    marks = (raw.get("special_marks")
+             or (raw.get("features") or {}).get("special_marks") or [])
+    for mark in marks:
+        # The CV pipeline emits {type, zone, confidence, meaning}; earlier
+        # callers used {kind, mount}. Accept both rather than editing the
+        # pipeline's contract.
         kind = str(mark.get("kind") or mark.get("type") or "").lower()
-        where = str(mark.get("mount") or mark.get("on") or mark.get("line") or "").lower()
+        where = str(mark.get("mount") or mark.get("zone")
+                    or mark.get("on") or mark.get("line") or "").lower()
         if kind in MARKS:
             found.append({"kind": kind, "label": MARKS[kind][0],
                           "teaser": MARKS[kind][1], "where": where,

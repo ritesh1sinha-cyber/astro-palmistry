@@ -27,6 +27,18 @@ from .db import engine, jdump, jrow, new_id, now, tx
 
 FREE_ITEMS = {"chart_summary", "numerology", "daily_free"}
 
+# What "everything" means. `bundle_all` is a price, not a permission — nothing
+# downstream reads an entitlement called `bundle_all`, so granting it verbatim
+# would take Rs 2,100 and unlock nothing. It expands here, once, and both the
+# purchase path and the promo path go through `expand()` so they cannot drift.
+BUNDLE_ITEMS = ("full_report", "btr", "kundali_match", "palm_full",
+                "future_event", "horary", "muhurat", "daily")
+
+
+def expand(item: str) -> tuple[str, ...]:
+    """The entitlements an item actually confers."""
+    return BUNDLE_ITEMS if item == "bundle_all" else (item,)
+
 
 # ---------------------------------------------------------------------------
 # entitlements
@@ -262,6 +274,16 @@ def mark_paid(public_id: str, *, gateway_payment_id: str = "") -> dict:
         _extend_subscription(uid)
         grant(uid, "daily", source="subscription", order_id=o["id"], days=30)
         grant(uid, "muhurat", source="subscription", order_id=o["id"], days=30)
+    elif item == "bundle_all":
+        # Account-wide (ref_id stays NULL) — the bundle covers every chart the
+        # buyer has, not just the one they happened to be looking at. entitled()
+        # treats a NULL ref_id as matching any ref, so this is what "everything"
+        # has to look like in the table.
+        for it in expand(item):
+            grant(uid, it, source="order", order_id=o["id"])
+        if ref:
+            from .db import report_mark_paid
+            report_mark_paid(ref)
     else:
         grant(uid, item, ref_id=ref, source="order", order_id=o["id"])
         if ref:

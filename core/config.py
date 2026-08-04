@@ -74,6 +74,14 @@ class Settings:
     free_daily_readings: int = _int("FREE_DAILY", 3)
     sub_horary_per_month: int = _int("SUB_HORARY", 3)
 
+    # --- launch offer ------------------------------------------------------
+    # A public promise with a hard number in it. Set PROMO_CODE="" to withdraw
+    # the offer without a code change; the cap itself is enforced in the
+    # database, not here.
+    promo_code: str = os.getenv("PROMO_CODE", "FIRST500")
+    promo_item: str = os.getenv("PROMO_ITEM", "bundle_all")
+    promo_max: int = _int("PROMO_MAX", 500)
+
     # --- payments ----------------------------------------------------------
     gateway: str = os.getenv("PAYMENT_GATEWAY", "razorpay")
     razorpay_key_id: str = os.getenv("RAZORPAY_KEY_ID", "")

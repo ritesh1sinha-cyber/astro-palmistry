@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from core import billing, queue as Q
+from core import billing, promo, queue as Q
 from core.auth import COOKIE, current_user, login_dev, login_with_google, logout
 from core.config import S
 from core.db import (engine, extend_partitions, init_schema, job_get,
@@ -42,6 +42,17 @@ app.add_middleware(CORSMiddleware, allow_origins=S.allowed_origins,
 def _startup() -> None:
     init_schema()
     extend_partitions()
+
+    # The launch offer, seeded from config so the cap is an env var and not a
+    # deploy. create_code is idempotent by code, so a restart never resets a
+    # counter or reopens an exhausted code.
+    if S.promo_code:
+        try:
+            promo.create_code(S.promo_code, item=S.promo_item,
+                              max_redemptions=S.promo_max,
+                              note="launch offer")
+        except Exception:                                            # noqa: BLE001
+            pass    # a bad env var must never stop the API from booting
 
     # Three deployment shapes, one codebase:
     #   * INLINE_WORKER=1 (or no REDIS_URL) → a worker thread inside this
@@ -353,6 +364,29 @@ def order_status(public_id: str, user: dict = Depends(current_user)):
         raise HTTPException(404, "no such order")
     return {"orderId": o["public_id"], "status": o["status"], "item": o["item"],
             "amount": o["amount_paise"] // 100}
+
+
+class PromoIn(BaseModel):
+    code: str
+
+
+@app.get("/api/promo/{code}")
+def promo_status(code: str):
+    """Public, unauthenticated — the landing page shows how many places are
+    left. Deliberately exposes only counts, never who redeemed."""
+    return promo.status(code)
+
+
+@app.post("/api/promo/redeem")
+def promo_redeem(body: PromoIn, user: dict = Depends(current_user)):
+    """One slot, one account. Every refusal is a 400 with a sentence a person
+    can read — an exhausted code is a normal outcome, not a server error."""
+    from core.errors import UserError
+    try:
+        result = promo.redeem(user["id"], body.code)
+    except UserError as e:
+        raise HTTPException(400, str(e))
+    return {**result, **_me(user)}
 
 
 @app.post("/api/payment/webhook")
