@@ -1879,17 +1879,26 @@ function renderAstroResult(kind, r){
         ${d.systems?`<div class="vsys">${Object.entries(d.systems).map(([k,val])=>`<span>${esc(k)}: <b>${esc(val)}</b></span>`).join('')}</div>`:''}</div>`;
     };
     const vv = v.vedic || {}, ww = v.western || {};
-    const norm = x => String(x||'').toLowerCase().replace(/[^a-z]/g,'');
-    const pos = s => ['yes','likely'].includes(norm(s)), neg = s => ['no','unlikely'].includes(norm(s));
-    const split = (pos(vv.verdict) && neg(ww.verdict)) || (neg(vv.verdict) && pos(ww.verdict));
+    // ONE answer. The two-engine verdict grid and the "the two traditions
+    // disagree" box used to sit here, above the report — which read to a
+    // customer as us not knowing, and directly contradicted the reconciled
+    // answer the report itself now leads with (Western 60 / Vedic 40, and on a
+    // real contradiction Western's direction wins at low confidence). The
+    // per-engine workings are still there, behind the paywall, for anyone who
+    // wants to check them.
+    const ans = (r.meta||{}).answer || {};
+    const conf = String(ans.confidence||'').toLowerCase();
+    const cls = conf.startsWith('high') ? 'ok' : (conf.startsWith('low') ? 'warn' : '');
     out.innerHTML = `<div class="card">
         <div class="eyebrow">Your question</div>
         <h3 style="font-size:22px;margin:8px 0 4px">“${esc((r.meta||{}).question||'')}”</h3>
         <p class="hint">asked ${esc((r.meta||{}).asked||'')}</p>
-        <div class="verdict-grid">${card('Vedic · Prashna', vv)}${card('Western method', ww)}</div>
-        ${split?`<div class="disagree"><b>The two traditions disagree.</b> That is a real signal, not a bug — they judge
-           by different rules and neither is merged into a single answer. Where they split, treat the matter as genuinely
-           finely balanced, and read the reasoning on both sides before acting.</div>`:''}
+        ${ans.label?`<div class="vcard ${cls}" style="margin:14px 0">
+            <div class="vlabel">The answer</div>
+            <div class="vbig">${esc(ans.label)}</div>
+            <div class="vconf">confidence ${esc(String(ans.confidence||'moderate'))}${
+              ans.contradicted?' · the methods disagreed, so this is deliberately cautious':''}</div>
+          </div>`:''}
         ${frameFor(r.links.free)}</div>` +
       (r.paid ? `<div class="card"><div class="eyebrow">Unlocked · full judgement</div>${frameFor(r.links.paid)}</div>`
               : astroPayCard('horary', r.price, r.reportId, (r.meta||{}).paidSections, (r.meta||{}).teasers));

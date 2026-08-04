@@ -80,7 +80,14 @@ check("re-creation does not change the cap",
 # ---------------------------------------------------------------------------
 print("\n— the bundle actually unlocks things —")
 
-check("bundle_all expands", len(billing.expand("bundle_all")) == 8)
+# Not a magic number: adding a bundle item should not fail this, but silently
+# expanding to nothing (or to itself) must.
+check("bundle_all expands to every bundle item",
+      billing.expand("bundle_all") == billing.BUNDLE_ITEMS
+      and len(billing.BUNDLE_ITEMS) >= 8,
+      f"expanded to {billing.expand('bundle_all')}")
+check("bundle_all does not expand to itself",
+      "bundle_all" not in billing.expand("bundle_all"))
 check("a normal item does not expand", billing.expand("palm_full") == ("palm_full",))
 check("bundle covers the flagship report", "full_report" in billing.BUNDLE_ITEMS)
 check("bundle covers rectification", "btr" in billing.BUNDLE_ITEMS)

@@ -65,6 +65,10 @@ class Settings:
         "muhurat":        _int("PRICE_MUHURAT", 4900),
         "btr":            _int("PRICE_BTR", 99900),
         "subscription":   _int("PRICE_SUB", 19900),
+        # The numerology TAB is free (three numbers, the Lo Shu grid, the year
+        # you are in). This price unlocks the years ahead and the remedy for
+        # each empty Lo Shu cell — the "Numerology, full" line in the bundle.
+        "numerology_full": _int("PRICE_NUMEROLOGY", 19900),
         # Everything, one payment. Separately these come to Rs 4,544, so the
         # bundle is priced to be the obvious choice rather than a token
         # discount — and it front-loads the rectification, which every other

@@ -209,15 +209,27 @@ def h_chart_summary(user: dict, p: dict) -> dict:
 
 
 def h_numerology(user: dict, p: dict) -> dict:
-    import astro_voice as V
-    from numerology_report import generate_numerology_html
-    y, m, d = (int(x) for x in p["dob"].split("-"))
-    sex = {0: "Male", 1: "Female"}[gender_code(p.get("gender"))]
-    html, slug = generate_numerology_html(p.get("name", "Seeker"), date(y, m, d), sex, None)
-    html = V.personalise(html, {"name": p.get("name", "Seeker"), "dob": p["dob"]},
-                         "numerology")
-    saved = _save_report(user["id"], None, "numerology", html, "", {"free": True}, True)
+    """Six numbers, the Lo Shu grid, this year free and the cycle ahead locked.
+
+    Was `numerology_report.generate_numerology_html`, which produced three
+    numbers and no grid. `report_render.numerology` is the card design: Chaldean
+    values (the system Indian numerology actually uses), a personal year running
+    birthday to birthday, and the Lo Shu grid — the only picture in numerology,
+    and the thing that makes people ask why four of their cells are empty.
+    """
+    import report_render as RD
+    name = p.get("name", "Seeker")
+    free, paid_html, meta = RD.numerology(
+        name, p["dob"], price=S.price("numerology_full") // 100)
+    # The TAB is free — `numerology` is in billing.FREE_ITEMS, so gating on it
+    # would make entitled() always true and nothing would ever lock. The years
+    # ahead and the Lo Shu remedies are the paid half, sold as `numerology_full`
+    # and included in the bundle.
+    paid = entitled(user["id"], "numerology_full")
+    saved = _save_report(user["id"], None, "numerology", free, paid_html,
+                         {**meta, "free": True}, paid)
     saved["free"] = True
+    saved["price"] = meta["price"]
     return saved
 
 
@@ -296,19 +308,47 @@ def h_full_report(user: dict, p: dict) -> dict:
         f = Path(value)
         return f.read_text(encoding="utf-8", errors="ignore") if f.is_file() else ""
 
-    conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
-    urep = {"free_html": "", "paid_html": "", "paid_sections": []}
-    user_html = _html(user_path)
-    if user_html:
-        urep = SP.split_user_report(V.personalise(user_html, ctx, "full_report"))
+    # ---- what the customer receives ------------------------------------
+    # The card design, not the long-form confluence document. The confluence
+    # still runs above: it is what the lanes vote into, and it stays available
+    # behind the paywall as the analyst view for anyone who wants the workings.
+    #
+    # Rendered TWICE rather than split, because the paywall now sits inside each
+    # card — headline and evidence free, dated window and remedy paid. Splitting
+    # a document by headings would either give away the timing or hide the
+    # headlines, and it broke whenever a heading was renamed.
+    import report_render as RD
+    free_html, paid_html, meta = RD.full_report(
+        pc, name=chart.get("person_name") or "Seeker",
+        question=p.get("question", ""),
+        price=S.price("full_report") // 100,
+        bundle_price=S.price("bundle_all") // 100,
+        lat=float(chart["lat"]), lon=float(chart["lon"]),
+        tz=float(chart["tz_offset"]))
 
-    meta = {"freeSections": conf["free_sections"],
-            "paidSections": conf["paid_sections"] + urep.get("paid_sections", []),
-            "teasers": conf["teasers"], "price": S.price("full_report") // 100}
+    # The old long-form document is kept as an appendix on the paid side. It is
+    # genuinely useful to the minority who want to check the reasoning, and
+    # throwing away a 90-second computation would be wasteful.
+    try:
+        conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
+        # Through the chokepoint: appending after the render bypassed it, and
+        # the old document names a lane "Longevity".
+        appendix = RD.clean(conf.get("free_html", "") + conf.get("paid_html", ""))
+        if appendix:
+            paid_html += ('<hr/><h3 class="sec">The full analyst working</h3>'
+                          '<p class="sec-note">Every lane, in full, for anyone who '
+                          'wants to check the reasoning.</p>' + appendix)
+            meta["paidSections"] = list(meta.get("paidSections", [])) + \
+                conf.get("paid_sections", [])
+    except Exception as exc:                                          # noqa: BLE001
+        print(f"[full_report] appendix skipped: {type(exc).__name__}: {exc}",
+              flush=True)
+
+    meta["lanes"] = {"built": len((lanes or {}).get("built") or []),
+                     "failed": list(((lanes or {}).get("failed") or {}).keys())}
     paid = entitled(user["id"], "full_report", chart["id"])
     saved = _save_report(user["id"], chart["id"], "full_report",
-                         conf["free_html"] + urep["free_html"],
-                         conf["paid_html"] + urep["paid_html"], meta, paid)
+                         free_html, paid_html, meta, paid)
     saved["chartId"] = chart["id"]
     saved["price"] = meta["price"]
     import shutil
@@ -369,26 +409,21 @@ def h_horary(user: dict, p: dict) -> dict:
 
     # ONE answer, not two engines arguing. Western 60 / Vedic 40; on a genuine
     # contradiction Western's direction wins and confidence drops to low. The
-    # per-engine workings still exist behind the paywall for anyone who wants
-    # to check them — they just no longer lead with a disagreement.
-    answer_html, answer = "", {}
-    try:
-        from horary_answer import build_answer_html
-        answer_html, answer = build_answer_html(
-            question=p["question"], verdicts=verdicts,
-            western_judgment=western_judgment, asked=ctx["asked"],
-            name=user.get("name") or "", full_report_price=S.price("full_report") // 100)
-    except Exception as exc:                                          # noqa: BLE001
-        print(f"[handlers] horary answer layer failed: {type(exc).__name__}: {exc}",
-              flush=True)
+    # per-engine workings sit behind the paywall for anyone who wants to check
+    # them — they no longer LEAD with a disagreement, which read as us not
+    # knowing rather than as intellectual honesty.
+    import report_render as RD
+    free_html, paid_html, hmeta = RD.horary(
+        question=p["question"], verdicts=verdicts,
+        western_judgment=western_judgment, asked=ctx["asked"],
+        name=user.get("name") or "", price=S.price("full_report") // 100,
+        workings={k: s["free_html"] + s["paid_html"] for k, s in splits.items()})
 
-    meta = {"verdicts": verdicts, "answer": answer,
-            "paidSections": paid_sections, "teasers": teasers,
-            "question": p["question"], "asked": ctx["asked"],
-            "price": S.price("horary") // 100}
-    saved = _save_report(user["id"], None, "horary",
-                         answer_html + "".join(s["free_html"] for s in splits.values()),
-                         "".join(s["paid_html"] for s in splits.values()), meta, paid)
+    meta = {**hmeta, "verdicts": verdicts,
+            "paidSections": hmeta.get("paidSections", []) + paid_sections,
+            "teasers": teasers, "price": S.price("horary") // 100}
+    saved = _save_report(user["id"], None, "horary", free_html, paid_html,
+                         meta, paid)
     saved["price"] = meta["price"]
     return saved
 
@@ -460,6 +495,7 @@ def h_kundali_match(user: dict, p: dict) -> dict:
                                         "analysis and its remedies, the Navamsha (D9) "
                                         "synastry and the numerology compatibility.")
     a = result.get("ashtakoota") or {}
+    # (meta is assembled below; the card render needs it, so it happens first)
     vd = result.get("verdict") or {}
     doshas = result.get("doshas") or {}
     meta = {"total": a.get("total_guna"), "maxGuna": a.get("max_guna"),
@@ -479,8 +515,23 @@ def h_kundali_match(user: dict, p: dict) -> dict:
             "paidSections": split["paid_sections"], "teasers": split["teasers"],
             "price": S.price("kundali_match") // 100}
     paid = entitled(user["id"], "kundali_match")
+
+    # Card design. Guna names are translated to what each test actually measures
+    # — eight Sanskrit column headings undid the clarity of every other screen.
+    # The long-form report stays as the paid appendix.
+    import report_render as RD
+    free_html, paid_html, cmeta = RD.kundali_match(
+        meta, groom=g["name"], bride=b["name"],
+        price=S.price("kundali_match") // 100)
+    appendix = RD.clean(split.get("free_html", "") + split.get("paid_html", ""))
+    if appendix:
+        paid_html += ('<hr/><h3 class="sec">The full matching report</h3>'
+                      + appendix)
+    meta = {**meta, **cmeta,
+            "paidSections": cmeta["paidSections"] + split["paid_sections"],
+            "teasers": split["teasers"]}
     saved = _save_report(user["id"], None, "kundali_match",
-                         split["free_html"], split["paid_html"], meta, paid)
+                         free_html, paid_html, meta, paid)
     saved["price"] = meta["price"]
     import shutil
     shutil.rmtree(work, ignore_errors=True)

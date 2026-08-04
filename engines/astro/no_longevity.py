@@ -154,8 +154,11 @@ def scrub(text: Any) -> str:
     # this module introduces — a blanket dedup would eat legitimate English.
     out = re.sub(r"\b(degree|lord|health-sensitive)(\s+\1)+\b", r"\1", out,
                  flags=re.I)
-    # sentences that lost their subject
-    out = re.sub(r"(?<![A-Za-z])\.\s*", ". ", out)
+    # Sentences that lost their subject. Must not touch a decimal point: this
+    # rule used to rewrite "21.5 of 36" as "21. 5 of 36" and "1.5x" as "1. 5x",
+    # which only showed up once scrub() started running over whole documents
+    # rather than single sentences. Require a non-digit on BOTH sides.
+    out = re.sub(r"(?<![A-Za-z0-9])\.(?!\d)\s*", ". ", out)
     return out.strip()
 
 
