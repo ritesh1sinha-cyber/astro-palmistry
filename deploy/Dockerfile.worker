@@ -13,8 +13,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# deps first, so code edits don't reinstall 300 MB of wheels
-COPY requirements.api.txt requirements.worker.txt ./
+# ---------------------------------------------------------------------------
+# One COPY of the whole context, deliberately.
+#
+# Every build that used a path-specific COPY eventually failed on Railway:
+# deploy/ephe/, deploy/entrypoint.sh, engines/astro, and even a bare file —
+# requirements.worker.txt arrived "not found" while requirements.api.txt, its
+# sibling in the same directory, made it. Stop depending on individual paths:
+# copy everything and let .dockerignore decide what to leave out.
+#
+# Trade-off: requirements install from the same context, so there is no layer
+# caching for a pure-requirements change. Correctness beats caching.
+# ---------------------------------------------------------------------------
+COPY . .
+
+# fail loudly and specifically if the context was incomplete — before spending
+# minutes installing wheels from files that may have failed to arrive
+RUN python -c "import pathlib,sys; \
+missing=[q for q in ('requirements.api.txt','requirements.worker.txt','engines/palm_api/pipeline.py','engines/astro/astro_precompute.py','core/handlers.py','api.py') if not pathlib.Path(q).exists()]; \
+sys.exit('BUILD CONTEXT INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('build context complete')"
+
 RUN pip install -r requirements.worker.txt
 
 # sentence-transformers + torch (~2 GB) are needed ONLY by the full confluence
@@ -26,28 +44,9 @@ RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
       pip install "sentence-transformers>=2.2"; \
     fi
 
-# ---------------------------------------------------------------------------
-# One COPY of the whole context, deliberately.
-#
-# Three builds failed on path-specific COPYs that Railway did not provide in the
-# build context — deploy/ephe/, deploy/entrypoint.sh, and engines/astro — while
-# sibling paths (core, api.py, engines/palm_api) arrived fine. Rather than keep
-# guessing at one platform's context rules, copy everything and let
-# .dockerignore decide what to leave out.
-#
-# It also converts an opaque "not found" build error into a precise diagnostic:
-# the assertion below names exactly what failed to arrive.
-# ---------------------------------------------------------------------------
-COPY . .
-
 # `import palm_api` and `import astro_precompute` both resolve, with the engines
 # left exactly where the repo puts them.
 ENV PYTHONPATH=/app:/app/engines:/app/engines/astro
-
-# fail loudly and specifically if the context was incomplete
-RUN python -c "import pathlib,sys; \
-missing=[q for q in ('engines/palm_api/pipeline.py','engines/astro/astro_precompute.py','core/handlers.py','api.py') if not pathlib.Path(q).exists()]; \
-sys.exit('BUILD CONTEXT INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('build context complete')"
 
 # warm the rule corpora into the image so the first customer isn't the one who waits
 RUN python -c "from palm_api.pipeline import ensure_corpus; ensure_corpus()" || true
