@@ -379,7 +379,8 @@ def render_numerology(name: str, dob, *, paid: bool = False,
 
 def render_palm(public: dict, *, paid: bool = False, price: int = 499,
                 overlays: Optional[dict] = None,
-                raw: Optional[dict] = None) -> str:
+                raw: Optional[dict] = None,
+                pc: Optional[dict] = None) -> str:
     meta = public.get("meta") or {}
     scores = public.get("scores") or {}
     past = public.get("past") or []
@@ -410,6 +411,14 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499,
                                        paid=paid, price=price)
     except Exception:
         pass
+
+    # The astro-palmistry layer needs no photograph, so it renders whenever a
+    # chart is available — including before any upload.
+    astro_html = ""
+    if pc:
+        astro_html = render_palm_astro(
+            pc, palm_features=(raw or {}).get("features"),
+            paid=paid, price=price)
 
     ov = overlays or {}
     overlay_block = ""
@@ -454,6 +463,7 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499,
   {overlay_block}
   {quality_note}
   {marks_html}
+  {astro_html}
   <div class="evidence"><span class="ev-label">Measured from your palms</span>
     <ul class="palm-scores">{score_rows}</ul>
     <p class="fine">{meta.get('rulesSearched', 0)} classical rules were checked
@@ -474,4 +484,108 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499,
   <div class="tab-cta">
     <p>{len(future)} dated sections ahead are in the full reading — ₹{price}.</p>
   </div>'''}
+</section>"""
+
+# ---------------------------------------------------------------------------
+# Astro-palmistry: what the chart says the hand should show
+# ---------------------------------------------------------------------------
+
+def render_palm_astro(pc: dict, *, palm_features: Any = None,
+                      paid: bool = False, price: int = 499) -> str:
+    """The chart-driven half of palmistry — needs no photograph at all.
+
+    This is the layer that makes the tab useful before any upload: the birth
+    chart names which mount should be raised, which planet is line-lord of each
+    life zone, and what a hand carrying this chart ought to look like. When palm
+    features ARE supplied it also reports agreement, and agreement between two
+    independent methods is the strongest evidence the product has.
+    """
+    try:
+        import palm_astro_bridge as PB
+    except Exception:
+        return ""
+    try:
+        block = PB.build(pc, palm_features)
+    except Exception:
+        return ""
+    if not block:
+        return ""
+
+    statements = block.get("statements") or []
+    zones = block.get("zones") or []
+    cross = block.get("cross_check") or []
+    windows = block.get("health_windows") or []
+    supplied = bool(block.get("palm_supplied"))
+
+    # Free: the expectations, because the reader can check them on their own
+    # hand in seconds and that is the whole trust argument for this tab.
+    shown = statements if paid else statements[:3]
+    hidden = max(0, len(statements) - len(shown))
+
+    st_rows = "".join(f"""
+    <li class="pa-row">
+      <div class="pa-mount">{_e(st.get('mount') or st.get('zone_id'))}</div>
+      <div class="pa-text">{_e(st.get('text') or '')}</div>
+      {f'<div class="pa-why">{_e(st.get("because"))}</div>' if st.get("because") else ''}
+    </li>""" for st in shown)
+
+    zone_rows = "".join(f"""
+    <li class="pa-zone">
+      <span class="pa-area">{_e(str(z.get('area', '')).title())}</span>
+      <span class="pa-anchor">{_e(z.get('anchor_planet'))} —
+        {_e(z.get('mount'))}</span>
+    </li>""" for z in zones[:8])
+
+    cross_html = ""
+    if supplied and cross:
+        agree = [c for c in cross if c.get("agrees")]
+        cross_html = f"""
+  <div class="pa-cross" data-verdict="{'up' if agree else 'mixed'}">
+    <div class="ev-label">Where your hand and your chart agree</div>
+    <p>{len(agree)} of {len(cross)} zones checked out against your photographs.
+    Two independent methods reaching the same finding is the strongest thing we
+    can tell you.</p>
+    <ul>{''.join(f"<li>{_e(c.get('text') or '')}</li>" for c in cross[:4])}</ul>
+  </div>"""
+    elif not supplied:
+        cross_html = """
+  <div class="pa-cross" data-verdict="mixed">
+    <div class="ev-label">Upload your palms to cross-check this</div>
+    <p>Everything above is what your <em>chart</em> says your hand should show.
+    Send photographs and we check each one against what is actually there — and
+    where the two agree independently, that finding is about as solid as
+    astrology gets.</p>
+  </div>"""
+
+    # 8th-house material surfaces ONLY as a health-concern window with a remedy.
+    # No lifespan, ever — see no_longevity.py.
+    win_html = ""
+    if windows:
+        win_html = "".join(f"""
+  <div class="pa-window" data-verdict="down">
+    <div class="ev-label">A window worth being careful in</div>
+    <p>{_e(w.get('text') or '')}</p>
+    {f'<p class="fine">{_e(w.get("because"))}</p>' if w.get("because") else ''}
+    <p class="pa-remedy"><b>What helps:</b> {_e(w.get('remedy') or '')}</p>
+  </div>""" for w in windows[:2])
+
+    locked = "" if paid or not hidden else f"""
+  <div class="remedy-locked">
+    <b>{hidden} more chart-to-hand readings</b> — every mount, the sub-planets
+    sitting in each zone, and the marks your chart predicts you will find.
+    ₹{price}
+  </div>"""
+
+    return f"""
+<section class="palm-astro">
+  <div class="ev-label">Astro-palmistry — your chart read onto your hand</div>
+  <p class="pa-lede">{_e(block.get('note') or '')}</p>
+  <ul class="pa-list">{st_rows}</ul>
+  {locked}
+  <div class="evidence">
+    <span class="ev-label">Which planet governs which zone of your palm</span>
+    <ul class="pa-zones">{zone_rows}</ul>
+  </div>
+  {cross_html}
+  {win_html}
 </section>"""
