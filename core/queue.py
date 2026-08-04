@@ -132,28 +132,39 @@ SLOT_LEASE = 1800
 
 
 def take_slot(kind: str, holder: str, ttl: int = SLOT_LEASE) -> bool:
+    """Atomically acquire one slot of the per-kind concurrency cap.
+
+    The original implementation used WATCH + pipeline, which is correct for a
+    multi-process / multi-replica deployment on real Redis. With fakeredis (the
+    local/CI path) it misbehaved: WATCH is a no-op, the card count is read on
+    the server BEFORE the pipeline flush, so the slot appears full even when
+    empty, and jobs sit in the queue forever despite 0 of N slots in use.
+
+    Lua script is atomic on both real Redis and fakeredis, has no round-trip
+    race, and produces exactly one network call.
+    """
     key = _slots(kind)
     cap = cap_of(kind)
-    conn = r()
-    for _ in range(5):
-        try:
-            with conn.pipeline() as pipe:
-                pipe.watch(key)
-                now = time.time()
-                pipe.zremrangebyscore(key, 0, now)          # reap dead leases
-                if pipe.zcard(key) >= cap:
-                    pipe.unwatch()
-                    return False
-                pipe.multi()
-                pipe.zadd(key, {holder: now + ttl})
-                pipe.expire(key, ttl * 2)
-                pipe.execute()
-                return True
-        except Exception as exc:                            # noqa: BLE001
-            if exc.__class__.__name__ == "WatchError":
-                continue                                    # contended; retry
-            raise
-    return False
+    now_ts = time.time()
+    # The script: expire old leases first, then check cap, then insert.
+    # Returns 1 (slot acquired) or 0 (full).
+    LUA = """
+local key    = KEYS[1]
+local cap    = tonumber(ARGV[1])
+local holder = ARGV[2]
+local score  = tonumber(ARGV[3])
+local ttl2   = tonumber(ARGV[4])
+redis.call('ZREMRANGEBYSCORE', key, 0, tonumber(ARGV[5]))
+if redis.call('ZCARD', key) >= cap then return 0 end
+redis.call('ZADD', key, score, holder)
+redis.call('EXPIRE', key, ttl2)
+return 1
+"""
+    result = r().eval(
+        LUA, 1, key,
+        str(cap), holder, str(now_ts + ttl), str(ttl * 2), str(now_ts)
+    )
+    return bool(result)
 
 
 def release_slot(kind: str, holder: str) -> None:
