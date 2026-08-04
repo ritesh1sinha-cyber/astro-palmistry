@@ -1219,10 +1219,34 @@ addEventListener('keydown',e=>{ if(e.key==='Escape') closeCam(); });
    hit your real endpoints. Contract is in the README.
    ============================================================ */
 async function api(path,opts={}){
+  // ONE session for the whole app.
+  //
+  // This used to send `S.user.idToken`, which only exists after a real Google
+  // sign-in. With the demo or dev login there is no idToken, so every palm
+  // reading was POSTed UNAUTHENTICATED, the API answered 401 "sign in required",
+  // and the catch block reported "Could not reach the reading service" — a
+  // message that points at the network and hides an auth failure. Meanwhile the
+  // astrology tabs worked, because they go through astroApi()/astroAuth(), which
+  // exchanges the login for a real session token.
+  //
+  // Both helpers now share that one token.
+  let token = ASTRO.token;
+  if(!token){
+    try{ token = await astroAuth(); }
+    catch(e){ /* fall through: the request will 401 and say so */ }
+  }
   const r=await fetch(CONFIG.apiBase+path,{
-    headers:{'Content-Type':'application/json', ...(S.user?.idToken?{Authorization:'Bearer '+S.user.idToken}:{})},
+    headers:{'Content-Type':'application/json',
+             ...(token?{Authorization:'Bearer '+token}:{})},
     ...opts });
-  if(!r.ok) throw new Error('HTTP '+r.status);
+  if(!r.ok){
+    // Carry the server's own sentence. FastAPI puts it in `detail`, and our
+    // handlers raise UserError precisely so it is readable by a person.
+    let detail='';
+    try{ detail=(await r.json()).detail||''; }catch(e){}
+    throw Object.assign(new Error(detail||('HTTP '+r.status)),
+                        {status:r.status, detail});
+  }
   return r.json();
 }
 
@@ -1245,7 +1269,14 @@ async function submitReading(){
       body:JSON.stringify({kind:'palm', payload})});
     S.job=job; S.busy=true; syncFlow(); renderQueue(job); watchJob(job.jobId);
   }catch(e){
-    console.error(e); toast('Could not reach the reading service. Please try again.');
+    console.error(e);
+    // Say what actually happened. "Could not reach" sent me looking at the
+    // network for an auth bug.
+    toast(e && e.status === 401
+      ? 'Sign-in expired. Sign out and back in, then try again.'
+      : (e && e.message && !/^HTTP /.test(e.message)
+          ? e.message
+          : 'The reading service rejected that request. Please try again.'));
     b.disabled=false; b.textContent='Reveal my reading';
   }
 }
