@@ -33,6 +33,7 @@ def engine() -> Engine:
     global _engine
     if _engine is None:
         url = S.database_url
+        print(f"[db] DATABASE_URL={url}", flush=True)
         kw: dict[str, Any] = {"future": True, "pool_pre_ping": True}
         if url.startswith("postgres"):
             # pool sized per API replica; 20 × 4 replicas stays well under
