@@ -31,7 +31,8 @@ WORKDIR /app
 # ---------------------------------------------------------------------------
 ARG GIT_REPO=https://github.com/ritesh1sinha-cyber/astro-palmistry.git
 ARG GIT_REF=main
-RUN git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" . && rm -rf .git
+ARG RAILWAY_GIT_COMMIT_SHA=unknown
+RUN echo "cloning commit $RAILWAY_GIT_COMMIT_SHA" && git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" . && rm -rf .git
 
 # Show what the clone delivered, then fail loudly and specifically if anything
 # the runtime needs did not arrive.
