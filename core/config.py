@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from urllib.parse import quote
 
 
 def _int(k: str, d: int) -> int:
@@ -17,17 +18,26 @@ def _bool(k: str, d: bool = False) -> bool:
     return os.getenv(k, str(d)).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _build_database_url() -> str:
+    """Assemble a Postgres URL from the individual PG* variables that managed
+    hosts (Railway, Neon, Render) inject, falling back to SQLite."""
+    host = os.getenv("PGHOST")
+    if not host:
+        return "sqlite:///./astro.db"
+    user = quote(os.getenv("PGUSER", "postgres"), safe="")
+    password = quote(os.getenv("PGPASSWORD", ""), safe="")
+    db = quote(os.getenv("PGDATABASE", "postgres"), safe="")
+    port = os.getenv("PGPORT", "5432")
+    return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{db}"
+
+
 @dataclass
 class Settings:
     env: str = os.getenv("ENV", "dev")
 
     # --- storage -----------------------------------------------------------
     # Postgres in production; SQLite only for a laptop.
-    database_url: str = os.getenv("DATABASE_URL") or (
-        f"postgresql+psycopg://{os.getenv('PGUSER','postgres')}:{os.getenv('PGPASSWORD','')}"
-        f"@{os.getenv('PGHOST','localhost')}:{os.getenv('PGPORT','5432')}/{os.getenv('PGDATABASE','postgres')}"
-        if os.getenv("PGHOST") else "sqlite:///./astro.db"
-    )
+    database_url: str = os.getenv("DATABASE_URL", "")
     redis_url: str = os.getenv("REDIS_URL", "")           # "" → in-process fake
 
     # object storage for generated reports (S3 / R2 / MinIO), else local dir
@@ -109,7 +119,14 @@ class Settings:
         # `postgres://` or `postgresql://`. SQLAlchemy maps those to psycopg2,
         # which is not in our image — psycopg3 is. Normalise it here so nobody
         # has to remember a driver suffix in a dashboard.
-        u = self.database_url
+        u = (self.database_url or "").strip()
+        if not u or "{{" in u or "}}" in u:
+            # Empty, or an unresolved `{{Service.VAR}}` template reference from
+            # a managed host whose link never expanded. Treat as unset and
+            # rebuild from the individual PG* variables (or fall back to
+            # SQLite) instead of crashing create_engine() with a literal
+            # `{{Postgres.DATABASE_URL}}`.
+            u = _build_database_url()
         if u.startswith("postgres://"):
             u = "postgresql://" + u[len("postgres://"):]
         if u.startswith("postgresql://"):
