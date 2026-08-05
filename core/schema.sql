@@ -290,7 +290,7 @@ DECLARE
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = part) THEN
         EXECUTE format(
-            'CREATE TABLE %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
+            'CREATE TABLE %%I PARTITION OF %%I FOR VALUES FROM (%%L) TO (%%L)',
             part, parent, month, (month + INTERVAL '1 month')::date);
     END IF;
 END $$;

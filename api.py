@@ -182,15 +182,16 @@ def submit_job(body: JobIn, user: dict = Depends(current_user)):
 @app.get("/api/job/{pid}")
 def job_status(pid: str, user: dict = Depends(current_user)):
     job = Q.load(pid)
+    uid = str(user["id"])
     if job is None:                                   # fell out of Redis TTL
         row = job_get(pid)
-        if not row or row.get("user_id") != user["id"]:
+        if not row or str(row.get("user_id")) != uid:
             raise HTTPException(404, "no such job")
         return {"jobId": pid, "kind": row["kind"], "status": row["status"],
                 "queuePosition": 0, "etaSeconds": 0,
                 "error": row.get("error"), "result": None,
                 "note": "this job has expired from the live queue"}
-    if job.get("userId") != user["id"]:
+    if str(job.get("userId")) != uid:
         raise HTTPException(404, "no such job")
     snap = Q.snapshot(job)
     snap["result"] = _decorate(snap.get("result"), user["id"])
@@ -200,7 +201,7 @@ def job_status(pid: str, user: dict = Depends(current_user)):
 @app.delete("/api/job/{pid}")
 def job_cancel(pid: str, user: dict = Depends(current_user)):
     job = Q.load(pid)
-    if not job or job.get("userId") != user["id"]:
+    if not job or str(job.get("userId")) != str(user["id"]):
         raise HTTPException(404, "no such job")
     ok = Q.cancel(pid)
     if ok:

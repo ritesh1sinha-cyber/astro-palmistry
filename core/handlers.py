@@ -264,7 +264,7 @@ def h_full_report(user: dict, p: dict) -> dict:
     ctx = _voice_ctx(pc, chart)
 
     work = Path(tempfile.mkdtemp(prefix="rep_"))
-    slug = (chart.get("person_name") or "chart").replace(" ", "_")[:24] + "_" + chart["id"][:6]
+    slug = (chart.get("person_name") or "chart").replace(" ", "_")[:24] + "_" + str(chart["id"])[:6]
     pc_path = work / "precomputed.json"
     pc_path.write_text(json.dumps(pc, default=str), encoding="utf-8")
 

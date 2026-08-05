@@ -1,0 +1,47 @@
+# Local development Dockerfile — uses local source directly (no git clone).
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential git libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+        postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.worker.txt requirements.api.txt ./
+
+RUN pip install -r requirements.worker.txt
+
+ARG WITH_CONFLUENCE=0
+RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
+      pip install "torch==2.4.*" --index-url https://download.pytorch.org/whl/cpu && \
+      pip install "sentence-transformers>=2.2"; \
+    fi
+
+ENV PYTHONPATH=/app:/app/engines:/app/engines/astro
+ENV PYJHORA_SRC=/usr/local/lib/python3.12/site-packages
+ENV INLINE_WORKER=1 INLINE_WORKER_THREADS=2 \
+    WORKER_GROUPS=heavy,palm,light ASTRO_HOTFIX=1 \
+    LOCAL_STORE=/data/storage
+
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD python -c "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.getenv('PORT','8080')+'/health')"
+
+RUN printf '%s\n' \
+  '#!/bin/sh' \
+  'set -e' \
+  'DEST="/usr/local/lib/python3.12/site-packages/jhora/data/ephe"' \
+  'if [ -n "$EPHE_PATH" ] && ls "$EPHE_PATH"/*.se1 >/dev/null 2>&1; then' \
+  '  mkdir -p "$DEST"' \
+  '  cp "$EPHE_PATH"/*.se1 "$DEST"/' \
+  '  echo "[entrypoint] installed $(ls "$EPHE_PATH"/*.se1 | wc -l) ephemeris files"' \
+  'else' \
+  '  echo "[entrypoint] no ephemeris data (set EPHE_PATH for JHora-exact positions)"' \
+  'fi' \
+  'exec "$@"' \
+  > /entrypoint.sh && chmod +x /entrypoint.sh && sh -n /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8080} --reload"]

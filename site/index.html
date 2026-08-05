@@ -1480,7 +1480,7 @@ function watchJob(jobId){
   clearInterval(jobPoll);
   jobPoll=setInterval(async()=>{
     let j;
-    try{ j = MOCK ? mockJobStatus(jobId) : await api('/api/reading/job/'+jobId); }
+    try{ j = MOCK ? mockJobStatus(jobId) : await api('/api/job/'+jobId); }
     catch(e){ return; }
     S.job=j; renderQueue(j);
     if(j.status==='done'){
