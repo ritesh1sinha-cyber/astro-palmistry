@@ -23,7 +23,11 @@ class Settings:
 
     # --- storage -----------------------------------------------------------
     # Postgres in production; SQLite only for a laptop.
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./astro.db")
+    database_url: str = os.getenv("DATABASE_URL") or (
+        f"postgresql+psycopg://{os.getenv('PGUSER','postgres')}:{os.getenv('PGPASSWORD','')}"
+        f"@{os.getenv('PGHOST','localhost')}:{os.getenv('PGPORT','5432')}/{os.getenv('PGDATABASE','postgres')}"
+        if os.getenv("PGHOST") else "sqlite:///./astro.db"
+    )
     redis_url: str = os.getenv("REDIS_URL", "")           # "" → in-process fake
 
     # object storage for generated reports (S3 / R2 / MinIO), else local dir
