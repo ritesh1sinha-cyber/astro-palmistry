@@ -8,6 +8,10 @@ service-account*.json
 # runtime state
 storage/
 reports/
+preview/
+fixtures/*.jpg
+fixtures/*.jpeg
+fixtures/*.png
 _astro_sessions/
 *.db
 *.db-wal

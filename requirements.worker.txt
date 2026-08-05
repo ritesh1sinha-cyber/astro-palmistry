@@ -1,6 +1,10 @@
 # Worker image — carries both engines
 -r requirements.api.txt
 
+# Embedded queue when REDIS_URL is unset (laptop, CI, single-service Railway).
+# Real Redis is still required for multi-replica production.
+fakeredis>=2.26
+
 # palmistry (computer vision)
 mediapipe>=0.10.9
 opencv-python-headless>=4.8

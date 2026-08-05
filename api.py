@@ -24,7 +24,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from core import billing, promo, queue as Q
-from core.auth import COOKIE, current_user, login_dev, login_with_google, logout
+from core.auth import COOKIE, current_user, is_admin, is_admin_id, login_admin, login_dev, login_with_google, logout
 from core.config import S
 from core.db import (engine, extend_partitions, init_schema, job_get,
                      job_insert, job_update, jdump, new_id, now,
@@ -95,6 +95,11 @@ class DevIn(BaseModel):
     name: str = "Dev User"
 
 
+class AdminIn(BaseModel):
+    email: str
+    password: str
+
+
 def _set_cookie(resp: Response, token: str) -> None:
     resp.set_cookie(COOKIE, token, max_age=S.session_days * 86400, httponly=True,
                     secure=(S.env == "prod"), samesite="lax", path="/")
@@ -118,6 +123,15 @@ def auth_dev(body: DevIn, request: Request, response: Response):
     return {"token": token, "user": _me(user)}
 
 
+@app.post("/api/auth/admin")
+def auth_admin(body: AdminIn, request: Request, response: Response):
+    user, token = login_admin(body.email, body.password,
+                              ip=request.client.host if request.client else "",
+                              ua=request.headers.get("user-agent", ""))
+    _set_cookie(response, token)
+    return {"token": token, "user": _me(user)}
+
+
 @app.post("/api/auth/logout")
 def auth_logout(request: Request, response: Response):
     tok = request.cookies.get(COOKIE, "")
@@ -132,14 +146,16 @@ def auth_logout(request: Request, response: Response):
 def _me(user: dict) -> dict:
     sub = billing.subscription_of(user["id"])
     subscribed = billing.is_subscribed(user["id"])
+    admin = is_admin(user)
     return {"id": user["id"], "email": user["email"], "name": user.get("name"),
             "picture": user.get("picture"), "credits": user.get("credits", 0),
-            "subscribed": subscribed,
+            "admin": admin,
+            "subscribed": subscribed or admin,
             "subUntil": (sub or {}).get("current_period_end"),
             "horaryLeft": (billing.quota_left(user["id"], "horary",
                                               S.sub_horary_per_month,
                                               billing.month_period())
-                           if subscribed else 0),
+                           if subscribed else 999 if admin else 0),
             "freeDailyLeft": billing.quota_left(user["id"], "daily_free",
                                                 S.free_daily_readings, "all")}
 
@@ -223,10 +239,15 @@ def file_token(report_id: str, half: str, user_id: str) -> str:
 
 
 def _links(rid: str, uid: str, paid: bool) -> dict:
+    unlocked = paid or is_admin_id(uid)
     out = {"free": f"/api/file/{file_token(rid, 'free', uid)}"}
-    if paid:
+    if unlocked:
         out["paid"] = f"/api/file/{file_token(rid, 'paid', uid)}"
     return out
+
+
+def _report_unlocked(rep: dict, uid: str) -> bool:
+    return bool(rep.get("paid")) or is_admin_id(uid)
 
 
 @app.get("/api/file/{token}")
@@ -242,7 +263,7 @@ def serve_file(token: str):
     rep = report_get(rid, uid)
     if not rep:
         raise HTTPException(404, "no such report")
-    if half == "paid" and not rep["paid"]:
+    if half == "paid" and not _report_unlocked(rep, uid):
         raise HTTPException(402, "payment required")
     key = rep["paid_key"] if half == "paid" else rep["free_key"]
     if not key:
@@ -296,13 +317,14 @@ def _decorate(result: Any, uid: str) -> Any:
                               if isinstance(v, str)}
     rid = result.get("reportId")
     if rid and "links" not in result:
-        result["links"] = _links(rid, uid, bool(result.get("paid")))
+        result["links"] = _links(rid, uid, bool(result.get("paid")) or is_admin_id(uid))
     return result
 
 
 @app.get("/api/reports")
 def my_reports(user: dict = Depends(current_user)):
-    return [{"reportId": r["id"], "kind": r["kind"], "paid": r["paid"],
+    return [{"reportId": r["id"], "kind": r["kind"],
+             "paid": _report_unlocked(r, user["id"]),
              "createdAt": r["created_at"], "meta": r["meta"],
              "links": _links(r["id"], user["id"], r["paid"])}
             for r in reports_for_user(user["id"])]
@@ -313,22 +335,36 @@ def one_report(rid: str, user: dict = Depends(current_user)):
     rep = report_get(rid, user["id"])
     if not rep:
         raise HTTPException(404, "no such report")
-    return {"reportId": rep["id"], "kind": rep["kind"], "paid": rep["paid"],
-            "meta": rep["meta"], "links": _links(rid, user["id"], rep["paid"])}
+    unlocked = _report_unlocked(rep, user["id"])
+    return {"reportId": rep["id"], "kind": rep["kind"], "paid": unlocked,
+            "meta": rep["meta"], "links": _links(rid, user["id"], unlocked)}
 
 
 @app.get("/api/reading/{rid}/full")
 def reading_full(rid: str, user: dict = Depends(current_user)):
-    """Palmistry's paid JSON half."""
+    """Paid half after unlock.
+
+    Palmistry used to return a JSON body here; it now stores HTML like
+    astrology. JSON keys still work for any legacy report; HTML reports
+    return signed links so the site can iframe the paid document.
+    """
     rep = report_get(rid, user["id"])
     if not rep:
         raise HTTPException(404, "no such report")
-    if not rep["paid"]:
+    if not _report_unlocked(rep, user["id"]):
         raise HTTPException(402, "payment required")
+    key = rep.get("paid_key") or ""
     try:
-        return json.loads(store().get(rep["paid_key"]).decode())
+        data = store().get(key)
     except Exception:                                                 # noqa: BLE001
         raise HTTPException(404, "the stored report is missing")
+    if key.endswith(".json"):
+        try:
+            return json.loads(data.decode())
+        except Exception:                                             # noqa: BLE001
+            raise HTTPException(404, "the stored report is missing")
+    return {"reportId": rid, "paid": True,
+            "links": _links(rid, user["id"], True)}
 
 
 # ===========================================================================
@@ -510,7 +546,9 @@ def health():
             c.exec_driver_sql("SELECT 1")
     except Exception:                                                 # noqa: BLE001
         db_ok = False
-    return {"ok": db_ok, "env": S.env, "db": db_ok, "queue": Q.health()}
+    q = Q.health()
+    queue_ok = q.get("mode") != "unavailable"
+    return {"ok": db_ok and queue_ok, "env": S.env, "db": db_ok, "queue": q}
 
 
 @app.get("/api/queue")

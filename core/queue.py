@@ -10,20 +10,21 @@ Design
 * One sorted set per kind-group, scored by (priority, enqueue time). Paying and
   subscribed users get a better priority, so a ₹1,499 report never waits behind
   a queue of free chart summaries.
-* A per-kind concurrency cap held as a ZSET of leased slots, taken under
-  WATCH/MULTI. Leases expire, so a killed worker cannot leak capacity, and no
-  EVAL is needed (some managed Redis offerings block Lua).
+* A per-kind concurrency cap held as a ZSET of leased slots. Real Redis takes
+  slots with one Lua script; fakeredis (laptop/CI) uses sequential ops because
+  it has no EVAL. Managed Redis that blocks Lua falls back to WATCH/MULTI.
 * Per-kind duration stats (rolling, EWMA) so the ETA shown to a user is
   measured, not guessed — and it is the same number across every replica.
 * Job state cached in Redis for fast polling; Postgres holds the durable record.
 
-Falls back to a fakeredis instance when REDIS_URL is unset so a laptop needs no
-infrastructure.
+Falls back to fakeredis when REDIS_URL is unset — laptop, CI, and single-process
+Railway (INLINE_WORKER=1). Production with multiple replicas MUST set REDIS_URL.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from typing import Any, Optional
@@ -36,17 +37,43 @@ from .config import S
 _r = None
 
 
+class QueueUnavailable(RuntimeError):
+    """Raised when neither Redis nor the embedded fallback is available."""
+
+
+def _embedded_redis_ok() -> bool:
+    """Single-process deploys may run without a Redis plugin."""
+    if S.env == "dev":
+        return True
+    return os.getenv("INLINE_WORKER", "1" if not S.redis_url else "0") == "1"
+
+
 def r():
     global _r
     if _r is None:
-        if S.redis_url:
+        url = (S.redis_url or "").strip()
+        if url:
             import redis
-            _r = redis.Redis.from_url(S.redis_url, decode_responses=True,
+            _r = redis.Redis.from_url(url, decode_responses=True,
                                       health_check_interval=30,
                                       socket_keepalive=True)
-        else:                                    # laptop / CI
-            import fakeredis
-            _r = fakeredis.FakeRedis(decode_responses=True)
+        elif _embedded_redis_ok():
+            try:
+                import fakeredis
+                _r = fakeredis.FakeRedis(decode_responses=True)
+            except ImportError as exc:
+                raise QueueUnavailable(
+                    "REDIS_URL is not set and fakeredis is not installed. "
+                    "On Railway: add a Redis database and set "
+                    "REDIS_URL=${{Redis.REDIS_URL}}. For a single-service "
+                    "test deploy, keep INLINE_WORKER=1 (fakeredis ships in "
+                    "the worker image)."
+                ) from exc
+        else:
+            raise QueueUnavailable(
+                "REDIS_URL is required when INLINE_WORKER=0 or in a "
+                "multi-replica deployment."
+            )
     return _r
 
 
@@ -126,29 +153,13 @@ def total_depth() -> int:
 # ---------------------------------------------------------------------------
 # Slots live in a ZSET scored by lease expiry. Expired members are reaped on
 # every attempt, so a worker that is SIGKILLed cannot leak capacity forever.
-# The take is done under WATCH/MULTI (optimistic locking) rather than Lua —
-# atomic on real Redis, and it also works on managed Redis that blocks EVAL.
+# Real Redis: one Lua EVAL (atomic). fakeredis has no EVAL — sequential ops
+# there are safe because CI/laptop use a single in-process fake server.
 SLOT_LEASE = 1800
 
+_EVAL_OK: Optional[bool] = None
 
-def take_slot(kind: str, holder: str, ttl: int = SLOT_LEASE) -> bool:
-    """Atomically acquire one slot of the per-kind concurrency cap.
-
-    The original implementation used WATCH + pipeline, which is correct for a
-    multi-process / multi-replica deployment on real Redis. With fakeredis (the
-    local/CI path) it misbehaved: WATCH is a no-op, the card count is read on
-    the server BEFORE the pipeline flush, so the slot appears full even when
-    empty, and jobs sit in the queue forever despite 0 of N slots in use.
-
-    Lua script is atomic on both real Redis and fakeredis, has no round-trip
-    race, and produces exactly one network call.
-    """
-    key = _slots(kind)
-    cap = cap_of(kind)
-    now_ts = time.time()
-    # The script: expire old leases first, then check cap, then insert.
-    # Returns 1 (slot acquired) or 0 (full).
-    LUA = """
+_LUA_TAKE = """
 local key    = KEYS[1]
 local cap    = tonumber(ARGV[1])
 local holder = ARGV[2]
@@ -160,11 +171,68 @@ redis.call('ZADD', key, score, holder)
 redis.call('EXPIRE', key, ttl2)
 return 1
 """
-    result = r().eval(
-        LUA, 1, key,
-        str(cap), holder, str(now_ts + ttl), str(ttl * 2), str(now_ts)
-    )
-    return bool(result)
+
+
+def _eval_works() -> bool:
+    """Probe once — fakeredis raises on EVAL; real Redis returns 1."""
+    global _EVAL_OK
+    if _EVAL_OK is not None:
+        return _EVAL_OK
+    try:
+        _EVAL_OK = bool(r().eval("return 1", 0))
+    except Exception:                                                # noqa: BLE001
+        _EVAL_OK = False
+    return _EVAL_OK
+
+
+def _take_slot_sequential(key: str, cap: int, holder: str,
+                          now_ts: float, ttl: int) -> bool:
+    """fakeredis / single-process path — no Lua, no WATCH races."""
+    conn = r()
+    conn.zremrangebyscore(key, 0, now_ts)
+    if int(conn.zcard(key) or 0) >= cap:
+        return False
+    conn.zadd(key, {holder: now_ts + ttl})
+    conn.expire(key, ttl * 2)
+    return True
+
+
+def _take_slot_watch(key: str, cap: int, holder: str,
+                     now_ts: float, ttl: int) -> bool:
+    """Real Redis without Lua — optimistic locking under WATCH/MULTI."""
+    import redis as _redis
+    conn = r()
+    while True:
+        try:
+            conn.watch(key)
+            conn.zremrangebyscore(key, 0, now_ts)
+            if int(conn.zcard(key) or 0) >= cap:
+                conn.unwatch()
+                return False
+            pipe = conn.pipeline()
+            pipe.multi()
+            pipe.zadd(key, {holder: now_ts + ttl})
+            pipe.expire(key, ttl * 2)
+            pipe.execute()
+            return True
+        except _redis.WatchError:
+            continue
+
+
+def take_slot(kind: str, holder: str, ttl: int = SLOT_LEASE) -> bool:
+    """Atomically acquire one slot of the per-kind concurrency cap."""
+    key = _slots(kind)
+    cap = cap_of(kind)
+    now_ts = time.time()
+    if _eval_works():
+        result = r().eval(
+            _LUA_TAKE, 1, key,
+            str(cap), holder, str(now_ts + ttl), str(ttl * 2), str(now_ts)
+        )
+        return bool(result)
+    if S.redis_url:
+        return _take_slot_watch(key, cap, holder, now_ts, ttl)
+    return _take_slot_sequential(key, cap, holder, now_ts, ttl)
 
 
 def release_slot(kind: str, holder: str) -> None:
@@ -305,6 +373,11 @@ def rate_ok(user_id: str, limit: Optional[int] = None) -> bool:
 
 
 def health() -> dict:
-    return {"depth": {g: queue_depth(g) for g in set(list(GROUPS.values()) + ["light"])},
+    try:
+        r()
+    except QueueUnavailable as exc:
+        return {"mode": "unavailable", "error": str(exc)}
+    return {"mode": "redis" if S.redis_url else "embedded", "redis": bool(S.redis_url),
+            "depth": {g: queue_depth(g) for g in set(list(GROUPS.values()) + ["light"])},
             "slots": {k: slots_in_use(k) for k in S.kind_caps if k != "*"},
             "avg": {k: round(avg_duration(k), 1) for k in DEFAULTS}}
