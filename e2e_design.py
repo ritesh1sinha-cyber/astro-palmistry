@@ -187,6 +187,42 @@ def main() -> int:
         must_not=("the two traditions disagree",),
         paid_must=("working",))
 
+    # ---- tabs that used to be JSON + site chrome; now cards-v2 HTML ----
+    daily = H.h_daily(user, dict(RITESH))
+    if daily.get("locked"):
+        print("\ndaily: LOCKED (quota) — skip HTML audit")
+        RESULTS.append(("daily not locked on fresh user", False))
+    else:
+        audit("daily", daily["reportId"],
+              must=("today", "--ink:#16181d"),
+              must_not=("longevity",),
+              paid_must=("today",))
+        RESULTS.append(("daily design tag",
+                        (daily.get("meta") or {}).get("design") == "cards-v2"))
+
+    muh = H.h_muhurat(user, {
+        **RITESH, "eventId": "marriage", "date": "2026-11-20"})
+    audit("muhurat", muh["reportId"],
+          must=("muhurat", "--ink:#16181d"),
+          paid_must=("check",),)
+    RESULTS.append(("muhurat design tag",
+                    (muh.get("meta") or {}).get("design") == "cards-v2"))
+
+    btr = H.h_btr(user, {
+        **RITESH, "events": {"first_job": "2007-08-01",
+                             "marriage": "2011-02-13",
+                             "child": "2014-06-01",
+                             "higher_education": "2005-07-15"}})
+    if btr.get("skipped"):
+        print(f"\nbtr: SKIPPED — {btr.get('reason')}")
+        RESULTS.append(("btr produced a report", False))
+    else:
+        audit("btr", btr["reportId"],
+              must=("birth-time", "--ink:#16181d"),
+              paid_must=("rectified",),)
+        RESULTS.append(("btr design tag",
+                        (btr.get("meta") or {}).get("design") == "cards-v2"))
+
     print("\n(the flagship: 12 specialist lanes, then the confluence)")
     r = H.h_full_report(user, {**RITESH, "question": "When will I change my job?"})
     audit("full_report", r["reportId"],

@@ -176,8 +176,11 @@ def main() -> int:
     say("muhurat catalogue", (ev.get("result") or {}).get("events") is not None,
         f"{len((ev.get('result') or {}).get('events') or [])} occasions")
     j = api.run("muhurat", dict(birth, eventId="marriage", date="2026-11-20"))
+    mr = j.get("result") or {}
     say("muhurat check", j.get("status") == "done",
-        ((j.get("result") or {}).get("summary") or {}).get("verdict"))
+        (mr.get("meta") or {}).get("verdict") or mr.get("reportId"))
+    say("muhurat cards-v2", (mr.get("meta") or {}).get("design") == "cards-v2"
+        and bool((mr.get("links") or {}).get("free")))
 
     # ------------------------------------------------------------------ BTR
     j = api.run("btr", dict(birth, events={"marriage": "2013-02-15",
@@ -188,14 +191,20 @@ def main() -> int:
     say("birth-time check", j.get("status") == "done",
         f"{b.get('trialTime')} moves {b.get('movesBy')}, changes lagna={b.get('changesLagna')}")
     say("btr paid answer withheld", b.get("suggestedTime") is None)
+    say("btr cards-v2", (b.get("meta") or {}).get("design") == "cards-v2"
+        and bool((b.get("links") or {}).get("free")))
 
     # ---------------------------------------------------------------- daily
     seen_lock = False
+    daily_ok = False
     for i in range(5):
         d = (api.run("daily", birth).get("result") or {})
+        if d.get("links") and d.get("reportId"):
+            daily_ok = (d.get("meta") or {}).get("design") == "cards-v2"
         if d.get("locked"):
             seen_lock = True
             break
+    say("daily cards-v2", daily_ok)
     say("free daily quota enforced", seen_lock, "locks after the free allowance")
 
     # ---------------------------------------------------------------- palm

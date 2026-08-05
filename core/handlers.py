@@ -87,9 +87,8 @@ def _save_report(user_id: str, chart_id: Optional[str], kind: str,
 def _save_json_report(user_id: str, kind: str, *, free_payload: dict,
                       paid_payload: dict, meta: dict, paid: bool) -> dict:
     """
-    Palmistry renders in the browser from JSON rather than an iframe, so its
-    halves are stored as JSON objects. The paid half never leaves storage until
-    `/api/reading/{id}/full` confirms payment.
+    Legacy JSON halves (older palm readings). New palm jobs use `_save_report`
+    with HTML, same as astrology. Kept for any caller that still needs JSON.
     """
     rid = str(uuid.uuid4())
     shard = rid[:2]
@@ -116,7 +115,6 @@ def _save_json_report(user_id: str, kind: str, *, free_payload: dict,
 # palmistry
 # ===========================================================================
 def h_palm(user: dict, p: dict) -> dict:
-    import astro_voice as V
     from palm_api.pipeline import analyze_image_paths
 
     tmp = Path(tempfile.mkdtemp(prefix="palm_"))
@@ -145,7 +143,7 @@ def h_palm(user: dict, p: dict) -> dict:
             [str(x) for x in paths],
             active_hand=p.get("dominant", "right"), overlay_dir=overlay_dir)
 
-        # overlays → object storage (they are proof the engine read THEIR hand)
+        # overlays → object storage (proof + archive; HTML embeds them as data URIs)
         overlays = {}
         st = store()
         for hand in ("left", "right"):
@@ -155,18 +153,18 @@ def h_palm(user: dict, p: dict) -> dict:
                 st.put(key, Path(op).read_bytes(), "image/jpeg")
                 overlays[hand] = key
 
-        from .palm_report import build_palm_reading
-        reading = build_palm_reading(raw_result, p, overlays)
-        meta = reading.pop("_meta", {})
+        # Same delivery shape as astrology: HTML halves in object storage,
+        # signed /api/file links, iframe on the site. The old JSON card path
+        # (build_palm_reading) is kept in palm_report.py but no longer served.
+        from .palm_report import build_palm_html_reading
+        free_html, paid_html, meta = build_palm_html_reading(raw_result, p)
+        meta = {**meta, "overlays": overlays,
+                "price": S.price("palm_full") // 100}
         paid = entitled(user["id"], "palm_full")
-        saved = _save_json_report(
-            user["id"], "palm",
-            free_payload=reading["public"], paid_payload=reading["paid"],
-            meta={**meta, "overlays": overlays,
-                  "price": S.price("palm_full") // 100}, paid=paid)
-        saved.update(reading["public"])
+        saved = _save_report(user["id"], None, "palm",
+                             free_html, paid_html, meta, paid)
+        saved["price"] = meta["price"]
         saved["overlays"] = overlays
-        saved["price"] = S.price("palm_full") // 100
         return saved
     finally:
         for f in paths:
@@ -430,6 +428,7 @@ def h_horary(user: dict, p: dict) -> dict:
 
 def h_daily(user: dict, p: dict) -> dict:
     import astro_voice as V
+    import report_render as RD
     from daily_moon_prediction import compute_daily_moon_guide
     chart = get_or_create_chart(user["id"], p)
     pc = precompute_for(chart)
@@ -450,10 +449,26 @@ def h_daily(user: dict, p: dict) -> dict:
     if isinstance(data, dict):
         data["personal_note"] = V.humanise(V.chart_opening(_voice_ctx(pc, chart))) \
             .replace("<p>", "").replace("</p>", "")
-    return {"locked": False, "date": target.isoformat(), "subscribed": subscribed,
-            "freeDaysLeft": quota_left(user["id"], "daily_free",
-                                       S.free_daily_readings, "all"),
-            "reading": data}
+
+    free_html, paid_html, meta = RD.daily(
+        data if isinstance(data, dict) else {},
+        lat=float(chart["lat"]), lon=float(chart["lon"]),
+        tz=float(chart["tz_offset"]), day=target,
+        name=chart.get("person_name") or p.get("name") or "Seeker",
+        price=S.price("subscription") // 100)
+    # Daily access is quota/subscription; store the card so the site iframes it.
+    saved = _save_report(user["id"], chart["id"], "daily",
+                         free_html, paid_html, meta, paid=True)
+    saved.update({
+        "locked": False,
+        "date": target.isoformat(),
+        "subscribed": subscribed,
+        "freeDaysLeft": quota_left(user["id"], "daily_free",
+                                   S.free_daily_readings, "all"),
+        "price": meta["price"],
+        "chartId": chart["id"],
+    })
+    return saved
 
 
 def h_kundali_match(user: dict, p: dict) -> dict:
@@ -544,6 +559,7 @@ def h_muhurat_events(user: dict, p: dict) -> dict:
 
 
 def h_muhurat(user: dict, p: dict) -> dict:
+    import report_render as RD
     from muhurat_checker import check_muhurat
     pc: dict = {}
     chart_id = None
@@ -558,20 +574,27 @@ def h_muhurat(user: dict, p: dict) -> dict:
                         place_name=p.get("place", "BirthPlace"),
                         suggest_alternatives=True)
     paid = entitled(user["id"], "muhurat")
-    free = {k: res.get(k) for k in ("available", "error", "verdict", "headline",
-                                    "summary", "event_label", "event_plain",
-                                    "target_date", "needs_partner_chart")}
-    free["checkCount"] = len(res.get("checks") or [])
-    free["alternativeCount"] = len(res.get("alternatives") or [])
-    return {"paid": paid, "date": p["date"], "eventId": p["eventId"],
-            "chartId": chart_id, "summary": free,
-            "detail": {k: res.get(k) for k in ("checks", "chart_notes", "panchang",
-                                               "day_windows", "alternatives")}
-            if paid else None,
-            "price": S.price("muhurat") // 100}
+    summary = {k: res.get(k) for k in ("available", "error", "verdict", "headline",
+                                       "summary", "event_label", "event_plain",
+                                       "target_date", "needs_partner_chart")}
+    summary["checkCount"] = len(res.get("checks") or [])
+    summary["alternativeCount"] = len(res.get("alternatives") or [])
+    detail = {k: res.get(k) for k in ("checks", "chart_notes", "panchang",
+                                      "day_windows", "alternatives")}
+    free_html, paid_html, meta = RD.muhurat(
+        summary, detail, price=S.price("muhurat") // 100,
+        event_id=p["eventId"], date_str=str(p["date"]))
+    saved = _save_report(user["id"], chart_id, "muhurat",
+                         free_html, paid_html, meta, paid)
+    saved["price"] = meta["price"]
+    saved["date"] = p["date"]
+    saved["eventId"] = p["eventId"]
+    saved["chartId"] = chart_id
+    return saved
 
 
 def h_btr(user: dict, p: dict) -> dict:
+    import report_render as RD
     from btr_rectify import rectify_birth_time
     raw = p.get("events") or {}
     if isinstance(raw, list):
@@ -590,8 +613,9 @@ def h_btr(user: dict, p: dict) -> dict:
     paid = entitled(user["id"], "btr")
     off = res.get("offset_minutes")
     lt, lb = str(res.get("lagna_trial") or ""), str(res.get("lagna_best") or "")
-    return {
-        "paid": paid, "skipped": res.get("skipped"), "reason": res.get("reason"),
+    # Full result for the HTML renderer (paid half includes the corrected time).
+    card = {
+        "skipped": res.get("skipped"), "reason": res.get("reason"),
         "trialTime": res.get("trial_time"), "confidence": res.get("confidence"),
         "eventsUsed": res.get("events_used"),
         "trialScore": res.get("trial_score"), "bestScore": res.get("best_score"),
@@ -601,14 +625,29 @@ def h_btr(user: dict, p: dict) -> dict:
                     ("under a minute" if abs(off) < 1 else
                      f"about {abs(int(off))} minute{'s' if abs(int(off)) != 1 else ''}")),
         "fineScanUsed": res.get("fine_scan_used"),
-        "suggestedTime": res.get("suggested_time") if paid else None,
-        "lagnaBest": res.get("lagna_best") if paid else None,
-        "offsetMinutes": off if paid else None,
-        "eventResults": res.get("best_event_results") if paid else None,
-        "funnel": res.get("funnel_best") if paid else None,
-        "message": res.get("message") if paid else None,
-        "price": S.price("btr") // 100,
+        "suggestedTime": res.get("suggested_time"),
+        "lagnaBest": res.get("lagna_best"),
+        "offsetMinutes": off,
+        "message": res.get("message"),
     }
+    if card.get("skipped"):
+        return {"paid": paid, "skipped": True, "reason": card.get("reason"),
+                "price": S.price("btr") // 100}
+    free_html, paid_html, meta = RD.btr(card, price=S.price("btr") // 100)
+    saved = _save_report(user["id"], None, "btr", free_html, paid_html, meta, paid)
+    saved["price"] = meta["price"]
+    # Public JSON keeps the free-side facts for any legacy client; the
+    # corrected time stays only in the paid HTML document.
+    saved.update({
+        "skipped": False,
+        "trialTime": card["trialTime"], "confidence": card["confidence"],
+        "eventsUsed": card["eventsUsed"],
+        "trialScore": card["trialScore"], "bestScore": card["bestScore"],
+        "trialVerdict": card["trialVerdict"], "lagnaTrial": card["lagnaTrial"],
+        "changesLagna": card["changesLagna"], "movesBy": card["movesBy"],
+        "fineScanUsed": card["fineScanUsed"],
+    })
+    return saved
 
 
 def h_future_event(user: dict, p: dict) -> dict:

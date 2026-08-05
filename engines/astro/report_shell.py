@@ -168,6 +168,69 @@ padding:14px 16px;text-decoration:none;color:inherit}
 letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
 footer.fine{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);
 font-size:.72rem;color:var(--muted);line-height:1.6}
+/* tab_renderers shared dialect */
+.tab{margin:8px 0 28px}
+.tab-head{margin-bottom:14px}
+.tab-kind{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+font-weight:700;color:var(--mixed)}
+.tab-head h2{font-family:Fraunces,Georgia,serif;font-size:1.45rem;line-height:1.2;
+margin:8px 0 0;font-weight:600}
+.tab-lead{font-size:.98rem;margin:12px 0 8px}
+.tab-sub{font-size:.86rem;color:var(--muted);margin:0 0 14px}
+.tab-caveat{font-size:.8rem;color:var(--muted);margin:16px 0 0}
+.tab-sec{font-family:Fraunces,serif;font-size:1.05rem;margin:22px 0 8px;font-weight:600}
+.tab-cta{background:#f6f4ef;border-radius:12px;padding:14px 16px;margin-top:18px;
+font-size:.9rem}
+.tab-cta .fine{font-size:.78rem;color:var(--muted);margin:8px 0 0}
+.score-hero{display:flex;gap:18px;align-items:center;margin:14px 0}
+.score-num{font-family:Fraunces,serif;font-size:3rem;font-weight:600;line-height:1}
+.score-num span{font-size:1.1rem;color:var(--muted);font-weight:500}
+.score-side{flex:1}
+.score-band{font-size:.9rem;font-weight:600;margin-bottom:6px}
+.bar{height:8px;background:#eeebe4;border-radius:99px;overflow:hidden;margin:6px 0}
+.bar span{display:block;height:100%;background:var(--ink);border-radius:99px}
+.bar span.good{background:var(--up)}.bar span.bad{background:var(--down)}
+.koots{list-style:none;margin:10px 0 0;padding:0}
+.koot{padding:10px 0;border-top:1px solid var(--line)}
+.koot-top{display:flex;justify-content:space-between;gap:10px;font-size:.9rem}
+.koot-score{font-variant-numeric:tabular-nums;font-weight:600}
+.koot-what{font-size:.78rem;color:var(--muted);margin:4px 0 6px}
+.mm-dosha{background:#fbeae6;border-radius:12px;padding:14px 16px;margin-top:16px}
+.btr-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
+@media(min-width:560px){.btr-grid{grid-template-columns:repeat(4,1fr)}}
+.btr-grid div{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:12px 14px}
+.btr-grid span{display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+color:var(--muted);font-weight:600;margin-bottom:4px}
+.btr-grid b{font-size:1.05rem}
+.btr-stakes{background:#fbeae6;border-radius:12px;padding:14px 16px;margin-top:14px}
+.btr-answer{background:#e4f2ea;border-radius:12px;padding:16px 18px;margin-top:16px}
+.btr-time{font-family:Fraunces,serif;font-size:2rem;color:var(--up);margin:6px 0}
+.muh-hero{background:var(--card);border:1px solid var(--line);border-radius:14px;
+padding:18px 20px;margin:12px 0 16px;border-left:4px solid var(--mixed)}
+.muh-hero[data-verdict="good"]{border-left-color:var(--up)}
+.muh-hero[data-verdict="bad"]{border-left-color:var(--down)}
+.muh-verdict{font-family:Fraunces,serif;font-size:1.6rem;font-weight:600;margin:0 0 6px}
+.muh-checks{list-style:none;margin:8px 0 0;padding:0}
+.muh-checks li{padding:8px 0;border-top:1px solid var(--line);font-size:.88rem}
+.muh-checks li.ok b{color:var(--up)}.muh-checks li.bad b{color:var(--down)}
+.num-grid{display:grid;gap:10px;margin:12px 0}
+.num-card{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);
+border-radius:12px;padding:14px 16px}
+.num-big{font-family:Fraunces,serif;font-size:2.2rem;font-weight:600;min-width:2.2rem}
+.num-label{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+font-weight:600}
+.num-src{font-size:.74rem;color:var(--muted)}
+.num-year,.num-future{background:#f6f4ef;border-radius:12px;padding:14px 16px;margin:14px 0}
+.num-seq{list-style:none;margin:8px 0 0;padding:0}
+.num-seq li{display:flex;gap:12px;padding:6px 0;border-top:1px solid var(--line)}
+.num-extra{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.num-extra div{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:10px 12px;font-size:.82rem}
+.num-extra span{display:block;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;
+color:var(--muted);font-weight:600;margin-bottom:3px}
+.fine{font-size:.78rem;color:var(--muted)}
+.locked-inline{color:var(--mixed)}
 """
 
 

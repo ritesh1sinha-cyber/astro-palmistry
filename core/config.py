@@ -50,6 +50,8 @@ class Settings:
     secret: str = os.getenv("APP_SECRET", "dev-only-change-me")
     google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
     dev_login: bool = _bool("DEV_LOGIN", False)
+    admin_email: str = os.getenv("ADMIN_EMAIL", "admin@graharekha.test")
+    admin_password: str = os.getenv("ADMIN_PASSWORD", "graha-admin")
     session_days: int = _int("SESSION_DAYS", 30)
     link_ttl_seconds: int = _int("LINK_TTL_SECONDS", 3600)
     allowed_origins: list = field(default_factory=lambda: [

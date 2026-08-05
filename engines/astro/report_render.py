@@ -85,6 +85,31 @@ def _scrub(html: str) -> str:
     return out
 
 
+def _scrub_workings(html: str) -> str:
+    """Horary paid appendix embeds ship full engine HTML — scrub jargon first."""
+    if not html:
+        return html
+    try:
+        from astro_voice import strip_leaks, strip_machinery
+        out = strip_leaks(strip_machinery(html))
+    except Exception:                                                # noqa: BLE001
+        out = html
+    import re as _re
+    for pat, rep in (
+        (r"<strong>Method:</strong>[^<]*deterministic[^<]*<br\s*/?>",
+         "<strong>Method:</strong> Traditional Western horary (Tropical), "
+         "Anthony Louis / Lilly-style.<br />"),
+        (r"deterministic engine[^<.]*", "classical horary rules"),
+        (r"deterministic rule engine\b", "classical rules"),
+        (r"§\s*2b\s+checklist[^<.]*", "the standard horary checklist"),
+        (r"<code>western_horary[^<]*</code>", ""),
+        (r"Computed with Python pyswisseph[^<.]*",
+         "Computed with standard ephemeris data"),
+    ):
+        out = _re.sub(pat, rep, out, flags=_re.I | _re.S)
+    return _scrub(out)
+
+
 # ---------------------------------------------------------------------------
 # the flagship
 # ---------------------------------------------------------------------------
@@ -215,7 +240,7 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
         raw = workings.get(tag) or ""
         if raw:
             detail += (f'<h3 class="sec">{tag.title()} working</h3>'
-                       f'<div class="card">{raw}</div>')
+                       f'<div class="card">{_scrub_workings(raw)}</div>')
 
     # No shell heading: build_answer_html already opens with the question and
     # when it was asked. Passing them again printed the question twice.
@@ -279,3 +304,82 @@ def kundali_match(match_meta: dict, *, groom: str = "", bride: str = "",
                              "Remedies for the blocking doshas"],
             "teasers": {}}
     return free, paid, meta
+
+
+# ---------------------------------------------------------------------------
+# daily — headline, do/don't, hora windows (subscription-gated, not section-paywalled)
+# ---------------------------------------------------------------------------
+def daily(reading: dict, *, lat: float = 25.6, lon: float = 85.1,
+          tz: float = 5.5, day: Optional[date] = None, name: str = "",
+          price: int = 199) -> tuple:
+    import daily_card as DC
+    day = day or date.today()
+    card = DC.build(reading or {}, lat=lat, lon=lon, tz=tz, day=day)
+    body = DC.render(card)
+    who = (name or "").split()[0] if name else "Your"
+    html = _scrub(RS.page(f"{who} — today", body,
+                          eyebrow="Daily reading",
+                          heading=f"{day:%A %d %B}",
+                          sub="Built from your Moon, rising sign and today's star."))
+    # Same document on both halves: access is subscription/quota, not a blur.
+    meta = {"design": "cards-v2", "price": price, "date": day.isoformat(),
+            "paidSections": ["Personalised reading every morning",
+                             "3 horary questions a month",
+                             "Unlimited muhurat checks"],
+            "teasers": {}}
+    return html, html, meta
+
+
+# ---------------------------------------------------------------------------
+# birth-time check
+# ---------------------------------------------------------------------------
+def btr(res: dict, *, price: int = 999) -> tuple:
+    import tab_renderers as TR
+
+    def build(paid: bool) -> str:
+        body = TR.render_btr(res, paid=paid, price=price)
+        return _scrub(RS.page("Birth-time check", body))
+
+    free, paid_html = build(False), build(True)
+    meta = {"design": "cards-v2", "price": price,
+            "skipped": bool(res.get("skipped")),
+            "reason": res.get("reason"),
+            "paidSections": ["The exact rectified time, to the second",
+                             "Your corrected rising sign and divisional charts",
+                             "How each life event scored against it",
+                             "The full ±90 minute scan and the fine refinement"],
+            "teasers": {}}
+    return free, paid_html, meta
+
+
+# ---------------------------------------------------------------------------
+# muhurat — day verdict free; checks, hours, alternatives paid
+# ---------------------------------------------------------------------------
+def muhurat(summary: dict, detail: Optional[dict] = None, *,
+            price: int = 49, event_id: str = "", date_str: str = "") -> tuple:
+    import tab_renderers as TR
+    detail = detail or {}
+    summary = summary or {}
+
+    def build(paid: bool) -> str:
+        body = TR.render_muhurat(
+            summary, detail if paid else {},
+            paid=paid, price=price, event_id=event_id, date_str=date_str)
+        label = summary.get("event_label") or event_id or "Muhurat"
+        return _scrub(RS.page(f"{label} — {date_str or summary.get('target_date') or ''}",
+                              body))
+
+    free, paid_html = build(False), build(True)
+    n_alt = summary.get("alternativeCount")
+    if n_alt is None:
+        n_alt = len(detail.get("alternatives") or [])
+    meta = {"design": "cards-v2", "price": price,
+            "verdict": summary.get("verdict"),
+            "eventId": event_id,
+            "date": date_str or summary.get("target_date"),
+            "paidSections": ["Every panchang check on the day, pass or fail",
+                             "The strong hours — choghadiya, Abhijit, and what to avoid",
+                             "Chart-specific notes for this occasion",
+                             f"{n_alt} better dates near yours"],
+            "teasers": {}}
+    return free, paid_html, meta

@@ -137,7 +137,6 @@ def render_btr(res: dict, *, paid: bool = False, price: int = 999) -> str:
     t_score, b_score = res.get("trialScore"), res.get("bestScore")
     changes = res.get("changesLagna")
     moves = res.get("movesBy", "")
-    verdict = str(res.get("trialVerdict", ""))
 
     better = (b_score or 0) > (t_score or 0)
     if not better:
@@ -157,6 +156,29 @@ def render_btr(res: dict, *, paid: bool = False, price: int = 999) -> str:
     rules your health, and every dated prediction moves with it. This is the
     one input everything else is built on.</p>
   </div>""")
+
+    if paid and res.get("suggestedTime"):
+        off = res.get("offsetMinutes")
+        off_bit = (f" · {_e(off)} minutes from the time you gave"
+                   if off is not None else "")
+        msg = (f"<p>{_e(res.get('message'))}</p>" if res.get("message") else "")
+        paid_block = f"""
+  <div class="btr-answer">
+    <div class="ev-label">Your rectified time</div>
+    <p class="btr-time">{_e(res.get("suggestedTime"))}</p>
+    <p class="fine">{_e(res.get("lagnaBest") or "")}{off_bit}</p>
+    {msg}
+  </div>"""
+    elif not paid:
+        paid_block = f"""
+  <div class="tab-cta">
+    <p><b>The corrected time itself is the paid part</b> — along with your
+    rebuilt chart, and every event re-scored against it. ₹{price}.</p>
+    <p class="fine">We show you the gap for free because you should be able to
+    see there is a problem before paying anyone to fix it.</p>
+  </div>"""
+    else:
+        paid_block = ""
 
     return f"""
 <section class="tab" id="tab-btr">
@@ -183,13 +205,162 @@ def render_btr(res: dict, *, paid: bool = False, price: int = 999) -> str:
     </ul>
   </div>
   {stakes}
-  {'' if paid else f'''
+  {paid_block}
+</section>"""
+
+
+# ---------------------------------------------------------------------------
+# Muhurat (event timing for a chosen date)
+# ---------------------------------------------------------------------------
+
+MUHURAT_VERDICT = {
+    "good": "This day clears the classical checks for the occasion.",
+    "mixed": "Usable with caveats — some checks pass, some do not.",
+    "poor": "The day is weak for this occasion on the classical count.",
+    "avoid": "Classical texts treat this day as one to skip for this event.",
+}
+
+
+def render_muhurat(summary: dict, detail: Optional[dict] = None, *,
+                   paid: bool = False, price: int = 49,
+                   event_id: str = "", date_str: str = "") -> str:
+    """Verdict-first muhurat card. Free = day call; paid = every check + alts."""
+    detail = detail or {}
+    verdict = str(summary.get("verdict") or "mixed").lower()
+    lead = MUHURAT_VERDICT.get(verdict, MUHURAT_VERDICT["mixed"])
+    headline = summary.get("headline") or summary.get("summary") or ""
+    label = summary.get("event_label") or event_id or "this occasion"
+    plain = summary.get("event_plain") or label
+    when = summary.get("target_date") or date_str or ""
+
+    def _as_list(v):
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return v
+        if isinstance(v, dict):
+            # some checkers return {"windows":[...]} or keyed maps
+            if all(isinstance(x, dict) for x in v.values()):
+                return list(v.values())
+            for key in ("items", "windows", "list", "checks", "alternatives"):
+                if isinstance(v.get(key), list):
+                    return v[key]
+            return [v]
+        return []
+
+    checks = _as_list(detail.get("checks"))
+    alts = _as_list(detail.get("alternatives"))
+    notes = detail.get("chart_notes") or []
+    raw_windows = detail.get("day_windows") or {}
+
+    check_rows = ""
+    if paid and checks:
+        items = "".join(
+            f'<li class="{"ok" if (isinstance(c, dict) and c.get("ok")) else "bad"}">'
+            f'<b>{_e((c or {}).get("name") if isinstance(c, dict) else c)}</b>'
+            f' — {_e((c or {}).get("detail") or "") if isinstance(c, dict) else ""}</li>'
+            for c in checks)
+        check_rows = f"""
+  <div class="evidence"><span class="ev-label">Every check on this day</span>
+    <ul class="muh-checks">{items}</ul></div>"""
+    elif not paid:
+        n = summary.get("checkCount")
+        if n is None:
+            n = len(checks)
+        a = summary.get("alternativeCount")
+        if a is None:
+            a = len(alts)
+        check_rows = f"""
   <div class="tab-cta">
-    <p><b>The corrected time itself is the paid part</b> — along with your
-    rebuilt chart, and every event re-scored against it. ₹{price}.</p>
-    <p class="fine">We show you the gap for free because you should be able to
-    see there is a problem before paying anyone to fix it.</p>
-  </div>'''}
+    <p><b>{n} checks</b> were run against this day, and
+    <b>{a} better date{"s" if a != 1 else ""}</b> sit nearby.
+    The pass/fail list, the strong hours, and those alternatives are in the
+    full reading — ₹{price}.</p>
+  </div>"""
+
+    alt_block = ""
+    if paid and alts:
+        rows = "".join(
+            f'<li><b>{_e(a.get("date") or a.get("target_date") or "")}</b>'
+            f' — {_e(a.get("verdict") or a.get("headline") or "")}</li>'
+            for a in alts[:6] if isinstance(a, dict))
+        alt_block = f"""
+  <div class="evidence"><span class="ev-label">Better days nearby</span>
+    <ul>{rows}</ul></div>"""
+
+    win_block = ""
+    if paid and isinstance(raw_windows, dict) and raw_windows:
+        bits: list[str] = []
+        day_summary = raw_windows.get("day_summary")
+        if isinstance(day_summary, str) and day_summary.strip():
+            bits.append(f"<li>{_e(day_summary)}</li>")
+        ab = raw_windows.get("abhijit") or {}
+        if isinstance(ab, dict) and ab.get("start"):
+            bits.append(
+                f"<li><b>Abhijit</b> — {_e(ab.get('start'))}–{_e(ab.get('end'))}"
+                f"{(' · ' + _e(ab.get('plain'))) if ab.get('plain') else ''}</li>")
+        best = raw_windows.get("best_choghadiya") or {}
+        if isinstance(best, dict) and (best.get("label") or best.get("start")):
+            bits.append(
+                f"<li><b>{_e(best.get('label') or 'Best hour')}</b> — "
+                f"{_e(best.get('start'))}–{_e(best.get('end'))}"
+                f"{(' · ' + _e(best.get('plain'))) if best.get('plain') else ''}</li>")
+        for slot in (raw_windows.get("tri_kaal") or [])[:4]:
+            if isinstance(slot, dict) and slot.get("start"):
+                bits.append(
+                    f"<li><b>Avoid {_e(slot.get('label'))}</b> — "
+                    f"{_e(slot.get('start'))}–{_e(slot.get('end'))}</li>")
+        if bits:
+            win_block = f"""
+  <div class="evidence"><span class="ev-label">Strong hours on the day</span>
+    <ul>{''.join(bits)}</ul></div>"""
+    elif paid:
+        windows = _as_list(raw_windows)
+        rows = "".join(
+            f'<li><b>{_e(w.get("label") or w.get("name") or w.get("when") or "")}</b>'
+            f' — {_e(w.get("detail") or w.get("note") or "")}</li>'
+            for w in windows[:8] if isinstance(w, dict))
+        if rows:
+            win_block = f"""
+  <div class="evidence"><span class="ev-label">Strong hours on the day</span>
+    <ul>{rows}</ul></div>"""
+
+    note_block = ""
+    if paid and notes:
+        if isinstance(notes, list):
+            rows = "".join(
+                f"<li>{_e(n if isinstance(n, str) else (n.get('text') if isinstance(n, dict) else n))}</li>"
+                for n in notes[:6])
+            note_block = f"""
+  <div class="evidence"><span class="ev-label">Chart notes for this occasion</span>
+    <ul>{rows}</ul></div>"""
+        elif isinstance(notes, str) and notes.strip():
+            note_block = f'<p class="tab-sub">{_e(notes)}</p>'
+
+    partner = ""
+    if summary.get("needs_partner_chart"):
+        partner = ('<p class="tab-caveat">For a wedding, the sharpest reading '
+                   "needs both charts — add them under Matching.</p>")
+
+    tone = ("good" if verdict == "good"
+            else "bad" if verdict in ("poor", "avoid") else "mixed")
+
+    return f"""
+<section class="tab" id="tab-muhurat">
+  <div class="tab-head">
+    <span class="tab-kind">Muhurat · {_e(label)}</span>
+    <h2>{_e(when)} — {_e(plain)}</h2>
+  </div>
+  <div class="muh-hero" data-verdict="{tone}">
+    <div class="muh-verdict">{_e(verdict.upper())}</div>
+    <p class="tab-lead">{_e(lead)}</p>
+  </div>
+  {f'<p class="tab-sub">{_e(headline)}</p>' if headline else ""}
+  {partner}
+  {check_rows}
+  {win_block}
+  {note_block}
+  {alt_block}
 </section>"""
 
 

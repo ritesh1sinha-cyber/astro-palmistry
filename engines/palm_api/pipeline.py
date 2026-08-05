@@ -307,12 +307,19 @@ def _render_life_aspects(aspects: Optional[list[dict[str, Any]]]) -> str:
 def _render_confluence(c: Optional[dict[str, Any]]) -> str:
     if not c:
         return ""
-    lines = "".join(
-        f'<li class="check-item"><div class="check-body"><strong>{_e(li.get("title",""))}</strong>'
-        f'<span class="badge">{_e(AGREEMENT_BADGE.get(li.get("agreement",""), li.get("agreement","")))}</span>'
-        f'<p class="verdict-line">{_e(li.get("statement",""))}</p></div></li>'
-        for li in c.get("lines") or []
-    )
+    line_items = c.get("lines") or []
+    lines_html = ""
+    if line_items:
+        lines = "".join(
+            f'<li class="check-item"><div class="check-body"><strong>{_e(li.get("title",""))}</strong>'
+            f'<span class="badge">{_e(AGREEMENT_BADGE.get(li.get("agreement",""), li.get("agreement","")))}</span>'
+            f'<p class="verdict-line">{_e(li.get("statement",""))}</p></div></li>'
+            for li in line_items
+        )
+        lines_html = (
+            '<h3>Major lines (left + right synthesis)</h3>'
+            f'<ul class="check-list">{lines}</ul>'
+        )
     mounts = ""
     if c.get("mounts"):
         mounts = "<h3>Mount confluence</h3><ul class=" + '"plain"' + ">" + "".join(
@@ -331,15 +338,22 @@ def _render_confluence(c: Optional[dict[str, Any]]) -> str:
             f'<p class="verdict-line">{_e(p.get("text",""))}</p></div>'
         )
     preds = "".join(pred_parts)
+    # Skip the whole block when a half (free/paid) has nothing left after filtering.
+    if not (line_items or c.get("mounts") or c.get("marks") or pred_parts or c.get("summary")):
+        return ""
+    pred_block = ""
+    if pred_parts or line_items or c.get("marks") or c.get("mounts"):
+        pred_block = (
+            "<h3>What this means for you</h3>"
+            + (preds or '<p class="note">No clear timed prediction could be drawn.</p>')
+        )
     return f"""
 <article class="report-card" style="border-left:4px solid var(--accent)">
   <h2>Confluence reading — both hands combined</h2>
   <p class="lead">{_e(c.get("summary",""))}</p>
-  <h3>Major lines (left + right synthesis)</h3>
-  <ul class="check-list">{lines}</ul>
+  {lines_html}
   {mounts}{marks}
-  <h3>What this means for you</h3>
-  {preds or '<p class="note">No clear timed prediction could be drawn.</p>'}
+  {pred_block}
 </article>"""
 
 
@@ -399,7 +413,11 @@ def render_lane_html(
         'border-top:1px solid var(--border);padding-top:1.2rem">Section 1 — Your palms in detail</h2>'
         if lead_sections_html else ""
     )
-    per_hand_hdr = '<h3 style="margin:1.5rem 0 0.5rem;color:var(--muted)">Per-hand detail</h3>' if conf_section else ""
+    # Only label per-hand detail when there is actually a hand article to show.
+    per_hand_hdr = (
+        '<h3 style="margin:1.5rem 0 0.5rem;color:var(--muted)">Per-hand detail</h3>'
+        if sections else ""
+    )
 
     body = f"""
 <div class="report-wrap">
