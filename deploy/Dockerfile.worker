@@ -87,6 +87,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
 RUN printf '%s\n' \
   '#!/bin/sh' \
   'set -e' \
+  'PORT="${PORT:-8080}"' \
   'DEST="/usr/local/lib/python3.12/site-packages/jhora/data/ephe"' \
   'if [ -n "$EPHE_PATH" ] && ls "$EPHE_PATH"/*.se1 >/dev/null 2>&1; then' \
   '  mkdir -p "$DEST"' \
@@ -95,6 +96,14 @@ RUN printf '%s\n' \
   'else' \
   '  echo "[entrypoint] no ephemeris data (set EPHE_PATH for JHora-exact positions)"' \
   'fi' \
+  'NEW_ARGS=""' \
+  'for A in "$@"; do' \
+  '  case "$A" in' \
+  '    *\$PORT*) NEW_ARGS="$NEW_ARGS $PORT" ;;' \
+  '    *)        NEW_ARGS="$NEW_ARGS $A" ;;' \
+  '  esac' \
+  'done' \
+  'set -- $NEW_ARGS' \
   'exec "$@"' \
   > /entrypoint.sh && chmod +x /entrypoint.sh && sh -n /entrypoint.sh
 
