@@ -546,7 +546,9 @@ def health():
             c.exec_driver_sql("SELECT 1")
     except Exception:                                                 # noqa: BLE001
         db_ok = False
-    return {"ok": db_ok, "env": S.env, "db": db_ok, "queue": Q.health()}
+    q = Q.health()
+    queue_ok = q.get("mode") != "unavailable"
+    return {"ok": db_ok and queue_ok, "env": S.env, "db": db_ok, "queue": q}
 
 
 @app.get("/api/queue")

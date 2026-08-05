@@ -135,6 +135,12 @@ class Settings:
             u = "postgresql+psycopg://" + u[len("postgresql://"):]
         self.database_url = u
 
+        # Same template-reference problem as DATABASE_URL — Railway shows
+        # ${{Redis.REDIS_URL}} literally until a Redis plugin is linked.
+        ru = (self.redis_url or "").strip()
+        if not ru or "{{" in ru or "}}" in ru:
+            self.redis_url = ""
+
     @property
     def is_postgres(self) -> bool:
         return self.database_url.startswith("postgres")

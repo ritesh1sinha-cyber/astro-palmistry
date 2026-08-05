@@ -17,13 +17,14 @@ Design
   measured, not guessed — and it is the same number across every replica.
 * Job state cached in Redis for fast polling; Postgres holds the durable record.
 
-Falls back to a fakeredis instance when REDIS_URL is unset so a laptop needs no
-infrastructure.
+Falls back to fakeredis when REDIS_URL is unset — laptop, CI, and single-process
+Railway (INLINE_WORKER=1). Production with multiple replicas MUST set REDIS_URL.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from typing import Any, Optional
@@ -36,17 +37,43 @@ from .config import S
 _r = None
 
 
+class QueueUnavailable(RuntimeError):
+    """Raised when neither Redis nor the embedded fallback is available."""
+
+
+def _embedded_redis_ok() -> bool:
+    """Single-process deploys may run without a Redis plugin."""
+    if S.env == "dev":
+        return True
+    return os.getenv("INLINE_WORKER", "1" if not S.redis_url else "0") == "1"
+
+
 def r():
     global _r
     if _r is None:
-        if S.redis_url:
+        url = (S.redis_url or "").strip()
+        if url:
             import redis
-            _r = redis.Redis.from_url(S.redis_url, decode_responses=True,
+            _r = redis.Redis.from_url(url, decode_responses=True,
                                       health_check_interval=30,
                                       socket_keepalive=True)
-        else:                                    # laptop / CI
-            import fakeredis
-            _r = fakeredis.FakeRedis(decode_responses=True)
+        elif _embedded_redis_ok():
+            try:
+                import fakeredis
+                _r = fakeredis.FakeRedis(decode_responses=True)
+            except ImportError as exc:
+                raise QueueUnavailable(
+                    "REDIS_URL is not set and fakeredis is not installed. "
+                    "On Railway: add a Redis database and set "
+                    "REDIS_URL=${{Redis.REDIS_URL}}. For a single-service "
+                    "test deploy, keep INLINE_WORKER=1 (fakeredis ships in "
+                    "the worker image)."
+                ) from exc
+        else:
+            raise QueueUnavailable(
+                "REDIS_URL is required when INLINE_WORKER=0 or in a "
+                "multi-replica deployment."
+            )
     return _r
 
 
@@ -346,6 +373,11 @@ def rate_ok(user_id: str, limit: Optional[int] = None) -> bool:
 
 
 def health() -> dict:
-    return {"depth": {g: queue_depth(g) for g in set(list(GROUPS.values()) + ["light"])},
+    try:
+        r()
+    except QueueUnavailable as exc:
+        return {"mode": "unavailable", "error": str(exc)}
+    return {"mode": "redis" if S.redis_url else "embedded", "redis": bool(S.redis_url),
+            "depth": {g: queue_depth(g) for g in set(list(GROUPS.values()) + ["light"])},
             "slots": {k: slots_in_use(k) for k in S.kind_caps if k != "*"},
             "avg": {k: round(avg_duration(k), 1) for k in DEFAULTS}}

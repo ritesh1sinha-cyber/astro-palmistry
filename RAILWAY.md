@@ -101,6 +101,12 @@ astrology features first: they are far lighter.
 **Healthcheck fails but logs look fine** — the first boot creates the schema and
 partitions. `healthcheckTimeout` is already 300 s in `railway.json`; don't lower it.
 
+**`ModuleNotFoundError: No module named 'fakeredis'` on `/health`** — `REDIS_URL`
+is missing or still the literal `${{Redis.REDIS_URL}}` (Redis plugin not linked).
+Either add **New → Database → Redis** and paste `REDIS_URL=${{Redis.REDIS_URL}}`,
+or redeploy after pulling the fix that bundles fakeredis for single-service
+`INLINE_WORKER=1` deploys.
+
 ## What to expect on the free tier
 
 - **Build time** ~10 min; the image is ~1.2 GB without torch.
