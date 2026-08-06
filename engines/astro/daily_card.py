@@ -37,21 +37,23 @@ CHALDEAN = ("Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon")
 DAY_LORD = {0: "Moon", 1: "Mars", 2: "Mercury", 3: "Jupiter",
             4: "Venus", 5: "Saturn", 6: "Sun"}      # Monday = 0
 
+# Don't-column items are noun phrases under a "Don't" label — keep them short
+# and grammatical as stand-alone avoid-lines (not "Don't cutting…").
 HORA_USE = {
     "Sun": ("dealing with authority, applications, anything official",
-            "asking a favour from someone who owes you nothing"),
+            "Asking favours from people who owe you nothing"),
     "Moon": ("family, home matters, anything that needs someone to feel safe",
-             "signing anything binding"),
+             "Signing anything binding"),
     "Mars": ("hard physical work, pushing a stalled task, exercise",
-             "arguments, negotiations, replying to that message"),
+             "Arguments, negotiations, firing off that message"),
     "Mercury": ("email, paperwork, negotiation, numbers, study",
-                "emotional conversations"),
+                "Emotional conversations"),
     "Jupiter": ("money talk, advice, teachers, anything you want blessed",
-                "cutting corners"),
+                "Cutting corners"),
     "Venus": ("relationships, buying, design, asking nicely",
-              "confrontation"),
+              "Confrontation"),
     "Saturn": ("finishing the boring, unglamorous, necessary thing",
-               "starting something new"),
+               "Starting something brand new"),
 }
 
 TONE_LINE = {
@@ -170,8 +172,13 @@ def build(reading: dict, *, lat: float = 25.6, lon: float = 85.1,
     house_note = HOUSE_FROM_MOON_NOTE.get(moon.get("house_from_moon"), "")
 
     do_use, dont_use = HORA_USE.get(weekday_lord, ("", ""))
-    dos = [x for x in (do_use, (reading.get("tarabala") or {}).get("note")) if x]
-    donts = [x for x in (dont_use, (reading.get("chandrabal") or {}).get("note")) if x]
+    chandra = reading.get("chandrabal") or {}
+    dos = [x for x in (
+        do_use,
+        (reading.get("tarabala") or {}).get("note"),
+        chandra.get("do_note"),
+    ) if x]
+    donts = [x for x in (dont_use, chandra.get("note")) if x]
 
     wanted = ("Jupiter", "Mercury", "Venus")
     avoid = ("Mars", "Saturn", "Rahu")

@@ -326,7 +326,8 @@ def my_reports(user: dict = Depends(current_user)):
     return [{"reportId": r["id"], "kind": r["kind"],
              "paid": _report_unlocked(r, user["id"]),
              "createdAt": r["created_at"], "meta": r["meta"],
-             "links": _links(r["id"], user["id"], r["paid"])}
+             "links": _links(r["id"], user["id"],
+                             _report_unlocked(r, user["id"]))}
             for r in reports_for_user(user["id"])]
 
 
@@ -388,10 +389,16 @@ def prices():
 @app.post("/api/order")
 def create_order(body: OrderIn, user: dict = Depends(current_user)):
     try:
-        return billing.create_order(user["id"], body.item, ref_id=body.refId,
-                                    idempotency_key=body.idempotencyKey)
+        out = billing.create_order(user["id"], body.item, ref_id=body.refId,
+                                   idempotency_key=body.idempotencyKey)
     except KeyError:
         raise HTTPException(400, "unknown item")
+    # Local dev: simulate gateway success until Razorpay webhooks are live.
+    if (S.dev_auto_pay and S.env == "dev"
+            and not S.razorpay_key_id and out.get("status") == "created"):
+        billing.mark_paid(out["orderId"])
+        out["status"] = "paid"
+    return out
 
 
 @app.get("/api/order/{public_id}")

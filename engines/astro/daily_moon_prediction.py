@@ -585,7 +585,12 @@ def compute_daily_moon_guide(
         "sun_transit": sun_t,
         "mercury_transit": merc_t,
         "tarabala": {"index": tara_idx, "name": tara_name, "tone": tara_tone, "note": tara_note},
-        "chandrabal": {"index": chandra_idx, "name": chandra_name, "tone": chandra_tone, "note": chandra["dos"][0][0] if chandra.get("dos") else ""},
+        "chandrabal": {
+            "index": chandra_idx, "name": chandra_name, "tone": chandra_tone,
+            # Do/Don't must not be swapped — a "do" under Don't reads as broken English.
+            "do_note": (chandra["dos"][0][0] if chandra.get("dos") else ""),
+            "note": (chandra["donts"][0][0] if chandra.get("donts") else ""),
+        },
         "natal_moon": {"sign": moon_sign, "nakshatra": moon_nak},
         "gochar": {
             "moon": {"auspicious": moon_aus, "inauspicious": moon_inaus},

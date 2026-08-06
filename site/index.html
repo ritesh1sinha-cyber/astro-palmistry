@@ -613,19 +613,19 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- step 2: details -->
   <div class="card" id="s-details" style="display:none">
    <h3 style="font-size:24px">A little about you</h3>
-   <p style="color:var(--muted);font-size:14.5px;margin:8px 0 22px">Age and gender shift how certain mounts and line lengths are read.</p>
+   <p style="color:var(--muted);font-size:14.5px;margin:8px 0 22px">Your age and dominant hand help us read line timing. Name and gender are optional.</p>
    <div class="grid g2">
     <div>
-     <div class="field"><label for="fName">Name</label><input class="inp" id="fName" placeholder="Your name" autocomplete="name"><div class="err">Please enter your name</div></div>
-     <div class="field"><label for="fDob">Date of birth</label><input class="inp" id="fDob" type="date"><div class="err">Please pick your date of birth</div></div>
+     <div class="field"><label for="fAge">Your age</label><input class="inp" id="fAge" type="number" min="1" max="120" placeholder="e.g. 32"><div class="err">Please enter your age (1–120)</div></div>
+     <div class="field"><label for="fName">Name <span class="hint">(optional)</span></label><input class="inp" id="fName" placeholder="Your name" autocomplete="name"></div>
     </div>
     <div>
-     <div class="field"><label>Gender</label>
+     <div class="field"><label>Gender <span class="hint">(optional)</span></label>
       <div class="pills" id="genderPills">
        <button class="pill" aria-pressed="false" data-val="female">Female</button>
        <button class="pill" aria-pressed="false" data-val="male">Male</button>
        <button class="pill" aria-pressed="false" data-val="other">Other</button>
-      </div><div class="err">Please choose one</div></div>
+      </div></div>
      <div class="field"><label for="fDom">Dominant hand</label>
       <select class="inp" id="fDom"><option value="right">Right handed</option><option value="left">Left handed</option></select></div>
     </div>
@@ -686,6 +686,14 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
    <p>Our AI reads your chart through nine independent classical methods at once, then shows you where they
       agree and where they argue — so you can see how firm each answer actually is.</p></div>
 
+  <div class="card" id="astroAuthGate">
+   <h3 style="font-size:24px">Sign in to continue</h3>
+   <p style="color:var(--muted);font-size:14.5px;margin:8px 0 20px">Chart readings are tied to your account so you can come back to them any time.</p>
+   <button class="btn btn-gold" onclick="demoLogin()">Continue as guest</button>
+   <p class="hint" style="margin-top:12px">Free half of every reading · no payment needed to try</p>
+  </div>
+
+  <div id="astroMain" style="display:none">
   <div class="subnav" id="astroNav">
    <button data-a="report"  aria-current="true">Full report</button>
    <button data-a="horary">Ask a question</button>
@@ -766,11 +774,21 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
        Your verdict is free; the working, timing windows and remedies are ₹99.</p>
     <div class="field" style="margin-top:14px"><label for="hQ">Your question</label>
      <input class="inp" id="hQ" placeholder="Will I get the promotion this year?"><div class="err">Required</div></div>
-    <div class="grid g2">
-     <div class="field"><label for="hDate">Date of asking</label><input class="inp" id="hDate" type="date"></div>
-     <div class="field"><label for="hTime">Time of asking</label><input class="inp" id="hTime" type="time"></div>
+    <div class="field placeholder-field"><label for="hLoc">Where are you asking from?</label>
+     <input class="inp" id="hLoc" placeholder="Start typing a city…" autocomplete="off">
+     <div class="err">Required</div>
+     <p class="placenote" id="hPlaceNote">We fill coordinates from the city you pick.</p></div>
+    <input type="hidden" id="hLat"><input type="hidden" id="hLon"><input type="hidden" id="hTz" value="5.5">
+    <div class="field" style="margin-top:4px">
+     <label for="hKp">KP number <span class="hint">(1–249 · pick any number that comes to mind)</span></label>
+     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input class="inp" id="hKp" type="number" min="1" max="249" step="1" placeholder="e.g. 108" style="max-width:140px">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="pickKpNumber()">Pick random number</button>
+     </div>
+     <div class="err">Enter a number from 1 to 249</div>
+     <p class="hint" style="margin-top:8px">In KP horary the querent names a number at random — it sets the chart for the Vedic leg.</p>
     </div>
-    <div class="field"><label for="hLoc">Where are you asking from?</label><input class="inp" id="hLoc" placeholder="Patna, India"></div>
+    <p class="hint" style="margin:8px 0 14px">Your question is read for the moment you tap submit — no need to enter the time.</p>
     <button class="btn btn-gold btn-block" onclick="astroJob('horary')">Get my verdict — free</button>
     <p class="hint" style="text-align:center">One plain-language answer for this moment — not a debate between systems.</p>
    </div>
@@ -815,10 +833,16 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
       <div class="field" style="margin-top:10px"><label for="gName">Name</label><input class="inp" id="gName" placeholder="His name"></div>
       <div class="field"><label for="gDob">Date of birth</label><input class="inp" id="gDob" type="date"></div>
       <div class="field"><label for="gTob">Time of birth</label><input class="inp" id="gTob" type="time"></div>
-      <div class="field"><label for="gPlace">Birth place</label><input class="inp" id="gPlace" placeholder="City"></div>
-      <div class="grid g2" style="gap:10px">
-       <div class="field"><label for="gLat">Latitude</label><input class="inp" id="gLat" type="number" step="0.0001" placeholder="25.5941"></div>
-       <div class="field"><label for="gLon">Longitude</label><input class="inp" id="gLon" type="number" step="0.0001" placeholder="85.1376"></div>
+      <div class="field placeholder-field"><label for="gPlace">Birth place</label>
+       <input class="inp" id="gPlace" placeholder="Start typing a city…" autocomplete="off">
+       <p class="placenote" id="gPlaceNote">We fill coordinates from the city you pick.</p></div>
+      <p class="hint"><button type="button" class="btn-line" onclick="toggleMatchCoords('g')">Enter coordinates manually</button></p>
+      <div class="coords-adv" id="gCoords">
+       <div class="grid g2" style="gap:10px">
+        <div class="field"><label for="gLat">Latitude</label><input class="inp" id="gLat" type="number" step="0.0001" placeholder="25.5941"></div>
+        <div class="field"><label for="gLon">Longitude</label><input class="inp" id="gLon" type="number" step="0.0001" placeholder="85.1376"></div>
+       </div>
+       <input type="hidden" id="gTz" value="5.5">
       </div>
      </div>
      <div>
@@ -826,10 +850,16 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
       <div class="field" style="margin-top:10px"><label for="bName">Name</label><input class="inp" id="bName" placeholder="Her name"></div>
       <div class="field"><label for="bDob">Date of birth</label><input class="inp" id="bDob" type="date"></div>
       <div class="field"><label for="bTob">Time of birth</label><input class="inp" id="bTob" type="time"></div>
-      <div class="field"><label for="bPlace">Birth place</label><input class="inp" id="bPlace" placeholder="City"></div>
-      <div class="grid g2" style="gap:10px">
-       <div class="field"><label for="bLat">Latitude</label><input class="inp" id="bLat" type="number" step="0.0001" placeholder="23.3441"></div>
-       <div class="field"><label for="bLon">Longitude</label><input class="inp" id="bLon" type="number" step="0.0001" placeholder="85.3096"></div>
+      <div class="field placeholder-field"><label for="bPlace">Birth place</label>
+       <input class="inp" id="bPlace" placeholder="Start typing a city…" autocomplete="off">
+       <p class="placenote" id="bPlaceNote">We fill coordinates from the city you pick.</p></div>
+      <p class="hint"><button type="button" class="btn-line" onclick="toggleMatchCoords('b')">Enter coordinates manually</button></p>
+      <div class="coords-adv" id="bCoords">
+       <div class="grid g2" style="gap:10px">
+        <div class="field"><label for="bLat">Latitude</label><input class="inp" id="bLat" type="number" step="0.0001" placeholder="23.3441"></div>
+        <div class="field"><label for="bLon">Longitude</label><input class="inp" id="bLon" type="number" step="0.0001" placeholder="85.3096"></div>
+       </div>
+       <input type="hidden" id="bTz" value="5.5">
       </div>
      </div>
     </div>
@@ -878,6 +908,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 
   <div id="astroQueue" style="display:none"></div>
   <div id="astroOut"></div>
+  </div><!-- /astroMain -->
  </div>
 </section>
 
@@ -885,9 +916,9 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 <section class="view" id="v-soon">
  <div class="wrap sec">
   <div class="sec-head"><div class="eyebrow">On the roadmap</div><h2>What we're building next.</h2>
-   <p>Matching, muhurat, birth-time rectification, horary, numerology and the full twelve-lane report are
+   <p>Chart reports, matching, muhurat, birth-time check, horary and numerology are already
       <a href="#" onclick="go('astro');return false">live under Astrology</a>. Palm readings are on
-      <a href="#" onclick="go('read');return false">Get Reading</a>.</p></div>
+      <a href="#" onclick="go('read');return false">Get Reading</a>. Below is what comes after that.</p></div>
   <div class="grid g3">
    <div class="soon"><div class="ribbon">NEXT</div>
     <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="url(#gg)" stroke-width="1.2"><use href="#i-star"/></svg>
@@ -1049,19 +1080,23 @@ const DEV_UI = /(?:\?|&)dev=1(?:&|$)/.test(location.search);
 /* ---------- tiny helpers ---------- */
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const money = n => CONFIG.currency + n.toLocaleString('en-IN');
+const money = n => (n == null || n === '') ? '' : CONFIG.currency + Number(n).toLocaleString('en-IN');
 let toastT;
 function toast(msg){
   const t=$('#toast');
   t.textContent=String(msg||'').replace(/[✦★☆]/g,'').trim();
   t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),3200);
 }
-function save(){ try{ localStorage.setItem('apx', JSON.stringify({user:S.user,details:S.details,readingId:S.readingId,unlocked:S.unlocked})); }catch(e){} }
+function save(){ try{ localStorage.setItem('apx', JSON.stringify({user:S.user,details:S.details,readingId:S.readingId,unlocked:S.unlocked,token:apSessionToken})); }catch(e){} }
 function load(){ try{ return JSON.parse(localStorage.getItem('apx')||'{}'); }catch(e){ return {}; } }
 
 /* ---------- state ---------- */
+let apSessionToken = null;
+const _boot = load();
+apSessionToken = _boot.token || null;
 const S = Object.assign({ user:null, details:null, imgs:{left:null,right:null}, reading:null,
-  readingId:null, unlocked:false, step:1, busy:false, job:null }, load());
+  readingId:null, unlocked:false, step:1, busy:false, job:null }, _boot);
+delete S.token;
 S.busy=false; S.job=null;   // never resume a stale job across reloads
 
 /* ---------- routing ---------- */
@@ -1070,6 +1105,13 @@ function go(v){
   $$('nav.tabs button,.mobnav button').forEach(b=>b.setAttribute('aria-current', b.dataset.v===v));
   scrollTo({top:0,behavior:'smooth'});
   if(v==='read') syncFlow();
+  if(v==='astro') syncAstroGate();
+}
+function syncAstroGate(){
+  const on = !!S.user;
+  const gate = $('#astroAuthGate'), main = $('#astroMain');
+  if(gate) gate.style.display = on ? 'none' : '';
+  if(main) main.style.display = on ? '' : 'none';
 }
 
 /* ---------- date fields ----------
@@ -1280,12 +1322,35 @@ function paintAuth(){
 function setUser(u){
   S.user=u;
   if(u&&u.admin) S.unlocked=true;
-  save(); paintAuth(); syncFlow();
+  save(); paintAuth(); syncFlow(); syncAstroGate();
   toast('Welcome, '+u.name.split(' ')[0]+(u.admin?' (admin — full access)':''));
 }
-function demoLogin(){
-  setUser({ id:'demo-'+Date.now(), name:'Guest Seeker', email:'guest@graharekha.co.in',
-    picture:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#efece4"/><text x="20" y="26" font-size="16" fill="#a6861a" text-anchor="middle" font-family="serif">G</text></svg>') });
+function setSessionToken(t){
+  apSessionToken = t || null;
+  if(typeof ASTRO !== 'undefined') ASTRO.token = apSessionToken;
+  save();
+}
+const GUEST_PIC = 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#efece4"/><text x="20" y="26" font-size="16" fill="#a6861a" text-anchor="middle" font-family="serif">G</text></svg>');
+async function demoLogin(){
+  const btn = $('#demoAuth');
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin"></span> Signing in…'; }
+  try{
+    const r = await fetch(CONFIG.apiBase + '/api/auth/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ email:'guest@graharekha.co.in', name:'Guest Seeker' })
+    });
+    let data = null, detail = '';
+    try{ data = await r.json(); detail = data.detail || ''; }catch(e){}
+    if(!r.ok){
+      throw new Error(detail || ('Guest sign-in failed (HTTP '+r.status+').'));
+    }
+    setSessionToken(data.token);
+    setUser(Object.assign({ picture:GUEST_PIC }, data.user));
+  }catch(e){
+    toast(e.message || 'Guest sign-in failed');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Continue as guest'; }
+  }
 }
 function openAdminModal(){
   const m=$('#adminModal'); if(!m) return;
@@ -1315,7 +1380,7 @@ async function submitAdminLogin(){
       throw new Error(msg);
     }
     const data = await r.json();
-    ASTRO.token = data.token;
+    setSessionToken(data.token);
     ASTRO.user = data.user;
     closeAdminModal();
     setUser(Object.assign({ picture:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#c9a227"/><text x="20" y="26" font-size="14" fill="#1b1405" text-anchor="middle" font-family="serif">A</text></svg>') }, data.user));
@@ -1331,7 +1396,26 @@ function toggleAstroCoords(){
   const open = box.classList.toggle('open');
   if(btn) btn.textContent = open ? 'Hide coordinates' : 'Enter coordinates manually';
 }
-function logout(){ S.user=null; S.reading=null; S.readingId=null; S.unlocked=false; S.details=null; S.imgs={left:null,right:null}; save(); paintAuth(); ['left','right'].forEach(clearHand); $('#s-result').innerHTML=''; syncFlow(); toast('Signed out'); }
+function toggleMatchCoords(side){
+  const box = $('#'+side+'Coords');
+  if(!box) return;
+  const open = box.classList.toggle('open');
+  const btn = box.previousElementSibling && box.previousElementSibling.querySelector
+    ? box.previousElementSibling.querySelector('button')
+    : null;
+  const label = open ? 'Hide coordinates' : 'Enter coordinates manually';
+  if(btn) btn.textContent = label;
+  else {
+    const h = box.parentElement && box.parentElement.querySelector('.btn-line');
+    if(h) h.textContent = label;
+  }
+}
+function logout(){
+  setSessionToken(null);
+  if(!MOCK) fetch(CONFIG.apiBase + '/api/auth/logout', { method:'POST' }).catch(()=>{});
+  S.user=null; S.reading=null; S.readingId=null; S.unlocked=false; S.details=null; S.imgs={left:null,right:null};
+  save(); paintAuth(); ['left','right'].forEach(clearHand); $('#s-result').innerHTML=''; syncFlow(); syncAstroGate(); toast('Signed out');
+}
 
 /* Real Google Identity Services — activates automatically once a client ID is set */
 function initGoogle(){
@@ -1366,6 +1450,8 @@ function syncFlow(){
   if(S.reading) step = 4;
   S.step = step;
   const busy = !!S.busy && step===3;
+  const stepper = $('#stepper');
+  if(stepper) stepper.style.display = S.user ? '' : 'none';
   $('#s-auth').style.display    = step===1 ? '' : 'none';
   $('#s-details').style.display = step===2 ? '' : 'none';
   $('#s-hands').style.display   = (step===3 && !busy) ? '' : 'none';
@@ -1386,7 +1472,9 @@ function ageFromDob(iso){
   return a;
 }
 function fillDetails(){
-  $('#fName').value=S.details.name||''; $('#fDob').value=S.details.dob||'';
+  const n = S.details.name||'';
+  $('#fName').value = (n && n !== 'Seeker') ? n : '';
+  $('#fAge').value = S.details.age || '';
   $('#fDom').value=S.details.dominant||'right';
   $$('#genderPills .pill').forEach(p=>p.setAttribute('aria-pressed', p.dataset.val===S.details.gender));
 }
@@ -1396,18 +1484,16 @@ $$('#genderPills .pill').forEach(p=>p.onclick=()=>{
 });
 function bad(sel,on){ $(sel).closest('.field').classList.toggle('bad',on); return !on; }
 function saveDetails(){
-  const name=$('#fName').value.trim(), dob=$('#fDob').value,
-        g=$('#genderPills .pill[aria-pressed="true"]');
-  const age = ageFromDob(dob);
+  const name=$('#fName').value.trim();
+  const age=parseInt($('#fAge').value,10);
+  const g=$('#genderPills .pill[aria-pressed="true"]');
   let ok=true;
-  ok = bad('#fName', !name) && ok;
-  // A date outside a plausible human range is a typo, not a birthday.
-  ok = bad('#fDob', !(dob && age>=1 && age<=120)) && ok;
-  const gf=$('#genderPills').closest('.field'); gf.classList.toggle('bad',!g); if(!g) ok=false;
-  if(!ok) return toast('Please complete the highlighted fields');
-  // `age` stays in the payload so nothing downstream changes; `dob` is new and
-  // is what makes the chart cross-check possible.
-  S.details={ name, dob, age, gender:g.dataset.val, dominant:$('#fDom').value }; save(); syncFlow();
+  ok = bad('#fAge', !(age>=1 && age<=120)) && ok;
+  if(!ok) return toast('Please enter your age (1–120)');
+  S.details={ name: name || 'Seeker', age,
+              gender: g ? g.dataset.val : 'other',
+              dominant:$('#fDom').value };
+  save(); syncFlow();
   toast('Saved — now your palms');
 }
 
@@ -1518,10 +1604,12 @@ async function api(path,opts={}){
   // exchanges the login for a real session token.
   //
   // Both helpers now share that one token.
-  let token = ASTRO.token;
+  let token = ASTRO.token || apSessionToken;
   if(!token){
     try{ token = await astroAuth(); }
-    catch(e){ /* fall through: the request will 401 and say so */ }
+    catch(e){
+      throw Object.assign(new Error(e.message || 'Please sign in first.'), { status: 401, detail: e.message });
+    }
   }
   const r=await fetch(CONFIG.apiBase+path,{
     headers:{'Content-Type':'application/json',
@@ -1558,7 +1646,7 @@ async function submitReading(){
   const b=$('#submitBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Submitting…';
   try{
     const payload={ userId:S.user.id, email:S.user.email, name:S.details.name,
-      gender:S.details.gender, age:S.details.age, dob:S.details.dob,
+      gender:S.details.gender, age:S.details.age,
       dominant:S.details.dominant,
       leftHand:S.imgs.left, rightHand:S.imgs.right };
     const job = MOCK ? mockEnqueue() : await api('/api/job',{method:'POST',
@@ -1572,7 +1660,7 @@ async function submitReading(){
     // whoever is debugging to the wrong place — which is exactly what happened
     // with the earlier "could not reach the reading service".
     const st = e && e.status;
-    toast(st === 401 ? 'Sign-in expired. Sign out and back in, then try again.'
+    toast(st === 401 ? ((e && e.detail) || 'Please sign in again.')
       : st === 413 ? 'Those photos are too large for the server to accept (413).'
       : (e && e.detail) ? e.detail
       : (e && e.message && !/^HTTP /.test(e.message)) ? e.message
@@ -2045,12 +2133,13 @@ async function notifyMe(){
 /* ============================================================
    ASTROLOGY — talks to astro_server.py
    ============================================================ */
-const ASTRO = { base: CONFIG.apiBase || '', token: null, pane: 'report', poll: null, tick: null };
+const ASTRO = { base: CONFIG.apiBase || '', token: apSessionToken, pane: 'report', poll: null, tick: null, lastKind: null, lastReportId: null };
 
 function astroApi(path, body, method){
+  const tok = ASTRO.token || apSessionToken;
   const opts = { method: method || (body ? 'POST' : 'GET'),
     headers: { 'Content-Type':'application/json',
-      ...(ASTRO.token ? { Authorization:'Bearer '+ASTRO.token } : {}) } };
+      ...(tok ? { Authorization:'Bearer '+tok } : {}) } };
   if(body) opts.body = JSON.stringify(body);
   return fetch(ASTRO.base + path, opts).then(async r=>{
     if(!r.ok) throw Object.assign(new Error('HTTP '+r.status), {status:r.status, body:await r.text()});
@@ -2059,15 +2148,20 @@ function astroApi(path, body, method){
 }
 
 async function astroAuth(){
-  if(ASTRO.token) return ASTRO.token;
-  // production: exchange the Google ID token; dev: ASTRO_DEV_LOGIN=1 on the server
+  if(ASTRO.token || apSessionToken){
+    ASTRO.token = ASTRO.token || apSessionToken;
+    return ASTRO.token;
+  }
+  if(!S.user) throw new Error('Please sign in first.');
   try{
-    const r = S.user && S.user.idToken
+    const r = S.user.idToken
       ? await astroApi('/api/auth/google', { idToken: S.user.idToken })
-      : await astroApi('/api/auth/dev', { email:(S.user&&S.user.email)||'guest@graharekha.co.in',
-                                                 name:(S.user&&S.user.name)||'Guest Seeker' });
-    ASTRO.token = r.token; ASTRO.user = r.user; return r.token;
-  }catch(e){ throw new Error('Sign-in with the astrology service failed'); }
+      : await astroApi('/api/auth/dev', { email:(S.user.email)||'guest@graharekha.co.in',
+                                                 name:(S.user.name)||'Guest Seeker' });
+    setSessionToken(r.token); ASTRO.user = r.user; return r.token;
+  }catch(e){
+    throw new Error('Sign-in failed — please try guest login again.');
+  }
 }
 
 $$('#astroNav button').forEach(b=>b.onclick=()=>{
@@ -2076,8 +2170,14 @@ $$('#astroNav button').forEach(b=>b.onclick=()=>{
   $$('.apane').forEach(p=>p.style.display = (p.id === 'ap-'+ASTRO.pane) ? '' : 'none');
   $('#astroBirth').style.display = ['horary','match'].includes(ASTRO.pane) ? 'none' : '';
   if(ASTRO.pane === 'muhurat') loadMuhuratEvents();
-  $('#astroOut').innerHTML=''; $('#astroQueue').style.display='none';
+  $('#astroOut').innerHTML=''; clearAstroQueue();
 });
+
+function clearAstroQueue(){
+  clearInterval(ASTRO.tick);
+  const qz = $('#astroQueue');
+  if(qz){ qz.style.display='none'; qz.innerHTML=''; }
+}
 
 function birthPayload(){
   const v = id => ($(id).value||'').trim();
@@ -2106,11 +2206,34 @@ function birthPayload(){
 function horaryPayload(){
   const q=($('#hQ').value||'').trim();
   if(!bad('#hQ', !q)){ toast('Type your question first'); return null; }
+  const place=($('#hLoc').value||'').trim();
+  const lat=($('#hLat').value||'').trim(), lon=($('#hLon').value||'').trim();
+  if(!place || !lat || !lon || isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))){
+    bad('#hLoc', true);
+    toast('Pick your city from the list when typing your place.');
+    return null;
+  }
+  bad('#hLoc', false);
+  const kpRaw=($('#hKp').value||'').trim();
+  const kpNum=parseInt(kpRaw,10);
+  if(!bad('#hKp', !(kpRaw && kpNum>=1 && kpNum<=249))){
+    toast('Pick a KP number from 1 to 249 (use “Pick random number” if you like).');
+    return null;
+  }
   const now=new Date(), pad=n=>String(n).padStart(2,'0');
   return { question:q,
-    qDate: $('#hDate').value || `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`,
-    qTime: $('#hTime').value || `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-    location: ($('#hLoc').value||'').trim() || 'Patna, India' };
+    qDate: `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`,
+    qTime: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+    location: place,
+    lat: parseFloat(lat), lon: parseFloat(lon),
+    tz: parseFloat($('#hTz').value||'5.5'),
+    kpNumber: String(kpNum) };
+}
+function pickKpNumber(){
+  const n = Math.floor(Math.random() * 249) + 1;
+  const el = $('#hKp');
+  if(el){ el.value = n; bad('#hKp', false); }
+  toast('KP number '+n+' — use this one, or type your own.');
 }
 
 async function astroSummary(){
@@ -2121,12 +2244,15 @@ async function astroSummary(){
     await astroAuth();
     const j = await astroRun('chart_summary', p, null);
     const r = j.result, L=r.lagna||{}, M=r.moon||{}, D=r.currentDasha||{};
+    const note = (r.personalNote||'').trim();
     out.innerHTML = `<div class="chartgrid">
-      <div class="cg"><small>Lagna</small><b>${esc(L.sign||'—')}</b><span>${esc(L.nakshatra||'')} pada ${esc(L.pada||'')}</span></div>
-      <div class="cg"><small>Lagna lord</small><b>${esc(L.lord||'—')}</b><span>${L.degree?Number(L.degree).toFixed(2)+'°':''}</span></div>
+      <div class="cg"><small>Rising sign</small><b>${esc(L.sign||'—')}</b><span>${esc(L.nakshatra||'')} · pada ${esc(L.pada||'')}</span></div>
+      <div class="cg"><small>Rising lord</small><b>${esc(L.lord||'—')}</b><span>${L.degree!=null?Number(L.degree).toFixed(1)+'°':''}</span></div>
       <div class="cg"><small>Moon</small><b>${esc(M.sign||'—')}</b><span>${esc(M.nakshatra||'')}</span></div>
-      <div class="cg"><small>Current dasha</small><b>${esc(D.md||'—')}</b><span>${esc((D.from||'').slice(0,4))}–${esc((D.to||'').slice(0,4))}</span></div>
-    </div><p class="hint">Ayanamsa ${esc(r.ayanamsa||'')} · age ${esc(r.age||'')}</p>`;
+      <div class="cg"><small>Current period</small><b>${esc(D.md||'—')}${D.ad?'–'+esc(D.ad):''}</b><span>${esc((D.from||'').slice(0,4))}–${esc((D.to||'').slice(0,4))}</span></div>
+    </div>
+    ${note?`<div class="card" style="margin-top:12px;padding:14px 16px;font-size:14.5px;line-height:1.55;color:var(--ink)">${note}</div>`:''}
+    <p class="hint" style="margin-top:8px">Ayanamsa ${esc(r.ayanamsa||'')} · age ${esc(r.age||'')}</p>`;
   }catch(e){ out.innerHTML = `<p class="hint" style="color:var(--err)">${esc(astroErr(e))}</p>`; }
 }
 
@@ -2168,14 +2294,16 @@ async function astroJob(kind){
                 : birthPayload();
   if(!payload) return;
   const qz = $('#astroQueue'), out = $('#astroOut');
-  out.innerHTML=''; qz.style.display='';
+  out.innerHTML=''; clearAstroQueue(); qz.style.display='';
   try{
     await astroAuth();
     const j = await astroRun(kind, payload, jj=>renderAstroQueue(jj, kind));
-    qz.style.display='none'; clearInterval(ASTRO.tick);
+    clearAstroQueue();
+    ASTRO.lastKind = kind;
+    ASTRO.lastReportId = j.result && j.result.reportId;
     renderAstroResult(kind, j.result);
   }catch(e){
-    qz.style.display='none'; clearInterval(ASTRO.tick);
+    clearAstroQueue();
     out.innerHTML = jobFailCard(
       'The reading could not be finished.',
       astroErr(e),
@@ -2192,8 +2320,11 @@ function renderAstroQueue(j, kind){
   const left = Math.max(0, j.etaSeconds || 0);
   const pct = Math.min(99, Math.round((1 - left/total) * 100));
   const C = 2*Math.PI*66;
+  const slots = Math.max(1, j.activeJobs ?? CONFIG.maxConcurrent);
   let sub = queued
-    ? `All ${j.activeJobs ?? CONFIG.maxConcurrent} calculation slots are busy. Yours starts the moment one frees up.`
+    ? (j.queuePosition > 1
+        ? `All ${slots} calculation slots are busy. You are #${j.queuePosition} in line.`
+        : 'Starting your reading — a slot is opening now.')
     : 'Cross-checking the classical systems on your chart.';
   if(slow) sub = 'Still working — a full reading can take several minutes. Leave this tab open.';
   if(stuck) sub = 'This is taking longer than expected. You can wait a little longer or try again.';
@@ -2214,7 +2345,7 @@ function renderAstroQueue(j, kind){
     </div>
     ${stuck?`<hr class="hr"><div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-gold btn-sm" onclick="astroJob('${kind}')">Try again</button>
-      <button class="btn-line" onclick="clearInterval(ASTRO.tick);$('#astroQueue').style.display='none'">Cancel</button>
+      <button class="btn-line" onclick="clearAstroQueue()">Cancel</button>
     </div>`:''}</div>`;
   clearInterval(ASTRO.tick);
   let t = left;
@@ -2246,6 +2377,13 @@ function astroPayCard(item, price, refId, sections, teasers){
 async function astroPay(item, refId){
   try{
     const o = await astroApi('/api/order', { item, refId: refId || null });
+    // Dev auto-pay: backend marks the order paid when no gateway is configured.
+    if(o.status === 'paid'){
+      toast('Unlocked');
+      if(item === 'subscription') astroJob('daily');
+      else astroRefreshReports(refId || ASTRO.lastReportId, item);
+      return;
+    }
     const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
     const m = document.createElement('div'); m.className='modal on'; m.id='aPayModal';
     m.innerHTML = `<div class="modal-box" style="text-align:center">
@@ -2253,21 +2391,22 @@ async function astroPay(item, refId){
       <h3 style="margin:8px 0 4px">${esc(item.replace(/_/g,' '))}</h3>
       <div class="price" style="margin:10px 0">${money(o.amount)}</div>
       <p class="hint">Order ${esc(o.orderId)}</p>
-      ${isMobile ? `<a class="btn btn-gold btn-block" style="margin:14px 0" href="${o.upiIntentUrl}">Pay with any UPI app</a>`
+      ${isMobile ? `<a class="btn btn-gold btn-block" style="margin:14px 0" href="${o.upiIntentUrl||'#'}">Pay with any UPI app</a>`
                  : `<div class="qr" id="aQr" style="margin:16px auto"></div><p class="hint">Scan with any UPI app</p>`}
       <div class="pay-status" id="aPayStatus"><span class="spin"></span> Waiting for confirmation…</div>
       <hr class="hr">
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('aPayModal').remove()">Cancel</button>
       <p class="hint" style="margin-top:12px">Payment is verified on our server before anything unlocks.</p></div>`;
     document.body.appendChild(m);
-    if(!isMobile) drawQR(o.upiIntentUrl, o.qrImage, 'aQr');
+    if(!isMobile && o.upiIntentUrl) drawQR(o.upiIntentUrl, o.qrImage, 'aQr');
     const started = Date.now();
     const iv = setInterval(async()=>{
       try{
         const st = await astroApi('/api/order/'+o.orderId);
         if(st.status === 'paid'){
           clearInterval(iv); m.remove(); toast('Unlocked');
-          if(item === 'subscription') astroJob('daily'); else astroRefreshReports(refId);
+          if(item === 'subscription') astroJob('daily');
+          else astroRefreshReports(refId || ASTRO.lastReportId, item);
         }
       }catch(e){}
       if(Date.now()-started > 5*60*1000){ clearInterval(iv);
@@ -2276,15 +2415,35 @@ async function astroPay(item, refId){
   }catch(e){ toast(astroErr(e)); }
 }
 
-async function astroRefreshReports(refId){
+function enrichReport(r, kind){
+  const k = kind || r.kind;
+  const price = r.price ?? r.meta?.price ?? CONFIG.astroPrices[k];
+  const meta = Object.assign({}, r.meta || {});
+  if(price != null && meta.price == null) meta.price = price;
+  return Object.assign({}, r, {
+    paid: true,
+    price,
+    kind: k,
+    freeDaysLeft: r.freeDaysLeft ?? meta.freeDaysLeft,
+    subscribed: r.subscribed ?? meta.subscribed,
+    meta,
+  });
+}
+
+async function astroRefreshReports(refId, item){
   try{
-    const list = await astroApi('/api/reports');
-    const r = list.find(x=>x.reportId === refId) || list[0];
+    let r = null;
+    if(refId){
+      try{ r = await astroApi('/api/reports/'+refId); }catch(e){}
+    }
+    if(!r){
+      const list = await astroApi('/api/reports');
+      r = list.find(x=>x.reportId === refId) || list[0];
+    }
     if(!r) return;
-    $('#astroOut').innerHTML = `<div class="card"><div class="eyebrow">Unlocked · full report</div>
-      <h3 style="font-size:24px;margin:8px 0 12px">Your complete reading</h3>
-      ${frameFor(r.links.paid || r.links.free)}
-      <div style="text-align:center;margin-top:14px"><a class="btn btn-ghost btn-sm" href="${ASTRO.base+(r.links.paid||r.links.free)}" target="_blank" rel="noopener noreferrer">Open in a new tab</a></div></div>`;
+    const kind = item || ASTRO.lastKind || r.kind;
+    renderAstroResult(kind, enrichReport(r, kind));
+    $('#astroOut')?.scrollIntoView({behavior:'smooth', block:'start'});
   }catch(e){ toast(astroErr(e)); }
 }
 
@@ -2292,14 +2451,18 @@ async function astroRefreshReports(refId){
 /* ---------- payloads for matching / muhurat / birth-time ---------- */
 function matchPayload(){
   const v=id=>($(id).value||'').trim();
-  const need=['#gName','#gDob','#gTob','#gLat','#gLon','#bName','#bDob','#bTob','#bLat','#bLon'];
+  const need=['#gName','#gDob','#gTob','#gPlace','#bName','#bDob','#bTob','#bPlace'];
   let ok=true; need.forEach(sel=>{ const b_=!v(sel); bad(sel,b_); if(b_) ok=false; });
-  if(!ok){ toast('Both charts need a date, time and place'); return null; }
+  const gLat=parseFloat(v('#gLat')), gLon=parseFloat(v('#gLon'));
+  const bLat=parseFloat(v('#bLat')), bLon=parseFloat(v('#bLon'));
+  if(isNaN(gLat)||isNaN(gLon)){ bad('#gPlace', true); ok=false; }
+  if(isNaN(bLat)||isNaN(bLon)){ bad('#bPlace', true); ok=false; }
+  if(!ok){ toast('Pick each city from the list so we can fill the coordinates.'); return null; }
   return { method:'North',
     groomName:v('#gName'), groomDob:v('#gDob'), groomTob:v('#gTob'), groomPlace:v('#gPlace'),
-    groomLat:parseFloat(v('#gLat')), groomLon:parseFloat(v('#gLon')), groomTz:5.5,
+    groomLat:gLat, groomLon:gLon, groomTz:parseFloat(v('#gTz')||'5.5'),
     brideName:v('#bName'), brideDob:v('#bDob'), brideTob:v('#bTob'), bridePlace:v('#bPlace'),
-    brideLat:parseFloat(v('#bLat')), brideLon:parseFloat(v('#bLon')), brideTz:5.5 };
+    brideLat:bLat, brideLon:bLon, brideTz:parseFloat(v('#bTz')||'5.5') };
 }
 function muhuratPayload(){
   const ev=$('#muEvent').value, d=$('#muDate').value;
@@ -2452,12 +2615,12 @@ function renderAstroResult(kind, r){
         <div class="eyebrow">Daily reading · ${esc(r.date||(r.meta&&r.meta.date)||'')}</div>
         <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Today from your chart</h3>
         <div class="metabar" style="margin-bottom:8px">
-          ${r.subscribed?'<span>Subscription <b>active</b></span>':`<span>Free readings left <b>${esc(r.freeDaysLeft)}</b></span>`}
+          ${r.subscribed?'<span>Subscription <b>active</b></span>':`<span>Free readings left <b>${esc(r.freeDaysLeft ?? r.meta?.freeDaysLeft ?? '—')}</b></span>`}
         </div>
         ${frameFor(r.links.free)}
         ${!r.subscribed?`<div style="text-align:center;margin-top:18px">
-          <button class="btn btn-gold" onclick="astroPay('subscription','')">Subscribe · ${money(r.price||199)}/month</button>
-          <p class="hint">${esc(r.freeDaysLeft)} free reading${r.freeDaysLeft===1?'':'s'} remaining</p></div>`:''}
+          <button class="btn btn-gold" onclick="astroPay('subscription','')">Subscribe · ${money(r.price ?? r.meta?.price ?? 199)}/month</button>
+          <p class="hint">${esc(r.freeDaysLeft ?? r.meta?.freeDaysLeft ?? '—')} free reading${(r.freeDaysLeft ?? r.meta?.freeDaysLeft)===1?'':'s'} remaining</p></div>`:''}
         </div>`;
       return;
     }
@@ -2478,14 +2641,32 @@ function renderAstroResult(kind, r){
   $('#cEmail').textContent=CONFIG.contactEmail; $('#cEmail').href='mailto:'+CONFIG.contactEmail;
   $('#cPhone').textContent=CONFIG.contactPhone; $('#cPhone').href='tel:'+CONFIG.contactPhone.replace(/\s/g,'');
   $('#cWa').href='https://wa.me/'+CONFIG.whatsapp;
-  paintAuth(); initGoogle(); syncFlow(); checkReady(); paintPromo();
+  paintAuth(); initGoogle(); syncFlow(); syncAstroGate(); checkReady(); paintPromo();
   // Birth place -> lat/lon/tz on all three forms. The matching form has no UTC
   // field of its own (the handler defaults it), so only place/lat/lon are wired
   // there.
   wireDates();
   wirePlace('aPlace','aLat','aLon','aTz');
-  wirePlace('gPlace','gLat','gLon',null);
-  wirePlace('bPlace','bLat','bLon',null);
+  wirePlace('hLoc','hLat','hLon','hTz');
+  wirePlace('gPlace','gLat','gLon','gTz');
+  wirePlace('bPlace','bLat','bLon','bTz');
+  if(S.details && S.details.dob && !S.details.age){
+    S.details.age = ageFromDob(S.details.dob);
+    save();
+  }
+  if(S.user && apSessionToken){
+    fetch(CONFIG.apiBase + '/api/me', { headers:{ Authorization:'Bearer '+apSessionToken } })
+      .then(async r=>{
+        if(r.ok) return r.json();
+        if(r.status === 401){ setSessionToken(null); S.user=null; save(); paintAuth(); syncFlow(); syncAstroGate(); }
+        return null;
+      })
+      .then(u=>{ if(u) setUser(Object.assign({}, S.user, u)); })
+      .catch(()=>{});
+  } else if(S.user && !apSessionToken){
+    // UI looked signed-in but there is no server session — common after the old guest flow.
+    S.user=null; save(); paintAuth(); syncFlow(); syncAstroGate();
+  }
   if(S.user&&S.details&&S.reading) renderReading();
   $$('.logo')[0].addEventListener('keypress',e=>{ if(e.key==='Enter') go('home'); });
 })();

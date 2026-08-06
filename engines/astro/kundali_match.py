@@ -141,12 +141,15 @@ def _koot_score(fn) -> float:
 
 def _guna_band(total: float) -> tuple[str, str]:
     if total < 18:
-        return "avoid", "Not recommended (below 18 guns - Bhardwaj rules37)"
+        return "avoid", "Not recommended — below 18 gunas"
     if total <= 21:
-        return "moderate", "Moderate match (18-21 guns - proceed with caution and remedies)"
+        return "moderate", "Moderate match — 18 to 21 gunas; proceed with care and remedies"
     if total < 28:
-        return "good", f"Good match ({total:g} guns - above 21, below excellent 28)"
-    return "excellent", "Excellent match (28+ guns)"
+        return "good", (
+            f"Good match — {total:g} of 36 gunas "
+            f"(solid, short of the excellent band at 28+)"
+        )
+    return "excellent", "Excellent match — 28 or more gunas"
 
 
 def _assess_manglik(pc: dict) -> dict[str, Any]:

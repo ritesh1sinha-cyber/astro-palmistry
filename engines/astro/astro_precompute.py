@@ -1317,14 +1317,19 @@ def compute_pillar(planets: dict, lagna: dict, lagna_sign: str) -> dict:
         if ps:
             ph = house_from_lagna(ps, lagna_sign)
             if ph in [3,6,11]:
-                yogas.append(f"{p} in {ph}th (upachaya/trishadaya) — competitive strength")
+                yogas.append(
+                    f"{p} in the {ph}th house — a growth placement that builds "
+                    f"competitive strength over time"
+                )
     # Exalted planet in kendra
     for p, data in DIGNITY_TABLE.items():
         ps = planets.get(p,{}).get("sign","")
         if ps == data["exalted"]:
             ph = house_from_lagna(ps, lagna_sign)
             if ph in [1,4,7,10]:
-                yogas.append(f"{p} exalted in {ps} (house {ph}, kendra) — potential raja yoga")
+                yogas.append(
+                    f"{p} exalted in {ps} (house {ph}) — a classic power combination"
+                )
 
     return {
         "lagna_lord":        lagna_lord,

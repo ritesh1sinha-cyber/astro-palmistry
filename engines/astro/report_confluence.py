@@ -696,6 +696,28 @@ AK_TRAIT = {
 }
 
 
+def _human_yoga(line: str) -> str:
+    """Cached precomputes may still carry Sanskrit labels — never show those raw."""
+    import re
+    s = line or ""
+    s = re.sub(
+        r"\bin\s+(\d+)(?:st|nd|rd|th)\s*\(upachaya/trishadaya\)\s*—\s*competitive strength",
+        r"in the \1th house — a growth placement that builds competitive strength over time",
+        s,
+        flags=re.I,
+    )
+    s = re.sub(
+        r"\((house\s+\d+),\s*kendra\)\s*—\s*potential raja yoga",
+        r"(\1) — a classic power combination",
+        s,
+        flags=re.I,
+    )
+    s = re.sub(r"\bupachaya/trishadaya\b", "growth house", s, flags=re.I)
+    s = re.sub(r"\braja yoga\b", "power combination", s, flags=re.I)
+    s = re.sub(r"\bkendra\b", "angular house", s, flags=re.I)
+    return s
+
+
 def personality(pc: dict) -> dict:
     lagna = (pc.get("lagna") or {}).get("sign", "")
     moon = pc.get("planets", {}).get("Moon") or {}
@@ -713,7 +735,8 @@ def personality(pc: dict) -> dict:
             f"from a weak position and is rescued by {nb.get('cancelling_planet')}. "
             f"People with this pattern usually under-perform early and are "
             f"badly underestimated as a result.")
+    yogas = [_human_yoga(y) for y in (pillar.get("special_yogas") or [])[:4]]
     return {"lagna": lagna, "moon_sign": moon.get("sign", ""),
             "nakshatra": moon.get("nakshatra", ""), "atmakaraka": ak,
             "traits": traits,
-            "yogas": (pillar.get("special_yogas") or [])[:4]}
+            "yogas": yogas}

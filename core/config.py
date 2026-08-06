@@ -6,6 +6,13 @@ import os
 from dataclasses import dataclass, field
 from urllib.parse import quote
 
+# Flip to False before public launch (real Google OAuth + live payments).
+# Not read from Railway — change here only when testing is complete.
+_CODE_DEV_LOGIN = True
+# Until Razorpay/webhooks are wired, orders auto-complete in dev so the
+# half → pay → full flow can be tested end-to-end on localhost.
+_CODE_DEV_AUTO_PAY = True
+
 
 def _int(k: str, d: int) -> int:
     try:
@@ -49,7 +56,8 @@ class Settings:
     # --- security ----------------------------------------------------------
     secret: str = os.getenv("APP_SECRET", "dev-only-change-me")
     google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
-    dev_login: bool = _bool("DEV_LOGIN", False)
+    dev_login: bool = _CODE_DEV_LOGIN
+    dev_auto_pay: bool = _CODE_DEV_AUTO_PAY
     admin_email: str = os.getenv("ADMIN_EMAIL", "admin@graharekha.test")
     admin_password: str = os.getenv("ADMIN_PASSWORD", "graha-admin")
     session_days: int = _int("SESSION_DAYS", 30)

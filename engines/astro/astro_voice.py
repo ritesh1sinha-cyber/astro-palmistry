@@ -235,6 +235,9 @@ JARGON_TERMS: list[tuple[str, str]] = [
     ("trikona houses", "the three fortune houses"),
     ("dusthana houses", "the three pressure houses"),
     ("upachaya houses", "the growth houses"),
+    ("trishadaya lords", "effort-house rulers"),
+    ("trishadaya", "effort houses"),
+    ("raja yoga", "power combination"),
     ("kendra", "pillar house"),
     ("trikona", "fortune house"),
     ("dusthana", "pressure house"),
@@ -617,6 +620,9 @@ def strip_citations(html: str, *, hide_system_names: bool = True) -> str:
 def tidy(out: str) -> str:
     """Repair the punctuation and duplication that removals leave behind."""
     out = re.sub(r"\(\s*[,;:]?\s*\)", "", out)          # ()  (,)
+    # Author names stripped from "(Bonatus / Louis)" leave "( / )" — remove those.
+    out = re.sub(r"\(\s*/\s*\)", "", out)
+    out = re.sub(r"\(\s*[,;:&|/]+\s*\)", "", out)
     out = re.sub(r"\(\s*,\s*", "(", out)
     out = re.sub(r"\s+([,.;:!?])", r"\1", out)             # " ," → ","
     # the same, but where a tag sat between the word and the comma

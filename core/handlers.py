@@ -323,6 +323,10 @@ def h_full_report(user: dict, p: dict) -> dict:
         bundle_price=S.price("bundle_all") // 100,
         lat=float(chart["lat"]), lon=float(chart["lon"]),
         tz=float(chart["tz_offset"]))
+    # Card HTML used to skip the voice pass that the long-form appendix gets —
+    # so Sanskrit labels (upachaya, raja yoga) leaked into the free half.
+    free_html = V.translate_jargon(V.humanise(free_html))
+    paid_html = V.translate_jargon(V.humanise(paid_html))
 
     # The old long-form document is kept as an appendix on the paid side. It is
     # genuinely useful to the minority who want to check the reasoning, and

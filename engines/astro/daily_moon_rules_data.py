@@ -113,7 +113,7 @@ TARABALA_RULES: dict[int, dict] = {
     8: {
         "name": "Mitra",
         "tone": "auspicious",
-        "summary": "Friend-star - alliances help.",
+        "summary": "Friend-star day — alliances help.",
         "dos": [
             ("Meet allies, mentors, or peers for a focused working session.", "Tarabala/Mitra - OCR Mitr"),
             ("Send one gratitude message to a supporter.", "Tarabala/Mitra"),

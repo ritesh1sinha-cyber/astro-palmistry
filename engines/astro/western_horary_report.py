@@ -835,7 +835,7 @@ def render(data: dict, question: str, j: dict, judge_dt: str, location: str) -> 
   <h2>Considerations before judgment (Louis Ch. 2)</h2>
   <div class="card"><ul>{''.join(cons_items)}</ul></div>
 
-  <h2>Radicality &amp; Moon chain (Bonatus / Louis)</h2>
+  <h2>Radicality &amp; Moon chain</h2>
   <div class="card"><ul>{''.join(moon_items)}</ul></div>
 
   <h2>Perfection &amp; Louis's 11th-house rule</h2>
