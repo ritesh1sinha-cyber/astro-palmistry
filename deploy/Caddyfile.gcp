@@ -1,0 +1,41 @@
+{
+	email {$ACME_EMAIL}
+	servers { protocols h1 h2 h3 }
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	handle /api/payment/webhook {
+		reverse_proxy api:3000
+	}
+
+	handle /api/* {
+		reverse_proxy api:3000 {
+			transport http { read_timeout 300s }
+		}
+	}
+
+	handle /health {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		root * /srv/site
+		try_files {path} /index.html
+		file_server
+		header /index.html Cache-Control "no-cache"
+	}
+}
+
+# Optional: also serve www → apex (set DNS for both)
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

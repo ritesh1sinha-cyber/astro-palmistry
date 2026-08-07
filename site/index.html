@@ -1492,7 +1492,11 @@ function initGoogle(){
   if(adminBtn) adminBtn.style.display = '';
   if(!CONFIG.googleClientId){
     const note=$('#authNote');
-    if(note) note.textContent = 'Guest passcode or admin login. Add google_client_id in `.config` to enable Google Sign-In.';
+    if(note){
+      note.textContent = CONFIG.liveApi
+        ? 'Sign in with guest passcode or admin while Google Sign-In is being enabled.'
+        : 'Guest passcode or admin login. Add google_client_id in `.config` to enable Google Sign-In.';
+    }
     return;
   }
   const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true;

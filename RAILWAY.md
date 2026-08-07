@@ -42,10 +42,31 @@ LOCAL_STORE=/data/storage
 DEV_LOGIN=1
 
 # when you have them:
-GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_ID=424015602169-sh7vtf9gita53b7s6jkiqr20vms8aevl.apps.googleusercontent.com
 RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
+RAZORPAY_PAYMENT_BUTTON_ID=pl_TMzAWfueT93HPY
+```
+
+`GOOGLE_CLIENT_ID` is **required for the Google button on production**. Local
+dev can read it from the gitignored `.config` file; Railway cannot. Without this
+variable, `/api/public-config` returns `"googleClientId":""` and the site shows
+guest/admin only.
+
+In [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials),
+Authorized JavaScript origins must include:
+
+- `https://www.graharekha.co.in`
+- `https://graharekha.co.in`
+- `http://localhost:3000` (local Docker)
+
+After setting the variable, redeploy the Railway service (or wait for the
+auto-redeploy) and hard-refresh the site. Confirm with:
+
+```bash
+curl -s https://www.graharekha.co.in/api/public-config
+# googleClientId should be non-empty
 ```
 
 Railway's `DATABASE_URL` arrives as `postgresql://…`, which SQLAlchemy would
