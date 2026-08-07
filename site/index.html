@@ -2194,7 +2194,7 @@ async function showPayModal(order, opts){
   const o = opts || {};
   const title = o.title || String(order.item || 'Unlock').replace(/_/g,' ');
   const m = document.createElement('div'); m.className='modal on'; m.id = o.modalId || 'payModal';
-  m.innerHTML = `<div class="modal-box" style="text-align:center">
+    m.innerHTML = `<div class="modal-box" style="text-align:center">
     <div class="eyebrow">Secure payment</div>
     <h3 style="margin:8px 0 4px">${esc(title)}</h3>
     <div class="price" style="margin:10px 0">${money(order.amount)}</div>
@@ -2202,8 +2202,11 @@ async function showPayModal(order, opts){
     <div id="rpPayMount" style="margin:14px 0;min-height:48px"></div>
     <div class="pay-status" id="payStatus"><span class="spin"></span> Complete payment below — we confirm automatically…</div>
     <hr class="hr">
-    <button class="btn btn-ghost btn-sm" type="button" id="payCancelBtn">Cancel</button>
-    <p class="hint" style="margin-top:12px">GPay · PhonePe · cards · UPI · secured by Razorpay</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" type="button" id="payRefreshBtn">I already paid — check again</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="payCancelBtn">Cancel</button>
+    </div>
+    <p class="hint" style="margin-top:12px">Use the same email as your GrahaRekha account when paying. If money was debited but this stays open, email admin@graharekha.co.in with order ${esc(order.orderId)}.</p>
   </div>`;
   document.body.appendChild(m);
   m.addEventListener('click', e=>{ if(e.target===m) closePayModal(m); });
@@ -2211,6 +2214,15 @@ async function showPayModal(order, opts){
   const statusEl = m.querySelector('#payStatus');
   const finish = ()=>{ closePayModal(m); if(o.onPaid) o.onPaid(); };
   const fetchFn = o.fetchOrder || ((id)=> astroApi('/api/order/'+id));
+  const checkOnce = async()=>{
+    try{
+      const st = await fetchFn(order.orderId);
+      if(st.status === 'paid'){ stopPayPoll(); finish(); return true; }
+      if(statusEl) statusEl.innerHTML = '<span class="spin"></span> Payment not confirmed yet — waiting for Razorpay…';
+    }catch(e){}
+    return false;
+  };
+  m.querySelector('#payRefreshBtn')?.addEventListener('click', ()=>{ checkOnce(); });
   pollOrderPaid(order.orderId, finish, statusEl, fetchFn);
   const mount = m.querySelector('#rpPayMount');
   if(order.keyId && order.gatewayOrderId){

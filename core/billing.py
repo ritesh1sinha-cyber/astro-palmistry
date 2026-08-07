@@ -277,25 +277,47 @@ def record_event(order_id: Optional[str], event_type: str, payload: dict,
                    "s": signature_ok, "p": jdump(payload), "t": now()})
 
 
-def mark_paid_from_gateway_payment(*, email: str, amount_paise: int,
-                                   gateway_payment_id: str = "") -> Optional[dict]:
-    """Match a Razorpay payment-button capture to the user's pending order."""
+def mark_paid_from_gateway_payment(*, email: str = "", amount_paise: int = 0,
+                                   gateway_payment_id: str = "",
+                                   receipt: str = "") -> Optional[dict]:
+    """Match a Razorpay payment-button capture to a pending local order.
+
+    Payment buttons do not create our gateway orders, so the webhook often has
+    no `receipt`. Prefer: explicit receipt → email+amount → recent same amount.
+    """
+    receipt = (receipt or "").strip()
+    if receipt:
+        o = order_by_public(receipt)
+        if o and o.get("status") == "created":
+            return mark_paid(o["public_id"], gateway_payment_id=gateway_payment_id)
+
     em = (email or "").strip().lower()
-    if not em or amount_paise <= 0:
-        return None
-    with engine().connect() as c:
-        user = c.execute(text("SELECT id FROM users WHERE lower(email) = :e"),
-                         {"e": em}).fetchone()
-        if not user:
-            return None
-        uid = jrow(user)["id"]
-        row = c.execute(text(
-            "SELECT * FROM orders WHERE user_id = :u AND status = 'created'"
-            " AND amount_paise = :a ORDER BY created_at DESC LIMIT 1"),
-                        {"u": uid, "a": amount_paise}).fetchone()
-    if not row:
-        return None
-    return mark_paid(jrow(row)["public_id"], gateway_payment_id=gateway_payment_id)
+    if "@" in em and amount_paise > 0:
+        with engine().connect() as c:
+            user = c.execute(text("SELECT id FROM users WHERE lower(email) = :e"),
+                             {"e": em}).fetchone()
+            if user:
+                uid = jrow(user)["id"]
+                row = c.execute(text(
+                    "SELECT * FROM orders WHERE user_id = :u AND status = 'created'"
+                    " AND amount_paise = :a ORDER BY created_at DESC LIMIT 1"),
+                                {"u": uid, "a": amount_paise}).fetchone()
+                if row:
+                    return mark_paid(jrow(row)["public_id"],
+                                     gateway_payment_id=gateway_payment_id)
+
+    # Last resort for button payments where the shopper email ≠ account email.
+    if amount_paise > 0:
+        with engine().connect() as c:
+            rows = c.execute(text(
+                "SELECT * FROM orders WHERE status = 'created' AND amount_paise = :a"
+                " AND created_at > :since ORDER BY created_at DESC LIMIT 3"),
+                {"a": amount_paise,
+                 "since": now() - timedelta(hours=2)}).fetchall()
+        if len(rows) == 1:
+            return mark_paid(jrow(rows[0])["public_id"],
+                             gateway_payment_id=gateway_payment_id)
+    return None
 
 
 def mark_paid(public_id: str, *, gateway_payment_id: str = "") -> dict:

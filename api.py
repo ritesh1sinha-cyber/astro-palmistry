@@ -465,6 +465,17 @@ def order_complete_dev(public_id: str, user: dict = Depends(current_user)):
     return {"orderId": public_id, "status": "paid", "demoPay": True}
 
 
+@app.post("/api/order/{public_id}/mark-paid")
+def order_mark_paid_admin(public_id: str, user: dict = Depends(current_user)):
+    """Admin-only: confirm a payment that Razorpay captured but webhook missed."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    o = billing.order_by_public(public_id)
+    if not o:
+        raise HTTPException(404, "no such order")
+    return billing.mark_paid(public_id)
+
+
 @app.get("/api/place")
 def place_lookup(q: str = "", limit: int = 8):
     """City name -> coordinates and UTC offset. Public, and no network call.
@@ -543,16 +554,24 @@ async def payment_webhook(request: Request):
             raise HTTPException(401, "signature verification failed")
 
     event = payload.get("event", "")
+    pay_entity = _dig(payload, "payload", "payment", "entity") or {}
     if not order:
-        email = (_dig(payload, "payload", "payment", "entity", "email")
-                   or _dig(payload, "payload", "payment", "entity", "contact")
-                   or "")
-        amount = _dig(payload, "payload", "payment", "entity", "amount") or 0
-        pay_id = _dig(payload, "payload", "payment", "entity", "id") or ""
-        if email and amount and event in ("payment.captured", "order.paid", ""):
+        notes = pay_entity.get("notes") if isinstance(pay_entity, dict) else {}
+        if not isinstance(notes, dict):
+            notes = {}
+        email = (pay_entity.get("email")
+                 or (pay_entity.get("contact") if "@" in str(pay_entity.get("contact") or "") else "")
+                 or "")
+        amount = pay_entity.get("amount") or 0
+        pay_id = pay_entity.get("id") or ""
+        receipt = (notes.get("receipt") or notes.get("orderId") or notes.get("order_id")
+                   or public_id or "")
+        # Button payments often land as payment.captured; some accounts send authorized.
+        if amount and event in ("payment.captured", "payment.authorized",
+                                "order.paid", ""):
             matched = billing.mark_paid_from_gateway_payment(
                 email=str(email), amount_paise=int(amount),
-                gateway_payment_id=str(pay_id))
+                gateway_payment_id=str(pay_id), receipt=str(receipt or ""))
             if matched:
                 return matched
         raise HTTPException(404, "order not found")
