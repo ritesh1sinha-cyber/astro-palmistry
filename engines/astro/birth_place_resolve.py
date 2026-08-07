@@ -37,7 +37,7 @@ def normalize_dob(raw: str) -> str:
 
 
 def normalize_place_query(raw: str) -> str:
-    """Collapse whitespace around commas: 'Patna,India' -> 'Patna, India'."""
+    """Collapse whitespace around commas: 'New Delhi,India' -> 'New Delhi, India'."""
     parts = [p.strip() for p in (raw or "").split(",") if p.strip()]
     return ", ".join(parts)
 
@@ -285,5 +285,5 @@ def resolve_birth_place(
 
     raise ValueError(
         f"Could not resolve {place_name!r}. "
-        "Pick a city from the dropdown (e.g. Patna, India)."
+        "Pick a city from the dropdown (e.g. New Delhi, India)."
     )

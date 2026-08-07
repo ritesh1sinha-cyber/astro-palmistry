@@ -11,6 +11,8 @@ from local_models import (
     CROSS_ENCODER_HF_ID,
     MINILM_DIR,
     MINILM_HF_ID,
+    MINILM_MULTILINGUAL_DIR,
+    MINILM_MULTILINGUAL_HF_ID,
     is_model_ready,
     model_status,
 )
@@ -39,11 +41,19 @@ def _download(repo_id: str, dest: Path, *, ignore_patterns: list[str] | None = N
 
 
 def _has_tokenizer(path: Path) -> bool:
-    return (path / "tokenizer.json").is_file() or (path / "vocab.json").is_file()
+    return (
+        (path / "tokenizer.json").is_file()
+        or (path / "vocab.json").is_file()
+        or (path / "sentencepiece.bpe.model").is_file()
+    )
 
 
 def main() -> None:
-    _download(MINILM_HF_ID, MINILM_DIR)
+    # Prefer multilingual paraphrase MiniLM (question routing + confluence).
+    _download(MINILM_MULTILINGUAL_HF_ID, MINILM_MULTILINGUAL_DIR)
+    # Optional smaller English fallback (skip if multilingual already ready).
+    if not is_model_ready(MINILM_MULTILINGUAL_DIR):
+        _download(MINILM_HF_ID, MINILM_DIR)
     _download(
         CROSS_ENCODER_HF_ID,
         CROSS_ENCODER_DIR,
@@ -51,8 +61,8 @@ def main() -> None:
     )
     st = model_status()
     print("model_status:", st)
-    if not all(st.values()):
-        raise SystemExit("One or more models failed to download.")
+    if not st.get("minilm"):
+        raise SystemExit("MiniLM download failed.")
     print("All models local. Future runs use HF_HUB_OFFLINE=1.")
 
 

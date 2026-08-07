@@ -1,5 +1,6 @@
 # secrets — never commit these
 .env
+.config
 deploy/.env
 *.pem
 *.key
@@ -17,6 +18,10 @@ _astro_sessions/
 *.db-wal
 *.db-shm
 backups/
+ci-storage/reports/
+ci-storage/*.log
+daily_free.html
+daily_paid.html
 
 # user data: palm photos and generated charts are personal information
 engines/palm_api/data/uploads/

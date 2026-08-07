@@ -246,9 +246,9 @@ def attach_contexts(pc: dict, on: date | None = None,
 
 if __name__ == "__main__":
     from astro_chart_bridge import compute_chart
-    pc = compute_chart(client_name="Ritesh", dob="1985-03-08", birth_time="13:05",
-                       place="Patna, India", latitude=25.5941, longitude=85.1376, timezone=5.5)
-    attach_contexts(pc, latitude=25.5941, longitude=85.1376, timezone=5.5)
+    pc = compute_chart(client_name="Sample", dob="1990-01-15", birth_time="12:00",
+                       place="New Delhi, India", latitude=28.6139, longitude=77.2090, timezone=5.5)
+    attach_contexts(pc, latitude=28.6139, longitude=77.2090, timezone=5.5)
     import json
     print(json.dumps(pc["_transit"], indent=2))
     print(json.dumps(pc["_annual"], indent=2))

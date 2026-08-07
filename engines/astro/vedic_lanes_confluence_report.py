@@ -10,7 +10,7 @@ Semantic agreement: MiniLM + cross-encoder (BERT-family).
 Headline verdicts require >= 75% lane agreement + semantic score.
 
 Usage:
-    python3 vedic_lanes_confluence_report.py reports/VedicReport_ritz_extracted.txt Ritz 1985-03-08
+    python3 vedic_lanes_confluence_report.py reports/VedicReport_ritz_extracted.txt Sample 1990-01-15
     python3 vedic_lanes_confluence_report.py <extract> <name> <dob> -o reports/Lanes_Confluence_Ritz.html
 """
 from __future__ import annotations

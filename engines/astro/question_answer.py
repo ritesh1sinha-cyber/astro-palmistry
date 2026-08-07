@@ -96,11 +96,34 @@ FALLBACK = Topic("general", "Your question", "what you asked about",
 
 
 def classify(question: str) -> Topic:
-    q = re.sub(r"\s+", " ", (question or "").lower())
+    """Map free-text → Topic. MiniLM domain/house first; regex patterns assist."""
+    raw = (question or "").strip()
+    q = re.sub(r"\s+", " ", raw.lower())
+    # Exact pattern hits still win (job_change vs promotion, etc.)
     for topic in TOPICS:
         for pat in topic.patterns:
             if re.search(pat, q):
                 return topic
+    # Semantic fallback when wording does not match regex (e.g. "profession lift")
+    try:
+        import semantic_question as SQ
+        routed = SQ.route(raw)
+        dom = routed.domain
+        house = routed.primary_house
+        # Prefer topic whose primary house matches semantic house
+        by_house = [t for t in TOPICS if t.houses and t.houses[0] == house]
+        if by_house:
+            return by_house[0]
+        key = {
+            "career": "promotion", "finance": "money", "property": "property",
+            "travel": "foreign", "health": "health", "education": "study",
+        }.get(dom)
+        if key:
+            for t in TOPICS:
+                if t.key == key:
+                    return t
+    except Exception:
+        pass
     return FALLBACK
 
 

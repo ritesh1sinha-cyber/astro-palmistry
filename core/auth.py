@@ -67,24 +67,34 @@ def login_with_google(id_token: str, *, ip: str = "", ua: str = "") -> tuple[dic
     return user, create_session(user["id"], ip=ip, ua=ua)
 
 
-def login_dev(email: str, name: str, *, ip: str = "", ua: str = "") -> tuple[dict, str]:
-    """Local development only. Guarded by DEV_LOGIN; never enable in production."""
+def login_dev(email: str, name: str, *, passcode: str = "",
+              ip: str = "", ua: str = "") -> tuple[dict, str]:
+    """Guest / passcode login. Guarded by DEV_LOGIN; never enable in production."""
     if not S.dev_login:
         raise HTTPException(404, "not enabled")
+    expected = S.guest_passcode or ""
+    if not expected or not secrets.compare_digest(passcode or "", expected):
+        raise HTTPException(401, "invalid guest passcode")
     user = upsert_user(email=email, name=name)
     return user, create_session(user["id"], ip=ip, ua=ua)
 
 
-def login_admin(email: str, password: str, *, ip: str = "", ua: str = "") -> tuple[dict, str]:
-    """Dev/staging only. Full access without payment — never enable in production."""
+def login_admin(username: str = "", password: str = "", *,
+                email: str = "", ip: str = "", ua: str = "") -> tuple[dict, str]:
+    """Admin login with full unlock. Guarded by DEV_LOGIN."""
     if not S.dev_login:
         raise HTTPException(404, "not enabled")
+    u = (username or "").strip()
     em = (email or "").strip().lower()
-    if em not in admin_emails():
+    # Accept username from `.config`, or the admin email (legacy clients).
+    user_ok = bool(u) and secrets.compare_digest(u, S.admin_username or "")
+    email_ok = bool(em) and em in admin_emails()
+    if not (user_ok or email_ok):
         raise HTTPException(401, "invalid admin credentials")
-    if not secrets.compare_digest(password or "", S.admin_password):
+    if not secrets.compare_digest(password or "", S.admin_password or ""):
         raise HTTPException(401, "invalid admin credentials")
-    user = upsert_user(email=em, name="Admin Tester")
+    admin_em = (S.admin_email or "graharekha@graharekha.local").strip().lower()
+    user = upsert_user(email=admin_em, name="GrahaRekha Admin")
     return user, create_session(user["id"], ip=ip, ua=ua)
 
 

@@ -22,7 +22,7 @@ Math covered:
   - LLM instructions per system (Jamakkol, KP, Prashna)
 
 Usage:
-    python3 horary_precompute.py "Will child speak?" "2026-04-07" "03:12" "Hyderabad" [kp_number] [output.json]
+    python3 horary_precompute.py "Will child speak?" "2026-04-07" "03:12" "New Delhi" [kp_number] [output.json]
 """
 
 import json, math, sys, re
@@ -107,6 +107,7 @@ KP_RANGES = [
 LOCATIONS = {
     "hyderabad": (17.3850,  78.4867),
     "delhi":     (28.6139,  77.2090),
+    "new delhi": (28.6139,  77.2090),
     "mumbai":    (19.0760,  72.8777),
     "bangalore": (12.9716,  77.5946),
     "chennai":   (13.0827,  80.2707),
@@ -752,7 +753,7 @@ def compute_jamakkol(minutes: int, sun_sign: str, lagna_sign: str,
         verdict_reason = f"Kavippu in {kav_from_topic}th from query-topic bhava — obstacles/loss"
     elif kavippu_conjunct_planets:
         verdict = "NO"
-        verdict_reason = f"Kavippu conjunct {kavippu_conjunct_planets} — karaka negated for topic"
+        verdict_reason = f"Kavippu conjunct {', '.join(kavippu_conjunct_planets)} — karaka negated for topic"
     elif kavippu_house in (1, 2, 3, 7, 10, 12):
         verdict = "NO"
         verdict_reason = KAVIPPU_MEANINGS.get(kavippu_house, "Obstacle")
@@ -1065,13 +1066,25 @@ TOPIC_KEYWORDS = {
 
 
 def detect_topic(question: str) -> str:
-    q = question.lower()
+    """Map free-text question → horary topic. MiniLM first, keywords assist."""
+    q = (question or "").strip()
+    if not q:
+        return "general"
+    try:
+        import semantic_question as SQ
+        routed = SQ.route(q)
+        if routed.topic and routed.topic != "general":
+            if routed.method == "minilm" or routed.topic_score >= 0.28:
+                return routed.topic
+    except Exception:
+        pass
+    ql = q.lower()
     # Order matters: more specific topics first
     priority = ["disease_cure", "disease", "children", "marriage", "career", "health",
                 "finance", "travel", "education"]
     for topic in priority:
         keywords = TOPIC_KEYWORDS.get(topic, [])
-        if any(kw in q for kw in keywords):
+        if any(kw in ql for kw in keywords):
             return topic
     return "general"
 
@@ -1258,7 +1271,7 @@ def precompute_horary(
     question: str,
     q_date_str: str,     # YYYY-MM-DD
     q_time_str: str,     # HH:MM  (24hr IST)
-    location: str = "Hyderabad",
+    location: str = "New Delhi",
     kp_number: str = "",
 ) -> dict:
     """
@@ -1271,7 +1284,7 @@ def precompute_horary(
 
     # Get lat/lon for location
     loc_key = location.lower().split(",")[0].strip()
-    lat, lon = LOCATIONS.get(loc_key, LOCATIONS["hyderabad"])  # default Hyderabad
+    lat, lon = LOCATIONS.get(loc_key, LOCATIONS["delhi"])  # default New Delhi
 
     # UT from IST
     ut_hour = ist_to_ut(hour, minute)
@@ -1402,7 +1415,7 @@ def precompute_horary(
 def main():
     if len(sys.argv) < 5:
         print("Usage: python3 horary_precompute.py <question> <YYYY-MM-DD> <HH:MM> <location> [kp_number] [output.json]")
-        print('Example: python3 horary_precompute.py "Will child speak?" "2026-04-07" "03:12" "Hyderabad" 23')
+        print('Example: python3 horary_precompute.py "Will child speak?" "2026-04-07" "03:12" "New Delhi" 23')
         sys.exit(1)
 
     question   = sys.argv[1]

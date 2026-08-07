@@ -112,7 +112,9 @@ def judge(data: dict, question: str, quesited_house: int) -> dict:
     collect = None if same_lord else R.collection_of_light(planets, asc_lord, q_lord)
     lost_mode = R.is_lost_question(question)
     return_mode = R.is_return_question(question)
-    when_mode = R.parse_question(question)["when"]
+    parsed_q = R.parse_question(question)
+    when_mode = parsed_q["when"]
+    amount_mode = bool(parsed_q.get("amount"))
     combust_names = {nm for nm, _ in combust}
     q_lord_house = planets[q_lord]["house"]
     opp_only = bool(perfection and perfection["applying"] and perfection["aspect"] == "opposition")
@@ -480,6 +482,14 @@ def judge(data: dict, question: str, quesited_house: int) -> dict:
         score += 1.0
         reasons.append("the question asks *when*, not *if* — the event is presumed to occur; the timing is given below")
 
+    # 11c. "How much…" questions ask magnitude, not a binary yes/no.
+    if amount_mode and not lost_mode:
+        score += 0.35
+        reasons.append(
+            "the question asks *how much / what size*, not a flat yes or no — "
+            "tradition can lean high or modest but cannot name an exact figure"
+        )
+
     # 12. Fertility for conception/childbearing questions only (5th house).
     if quesited_house == 5 and any(k in question.lower() for k in
                                    ("have children", "ever have children", "pregnan", "conceive", "baby", "fall pregnant")):
@@ -496,7 +506,7 @@ def judge(data: dict, question: str, quesited_house: int) -> dict:
     # safe to judge or that the question is premature/insincere — a genuine negative weight.
     # The early/late-ascendant cautions concern the ripeness of a yes/no decision; they do not
     # deny a location ("where is…") or timing ("when…") question, so skip them in those modes.
-    ripeness_modes = lost_mode or return_mode or when_mode
+    ripeness_modes = lost_mode or return_mode or when_mode or amount_mode
     if early_asc and not ripeness_modes:
         score -= 0.6
         reasons.append("an early degree rises (under 3°) — by Bonatus a premature or insincere question; the matter is not ripe")
@@ -507,7 +517,19 @@ def judge(data: dict, question: str, quesited_house: int) -> dict:
         score -= 0.3
         reasons.append("Saturn is in the 7th — the classic warning of difficulty or a flawed judgment")
 
-    if score >= 1.5:
+    if amount_mode and not lost_mode:
+        # Magnitude language — never a bare Yes/No for "how much hike"
+        if score >= 1.5:
+            verdict, conf = "Larger increase favoured", "good"
+        elif score >= 0.6:
+            verdict, conf = "Modest increase favoured", "moderate"
+        elif score > -0.6:
+            verdict, conf = "Size unclear / qualified", "low"
+        elif score > -1.5:
+            verdict, conf = "Increase looks limited", "moderate"
+        else:
+            verdict, conf = "Little room for a hike", "good"
+    elif score >= 1.5:
         verdict, conf = "Yes", "good"
     elif score >= 0.6:
         verdict, conf = "Likely yes", "moderate"
@@ -599,10 +621,29 @@ PLANET_ORDER = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn",
                 "Uranus", "Neptune", "Pluto"]
 
 
-def _plain_western(j: dict, asc_lord: str, q_lord: str) -> str:
-    """A warm, plain-English summary of the Western judgment — spoken as an astrologer would."""
+def plain_western_parts(j: dict, asc_lord: str, q_lord: str) -> dict:
+    """The warm, plain-English summary of the Western judgment, as separate parts.
+
+    Used both by the standalone Western report (``_plain_western`` wraps this
+    into the styled card) and by the customer-facing confluence answer
+    (``horary_answer.py``), which needs the same sentences without the
+    surrounding document chrome.
+    """
     v = j["verdict"].lower()
-    if v.startswith("yes"):
+    if "increase" in v or "hike" in v or "size" in v:
+        if "larger" in v:
+            opener = ("The chart favours a <strong>stronger upward move</strong> — "
+                      "not a flat yes/no, and not an exact %.")
+        elif "modest" in v:
+            opener = ("The chart favours a <strong>modest rise</strong> rather than a large hike — "
+                      "exact figures are outside horary.")
+        elif "limited" in v or "little room" in v:
+            opener = ("Any rise looks <strong>limited</strong> on this chart — "
+                      "do not expect a large hike from this asking.")
+        else:
+            opener = ("The <strong>size</strong> of any change is not clearly fixed — "
+                      "ask as yes/no or timing if you need a sharper call.")
+    elif v.startswith("yes"):
         opener = "Yes — the chart genuinely supports this."
     elif "likely" in v:
         opener = "The signs lean towards <strong>yes</strong>, though not overwhelmingly."
@@ -648,12 +689,18 @@ def _plain_western(j: dict, asc_lord: str, q_lord: str) -> str:
     else:
         confline = "The signals are faint and mixed, so please treat this as a soft impression, not a firm promise."
 
+    return {"opener": opener, "link": link, "moon": moon, "confline": confline}
+
+
+def _plain_western(j: dict, asc_lord: str, q_lord: str) -> str:
+    """A warm, plain-English summary of the Western judgment — spoken as an astrologer would."""
+    p = plain_western_parts(j, asc_lord, q_lord)
     return f"""<h2>The Short Answer — In Plain Words</h2>
   <div class="verdict">
-    <p style="margin:0 0 0.6rem 0;font-size:1.05rem;">{opener}</p>
-    <p style="margin:0 0 0.6rem 0;">{link}</p>
-    <p style="margin:0 0 0.6rem 0;">{moon}</p>
-    <p style="margin:0;color:var(--muted);">{confline}</p>
+    <p style="margin:0 0 0.6rem 0;font-size:1.05rem;">{p['opener']}</p>
+    <p style="margin:0 0 0.6rem 0;">{p['link']}</p>
+    <p style="margin:0 0 0.6rem 0;">{p['moon']}</p>
+    <p style="margin:0;color:var(--muted);">{p['confline']}</p>
   </div>"""
 
 
@@ -878,7 +925,7 @@ def render(data: dict, question: str, j: dict, judge_dt: str, location: str) -> 
 
 
 def generate_western_horary_html(question: str, q_date: str, q_time: str,
-                                 location: str = "Hyderabad",
+                                 location: str = "New Delhi",
                                  quesited_house: int | None = None) -> tuple[str, dict]:
     data = precompute_western(question, q_date, q_time, location)
     if data.get("precompute_engine") != "swiss_ephemeris_moseph":
@@ -895,7 +942,7 @@ def main() -> None:
     ap.add_argument("question")
     ap.add_argument("q_date", help="YYYY-MM-DD")
     ap.add_argument("q_time", help="HH:MM (24h IST)")
-    ap.add_argument("location", nargs="?", default="Hyderabad")
+    ap.add_argument("location", nargs="?", default="New Delhi")
     ap.add_argument("--quesited-house", type=int, default=None)
     ap.add_argument("--out", default=None)
     args = ap.parse_args()

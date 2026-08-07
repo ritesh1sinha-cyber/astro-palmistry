@@ -56,18 +56,36 @@ MATCH_FREE = (
     "kundali milan", "final verdict", "layer 1", "ashtakoota", "prepared for",
 )
 
-# Numerology currently ships 100% free with no upsell path at all. These are
-# the sections that stay free once a paid tier exists; the forward-looking
-# material (personal-year forecast, name analysis, favourable dates) is what
-# the paid tier would add.
-NUMEROLOGY_FREE = (
-    "your numbers", "core numbers", "personality", "life path", "destiny",
-)
+# Numerology is not split by heading. `numerology_cards.render` takes `paid` and
+# produces two documents, so there is nothing here for it to cut.
 
 SECTION_RE = re.compile(
     r'(<section\b[^>]*>)(.*?)(</section>)', re.S | re.I
 )
 H2_RE = re.compile(r'<h[23][^>]*>(.*?)</h[23]>', re.S | re.I)
+
+
+def as_fragment(html: str) -> str:
+    """Strip everything that only makes sense in a standalone document.
+
+    The engines emit complete HTML files. Pasting one into an already-rendered
+    report used to carry its <head> across: a nested <style> still applies to
+    the whole page and, arriving last, silently repainted the card design in the
+    engine's own theme. Its <h1> then showed up as a second report title.
+    """
+    out = re.sub(r'<style\b[^>]*>.*?</style>', '', html or '', flags=re.S | re.I)
+    out = re.sub(r'<script\b[^>]*>.*?</script>', '', out, flags=re.S | re.I)
+    out = re.sub(r'<link\b[^>]*>', '', out, flags=re.I)
+    out = re.sub(r'<!DOCTYPE[^>]*>', '', out, flags=re.I)
+    out = re.sub(r'<title\b[^>]*>.*?</title>', '', out, flags=re.S | re.I)
+    out = re.sub(r'</?(?:html|head|body)\b[^>]*>', '', out, flags=re.I)
+    out = re.sub(r'<meta\b[^>]*>', '', out, flags=re.I)
+    # The engine's own title duplicates the card heading above it.
+    out = re.sub(r'<h1\b[^>]*>.*?</h1>', '', out, flags=re.S | re.I)
+    # Demote what is left so it nests under the card's own h3 heading.
+    out = re.sub(r'<(/?)h2\b', r'<\1h4', out, flags=re.I)
+    out = re.sub(r'<(/?)h3\b', r'<\1h5', out, flags=re.I)
+    return out.strip()
 
 
 def _text(raw: str) -> str:

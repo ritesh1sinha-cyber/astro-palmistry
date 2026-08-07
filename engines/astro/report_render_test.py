@@ -95,14 +95,14 @@ except Exception:
                     {"label": "Bhakoot", "score": 0, "max": 7, "ok": False}],
           "stars": {"groom": "Hasta", "bride": "Mrigashira"},
           "activeDoshas": [], "blocking": False}
-mf, mp, _ = RD.kundali_match(mm, groom="Ritesh", bride="Aditi", price=299)
+mf, mp, _ = RD.kundali_match(mm, groom="Sample", bride="Partner", price=299)
 check("free shows the score out of 36", "36" in visible(mf))
 check("decimals are not split by the scrub", not DECIMAL_SPLIT.search(mf),
       str((DECIMAL_SPLIT.search(mf) or [""])[0]))
 check("no career gemstones in a compatibility report",
       "gemstone" not in mf.lower())
 check("couple header appears once",
-      visible(mf).count("Ritesh &amp; Aditi") + visible(mf).count("Ritesh & Aditi") == 1,
+      visible(mf).count("Sample &amp; Partner") + visible(mf).count("Sample & Partner") == 1,
       visible(mf)[:120])
 
 # ---------------------------------------------------------------------------
@@ -153,7 +153,10 @@ if pc:
           f"free={body_of(ff).count('locked-inline')} "
           f"paid={body_of(fp).count('locked-inline')}")
     check("the bundle is offered in free only",
-          "Everything, one price" in ff and "Everything, one price" not in fp)
+          "Everything, one package" in ff and "Everything, one package" not in fp)
+    check("bundle asks for contact, not a payment button",
+          "admin@graharekha.co.in" in ff
+          and 'data-unlock="1"' not in ff.split("Everything, one package")[1][:800])
     check("no leak in the free half", not LEAK.search(ff),
           str((LEAK.search(ff) or [""])[0]))
     check("no leak in the paid half", not LEAK.search(fp),

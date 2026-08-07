@@ -1,0 +1,2 @@
+# Model weights are downloaded at Docker build / first boot — not committed to git.
+# See MODELS.md at the repo root.

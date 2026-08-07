@@ -12,6 +12,7 @@ from vedic_jaimini_report import PERIOD_PLAIN as JAIMINI_SIGN_PLAIN
 from daily_moon_rules_data import (
     CHANDRA_RULES,
     HOUSE_ACTIONS,
+    PLANET_COLOUR,
     TARABALA_RULES,
     pick_variant,
 )
@@ -206,15 +207,9 @@ PD_PERSONAL: dict[str, tuple[str, str]] = {
     "Ketu": ("Pratyantar Ketu asks for quiet release - donate, delete, or skip one draining commitment.", "Ketu pratyantar"),
 }
 
-WEEKDAY_COLOR_HINT: dict[str, str] = {
-    "Sun": "white, cream, or gold",
-    "Moon": "white or pearl",
-    "Mars": "red or coral",
-    "Mercury": "green",
-    "Jupiter": "yellow or saffron",
-    "Venus": "white or pastel pink",
-    "Saturn": "navy, black, or charcoal",
-}
+#: One planet-colour table for the whole daily reading, so the Do line and the
+#: lucky-colour card can never name different colours for the same planet.
+WEEKDAY_COLOR_HINT = PLANET_COLOUR
 
 
 def _first_name(client: str) -> str:

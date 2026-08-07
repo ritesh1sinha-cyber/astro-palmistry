@@ -8,7 +8,7 @@ banner telling the customer so:
 
     Partial pass: 0/12 specialist sub-reports were on disk when this
     confluence ran. Cross-method confidence is capped at MODERATE until the
-    full lane set is generated for Ritesh_8f6a07
+    full lane set is generated for Sample_8f6a07
 
 Three problems in one sentence: the customer is shown internal status, an
 internal slug, and — worst — it is true. The most expensive product in the

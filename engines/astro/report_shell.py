@@ -168,6 +168,20 @@ padding:14px 16px;text-decoration:none;color:inherit}
 letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
 footer.fine{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);
 font-size:.72rem;color:var(--muted);line-height:1.6}
+details.workings{margin:28px 0;border:1px solid var(--line);border-radius:12px;
+background:var(--card);overflow:hidden}
+details.workings summary{cursor:pointer;padding:14px 18px;font-size:.82rem;
+font-weight:600;color:var(--muted);list-style:none}
+details.workings summary::-webkit-details-marker{display:none}
+details.workings[open] summary{border-bottom:1px solid var(--line)}
+.workings-wrap,.workings-body{padding:14px 18px 18px;font-size:.84rem;
+color:#3d4250;line-height:1.55}
+.workings-body h4,.workings-body h5{font-family:Fraunces,Georgia,serif;
+font-size:1rem;margin:18px 0 8px;color:var(--ink)}
+.workings-body table{width:100%;border-collapse:collapse;font-size:.78rem;margin:10px 0}
+.workings-body th,.workings-body td{border:1px solid var(--line);padding:6px 8px;
+text-align:left;vertical-align:top}
+.workings-main>summary{font-size:.88rem;color:var(--ink)}
 /* tab_renderers shared dialect */
 .tab{margin:8px 0 28px}
 .tab-head{margin-bottom:14px}
@@ -218,6 +232,17 @@ padding:18px 20px;margin:12px 0 16px;border-left:4px solid var(--mixed)}
 .num-card{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);
 border-radius:12px;padding:14px 16px}
 .num-big{font-family:Fraunces,serif;font-size:2.2rem;font-weight:600;min-width:2.2rem}
+.num-body{flex:1}
+.num-body p{margin:3px 0 6px;font-size:.88rem;color:#3d4250}
+.lo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px}
+.lo-cell{border:1px solid var(--line);border-radius:10px;padding:10px 8px;text-align:center;
+background:var(--card);min-height:5.4rem}
+.lo-cell.empty{border-style:dashed;background:#faf8f4}
+.lo-n{display:block;font-size:.64rem;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.lo-count{display:block;font-family:Fraunces,serif;font-size:1.5rem;line-height:1.3;
+letter-spacing:.06em}
+.lo-cell.empty .lo-count{color:var(--down)}
+.lo-what{display:block;font-size:.68rem;color:var(--muted);line-height:1.25}
 .num-label{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
 font-weight:600}
 .num-src{font-size:.74rem;color:var(--muted)}
@@ -231,6 +256,172 @@ padding:10px 12px;font-size:.82rem}
 color:var(--muted);font-weight:600;margin-bottom:3px}
 .fine{font-size:.78rem;color:var(--muted)}
 .locked-inline{color:var(--mixed)}
+/* daily reading */
+.daily .agree{float:right}
+.daily .pill{display:inline-block;margin-top:8px}
+.lanes{list-style:none;margin:0;padding:0}
+.lanes li{display:grid;grid-template-columns:8.5rem 1fr auto;gap:10px;
+align-items:baseline;padding:9px 0;border-top:1px solid var(--line);font-size:.86rem}
+.lanes li:first-child{border-top:0}
+.lanes li>span:first-child{font-weight:600}
+@media(max-width:520px){.lanes li{grid-template-columns:1fr auto}
+.lanes li>span:first-child{grid-column:1/-1}}
+.windows li.w-up{border-left:3px solid var(--up);padding-left:10px}
+.windows li.w-down{border-left:3px solid var(--down);padding-left:10px}
+/* palm reading */
+.pill.faint{background:#f1efea;color:var(--muted)}
+.palm-shots{margin:8px 0 18px}
+.palm-imgs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 8px}
+@media(max-width:480px){.palm-imgs{grid-template-columns:1fr}}
+.palm-imgs figure{margin:0}
+.palm-imgs img{width:100%;display:block;border:1px solid var(--line);border-radius:12px}
+.palm-imgs figcaption{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+font-weight:600;color:var(--muted);margin-top:6px;text-align:center}
+.palm-scores{list-style:none;margin:10px 0 0;padding:0}
+.palm-scores li{display:grid;grid-template-columns:5.5rem 1fr 2.2rem;gap:10px;
+align-items:center;padding:6px 0;font-size:.85rem}
+.palm-scores b{text-align:right;font-variant-numeric:tabular-nums}
+.palm-list{list-style:none;margin:0;padding:0}
+.palm-list li{padding:10px 0;border-top:1px solid var(--line);font-size:.9rem}
+.palm-list li:first-child{border-top:0}
+.palm-list p{margin:4px 0 0;font-size:.88rem;color:#3d4250}
+.palm-list.plain li{font-size:.88rem;color:#3d4250}
+.palm-points{list-style:none;margin:8px 0 0;padding:0}
+.palm-points li{padding:8px 0;border-top:1px solid var(--line)}
+.palm-points p{margin:3px 0 0}
+.pt-when{margin-left:8px;font-size:.74rem;font-weight:600;color:var(--mixed);
+font-variant-numeric:tabular-nums}
+b.both{font-size:.72rem;color:var(--up);letter-spacing:.02em}
+/* Present reading + recognition feedback (accuracy pills / mismatch modal) */
+.present{margin:22px 0 28px}
+.present-head .ev-label,.recog-label{font-size:.64rem;letter-spacing:.13em;
+text-transform:uppercase;font-weight:600;color:var(--muted)}
+.present-head h3{font-family:Fraunces,serif;font-size:1.22rem;margin:8px 0 6px;font-weight:600}
+.present-lede{font-size:.9rem;color:#3d4250;margin:0 0 12px}
+.present-list{margin:0 0 14px;padding-left:18px;font-size:.9rem}
+.present-list li{margin:8px 0}
+.present-ask,.recog-ask{display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:.86rem}
+.present-ask>span,.recog-ask>span{width:100%;color:var(--muted);font-weight:500}
+.pillbtn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);
+font:inherit;font-size:.82rem;font-weight:600;padding:8px 14px;border-radius:99px;
+cursor:pointer}
+.pillbtn:hover{border-color:var(--ink)}
+.pillbtn.on{background:var(--ink);color:#f7f5f1;border-color:var(--ink)}
+.pillbtn:disabled{opacity:.55;cursor:default}
+.feedback-thanks{margin-top:12px;font-size:.88rem;color:var(--up);font-weight:600}
+.recognition .recog-ask{margin-top:18px}
+.recog-block{margin:16px 0;padding-top:12px;border-top:1px solid var(--line)}
+.recog-claim{font-family:Fraunces,serif;font-size:1.02rem;margin:10px 0 4px;font-weight:500}
+.recog-why{font-size:.78rem;color:var(--muted);margin:0 0 8px}
+.recog-why span{font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+font-size:.64rem;margin-right:6px}
+.mm-overlay{position:fixed;inset:0;background:rgba(22,24,29,.48);display:flex;
+align-items:flex-end;justify-content:center;padding:16px;z-index:40}
+@media(min-width:560px){.mm-overlay{align-items:center}}
+.mm-overlay[hidden]{display:none!important}
+.mm-box{background:#fff;border-radius:16px;padding:22px 20px 18px;max-width:440px;
+width:100%;max-height:min(88vh,640px);overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.18)}
+.mm-box h3{font-family:Fraunces,serif;font-size:1.2rem;margin:8px 0 10px;font-weight:600}
+.mm-box p{font-size:.88rem;margin:0 0 10px;color:#3d4250}
+.mm-routes{margin:8px 0 14px;padding-left:18px;font-size:.86rem;color:#3d4250}
+.mm-routes li{margin:8px 0}
+.mm-actions{display:grid;gap:8px;margin:14px 0 10px}
+.cta-dark,.cta-light{display:block;text-align:center;text-decoration:none;font-weight:600;
+font-size:.88rem;padding:12px 14px;border-radius:99px}
+.cta-dark{background:var(--ink);color:#f7f5f1}
+.cta-light{background:#f6f4ef;color:var(--ink);border:1px solid var(--line)}
+.mm-close{appearance:none;display:block;width:100%;border:0;background:transparent;
+color:var(--muted);font:inherit;font-size:.82rem;font-weight:600;padding:10px;
+cursor:pointer}
+"""
+
+#: Click handlers for accuracy pills + mismatch modal. Reports are iframes, so
+#: "go to BTR / horary / palm" is a postMessage to the host SPA (same origin
+#: and Vercel→Railway cross-origin both).
+INTERACT = """
+<script>
+(function(){
+  var MODAL_HTML = '<div class="mm-overlay" id="mismatch" hidden>'
+    + '<div class="mm-box">'
+    + '<div class="ev-label">Then something upstream is wrong</div>'
+    + '<h3>Most likely, your birth time is not accurate.</h3>'
+    + '<p>This is the common case, not a rare one. Hospital records round to the '
+    + 'nearest five or ten minutes, and families remember approximately. A '
+    + '<b>twenty-minute error moves your rising sign</b> — and once that moves, '
+    + 'every house shifts, so every prediction built on it shifts with it.</p>'
+    + '<p>Three ways forward:</p>'
+    + '<ol class="mm-routes">'
+    + '<li><b>Birth-time rectification</b> — test candidate minutes against dates from your life.</li>'
+    + '<li><b>Ask a question instead</b> — horary needs no birth time.</li>'
+    + '<li><b>Read your palms</b> — needs no birth data.</li>'
+    + '</ol>'
+    + '<div class="mm-actions">'
+    + '<a class="cta-dark" href="#" data-nav="btr">Fix my birth time</a>'
+    + '<a class="cta-light" href="#" data-nav="horary">Ask a question instead</a>'
+    + '<a class="cta-light" href="#" data-nav="read">Read my palms</a>'
+    + '</div>'
+    + '<button type="button" class="mm-close" data-close="1">Close</button>'
+    + '</div></div>';
+  function thanksNear(el, msg){
+    var ask = el && el.closest('.present-ask, .recog-ask');
+    if(!ask) return;
+    ask.querySelectorAll('.pillbtn').forEach(function(b){ b.disabled = true; });
+    el.classList.add('on');
+    var t = ask.parentNode.querySelector('.feedback-thanks');
+    if(!t){
+      t = document.createElement('div');
+      t.className = 'feedback-thanks';
+      ask.insertAdjacentElement('afterend', t);
+    }
+    t.textContent = msg;
+  }
+  function ensureMismatch(){
+    var m = document.getElementById('mismatch');
+    if(m) return m;
+    document.body.insertAdjacentHTML('beforeend', MODAL_HTML);
+    return document.getElementById('mismatch');
+  }
+  function showMismatch(){
+    var m = ensureMismatch();
+    if(m) m.hidden = false;
+  }
+  function hideMismatch(){
+    var m = document.getElementById('mismatch');
+    if(m) m.hidden = true;
+  }
+  function navigate(target){
+    var view = 'astro', pane = target;
+    if(target === 'read' || target === 'palm'){ view = 'read'; pane = null; }
+    else if(target === 'horary' || target === 'question'){ pane = 'horary'; }
+    else if(target === 'btr'){ pane = 'btr'; }
+    try{
+      parent.postMessage({source:'graharekha', action:'navigate', view:view, pane:pane}, '*');
+    }catch(e){}
+    hideMismatch();
+  }
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-mm],[data-v],[data-close],[data-nav],[data-unlock],a[href="#unlock"]');
+    if(!btn) return;
+    e.preventDefault();
+    if(btn.hasAttribute('data-close')){ hideMismatch(); return; }
+    if(btn.hasAttribute('data-unlock') || btn.getAttribute('href') === '#unlock'){
+      try{ parent.postMessage({source:'graharekha', action:'unlock'}, '*'); }catch(err){}
+      return;
+    }
+    if(btn.hasAttribute('data-nav')){ navigate(btn.getAttribute('data-nav')); return; }
+    var v = btn.getAttribute('data-mm') || btn.getAttribute('data-v');
+    if(v === 'yes'){
+      thanksNear(btn, 'Good — the chart is reading you correctly. Keep going.');
+      return;
+    }
+    if(v === 'partly' || v === 'some' || v === 'no'){
+      thanksNear(btn, 'Noted. A wrong present reading usually means the birth time needs a check.');
+      showMismatch();
+    }
+  });
+})();
+</script>
 """
 
 
@@ -260,4 +451,4 @@ def page(title: str, body: str, *, eyebrow: str = "", heading: str = "",
             f'<meta name="viewport" content="width=device-width,initial-scale=1"/>'
             f"<title>{esc(title)}</title>{FONTS}"
             f"<style>{STYLE}{EXTRA}</style></head><body>"
-            f'<div class="wrap">{head}{body}{foot}</div></body></html>')
+            f'<div class="wrap">{head}{body}{foot}</div>{INTERACT}</body></html>')

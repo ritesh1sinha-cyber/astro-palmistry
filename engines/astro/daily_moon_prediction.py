@@ -80,15 +80,53 @@ def _jd_ut(d: date, hour_ut: float = 6.0) -> float:
     return swe.julday(d.year, d.month, d.day, hour_ut) if _SWE else 0.0
 
 
+_EPHE_PATH: Optional[str] = None
+
+
+def _ephe_path() -> str:
+    global _EPHE_PATH
+    if _EPHE_PATH is None:
+        try:
+            from jhora import const as _jconst
+            _EPHE_PATH = str(getattr(_jconst, "_ephe_path", "") or "")
+        except Exception:
+            _EPHE_PATH = ""
+    return _EPHE_PATH
+
+
+def ensure_sidereal() -> None:
+    """Re-assert this module's ephemeris settings before any transit maths.
+
+    swisseph keeps one ayanamsa and one set of open ephemeris handles per
+    process, and three other engines in this codebase move them: kp_horary_engine
+    switches the ayanamsa to Krishnamurti, PyJHora points the path at its own
+    bundled files, and PyJHora closes the handles when it is finished. Whichever
+    ran last in the worker would otherwise decide silently which ayanamsa a
+    daily reading is computed in, and a closed handle makes the lunar-node
+    call fail outright — which is why the first daily reading in a process
+    succeeded and later ones did not.
+
+    The module-level `set_sid_mode` at import runs once and cannot defend
+    against that. Setting it per reading costs nothing measurable.
+    """
+    if not _SWE:
+        return
+    swe.set_ephe_path(_ephe_path())
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+
+
 def _sid_lon(planet: str, jd_ut: float) -> float:
     if not _SWE:
         return 0.0
     pid = _PLANET_IDS[planet]
     flags = swe.FLG_SIDEREAL | swe.FLG_SPEED
-    if planet == "Rahu":
-        lon = swe.calc_ut(jd_ut, swe.TRUE_NODE, flags)[0][0]
-    else:
-        lon = swe.calc_ut(jd_ut, pid, flags)[0][0]
+    target = swe.TRUE_NODE if planet == "Rahu" else pid
+    try:
+        lon = swe.calc_ut(jd_ut, target, flags)[0][0]
+    except swe.Error:
+        # Another engine left the ephemeris closed mid-process. Reopen once.
+        ensure_sidereal()
+        lon = swe.calc_ut(jd_ut, target, flags)[0][0]
     return lon % 360.0
 
 
@@ -289,21 +327,104 @@ def _lucky_colors(
 ) -> list[dict]:
     sign_lord = SIGN_LORDS.get(transit_moon_sign, "Moon")
     colors: list[dict] = []
+    # The weekday lord, the nakshatra lord and the sign lord are frequently the
+    # same planet, and listing one colour three times reads like a bug.
+    seen: set[str] = set()
     for planet, role in (
-        (weekday_lord, "Weekday lord"),
-        (moon_nak_lord, "Transit nakshatra lord"),
-        (sign_lord, f"Lord of transit Moon sign ({transit_moon_sign})"),
+        (weekday_lord, "the planet ruling today"),
+        (moon_nak_lord, f"the lord of today's star"),
+        (sign_lord, f"the lord of {transit_moon_sign}, where the Moon is"),
     ):
-        name, why = color_from_gem_rules(planet)
-        colors.append({"name": name, "why": why, "source": f"rules40/41 GEM_DATA ({role}: {planet})"})
-    if tone in ("sensitive", "mixed-caution"):
+        if not planet or planet in seen:
+            continue
+        seen.add(planet)
+        name, note = color_from_gem_rules(planet)
+        colors.append({
+            "name": name,
+            "why": f"{planet} is {role}. {note}".strip(),
+            "source": f"rules40/41 GEM_DATA ({role}: {planet})",
+        })
+    if tone in ("sensitive", "mixed-caution") and "Moon" not in seen:
         w, _ = color_from_gem_rules("Moon")
-        colors.append({"name": w, "why": "Cooling neutral when Tarabala/Chandrabal are stressed", "source": "rules40/41 Moon"})
+        colors.append({
+            "name": w,
+            "why": "A cooling neutral, because Tarabala and Chandrabala are both stressed today.",
+            "source": "rules40/41 Moon",
+        })
     return colors[:3]
 
 
 def _rule_item(text: str, source: str) -> dict:
     return {"text": text, "source": source}
+
+
+def _dasha_lord_ashtakavarga(
+    *,
+    lords: list[tuple[str, str]],
+    transits: dict[str, dict],
+    jd: float,
+    sav_list: list,
+    bav: dict,
+    natal_moon_sign: str,
+    lagna: str,
+    residents_of,
+) -> list[dict[str, Any]]:
+    """Bindus on the sign each running dasha lord is crossing today.
+
+    The daily block already scores Moon, Sun and Mercury, which are the fast
+    movers  -  but the planet actually running the chart is the mahadasha /
+    antardasha / pratyantardasha lord, and nothing was reading its transit
+    sign. That number is the bridge between the clock and the sky: a period
+    lord crossing a sign where it owns few bindus is exactly the case where the
+    remedy is worth naming, and where a promising-looking dasha underdelivers.
+
+    Rahu and Ketu have no bhinnashtakavarga of their own in the Parashari
+    scheme, so they are reported on the sign's sarvashtakavarga alone rather
+    than being handed a fabricated bindu count.
+    """
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for role, lord in lords:
+        if not lord or lord in seen:
+            continue
+        seen.add(lord)
+
+        t = transits.get(lord)
+        if t is not None:
+            sign = t["sign"]
+            h_moon = t["house_from_moon"]
+            h_lagna = t["house_from_lagna"]
+        elif lord == "Ketu":
+            lon = (_sid_lon("Rahu", jd) + 180.0) % 360.0
+            sign = SIGNS[_sign_idx(lon)]
+            h_moon = _house_from(natal_moon_sign, sign)
+            h_lagna = _house_from(lagna, sign)
+        else:
+            continue
+
+        si = SIGNS.index(sign)
+        sav = sav_list[si] if si < len(sav_list) else 28
+        own = bav.get(lord)
+        bv = own[si] if own and si < len(own) else None
+
+        if bv is None:
+            meaning = sav_house_meaning(h_lagna, sav, sign, residents_of(sign))
+            meaning += (f" {lord} carries no bindus of its own in the classical "
+                        f"scheme, so the sign's own total is the reading.")
+        else:
+            meaning = bav_transit_meaning(lord, h_lagna, bv, sav)
+
+        rows.append({
+            "role": role,
+            "planet": lord,
+            "sign": sign,
+            "sav": sav,
+            "bav": bv,
+            "house_from_moon": h_moon,
+            "house_from_lagna": h_lagna,
+            "meaning": meaning,
+        })
+    return rows
 
 
 def compute_daily_moon_guide(
@@ -319,6 +440,7 @@ def compute_daily_moon_guide(
         raise RuntimeError("pyswisseph required for daily transit math")
 
     target = target or date.today()
+    ensure_sidereal()
     meta = pc.get("meta", {})
     client = meta.get("client", "Client")
     lagna = meta.get("lagna_sign") or pc.get("lagna", {}).get("sign", "Aries")
@@ -447,7 +569,7 @@ def compute_daily_moon_guide(
 
     moon_house = moon_t["house_from_moon"]
     theme = HOUSE_LIFE_THEME.get(moon_house, "today's emotional focus")
-    residents = ", ".join(_sign_residents(pc, moon_t["sign"])) or "none"
+    residents = ", ".join(_sign_residents(pc, moon_t["sign"]))
 
     sav_line = sav_house_meaning(
         moon_house, moon_sav, moon_t["sign"], residents,
@@ -503,6 +625,32 @@ def compute_daily_moon_guide(
         slow_notes=slow_notes,
     )
     dasha_note = vedic["dasha_note"]
+
+    lord_av = _dasha_lord_ashtakavarga(
+        lords=[("Mahadasha", md_lord), ("Antardasha", ad_lord),
+               ("Pratyantardasha", pd_lord)],
+        transits=transits,
+        jd=jd,
+        sav_list=sav_list,
+        bav=bav,
+        natal_moon_sign=moon_sign,
+        lagna=lagna,
+        residents_of=lambda s: ", ".join(_sign_residents(pc, s)),
+    )
+    if lord_av:
+        scored = [r for r in lord_av if r["bav"] is not None]
+        signal = "; ".join(
+            (f"{r['planet']} {r['bav']}/8 in {r['sign']}" if r["bav"] is not None
+             else f"{r['planet']} in {r['sign']}, sign SAV {r['sav']}")
+            for r in lord_av)
+        # Weight follows the weakest lord: one thin period lord is the whole
+        # point of computing this, and it should not be averaged away.
+        weakest = min((r["bav"] for r in scored), default=4)
+        vedic.setdefault("lanes", []).append({
+            "lane": "Dasha-lord Ashtakavarga",
+            "signal": signal,
+            "weight": "high" if (weakest <= 3 or weakest >= 5) else "medium",
+        })
 
     nak_lord = NAK_TO_DASHA_LORD.get(moon_t["nakshatra"], "Moon")
     transit_nak_idx = _nak_index(moon_t["nakshatra"])
@@ -601,6 +749,7 @@ def compute_daily_moon_guide(
             "moon": {"sav": moon_sav, "bav": moon_bav, "sav_line": sav_line, "bav_line": bav_line},
             "sun": {"sav": sun_sav, "bav": sun_bav},
             "mercury": {"sav": merc_sav, "bav": merc_bav},
+            "dasha_lords": lord_av,
         },
         "slow_planet_notes": slow_notes[:5],
         "sun_narrative": sun_line,
@@ -628,6 +777,7 @@ def compute_daily_moon_guide(
             "Bhardwaj gochar tables (bhardwaj_book_data.json)",
             "Bhardwaj nakshatra_effects (transit star)",
             "Ashtakavarga SAV/BAV (rules10)",
+            "Ashtakavarga bindus on the transit signs of the running dasha lords (rules10 x Vimshottari)",
             "GK transit+dasha pairing incl. Vim/Jaimini pratyantar (rules11)",
             "Boney D1-D9 dignity cross-check on period lords (rules45)",
             "Jaimini Chara karakas + SAV on dasha signs (rules6/rules10)",

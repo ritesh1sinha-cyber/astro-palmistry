@@ -7,7 +7,7 @@ failure, so it works as a post-deploy gate in CI.
 
     python3 e2e_check.py --api https://your-domain \
         --left left.jpg --right right.jpg \
-        --dob 1985-03-08 --tob 13:05 --lat 25.5941 --lon 85.1376
+        --dob 1990-01-15 --tob 12:00 --lat 28.6139 --lon 77.2090
 
 Auth uses /api/auth/dev, which requires DEV_LOGIN=1 (never set in production).
 Against a production host, pass --token from a real signed-in session instead.
@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -70,11 +71,11 @@ def main() -> int:
     p.add_argument("--token", default="")
     p.add_argument("--left"); p.add_argument("--right")
     p.add_argument("--name", default="E2E Test")
-    p.add_argument("--dob", default="1985-03-08")
-    p.add_argument("--tob", default="13:05")
-    p.add_argument("--place", default="Patna, Bihar")
-    p.add_argument("--lat", type=float, default=25.5941)
-    p.add_argument("--lon", type=float, default=85.1376)
+    p.add_argument("--dob", default="1990-01-15")
+    p.add_argument("--tob", default="12:00")
+    p.add_argument("--place", default="New Delhi, India")
+    p.add_argument("--lat", type=float, default=28.6139)
+    p.add_argument("--lon", type=float, default=77.2090)
     p.add_argument("--tz", type=float, default=5.5)
     p.add_argument("--age", type=int, default=41)
     p.add_argument("--full-report", action="store_true")
@@ -91,14 +92,16 @@ def main() -> int:
     # ------------------------------------------------------------------ auth
     if not api.token:
         r = api("/api/auth/dev", {"email": f"e2e-{int(time.time())}@test.local",
-                                  "name": a.name})
+                                  "name": a.name,
+                                  "passcode": os.getenv("GUEST_PASSCODE", "graharekha")})
         if "_status" in r:
             say("auth", None, "pass --token, or set DEV_LOGIN=1 on a dev host")
             return summary()
         api.token = r["token"]
         say("auth", True, r["user"]["email"])
     me = api("/api/me")
-    say("session works", "email" in me, f"free daily left {me.get('freeDailyLeft')}")
+    say("session works", "email" in me,
+        f"subscribed {bool(me.get('subscribed'))}, horary left {me.get('horaryLeft')}")
 
     birth = {"name": a.name, "dob": a.dob, "tob": a.tob, "place": a.place,
              "lat": a.lat, "lon": a.lon, "tz": a.tz, "gender": 0}

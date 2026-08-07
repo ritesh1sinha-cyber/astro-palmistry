@@ -96,8 +96,12 @@ def have_real_encoder() -> bool:
     except Exception:
         return False
     try:
-        from local_models import is_model_ready, MINILM_DIR
-        return bool(is_model_ready(MINILM_DIR))
+        from local_models import (
+            is_model_ready, MINILM_DIR, MINILM_MULTILINGUAL_DIR,
+        )
+        return bool(
+            is_model_ready(MINILM_MULTILINGUAL_DIR) or is_model_ready(MINILM_DIR)
+        )
     except Exception:
         # library present but weights unverifiable — let the real loader try
         return True

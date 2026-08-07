@@ -74,8 +74,8 @@ if __name__ == "__main__":
         "Network blocked Wikimedia/CDN downloads (corporate gateway HTML stubs).\n"
         "Generated synthetic open-palm JPEGs via make_palms.py for pipeline testing.\n"
         "Sample chart (from project e2e scripts):\n"
-        "  Ritesh — 1985-03-08 13:05 Patna (25.5941, 85.1376, tz 5.5)\n"
-        "  Aditi  — 1989-07-29 00:05 Patna (matching)\n",
+        "  Sample — 1990-01-15 12:00 New Delhi (28.6139, 77.2090, tz 5.5)\n"
+        "  Partner — 1992-06-20 08:30 New Delhi (matching)\n",
         encoding="utf-8",
     )
     print("done")

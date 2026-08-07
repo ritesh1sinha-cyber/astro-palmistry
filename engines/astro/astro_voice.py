@@ -175,7 +175,9 @@ def strip_leaks(html: str) -> str:
     # a <dl> or <p> emptied by the strips above should not leave a gap
     out = re.sub(r"<p[^>]*>\s*[.·—-]?\s*</p>", "", out)
     out = re.sub(r"<code>\s*</code>", "", out)
-    out = re.sub(r"\(\s*\)", "", out)
+    # Empty () left after a leak deletion — never touch <script>/<style>, or
+    # report interact JS becomes `function{` / `showMismatch;` and pills die.
+    out = _outside_script_style(out, lambda t: re.sub(r"\(\s*\)", "", t))
     out = re.sub(r"[ \t]{2,}", " ", out)
     return out
 
@@ -289,6 +291,19 @@ JARGON_TABLE = [
 # Nodes whose text is markup, code or already-translated tooltip content.
 _PROTECTED = re.compile(
     r"<(script|style|code|pre|abbr)\b[^>]*>.*?</\1>", re.S | re.I)
+
+
+def _outside_script_style(html: str, fn) -> str:
+    """Apply fn only outside <script> / <style> blocks (keep them byte-identical)."""
+    guard = re.compile(r"<(script|style)\b[^>]*>.*?</\1>", re.S | re.I)
+    out: list[str] = []
+    pos = 0
+    for block in guard.finditer(html):
+        out.append(fn(html[pos:block.start()]))
+        out.append(block.group(0))
+        pos = block.end()
+    out.append(fn(html[pos:]))
+    return "".join(out)
 
 
 def _map_text_nodes(html: str, fn) -> str:
@@ -459,6 +474,8 @@ HUMANISE = [
     (r"\bThe native\b", "You"),    (r"\bthe native\b", "you"),
     (r"\bThe querent's\b", "Your"), (r"\bthe querent's\b", "your"),
     (r"\bThe querent\b", "You"),   (r"\bthe querent\b", "you"),
+    (r"\byou's\b", "your"),        (r"\bYou's\b", "Your"),
+    (r"\bquesited\b", "the matter"), (r"\bQuesited\b", "The matter"),
     (r"\bthe subject\b", "you"),   (r"\bThe subject\b", "You"),
     (r"\bthe client\b", "you"),    (r"\bThe client\b", "You"),
     (r"\bis indicated for the chart holder\b", "shows up for you"),

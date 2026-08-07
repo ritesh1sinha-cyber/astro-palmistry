@@ -21,7 +21,7 @@ simply not importing this module (set ASTRO_HOTFIX=0).
    testing and would ship as a broken ₹99 product.
 
    Reproduce: question "Will I get the promotion this year?",
-              2026-08-03 21:30, Patna — crashes before this patch.
+              2026-08-03 21:30, New Delhi — crashes before this patch.
 
    Recommended real fix (one line, in your repo):
        -  {'①②③④⑤⑥⑦'[i]}

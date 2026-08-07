@@ -3,7 +3,7 @@
 None of these change a single fact. They are the difference between output and
 writing, and a reader registers them long before they could name them:
 
-    DOB: 1985-03-08 Time: 12:56:00        →  Born 8 March 1985 at 12:56
+    DOB: 1990-01-15 Time: 12:56:00        →  Born 15 January 1990 at 12:56
     aspects house(s) 3rd, 8th, 12th        →  aspects houses 3, 8 and 12
     Debilitated house lord(s): 1st lord    →  Debilitated house lord: 1st lord
     ▼ 1/4 ▼ ◆ ◆ ▼                          →  a row that also says what it means
@@ -57,7 +57,7 @@ _HMS = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d):([0-5]\d)\b")
 
 
 def human_dates(text: str, *, long_form: bool = True) -> str:
-    """1985-03-08 → 8 March 1985. Same fact, written the way people write it."""
+    """1990-01-15 → 15 January 1990. Same fact, written the way people write it."""
     def sub(m: re.Match) -> str:
         y, mo, d = int(m[1]), int(m[2]), int(m[3])
         if not (1 <= mo <= 12 and 1 <= d <= 31):

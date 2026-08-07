@@ -1,17 +1,25 @@
-"""Settings. Everything is env-driven so one image runs dev and prod."""
+"""Settings. Everything is env-driven so one image runs dev and prod.
+
+Local credentials also load from the repo-root `.config` JSON file (guest
+passcode, admin username/password, Google Client ID). Environment variables
+always win over `.config` when set.
+"""
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from urllib.parse import quote
 
 # Flip to False before public launch (real Google OAuth + live payments).
 # Not read from Railway — change here only when testing is complete.
 _CODE_DEV_LOGIN = True
-# Until Razorpay/webhooks are wired, orders auto-complete in dev so the
-# half → pay → full flow can be tested end-to-end on localhost.
-_CODE_DEV_AUTO_PAY = True
+# Until Razorpay keys are configured, orders auto-complete so half → pay → full
+# can be tested on localhost and on Vercel→Railway (ENV may still be "prod").
+# Flip to False before live payments go live.
+_CODE_DEV_AUTO_PAY = False
 
 
 def _int(k: str, d: int) -> int:
@@ -25,6 +33,38 @@ def _bool(k: str, d: bool = False) -> bool:
     return os.getenv(k, str(d)).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _load_dot_config() -> dict:
+    """Read optional `.config` JSON next to the project root /app."""
+    candidates = []
+    env_path = (os.getenv("AUTH_CONFIG") or "").strip()
+    if env_path:
+        candidates.append(Path(env_path))
+    candidates.append(Path(__file__).resolve().parents[1] / ".config")
+    candidates.append(Path("/app/.config"))
+    for path in candidates:
+        try:
+            if path.is_file():
+                data = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    return data
+        except Exception as exc:                                     # noqa: BLE001
+            print(f"[config] could not read {path}: {exc}", flush=True)
+    return {}
+
+
+_CFG = _load_dot_config()
+
+
+def _cfg(key: str, env: str, default: str = "") -> str:
+    """Env overrides `.config`, which overrides the hardcoded default."""
+    if env in os.environ and os.environ[env] != "":
+        return os.environ[env]
+    val = _CFG.get(key)
+    if val is None or val == "":
+        return default
+    return str(val)
+
+
 def _build_database_url() -> str:
     """Assemble a Postgres URL from the individual PG* variables that managed
     hosts (Railway, Neon, Render) inject, falling back to SQLite."""
@@ -36,6 +76,28 @@ def _build_database_url() -> str:
     db = quote(os.getenv("PGDATABASE", "postgres"), safe="")
     port = os.getenv("PGPORT", "5432")
     return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{db}"
+
+
+def _allowed_origins() -> list:
+    """CORS origins. Never default to * with credentials — browsers reject it."""
+    raw = os.getenv("ALLOWED_ORIGINS", "").strip()
+    if raw:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    if os.getenv("ENV", "dev") != "prod":
+        return [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5500",
+            "http://127.0.0.1:5500",
+            "http://localhost:8123",
+            "http://127.0.0.1:8123",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
+        ]
+    return [
+        "https://www.graharekha.co.in",
+        "https://graharekha.co.in",
+    ]
 
 
 @dataclass
@@ -55,15 +117,22 @@ class Settings:
 
     # --- security ----------------------------------------------------------
     secret: str = os.getenv("APP_SECRET", "dev-only-change-me")
-    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    google_client_id: str = field(default_factory=lambda: _cfg(
+        "google_client_id", "GOOGLE_CLIENT_ID", ""))
+    # Guest / admin test logins (passcode + password). Off when False.
     dev_login: bool = _CODE_DEV_LOGIN
     dev_auto_pay: bool = _CODE_DEV_AUTO_PAY
-    admin_email: str = os.getenv("ADMIN_EMAIL", "admin@graharekha.test")
-    admin_password: str = os.getenv("ADMIN_PASSWORD", "graha-admin")
+    guest_passcode: str = field(default_factory=lambda: _cfg(
+        "guest_passcode", "GUEST_PASSCODE", "graharekha"))
+    admin_username: str = field(default_factory=lambda: _cfg(
+        "admin_username", "ADMIN_USERNAME", "graharekha"))
+    admin_email: str = field(default_factory=lambda: _cfg(
+        "admin_email", "ADMIN_EMAIL", "graharekha@graharekha.local"))
+    admin_password: str = field(default_factory=lambda: _cfg(
+        "admin_password", "ADMIN_PASSWORD", "graharekha123"))
     session_days: int = _int("SESSION_DAYS", 30)
     link_ttl_seconds: int = _int("LINK_TTL_SECONDS", 3600)
-    allowed_origins: list = field(default_factory=lambda: [
-        o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()])
+    allowed_origins: list = field(default_factory=lambda: _allowed_origins())
 
     # --- capacity ----------------------------------------------------------
     # Each worker process handles ONE job at a time (the engines are CPU-bound),
@@ -81,25 +150,19 @@ class Settings:
 
     # --- pricing (paise) ---------------------------------------------------
     prices: dict = field(default_factory=lambda: {
-        "palm_full":      _int("PRICE_PALM", 49900),
-        "full_report":    _int("PRICE_REPORT", 149900),
-        "horary":         _int("PRICE_HORARY", 9900),
-        "future_event":   _int("PRICE_TIMING", 19900),
-        "kundali_match":  _int("PRICE_MATCH", 29900),
-        "muhurat":        _int("PRICE_MUHURAT", 4900),
-        "btr":            _int("PRICE_BTR", 99900),
-        "subscription":   _int("PRICE_SUB", 19900),
-        # The numerology TAB is free (three numbers, the Lo Shu grid, the year
-        # you are in). This price unlocks the years ahead and the remedy for
-        # each empty Lo Shu cell — the "Numerology, full" line in the bundle.
-        "numerology_full": _int("PRICE_NUMEROLOGY", 19900),
-        # Everything, one payment. Separately these come to Rs 4,544, so the
-        # bundle is priced to be the obvious choice rather than a token
-        # discount — and it front-loads the rectification, which every other
-        # reading depends on.
-        "bundle_all":     _int("PRICE_BUNDLE", 210000),
+        # All paid unlocks are ₹298 to match the fixed Razorpay payment button.
+        "palm_full":      _int("PRICE_PALM", 29800),
+        "full_report":    _int("PRICE_REPORT", 29800),
+        "horary":         _int("PRICE_HORARY", 29800),
+        "future_event":   _int("PRICE_TIMING", 29800),
+        "kundali_match":  _int("PRICE_MATCH", 29800),
+        "muhurat":        _int("PRICE_MUHURAT", 29800),
+        "btr":            _int("PRICE_BTR", 29800),
+        "subscription":   _int("PRICE_SUB", 29800),
+        "numerology_full": _int("PRICE_NUMEROLOGY", 29800),
+        # Full-family / everything package is quote-only — see contact CTA.
+        "bundle_all":     _int("PRICE_BUNDLE", 29800),
     })
-    free_daily_readings: int = _int("FREE_DAILY", 3)
     sub_horary_per_month: int = _int("SUB_HORARY", 3)
 
     # --- launch offer ------------------------------------------------------
@@ -115,6 +178,9 @@ class Settings:
     razorpay_key_id: str = os.getenv("RAZORPAY_KEY_ID", "")
     razorpay_key_secret: str = os.getenv("RAZORPAY_KEY_SECRET", "")
     razorpay_webhook_secret: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
+    razorpay_payment_button_id: str = field(default_factory=lambda: _cfg(
+        "razorpay_payment_button_id", "RAZORPAY_PAYMENT_BUTTON_ID",
+        "pl_TMzAWfueT93HPY"))
     upi_id: str = os.getenv("UPI_ID", "")
     payee_name: str = os.getenv("PAYEE_NAME", "GrahaRekha")
 

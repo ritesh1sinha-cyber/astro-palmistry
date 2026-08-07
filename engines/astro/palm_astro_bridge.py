@@ -924,7 +924,7 @@ def selftest() -> int:
     import json
     import os
 
-    charts = [p for p in ("/tmp/pc.json", "/tmp/pc_aditi.json",
+    charts = [p for p in ("/tmp/pc.json", "/tmp/pc_partner.json",
                           "/tmp/pc_modi.json", "/tmp/pc_sachin.json")
               if os.path.isfile(p)]
     banned = re.compile(r"\d{2,3}\s*years?|year\s*scale|lifespan|life expectancy|"

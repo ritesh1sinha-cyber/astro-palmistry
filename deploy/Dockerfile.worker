@@ -7,50 +7,43 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential git libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+        build-essential git git-lfs libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
         postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && git lfs install --system
 
 WORKDIR /app
 
-# ---------------------------------------------------------------------------
-# Fetch the source straight from the public GitHub repo at build time.
-#
-# Every attempt to ship the source via the build context failed on Railway with
-# an inconsistent set of "not found" errors: deploy/ephe/, engines/astro, a
-# bare requirements.worker.txt, and finally EVERY file at once (even api.py at
-# the repo root) while a sibling file had been present in a previous build.
-# The context Railway uploads is not reliably our repo, so we stop using it.
-#
-# This Dockerfile references no build-context files at all — no COPY, no ADD —
-# so a broken context cannot break the build. The clone runs from the builder
-# over the network and the assertion below verifies what actually arrived.
-#
-# Trade-off: cloning on every deploy costs a little time but never depends on
-# Railway shipping the context intact.
-# ---------------------------------------------------------------------------
+# Clone the repo INCLUDING Git LFS MiniLM weights (no Hugging Face download).
 ARG GIT_REPO=https://github.com/ritesh1sinha-cyber/astro-palmistry.git
 ARG GIT_REF=main
 ARG RAILWAY_GIT_COMMIT_SHA=unknown
-RUN echo "cloning commit $RAILWAY_GIT_COMMIT_SHA" && git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" . && rm -rf .git
+ENV GIT_LFS_SKIP_SMUDGE=0
+RUN echo "cloning commit $RAILWAY_GIT_COMMIT_SHA (with LFS models)" \
+ && git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" . \
+ && git lfs pull \
+ && rm -rf .git
 
 # Show what the clone delivered, then fail loudly and specifically if anything
 # the runtime needs did not arrive.
 RUN python -c "import pathlib,sys; \
 print('--- /app listing ---'); \
 [print('  '+str(p)) for p in sorted(pathlib.Path('.').iterdir())]; \
-missing=[q for q in ('requirements.api.txt','requirements.worker.txt','engines/palm_api/pipeline.py','engines/astro/astro_precompute.py','core/handlers.py','api.py') if not pathlib.Path(q).exists()]; \
-sys.exit('SOURCE CLONE INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('source complete')"
+need=('requirements.api.txt','requirements.worker.txt','engines/palm_api/pipeline.py','engines/astro/astro_precompute.py','core/handlers.py','api.py','engines/astro/models/paraphrase-multilingual-MiniLM-L12-v2/model.safetensors'); \
+missing=[q for q in need if not pathlib.Path(q).exists()]; \
+sys.exit('SOURCE CLONE INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('source + MiniLM LFS complete')"
 
 RUN pip install -r requirements.worker.txt
 
-# sentence-transformers + torch (~2 GB) are needed ONLY by the full confluence
-# report. Off by default so the first deploy is quick; turn it on when you have
-# a box with 4 GB and want that one feature.
-ARG WITH_CONFLUENCE=0
+# sentence-transformers + torch — models already in the repo (Git LFS).
+# torch>=2.5 required: transformers (via ST 5.x) imports DTensor from
+# torch.distributed.tensor, which 2.4.x does not export.
+ARG WITH_CONFLUENCE=1
 RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
-      pip install "torch==2.4.*" --index-url https://download.pytorch.org/whl/cpu && \
-      pip install "sentence-transformers>=2.2"; \
+      pip install "torch==2.5.1" --index-url https://download.pytorch.org/whl/cpu && \
+      pip install "sentence-transformers>=3.0,<6" && \
+      python -c "from sentence_transformers import SentenceTransformer; print('ST import OK')" && \
+      python deploy/ensure_semantic_models.py; \
     fi
 
 # `import palm_api` and `import astro_precompute` both resolve, with the engines
@@ -71,12 +64,13 @@ print('astrology engine imports OK')"
 # site-packages, so that directory is the source root.
 ENV PYJHORA_SRC=/usr/local/lib/python3.12/site-packages
 
+ENV WITH_CONFLUENCE=1
 ENV INLINE_WORKER=1 INLINE_WORKER_THREADS=2 \
     WORKER_GROUPS=heavy,palm,light ASTRO_HOTFIX=1 \
     LOCAL_STORE=/data/storage
 
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=300s --retries=3 \
   CMD python -c "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:3000/health')"
 
 # The entrypoint is written inline rather than COPYed, so it cannot be missed
@@ -97,6 +91,7 @@ RUN printf '%s\n' \
   'else' \
   '  echo "[entrypoint] no ephemeris data (set EPHE_PATH for JHora-exact positions)"' \
   'fi' \
+  'if [ "$WITH_CONFLUENCE" = "1" ]; then python /app/deploy/ensure_semantic_models.py || exit 1; fi' \
   'NEW_ARGS=""' \
   'for A in "$@"; do' \
   '  case "$A" in' \
