@@ -119,6 +119,27 @@ main{position:relative;z-index:1;padding-bottom:120px}
 @media(min-width:760px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}}
 .hr{height:1px;background:var(--line-2);border:0;margin:26px 0}
 
+/* ---------- faq ---------- */
+.faq-list{display:grid;gap:10px;max-width:760px}
+.faq-list details{
+  border:1px solid var(--line);border-radius:var(--r);background:var(--paper);
+  box-shadow:0 4px 18px rgba(22,24,29,.04);overflow:hidden
+}
+.faq-list summary{
+  list-style:none;cursor:pointer;padding:18px 46px 18px 20px;position:relative;
+  font-family:var(--serif);font-size:16.5px;font-weight:600;color:var(--ink);
+  line-height:1.4
+}
+.faq-list summary::-webkit-details-marker{display:none}
+.faq-list summary::after{
+  content:'+';position:absolute;right:20px;top:50%;transform:translateY(-50%);
+  font-size:20px;font-weight:400;color:var(--gold-soft);transition:.2s;line-height:1
+}
+.faq-list details[open] summary::after{content:'\2212'}
+.faq-list details[open] summary{border-bottom:1px solid var(--line-2)}
+.faq-list summary:hover{color:var(--gold-soft)}
+.faq-list p{margin:0;padding:4px 20px 20px;font-size:14.5px;color:var(--muted);line-height:1.6}
+
 /* ---------- hero ---------- */
 .hero{padding:clamp(48px,9vw,104px) 0 clamp(30px,6vw,60px);position:relative}
 .hero-grid{display:grid;gap:40px;align-items:center}
@@ -137,6 +158,19 @@ main{position:relative;z-index:1;padding-bottom:120px}
 }
 .hero p.lede{font-size:clamp(16px,2.2vw,18px);color:var(--muted);max-width:42ch;margin:0 0 28px}
 .hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:26px}
+.hero-logo{width:clamp(64px,9vw,84px);height:auto;margin-bottom:18px;border-radius:50%}
+.tagline{
+  font-family:var(--serif);font-weight:600;letter-spacing:-.01em;
+  font-size:clamp(19px,2.6vw,25px);line-height:1.35;margin:0 0 10px;
+  background:linear-gradient(120deg,var(--gold-soft),var(--gold) 45%,#e8b75b 80%);
+  -webkit-background-clip:text;background-clip:text;color:transparent
+}
+.tagline-sub{
+  display:flex;flex-wrap:wrap;align-items:center;gap:9px;
+  font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600;margin:0 0 24px
+}
+.tagline-sub i{width:3px;height:3px;border-radius:50%;background:var(--gold-soft);display:inline-block;flex:0 0 auto}
 .paths{display:grid;gap:14px}
 @media(min-width:700px){.paths{grid-template-columns:1fr 1fr}}
 .path{
@@ -542,9 +576,12 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
  <div class="wrap hero">
   <div class="hero-grid">
    <div>
+    <img class="hero-logo" src="img/logo.png" alt="GrahaRekha — astrology, palmistry, numerology">
     <div class="eyebrow">Twelve methods · one verdict</div>
     <h1 class="brand-hero">GrahaRekha</h1>
     <p class="brand-sub">graha · planet &nbsp;·&nbsp; rekha · line</p>
+    <p class="tagline">Know your destiny. Shape your future. You are written in the stars.</p>
+    <p class="tagline-sub">Clarity today <i></i> Confidence tomorrow <i></i> Control always</p>
     <p class="hero-line">Your chart, cross-checked — not one branch guessing alone.</p>
     <p class="lede">We run the classical methods on your birth chart and show where they agree. No birth time? Your hands work.</p>
     <div class="hero-cta">
@@ -591,6 +628,37 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
    </div>
   </div>
   <p class="hint" style="margin-top:28px;max-width:54ch">Under the hood we still cross-check Vedic, KP, Jaimini, dashas, Ashtakavarga and more — you see the verdict first, not the machinery.</p>
+ </div>
+
+ <div class="wrap sec" style="padding-top:0">
+  <div class="sec-head"><h2>Straight answers</h2></div>
+  <div class="faq-list">
+   <details><summary>I don't know my exact birth time. Is this useless to me?</summary>
+    <p>No — this is the case we built for. Palmistry needs no birth data.
+    Horary is cast from the moment you ask. And rectification reconstructs your
+    birth time from life events you do remember. Start with the palm reading or
+    ask a question; both work today.</p></details>
+   <details><summary>Is this just AI writing horoscopes?</summary>
+    <p>No. The astrology is computed — Swiss Ephemeris positions, classical
+    rule engines, Ashtakavarga arithmetic, sixteen divisional charts, a
+    computer-vision pass on your palm photographs. Every statement can be
+    traced to a specific planet and house, which is why we print that alongside
+    it. Language is polished for readability; the judgements are calculated.</p></details>
+   <details><summary>Do you predict how long I will live?</summary>
+    <p>Never. The engines can compute it and we deliberately do not show it.
+    Where a chart indicates a difficult health period you get the window and
+    something practical to do about it. Nobody should learn that from
+    software.</p></details>
+   <details><summary>What if the reading doesn't match me?</summary>
+    <p>Tell us — there is a button. In most cases it means the birth time is
+    off by enough to move your rising sign, which shifts every house and every
+    prediction with it. We will route you to rectification, or to the two
+    readings that need no birth data at all.</p></details>
+   <details><summary>Why should I trust the accuracy?</summary>
+    <p>Don't, initially. Read what we say about your last six months and your
+    past — both free, both about a life you have already lived. That is a test
+    you can score immediately. Pay only if we pass it.</p></details>
+  </div>
  </div>
 </section>
 
@@ -2232,6 +2300,7 @@ function renderReading(){
       ${(R.paid || S.unlocked || isAdmin()) && R.links && R.links.paid
         ? frameFor(R.links.paid)
         : frameFor(R.links.free)}
+      ${overlayGallery(R.overlays || m.overlays)}
      </div>` +
       ((R.paid || S.unlocked || isAdmin())
         ? ''
@@ -2286,8 +2355,8 @@ function palmPayCard(R){
   const price = CONFIG.price;
   return `<div class="card" style="text-align:center">
     <svg width="34" height="34" style="margin:0 auto;color:var(--gold)" fill="none" stroke="currentColor"><use href="#i-lock"/></svg>
-    <h3 style="font-size:clamp(23px,4vw,30px);margin:12px 0 8px">The working and the dates</h3>
-    <p style="color:var(--muted);font-size:14.5px;margin:0 0 14px">${esc(m.teaser || R.teaser || '')}</p>
+    <h3 style="font-size:clamp(23px,4vw,30px);margin:12px 0 8px">See the pattern beneath the first reading</h3>
+    <p style="color:var(--muted);font-size:14.5px;margin:0 0 14px">${esc(m.teaser || R.teaser || 'Unlock the supporting signs, forward age windows, marks and hand-specific guidance.')}</p>
     <div class="price">${money(price)}</div>
     <ul class="bullets" style="max-width:460px;margin:16px auto 20px;text-align:left">${lockBullets(R)}</ul>
     <button class="btn btn-gold" onclick="startPay()">Pay securely · ${money(price)}</button>
@@ -2297,9 +2366,16 @@ function palmPayCard(R){
 function absUrl(u){ return (u||'').startsWith('/') ? CONFIG.apiBase + u : u; }
 function overlayGallery(ov){
   if(!ov || !(ov.left||ov.right)) return '';
-  const one=(side,url)=>url?`<figure class="ov"><img src="${absUrl(url)}" alt="${side} palm with detected lines" loading="lazy">
-    <figcaption><b>${side}</b> palm · lines traced by the analyser</figcaption></figure>`:'';
-  return `<div class="ovg">${one('Right',ov.right)}${one('Left',ov.left)}</div>`;
+  // Outside the iframe: a phone-safe fallback when one embedded overlay fails
+  // to paint. Prefer signed storage URLs; skip if a side is only a storage key
+  // with no leading slash (not fetchable from the browser).
+  const one=(side,url)=>{
+    if(!url || (!String(url).startsWith('/') && !/^https?:/i.test(url) && !String(url).startsWith('data:'))) return '';
+    return `<figure class="ov"><img src="${absUrl(url)}" alt="${side} palm with detected lines" loading="lazy">
+    <figcaption><b>${side}</b> palm · lines traced by the analyser</figcaption></figure>`;
+  };
+  const figs = one('Left',ov.left)+one('Right',ov.right);
+  return figs ? `<div class="ovg" aria-label="Annotated palms">${figs}</div>` : '';
 }
 function metaBar(m){
   if(!m) return '';
