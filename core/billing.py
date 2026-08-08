@@ -49,11 +49,17 @@ def grant(user_id: str, item: str, *, ref_id: Optional[str] = None,
           days: Optional[int] = None) -> None:
     expires = (now() + timedelta(days=days)) if days else None
     with tx() as c:
-        existing = c.execute(text(
-            "SELECT id FROM entitlements WHERE user_id=:u AND item=:i"
-            " AND ((:r IS NULL AND ref_id IS NULL) OR ref_id = :r)"
-            " AND revoked_at IS NULL"),
-            {"u": user_id, "i": item, "r": ref_id}).fetchone()
+        # Postgres cannot infer the type of a bare NULL bind param; ref_id is UUID.
+        if ref_id is None:
+            existing = c.execute(text(
+                "SELECT id FROM entitlements WHERE user_id=:u AND item=:i"
+                " AND ref_id IS NULL AND revoked_at IS NULL"),
+                {"u": user_id, "i": item}).fetchone()
+        else:
+            existing = c.execute(text(
+                "SELECT id FROM entitlements WHERE user_id=:u AND item=:i"
+                " AND ref_id = :r AND revoked_at IS NULL"),
+                {"u": user_id, "i": item, "r": ref_id}).fetchone()
         if existing:
             if expires:
                 c.execute(text("UPDATE entitlements SET expires_at = :e WHERE id = :id"),
@@ -68,11 +74,16 @@ def grant(user_id: str, item: str, *, ref_id: Optional[str] = None,
 
 def revoke(user_id: str, item: str, ref_id: Optional[str] = None) -> None:
     with tx() as c:
-        c.execute(text("UPDATE entitlements SET revoked_at = :t"
-                       " WHERE user_id=:u AND item=:i"
-                       " AND ((:r IS NULL AND ref_id IS NULL) OR ref_id = :r)"
-                       " AND revoked_at IS NULL"),
-                  {"t": now(), "u": user_id, "i": item, "r": ref_id})
+        if ref_id is None:
+            c.execute(text("UPDATE entitlements SET revoked_at = :t"
+                           " WHERE user_id=:u AND item=:i"
+                           " AND ref_id IS NULL AND revoked_at IS NULL"),
+                      {"t": now(), "u": user_id, "i": item})
+        else:
+            c.execute(text("UPDATE entitlements SET revoked_at = :t"
+                           " WHERE user_id=:u AND item=:i"
+                           " AND ref_id = :r AND revoked_at IS NULL"),
+                      {"t": now(), "u": user_id, "i": item, "r": ref_id})
 
 
 def entitled(user_id: str, item: str, ref_id: Optional[str] = None) -> bool:
@@ -83,12 +94,20 @@ def entitled(user_id: str, item: str, ref_id: Optional[str] = None) -> bool:
     if item in FREE_ITEMS:
         return True
     with engine().connect() as c:
-        row = c.execute(text(
-            "SELECT 1 FROM entitlements WHERE user_id=:u AND item=:i"
-            "   AND (ref_id = :r OR ref_id IS NULL)"
-            "   AND revoked_at IS NULL"
-            "   AND (expires_at IS NULL OR expires_at > :now) LIMIT 1"),
-            {"u": user_id, "i": item, "r": ref_id, "now": now()}).fetchone()
+        if ref_id is None:
+            row = c.execute(text(
+                "SELECT 1 FROM entitlements WHERE user_id=:u AND item=:i"
+                "   AND ref_id IS NULL"
+                "   AND revoked_at IS NULL"
+                "   AND (expires_at IS NULL OR expires_at > :now) LIMIT 1"),
+                {"u": user_id, "i": item, "now": now()}).fetchone()
+        else:
+            row = c.execute(text(
+                "SELECT 1 FROM entitlements WHERE user_id=:u AND item=:i"
+                "   AND (ref_id = :r OR ref_id IS NULL)"
+                "   AND revoked_at IS NULL"
+                "   AND (expires_at IS NULL OR expires_at > :now) LIMIT 1"),
+                {"u": user_id, "i": item, "r": ref_id, "now": now()}).fetchone()
         if row:
             return True
         if item in ("daily", "muhurat", "horary"):
@@ -258,12 +277,63 @@ def record_event(order_id: Optional[str], event_type: str, payload: dict,
                    "s": signature_ok, "p": jdump(payload), "t": now()})
 
 
+def mark_paid_from_gateway_payment(*, email: str = "", amount_paise: int = 0,
+                                   gateway_payment_id: str = "",
+                                   receipt: str = "") -> Optional[dict]:
+    """Match a Razorpay payment-button capture to a pending local order.
+
+    Payment buttons do not create our gateway orders, so the webhook often has
+    no `receipt`. Prefer: explicit receipt → email+amount → recent same amount.
+    """
+    receipt = (receipt or "").strip()
+    if receipt:
+        o = order_by_public(receipt)
+        if o and o.get("status") == "created":
+            return mark_paid(o["public_id"], gateway_payment_id=gateway_payment_id)
+
+    em = (email or "").strip().lower()
+    if "@" in em and amount_paise > 0:
+        with engine().connect() as c:
+            user = c.execute(text("SELECT id FROM users WHERE lower(email) = :e"),
+                             {"e": em}).fetchone()
+            if user:
+                uid = jrow(user)["id"]
+                row = c.execute(text(
+                    "SELECT * FROM orders WHERE user_id = :u AND status = 'created'"
+                    " AND amount_paise = :a ORDER BY created_at DESC LIMIT 1"),
+                                {"u": uid, "a": amount_paise}).fetchone()
+                if row:
+                    return mark_paid(jrow(row)["public_id"],
+                                     gateway_payment_id=gateway_payment_id)
+
+    # Last resort for button payments where the shopper email ≠ account email.
+    if amount_paise > 0:
+        with engine().connect() as c:
+            rows = c.execute(text(
+                "SELECT * FROM orders WHERE status = 'created' AND amount_paise = :a"
+                " AND created_at > :since ORDER BY created_at DESC LIMIT 3"),
+                {"a": amount_paise,
+                 "since": now() - timedelta(hours=2)}).fetchall()
+        if len(rows) == 1:
+            return mark_paid(jrow(rows[0])["public_id"],
+                             gateway_payment_id=gateway_payment_id)
+    return None
+
+
 def mark_paid(public_id: str, *, gateway_payment_id: str = "") -> dict:
     """Idempotent. Grants the entitlement the order was for."""
     o = order_by_public(public_id)
     if not o:
         raise KeyError("order not found")
     if o["status"] == "paid":
+        # Retry report unlock if a prior grant left reports.paid false.
+        ref = o.get("ref_id")
+        if ref:
+            try:
+                from .db import report_mark_paid
+                report_mark_paid(ref)
+            except Exception:                                         # noqa: BLE001
+                pass
         return {"ok": True, "already": True, "item": o["item"]}
 
     with tx() as c:

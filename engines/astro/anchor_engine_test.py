@@ -88,7 +88,7 @@ check("no hardcoded Ketu@5 branch",
 print("\n— 2. coverage parity across charts —")
 rnd = random.Random(11)
 charts = [synth_chart(rnd) for _ in range(40)]
-RITESH = {  # the chart the old tables were fitted to
+REF_CHART = {  # reference chart the old tables were fitted to
     "Moon": {"house": 4, "sign": "Virgo", "dignity": "neutral_sign"},
     "Ketu": {"house": 5, "sign": "Libra", "dignity": "neutral_sign"},
     "Saturn": {"house": 6, "sign": "Scorpio", "dignity": "enemy_sign"},
@@ -101,7 +101,7 @@ RITESH = {  # the chart the old tables were fitted to
 }
 
 built = [AE.build_anchor_analysis(c, "Gemini") for c in charts]
-r_built = AE.build_anchor_analysis(RITESH, "Gemini")
+r_built = AE.build_anchor_analysis(REF_CHART, "Gemini")
 
 check("every chart yields one anchor per planet",
       all(len(b["anchors"]) == 9 for b in built))
@@ -128,7 +128,7 @@ DIG_WORDS = {
     "moolatrikona": "moolatrikona", "own sign": "own_sign",
 }
 bad: list[str] = []
-for c, b in zip(charts + [RITESH], built + [r_built]):
+for c, b in zip(charts + [REF_CHART], built + [r_built]):
     for a in b["anchors"]:
         blob = " ".join([a["palm"], a["life"], a.get("chart_link", "")])
         for word, dig in DIG_WORDS.items():

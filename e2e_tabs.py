@@ -5,9 +5,9 @@ This proves the *product* works: it submits the job behind every tab, waits for
 the real engines, saves what came back, and reports what a customer would
 actually receive.
 
-Charts used (real people, real coordinates — placeholders hide nothing):
-    Ritesh   8 Mar 1985, 13:05, Patna
-    Aditi   29 Jul 1989, 00:05, Patna       (for kundali matching)
+Charts used (generic sample data — no real people):
+    Sample   15 Jan 1990, 12:00, New Delhi
+    Partner  20 Jun 1992, 08:30, New Delhi   (for kundali matching)
 
 Usage:
     python3 e2e_tabs.py --api http://127.0.0.1:8123 --out /tmp/e2e_out
@@ -17,18 +17,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
-PATNA = {"lat": 25.5941, "lon": 85.1376, "tz": 5.5, "place": "Patna, Bihar, India"}
+DELHI = {"lat": 28.6139, "lon": 77.2090, "tz": 5.5, "place": "New Delhi, India"}
 
-RITESH = {"name": "Ritesh", "dob": "1985-03-08", "tob": "13:05", "gender": "male",
-          **PATNA}
-ADITI = {"name": "Aditi", "dob": "1989-07-29", "tob": "00:05", "gender": "female",
-         **PATNA}
+PERSON_A = {"name": "Sample", "dob": "1990-01-15", "tob": "12:00", "gender": "male",
+            **DELHI}
+PERSON_B = {"name": "Partner", "dob": "1992-06-20", "tob": "08:30", "gender": "female",
+            **DELHI}
 
 
 def _req(api: str, path: str, *, token: str = "", method: str = "GET",
@@ -54,7 +55,8 @@ def _req(api: str, path: str, *, token: str = "", method: str = "GET",
 def login(api: str) -> str:
     email = f"tabs-{int(time.time())}@test.local"
     code, res = _req(api, "/api/auth/dev", method="POST",
-                     body={"email": email, "name": "Ritesh"})
+                     body={"email": email, "name": "E2E Tester",
+                           "passcode": os.environ.get("GUEST_PASSCODE", "graharekha")})
     if code != 200:
         sys.exit(f"dev login failed ({code}): {res}")
     return res["token"]
@@ -84,9 +86,9 @@ def run_job(api: str, token: str, kind: str, payload: dict,
 
 def tabs() -> list[tuple[str, str, dict]]:
     """(tab label, job kind, payload) — one entry per thing a user can click."""
-    chart = {"name": RITESH["name"], "dob": RITESH["dob"], "tob": RITESH["tob"],
-             "lat": RITESH["lat"], "lon": RITESH["lon"], "tz": RITESH["tz"],
-             "place": RITESH["place"], "gender": RITESH["gender"]}
+    chart = {"name": PERSON_A["name"], "dob": PERSON_A["dob"], "tob": PERSON_A["tob"],
+             "lat": PERSON_A["lat"], "lon": PERSON_A["lon"], "tz": PERSON_A["tz"],
+             "place": PERSON_A["place"], "gender": PERSON_A["gender"]}
     return [
         ("Chart snapshot", "chart_summary", dict(chart)),
         # with a question: the full report answers it too, and that path was
@@ -98,19 +100,19 @@ def tabs() -> list[tuple[str, str, dict]]:
         ("Ask a question", "horary", {
             "question": "Will I change my job in the next twelve months?",
             "qDate": "2026-08-04", "qTime": "09:40",
-            "location": "Patna, India"}),
+            "location": "New Delhi, India"}),
         ("Daily reading", "daily", dict(chart)),
         ("Numerology", "numerology", {
-            "name": "Ritesh Sinha", "dob": RITESH["dob"]}),
+            "name": PERSON_A["name"], "dob": PERSON_A["dob"]}),
         ("Kundali matching", "kundali_match", {
-            "groomName": RITESH["name"], "groomDob": RITESH["dob"],
-            "groomTob": RITESH["tob"], "groomLat": RITESH["lat"],
-            "groomLon": RITESH["lon"], "groomTz": RITESH["tz"],
-            "groomPlace": RITESH["place"],
-            "brideName": ADITI["name"], "brideDob": ADITI["dob"],
-            "brideTob": ADITI["tob"], "brideLat": ADITI["lat"],
-            "brideLon": ADITI["lon"], "brideTz": ADITI["tz"],
-            "bridePlace": ADITI["place"],
+            "groomName": PERSON_A["name"], "groomDob": PERSON_A["dob"],
+            "groomTob": PERSON_A["tob"], "groomLat": PERSON_A["lat"],
+            "groomLon": PERSON_A["lon"], "groomTz": PERSON_A["tz"],
+            "groomPlace": PERSON_A["place"],
+            "brideName": PERSON_B["name"], "brideDob": PERSON_B["dob"],
+            "brideTob": PERSON_B["tob"], "brideLat": PERSON_B["lat"],
+            "brideLon": PERSON_B["lon"], "brideTz": PERSON_B["tz"],
+            "bridePlace": PERSON_B["place"],
             "method": "North"}),
         ("Muhurat — event list", "muhurat_events", {}),
         ("Muhurat", "muhurat", {

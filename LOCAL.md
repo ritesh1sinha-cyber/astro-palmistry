@@ -28,7 +28,7 @@ product layer needs only a restart, not a rebuild.
 python3 e2e_check.py --api http://localhost:8080 \
   --left  path/to/left_palm.jpg \
   --right path/to/right_palm.jpg \
-  --name "Ritesh Kumar Sinha" --dob 1985-03-08 --tob 13:05 --age 41
+  --name "Sample User" --dob 1990-01-15 --tob 12:00 --age 36
 
 # or from inside the container, no host Python needed
 docker compose -f docker-compose.local.yml exec api \
@@ -73,17 +73,31 @@ docker compose -f docker-compose.local.yml exec api python -m core.maintenance -
 docker compose -f docker-compose.local.yml down -v
 ```
 
-## Turning on the full confluence report
+## Semantic models (MiniLM) — on by default
 
-It needs `sentence-transformers` + torch, which add ~2 GB:
+The full confluence report needs **sentence-transformers** + local **MiniLM** weights.
+Docker builds with `WITH_CONFLUENCE=1` (see `docker-compose.local.yml`).
 
 ```bash
-docker compose -f docker-compose.local.yml build \
-  --build-arg WITH_CONFLUENCE=1 api
-docker compose -f docker-compose.local.yml up -d api
+docker compose -f docker-compose.local.yml up --build
+curl -s http://localhost:8080/health | jq .semantic
 ```
 
-Then `e2e_check.py --full-report`. Every other feature works without it.
+Weights ship in the repo under `engines/astro/models/` (Git LFS). On the host:
+`git lfs pull` before `docker compose … --build`. No Hugging Face download.
+Details: **MODELS.md**.
+
+Then `e2e_check.py --full-report`. Horary, daily, numerology, and matching work
+without it; the ₹1,499 confluence report does not — quality collapses to lexical
+grouping without MiniLM.
+
+## Turning off confluence (small boxes only)
+
+```bash
+docker compose -f docker-compose.local.yml build --build-arg WITH_CONFLUENCE=0 api
+```
+
+Set `WITH_CONFLUENCE=0` in the api service environment.
 
 ## Swiss Ephemeris (optional)
 

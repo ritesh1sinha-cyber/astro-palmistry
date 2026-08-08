@@ -696,6 +696,28 @@ AK_TRAIT = {
 }
 
 
+def _human_yoga(line: str) -> str:
+    """Cached precomputes may still carry Sanskrit labels — never show those raw."""
+    import re
+    s = line or ""
+    s = re.sub(
+        r"\bin\s+(\d+)(?:st|nd|rd|th)\s*\(upachaya/trishadaya\)\s*—\s*competitive strength",
+        r"in the \1th house — a growth placement that builds competitive strength over time",
+        s,
+        flags=re.I,
+    )
+    s = re.sub(
+        r"\((house\s+\d+),\s*kendra\)\s*—\s*potential raja yoga",
+        r"(\1) — a classic power combination",
+        s,
+        flags=re.I,
+    )
+    s = re.sub(r"\bupachaya/trishadaya\b", "growth house", s, flags=re.I)
+    s = re.sub(r"\braja yoga\b", "power combination", s, flags=re.I)
+    s = re.sub(r"\bkendra\b", "angular house", s, flags=re.I)
+    return s
+
+
 def personality(pc: dict) -> dict:
     lagna = (pc.get("lagna") or {}).get("sign", "")
     moon = pc.get("planets", {}).get("Moon") or {}
@@ -713,7 +735,95 @@ def personality(pc: dict) -> dict:
             f"from a weak position and is rescued by {nb.get('cancelling_planet')}. "
             f"People with this pattern usually under-perform early and are "
             f"badly underestimated as a result.")
+    yogas = [_human_yoga(y) for y in (pillar.get("special_yogas") or [])[:4]]
     return {"lagna": lagna, "moon_sign": moon.get("sign", ""),
             "nakshatra": moon.get("nakshatra", ""), "atmakaraka": ak,
             "traits": traits,
-            "yogas": (pillar.get("special_yogas") or [])[:4]}
+            "yogas": yogas}
+
+
+# ---------------------------------------------------------------------------
+# MiniLM semantic overlay — vedic_confluence_report clusters → card verdicts
+# ---------------------------------------------------------------------------
+# The long-form confluence already groups lane signals with SentenceTransformer
+# (paraphrase-multilingual-MiniLM-L12-v2). The card report used rule votes only.
+# This bridge lets both share the same semantic clusters.
+
+_AREA_DOMAIN = {
+    "career": "career", "money": "finance", "love": "marriage",
+    "home": "property", "children": "children", "health": "health",
+    "learning": "travel", "inner": "personality",
+}
+
+_semantic_by_domain: dict = {}
+_semantic_mode: str = "rules"
+
+
+def set_semantic_clusters(clusters) -> None:
+    """Register MiniLM domain clusters before report_cards renders."""
+    global _semantic_by_domain, _semantic_mode
+    _semantic_by_domain = {}
+    for cl in clusters or []:
+        dom = _cluster_field(cl, "domain")
+        if not dom:
+            continue
+        prev = _semantic_by_domain.get(dom)
+        sc = float(_cluster_field(cl, "score", 0) or 0)
+        if prev is None or sc > float(_cluster_field(prev, "score", 0) or 0):
+            _semantic_by_domain[dom] = cl
+    try:
+        import semantic_fallback
+        _semantic_mode = "degraded_lexical" if semantic_fallback.degraded() else "minilm"
+    except Exception:
+        _semantic_mode = "minilm"
+
+
+def clear_semantic_clusters() -> None:
+    _semantic_by_domain.clear()
+
+
+def semantic_mode() -> str:
+    return _semantic_mode
+
+
+def _cluster_field(cl, name: str, default=None):
+    if isinstance(cl, dict):
+        return cl.get(name, default)
+    return getattr(cl, name, default)
+
+
+def semantic_cluster_for_area(area_key: str):
+    dom = _AREA_DOMAIN.get(area_key)
+    return _semantic_by_domain.get(dom) if dom else None
+
+
+def _dir_from_cluster(cl) -> str:
+    return {"positive": "up", "caution": "down"}.get(
+        _cluster_field(cl, "direction", "neutral"), "mixed")
+
+
+def merge_semantic_verdict(area_key: str, verdict: dict) -> dict:
+    """Rule votes supply evidence; MiniLM cluster picks direction and headline."""
+    cl = semantic_cluster_for_area(area_key)
+    if not cl:
+        return verdict
+    systems = _cluster_field(cl, "systems", []) or []
+    conf = str(_cluster_field(cl, "confidence", "MODERATE") or "MODERATE")
+    direction = _dir_from_cluster(cl)
+    affirmation = str(_cluster_field(cl, "affirmation", "") or "").strip()
+    texts = [str(t).strip() for t in (_cluster_field(cl, "texts", []) or []) if t]
+    out = dict(verdict)
+    out["direction"] = direction
+    out["semantic"] = True
+    out["semantic_mode"] = _semantic_mode
+    if affirmation:
+        out["headline"] = affirmation
+    n = len(systems)
+    out["agreement"] = (f"{n} methods align · {conf}" if n
+                        else f"semantic cluster · {conf}")
+    out["confidence"] = conf.lower()
+    ev = texts[:3]
+    for v in (verdict.get("votes") or [])[:2]:
+        ev.append(f"{v.method} — {v.because}")
+    out["evidence"] = ev[:5]
+    return out

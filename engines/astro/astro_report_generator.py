@@ -1496,7 +1496,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
     </div>
     <div class="profile-grow">
       <label>Nickname to save as</label>
-      <input type="text" id="profile-nickname-input" placeholder="e.g. Ritesh, Aditi"/>
+      <input type="text" id="profile-nickname-input" placeholder="e.g. Sample, Partner"/>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button type="button" class="btn btn-outline" onclick="saveBirthProfile()" style="font-size:0.78rem;padding:6px 12px">Save profile</button>
@@ -1507,7 +1507,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <div class="field-row">
     <div>
       <label>Full Name <span style="color:#ef4444">*</span></label>
-      <input type="text" id="client-name" placeholder="e.g. Aditi Shipra" required/>
+      <input type="text" id="client-name" placeholder="e.g. Sample User" required/>
     </div>
     <div>
       <label>Date of Birth <span style="color:#ef4444">*</span> <span style="color:#7a7a9a">(YYYY-MM-DD)</span></label>
@@ -1529,7 +1529,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
     </div>
     <div style="grid-column:span 2" class="place-wrap" id="place-wrap">
       <label>Place of Birth <span style="color:#ef4444">*</span> <span style="color:#7a7a9a">(city, country)</span></label>
-      <input type="text" id="client-place" placeholder="Start typing — e.g. Patna" autocomplete="off" required/>
+      <input type="text" id="client-place" placeholder="Start typing — e.g. New Delhi" autocomplete="off" required/>
       <ul class="place-suggestions hidden" id="place-suggestions"></ul>
       <input type="hidden" id="place-lat"/>
       <input type="hidden" id="place-lon"/>
@@ -1850,7 +1850,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       </div>
       <div>
         <label>Location (city, country)</label>
-        <input type="text" id="h-location" placeholder="e.g. Hyderabad, India"/>
+        <input type="text" id="h-location" placeholder="e.g. New Delhi, India"/>
       </div>
     </div>
     <div class="field" style="max-width:220px">
@@ -3585,7 +3585,7 @@ async function sendCursorChat(inputId, btnId, logId){
   document.getElementById('h-date').value=
     `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   document.getElementById('h-time').value=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  document.getElementById('h-location').value='Hyderabad, India';
+  document.getElementById('h-location').value='New Delhi, India';
 })();
 
 let horaryRunning=false;
@@ -3608,7 +3608,7 @@ function submitHorary(){
   fd.append('question',q);
   fd.append('q_date',d);
   fd.append('q_time',t);
-  fd.append('location',document.getElementById('h-location').value.trim()||'Hyderabad, India');
+  fd.append('location',document.getElementById('h-location').value.trim()||'New Delhi, India');
   fd.append('kp_number',document.getElementById('h-kp').value.trim());
 
   fetch('/horary',{method:'POST',body:fd})
@@ -5724,7 +5724,7 @@ async def horary(
     question:   str = Form(...),
     q_date:     str = Form(...),
     q_time:     str = Form(...),
-    location:   str = Form("Hyderabad, India"),
+    location:   str = Form("New Delhi, India"),
     kp_number:  str = Form(""),
 ):
     if not question.strip():

@@ -50,7 +50,7 @@ def compute_chart(
     Compute a natal precompute dict for the given birth details.
 
     dob: "YYYY-MM-DD", birth_time: "HH:MM" or "HH:MM:SS".
-    Provide either a resolvable `place` (e.g. "Patna, India") or explicit
+    Provide either a resolvable `place` (e.g. "New Delhi, India") or explicit
     lat/lon/timezone. Returns the pc dict, or None on any failure.
     """
     if not _ensure_on_path():
@@ -89,17 +89,17 @@ def compute_chart(
         return None
 
 
-# Ritz reference birth details (from validate_ritz_astro_palmistry.py).
-RITZ_BIRTH = {
-    "client_name": "Ritz",
-    "dob": "1985-03-08",
-    "birth_time": "13:05",
-    "place": "Patna, India",
+# Generic sample birth details for CLI smoke tests.
+SAMPLE_BIRTH = {
+    "client_name": "Sample",
+    "dob": "1990-01-15",
+    "birth_time": "12:00",
+    "place": "New Delhi, India",
 }
 
 
 if __name__ == "__main__":
-    pc = compute_chart(**RITZ_BIRTH)
+    pc = compute_chart(**SAMPLE_BIRTH)
     if not pc:
         print("FAILED to compute chart (astro-code or ephemeris unavailable)")
         raise SystemExit(1)

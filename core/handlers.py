@@ -20,8 +20,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from .billing import (entitled, is_subscribed, month_period, quota_left,
-                      use_quota)
+from .billing import entitled, is_subscribed, month_period, use_quota
 from .config import S
 from .db import (get_or_create_chart, precompute_get, precompute_put,
                  report_insert)
@@ -157,9 +156,10 @@ def h_palm(user: dict, p: dict) -> dict:
         # signed /api/file links, iframe on the site. The old JSON card path
         # (build_palm_reading) is kept in palm_report.py but no longer served.
         from .palm_report import build_palm_html_reading
-        free_html, paid_html, meta = build_palm_html_reading(raw_result, p)
-        meta = {**meta, "overlays": overlays,
-                "price": S.price("palm_full") // 100}
+        price = S.price("palm_full") // 100
+        free_html, paid_html, meta = build_palm_html_reading(
+            raw_result, p, price=price)
+        meta = {**meta, "overlays": overlays, "price": price}
         paid = entitled(user["id"], "palm_full")
         saved = _save_report(user["id"], None, "palm",
                              free_html, paid_html, meta, paid)
@@ -207,13 +207,15 @@ def h_chart_summary(user: dict, p: dict) -> dict:
 
 
 def h_numerology(user: dict, p: dict) -> dict:
-    """Six numbers, the Lo Shu grid, this year free and the cycle ahead locked.
+    """Every number and its verdict free, the working behind them locked.
 
-    Was `numerology_report.generate_numerology_html`, which produced three
-    numbers and no grid. `report_render.numerology` is the card design: Chaldean
-    values (the system Indian numerology actually uses), a personal year running
-    birthday to birthday, and the Lo Shu grid — the only picture in numerology,
-    and the thing that makes people ask why four of their cells are empty.
+    `report_render.numerology` now drives the real `numerology_report` engine
+    rather than the thin reimplementation that used to live in `tab_renderers`:
+    the Chaldean and Pythagorean ciphers, the 45-year dasha ring with its
+    birthday years and nine slices, name harmony and name correction. Free gets
+    the six numbers, the Lo Shu grid with its empty cells named, where the cycle
+    stands today and whether the name agrees with the birth date. Paid gets the
+    arithmetic, the dates and the fixes.
     """
     import report_render as RD
     name = p.get("name", "Seeker")
@@ -323,27 +325,32 @@ def h_full_report(user: dict, p: dict) -> dict:
         bundle_price=S.price("bundle_all") // 100,
         lat=float(chart["lat"]), lon=float(chart["lon"]),
         tz=float(chart["tz_offset"]))
+    # Card HTML used to skip the full voice pass that the long-form appendix gets.
+    # Phase 1: personalise (local openings + humanise) — no cloud LLM required.
+    free_html = V.personalise(free_html, ctx, "full_report")
+    paid_html = V.personalise(paid_html, ctx, "full_report")
+    free_html = V.translate_jargon(free_html)
+    paid_html = V.translate_jargon(paid_html)
 
     # The old long-form document is kept as an appendix on the paid side. It is
     # genuinely useful to the minority who want to check the reasoning, and
     # throwing away a 90-second computation would be wasteful.
     try:
         conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
-        # Through the chokepoint: appending after the render bypassed it, and
-        # the old document names a lane "Longevity".
-        appendix = RD.clean(conf.get("free_html", "") + conf.get("paid_html", ""))
+        raw = conf.get("paid_html", "") or ""
+        appendix = RD._appendix_block(raw, summary="Full analyst working — every lane")
         if appendix:
-            paid_html += ('<hr/><h3 class="sec">The full analyst working</h3>'
-                          '<p class="sec-note">Every lane, in full, for anyone who '
-                          'wants to check the reasoning.</p>' + appendix)
+            paid_html += appendix
             meta["paidSections"] = list(meta.get("paidSections", [])) + \
-                conf.get("paid_sections", [])
+                ["The full analyst working (collapsed)"]
+            meta["semantic_mode"] = (_payload or {}).get("semantic_mode", "")
     except Exception as exc:                                          # noqa: BLE001
         print(f"[full_report] appendix skipped: {type(exc).__name__}: {exc}",
               flush=True)
 
     meta["lanes"] = {"built": len((lanes or {}).get("built") or []),
                      "failed": list(((lanes or {}).get("failed") or {}).keys())}
+    meta["semantic_mode"] = (_payload or {}).get("semantic_mode", "")
     paid = entitled(user["id"], "full_report", chart["id"])
     saved = _save_report(user["id"], chart["id"], "full_report",
                          free_html, paid_html, meta, paid)
@@ -355,11 +362,24 @@ def h_full_report(user: dict, p: dict) -> dict:
 
 
 def h_horary(user: dict, p: dict) -> dict:
-    import astro_split as SP
-    import astro_voice as V
+    # MiniLM for question → house / topic (Phase 1). Lexical fallback if absent.
+    try:
+        import semantic_fallback
+        semantic_fallback.install()
+    except Exception:
+        pass
+    try:
+        import semantic_question as SQ
+        routed = SQ.route(p.get("question") or "")
+        print(f"[horary] semantic route method={routed.method} "
+              f"house={routed.primary_house} domain={routed.domain} "
+              f"topic={routed.topic} h_sc={routed.house_score:.2f}", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[horary] semantic route skipped: {exc}", flush=True)
 
     htmls, verdicts = {}, {}
     western_judgment: dict = {}
+    vedic_customer: dict = {}
     vgen = None
     if os.getenv("ASTRO_HOTFIX", "1") == "1":
         try:
@@ -375,14 +395,15 @@ def h_horary(user: dict, p: dict) -> dict:
         from vedic_horary_report import generate_vedic_horary_html as vgen
     try:
         h, j = vgen(p["question"], p["qDate"], p["qTime"],
-                    p.get("location", "Hyderabad"), p.get("kpNumber", ""))
+                    p.get("location", "New Delhi"), str(p.get("kpNumber") or ""))
         htmls["vedic"] = h
         verdicts["vedic"] = {k: j.get(k) for k in ("verdict", "confidence", "score", "systems")}
+        vedic_customer = j.get("customer") or {}
     except Exception as exc:                                          # noqa: BLE001
         verdicts["vedic"] = {"error": f"{type(exc).__name__}: {exc}"}
     try:
         from western_horary_report import generate_western_horary_html as wgen
-        h, j = wgen(p["question"], p["qDate"], p["qTime"], p.get("location", "Hyderabad"))
+        h, j = wgen(p["question"], p["qDate"], p["qTime"], p.get("location", "New Delhi"))
         htmls["western"] = h
         verdicts["western"] = {k: j.get(k) for k in ("verdict", "confidence")}
         western_judgment = j
@@ -393,33 +414,23 @@ def h_horary(user: dict, p: dict) -> dict:
 
     ctx = {"name": user.get("name") or "Seeker", "question": p["question"],
            "asked": f"{p['qDate']} {p['qTime']}", "place": p.get("location", "")}
-    splits = {k: SP.split_horary(V.personalise(v, ctx, "horary")) for k, v in htmls.items()}
 
     paid = entitled(user["id"], "horary")
     if not paid and is_subscribed(user["id"]):
         ok, _ = use_quota(user["id"], "horary", S.sub_horary_per_month, month_period())
         paid = ok
 
-    paid_sections, teasers = [], {}
-    for tag, sp in splits.items():
-        paid_sections += [f"{tag.title()}: {t}" for t in sp["paid_sections"]]
-        teasers.update({f"{tag.title()}: {k}": v for k, v in sp["teasers"].items()})
-
-    # ONE answer, not two engines arguing. Western 60 / Vedic 40; on a genuine
-    # contradiction Western's direction wins and confidence drops to low. The
-    # per-engine workings sit behind the paywall for anyone who wants to check
-    # them — they no longer LEAD with a disagreement, which read as us not
-    # knowing rather than as intellectual honesty.
     import report_render as RD
+    horary_price = S.price("horary") // 100
     free_html, paid_html, hmeta = RD.horary(
         question=p["question"], verdicts=verdicts,
         western_judgment=western_judgment, asked=ctx["asked"],
-        name=user.get("name") or "", price=S.price("full_report") // 100,
-        workings={k: s["free_html"] + s["paid_html"] for k, s in splits.items()})
+        name=user.get("name") or "",
+        horary_price=horary_price,
+        full_report_price=S.price("full_report") // 100,
+        vedic_customer=vedic_customer)
 
-    meta = {**hmeta, "verdicts": verdicts,
-            "paidSections": hmeta.get("paidSections", []) + paid_sections,
-            "teasers": teasers, "price": S.price("horary") // 100}
+    meta = {**hmeta, "verdicts": verdicts, "price": horary_price}
     saved = _save_report(user["id"], None, "horary", free_html, paid_html,
                          meta, paid)
     saved["price"] = meta["price"]
@@ -434,14 +445,11 @@ def h_daily(user: dict, p: dict) -> dict:
     pc = precompute_for(chart)
     target = _as_date(p.get("date") or date.today().isoformat())
 
+    # Taster forever: the verdict, the Moon proof and the lucky number/colour
+    # are free every morning, and the working behind them is the subscription.
+    # A hard quota wall stopped the habit forming on exactly the day the reader
+    # had started coming back, and it sold nothing on the days it did not fire.
     subscribed = entitled(user["id"], "daily")
-    if not subscribed:
-        left = quota_left(user["id"], "daily_free", S.free_daily_readings, "all")
-        if left <= 0:
-            return {"locked": True, "price": S.price("subscription") // 100,
-                    "message": "Your free daily readings are used. "
-                               "Subscribe for a reading built from your chart every morning."}
-        use_quota(user["id"], "daily_free", S.free_daily_readings, "all")
 
     data = compute_daily_moon_guide(pc, target, latitude=float(chart["lat"]),
                                     longitude=float(chart["lon"]),
@@ -455,16 +463,14 @@ def h_daily(user: dict, p: dict) -> dict:
         lat=float(chart["lat"]), lon=float(chart["lon"]),
         tz=float(chart["tz_offset"]), day=target,
         name=chart.get("person_name") or p.get("name") or "Seeker",
-        price=S.price("subscription") // 100)
-    # Daily access is quota/subscription; store the card so the site iframes it.
+        price=S.price("subscription") // 100,
+        pc=pc)
     saved = _save_report(user["id"], chart["id"], "daily",
-                         free_html, paid_html, meta, paid=True)
+                         free_html, paid_html, meta, paid=subscribed)
     saved.update({
         "locked": False,
         "date": target.isoformat(),
         "subscribed": subscribed,
-        "freeDaysLeft": quota_left(user["id"], "daily_free",
-                                   S.free_daily_readings, "all"),
         "price": meta["price"],
         "chartId": chart["id"],
     })
@@ -538,10 +544,11 @@ def h_kundali_match(user: dict, p: dict) -> dict:
     free_html, paid_html, cmeta = RD.kundali_match(
         meta, groom=g["name"], bride=b["name"],
         price=S.price("kundali_match") // 100)
-    appendix = RD.clean(split.get("free_html", "") + split.get("paid_html", ""))
+    appendix = RD._appendix_block(
+        split.get("paid_html", "") or "",
+        summary="Full matching report — check the reasoning")
     if appendix:
-        paid_html += ('<hr/><h3 class="sec">The full matching report</h3>'
-                      + appendix)
+        paid_html += appendix
     meta = {**meta, **cmeta,
             "paidSections": cmeta["paidSections"] + split["paid_sections"],
             "teasers": split["teasers"]}

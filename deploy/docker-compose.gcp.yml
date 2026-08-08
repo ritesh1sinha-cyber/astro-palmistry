@@ -1,0 +1,123 @@
+# Google Cloud Compute Engine — single VM, Railway-style.
+#
+# One box runs Postgres + Redis + API (inline workers with MiniLM) + Caddy.
+# Sized for e2-standard-4 (4 vCPU / 16 GB) so MiniLM does not OOM.
+#
+#   # on the VM, from the repo root:
+#   cp deploy/.env.gcp.example deploy/.env
+#   # edit secrets / DOMAIN / GOOGLE_CLIENT_ID
+#   docker compose -f deploy/docker-compose.gcp.yml --env-file deploy/.env up -d --build
+#
+# Site + API share origin (https://$DOMAIN), same as local nginx :3000.
+
+name: astro-palmistry-gcp
+
+x-app-env: &app-env
+  env_file: .env
+  environment:
+    ENV: ${ENV:-prod}
+    DATABASE_URL: postgresql+psycopg://${PG_USER:-astro}:${PG_PASSWORD}@postgres:5432/${PG_DB:-astro}
+    REDIS_URL: redis://redis:6379/0
+    ALLOWED_ORIGINS: https://${DOMAIN},https://www.${DOMAIN}
+    LOCAL_STORE: /data/storage
+    INLINE_WORKER: "1"
+    INLINE_WORKER_THREADS: ${INLINE_WORKER_THREADS:-2}
+    WITH_CONFLUENCE: "1"
+    KEEP_UPLOADS: "0"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-astro}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB:-astro}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-astro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    # tuned for a 16 GB VM (leave RAM for MiniLM + Redis)
+    command: >
+      postgres -c max_connections=100 -c shared_buffers=512MB
+               -c effective_cache_size=2GB -c work_mem=8MB
+               -c maintenance_work_mem=256MB
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server --appendonly yes --appendfsync everysec
+                   --maxmemory 384mb --maxmemory-policy noeviction
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 8
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+      args:
+        WITH_CONFLUENCE: "1"
+        GIT_REPO: ${GIT_REPO:-https://github.com/ritesh1sinha-cyber/astro-palmistry.git}
+        GIT_REF: ${GIT_REF:-main}
+    <<: *app-env
+    restart: unless-stopped
+    environment:
+      WORKER_GROUPS: heavy,palm,light
+      CAP_FULL_REPORT: "1"
+      CAP_BTR: "1"
+      CAP_PALM: "2"
+      CAP_DEFAULT: "4"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      APP_SECRET: ${APP_SECRET}
+      RAZORPAY_PAYMENT_BUTTON_ID: ${RAZORPAY_PAYMENT_BUTTON_ID:-pl_TMzAWfueT93HPY}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      # Flip to 0 when Google Sign-In alone is enough
+      DEV_LOGIN: ${DEV_LOGIN:-1}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    expose: ["3000"]
+    volumes:
+      - reportstore:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile.gcp:/etc/caddy/Caddyfile:ro
+      - ../site:/srv/site:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      api: {condition: service_healthy}
+
+volumes:
+  pgdata:
+  redisdata:
+  reportstore:
+  caddydata:
+  caddyconfig:

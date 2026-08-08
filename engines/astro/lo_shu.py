@@ -16,12 +16,13 @@ The layout is the standard one used in Indian and Chinese practice:
     4 9 2
     3 5 7
     8 1 6
+
+This module is now data and arithmetic only. The grid is drawn by
+`numerology_cards`, so that the cells it calls empty are the same cells the
+remedies below it address.
 """
 
 from __future__ import annotations
-
-import html as _html
-from typing import Any
 
 #: display order, row by row
 GRID = ((4, 9, 2), (3, 5, 7), (8, 1, 6))
@@ -68,78 +69,36 @@ REPEATED = {
 }
 
 
-def _e(t: Any) -> str:
-    return _html.escape(str(t or ""))
+PLANE_NAME = {
+    "mind": "mind", "emotion": "emotion", "practical": "practical",
+    "thought": "thought", "will": "will", "action": "action",
+}
+
+
+def planes(counts) -> dict:
+    """Which of the six three-in-a-row lines are complete, and which are bare.
+
+    `counts` is any mapping of digit to how many times it appears in the square.
+    The caller decides what goes into the square — the date alone, or the date
+    with the birth-day and life-path pillars placed — because that choice has to
+    match whatever the same page calls "missing", or the reader is told two
+    different things about the same grid.
+    """
+    out = {}
+    for name, cells in PLANE.items():
+        filled = sum(1 for c in cells if counts.get(c, 0) > 0)
+        out[name] = {"filled": filled, "complete": filled == 3,
+                     "empty": filled == 0}
+    return out
 
 
 def build(dob) -> dict:
     """Digits of the birth date, dropped into the square."""
     digits = [int(c) for c in f"{dob:%d%m%Y}" if c != "0"]
     counts = {n: digits.count(n) for n in range(1, 10)}
-    missing = [n for n, c in counts.items() if c == 0]
-    strong = [n for n, c in counts.items() if c >= 2]
-
-    planes = {}
-    for name, cells in PLANE.items():
-        filled = sum(1 for c in cells if counts.get(c, 0) > 0)
-        planes[name] = {"filled": filled, "complete": filled == 3,
-                        "empty": filled == 0}
-    return {"digits": digits, "counts": counts, "missing": missing,
-            "strong": strong, "planes": planes,
-            "complete_planes": [k for k, v in planes.items() if v["complete"]]}
-
-
-def render(grid: dict, dob, *, paid: bool = False, price: int = 199) -> str:
-    counts = grid["counts"]
-    cells = ""
-    for row in GRID:
-        for n in row:
-            c = counts.get(n, 0)
-            label, what = MEANING.get(n, ("", ""))
-            cells += (
-                f'<div class="lo-cell {"has" if c else "empty"}">'
-                f'<span class="lo-n">{n}</span>'
-                f'<span class="lo-count">{"".join(str(n) for _ in range(c)) if c else "—"}</span>'
-                f'<span class="lo-what">{_e(label)}</span></div>')
-
-    missing = grid["missing"]
-    strong = grid["strong"]
-
-    # Free: the grid, what is missing, and one line about each. Paid: the
-    # remedies for the gaps, which is the part with an action attached.
-    free_notes = ""
-    if missing:
-        first = missing[0]
-        free_notes = (
-            f'<p class="lo-note"><b>{len(missing)} of the 9 cells are empty '
-            f'for you — {", ".join(str(m) for m in missing)}.</b> '
-            f'{_e(MISSING.get(first, ""))}</p>')
-    if strong:
-        s0 = strong[0]
-        free_notes += f'<p class="lo-note">{_e(REPEATED.get(s0, ""))}</p>'
-
-    complete = grid["complete_planes"]
-    plane_note = ""
-    if complete:
-        plane_note = (
-            f'<p class="lo-note">You have a complete '
-            f'<b>{_e(complete[0])}</b> line — three cells in a row filled, '
-            f'which the system treats as an unusual strength.</p>')
-
-    locked = "" if paid else f"""
-  <div class="remedy-locked">
-    <b>Each empty cell has a named remedy</b> — the number to strengthen, how,
-    and which of your missing numbers to work on first (they are not equal).
-    The full reading also dates your next three personal years. ₹{price}
-  </div>"""
-
-    return f"""
-<section class="lo-shu">
-  <div class="ev-label">Your Lo Shu grid — from {dob:%d %B %Y}</div>
-  <p class="lo-lede">Every digit of your birth date drops into a fixed square.
-  What matters is not what is there — it is what is missing.</p>
-  <div class="lo-grid">{cells}</div>
-  {free_notes}
-  {plane_note}
-  {locked}
-</section>"""
+    p = planes(counts)
+    return {"digits": digits, "counts": counts,
+            "missing": [n for n, c in counts.items() if c == 0],
+            "strong": [n for n, c in counts.items() if c >= 2],
+            "planes": p,
+            "complete_planes": [k for k, v in p.items() if v["complete"]]}

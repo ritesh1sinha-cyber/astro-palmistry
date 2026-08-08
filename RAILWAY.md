@@ -42,10 +42,31 @@ LOCAL_STORE=/data/storage
 DEV_LOGIN=1
 
 # when you have them:
-GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_ID=424015602169-sh7vtf9gita53b7s6jkiqr20vms8aevl.apps.googleusercontent.com
 RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
+RAZORPAY_PAYMENT_BUTTON_ID=pl_TMzAWfueT93HPY
+```
+
+`GOOGLE_CLIENT_ID` is **required for the Google button on production**. Local
+dev can read it from the gitignored `.config` file; Railway cannot. Without this
+variable, `/api/public-config` returns `"googleClientId":""` and the site shows
+guest/admin only.
+
+In [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials),
+Authorized JavaScript origins must include:
+
+- `https://www.graharekha.co.in`
+- `https://graharekha.co.in`
+- `http://localhost:3000` (local Docker)
+
+After setting the variable, redeploy the Railway service (or wait for the
+auto-redeploy) and hard-refresh the site. Confirm with:
+
+```bash
+curl -s https://www.graharekha.co.in/api/public-config
+# googleClientId should be non-empty
 ```
 
 Railway's `DATABASE_URL` arrives as `postgresql://…`, which SQLAlchemy would
@@ -64,6 +85,14 @@ For anything beyond testing, use object storage instead — set `S3_BUCKET`,
 cheapest for this) and the volume stops mattering.
 
 ## 4. Verify
+
+```bash
+curl -s https://your-service.up.railway.app/health | jq .semantic
+```
+
+Expect `"mode": "minilm"` and `"models": {"minilm": true, "cross_encoder": true}`.
+If you see `"degraded_lexical"`, the image was built without sentence-transformers
+— see **MODELS.md**.
 
 ```bash
 python3 e2e_check.py --api https://your-service.up.railway.app
@@ -109,13 +138,14 @@ or redeploy after pulling the fix that bundles fakeredis for single-service
 
 ## What to expect on the free tier
 
-- **Build time** ~10 min; the image is ~1.2 GB without torch.
-- **Memory:** mediapipe needs ~1 GB resident during a palm reading. Railway's
-  starter allowance is tight — if a palm reading dies silently, that is an OOM.
+- **Build time** ~10–15 min with MiniLM enabled (torch wheels + `git lfs pull`).
+  Image ~3 GB. Model weights come from the GitHub repo (LFS), not Hugging Face.
+- **Memory:** plan **≥ 4 GB RAM** on the service. mediapipe needs ~1 GB for palm;
+  torch + MiniLM adds ~1.5 GB during a full confluence report.
 - **Cold start** after idle is ~20–30 s on the first request.
-- **The full confluence report is off by default** (`WITH_CONFLUENCE=0`): torch
-  adds ~2 GB. Every other feature works. Turn it on with a build arg when you
-  have the headroom.
+- **MiniLM semantic grouping is ON by default** (`WITH_CONFLUENCE=1` in
+  `railway.json`). Check `/health` → `semantic.mode` is `"minilm"`, not
+  `"degraded_lexical"`. See **MODELS.md** to disable on tiny boxes.
 - **Cost:** roughly $5–15/month at test volumes. It sleeps less aggressively than
   Render's free tier, which is why it is the better choice for a demo you want to
   show someone.

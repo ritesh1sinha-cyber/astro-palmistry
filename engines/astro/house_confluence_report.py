@@ -17,7 +17,7 @@ verdicts are the same ones the confluence/question reports rely on.
 
 CLI:
     python3 house_confluence_report.py --house 1 \
-        --name Ritesh --dob 1985-03-08 --time 13:05 --place "Patna, India"
+        --name Sample --dob 1990-01-15 --time 12:00 --place "New Delhi, India"
 """
 from __future__ import annotations
 
@@ -826,12 +826,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Per-house multi-technique confluence report")
     ap.add_argument("--house", type=int, default=0, help="Single house (1-12)")
     ap.add_argument("--houses", default="", help="Batch: comma-separated e.g. 2,3,4")
-    ap.add_argument("--name", default="Ritesh")
-    ap.add_argument("--dob", default="1985-03-08")
-    ap.add_argument("--time", default="13:05")
-    ap.add_argument("--place", default="Patna, India")
-    ap.add_argument("--lat", type=float, default=25.5941)
-    ap.add_argument("--lon", type=float, default=85.1376)
+    ap.add_argument("--name", default="Sample")
+    ap.add_argument("--dob", default="1990-01-15")
+    ap.add_argument("--time", default="12:00")
+    ap.add_argument("--place", default="New Delhi, India")
+    ap.add_argument("--lat", type=float, default=28.6139)
+    ap.add_argument("--lon", type=float, default=77.2090)
     ap.add_argument("--tz", type=float, default=5.5)
     ap.add_argument("-o", "--out", default="")
     args = ap.parse_args()

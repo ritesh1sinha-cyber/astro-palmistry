@@ -91,18 +91,33 @@ class GoogleIn(BaseModel):
 
 
 class DevIn(BaseModel):
-    email: str = "dev@example.com"
-    name: str = "Dev User"
+    email: str = "guest@graharekha.co.in"
+    name: str = "Guest Seeker"
+    passcode: str = ""
 
 
 class AdminIn(BaseModel):
-    email: str
+    username: str = ""
+    email: str = ""          # legacy
     password: str
 
 
 def _set_cookie(resp: Response, token: str) -> None:
     resp.set_cookie(COOKIE, token, max_age=S.session_days * 86400, httponly=True,
                     secure=(S.env == "prod"), samesite="lax", path="/")
+
+
+@app.get("/api/public-config")
+def public_config():
+    """Non-secret flags the site needs before sign-in (Google Client ID, etc.)."""
+    return {
+        "googleClientId": S.google_client_id or "",
+        "guestLogin": bool(S.dev_login),
+        "adminLogin": bool(S.dev_login),
+        "brand": "GrahaRekha",
+        "razorpayKeyId": S.razorpay_key_id or "",
+        "razorpayPaymentButtonId": S.razorpay_payment_button_id or "",
+    }
 
 
 @app.post("/api/auth/google")
@@ -116,7 +131,7 @@ def auth_google(body: GoogleIn, request: Request, response: Response):
 
 @app.post("/api/auth/dev")
 def auth_dev(body: DevIn, request: Request, response: Response):
-    user, token = login_dev(body.email, body.name,
+    user, token = login_dev(body.email, body.name, passcode=body.passcode,
                             ip=request.client.host if request.client else "",
                             ua=request.headers.get("user-agent", ""))
     _set_cookie(response, token)
@@ -125,7 +140,8 @@ def auth_dev(body: DevIn, request: Request, response: Response):
 
 @app.post("/api/auth/admin")
 def auth_admin(body: AdminIn, request: Request, response: Response):
-    user, token = login_admin(body.email, body.password,
+    user, token = login_admin(username=body.username, email=body.email,
+                              password=body.password,
                               ip=request.client.host if request.client else "",
                               ua=request.headers.get("user-agent", ""))
     _set_cookie(response, token)
@@ -155,9 +171,7 @@ def _me(user: dict) -> dict:
             "horaryLeft": (billing.quota_left(user["id"], "horary",
                                               S.sub_horary_per_month,
                                               billing.month_period())
-                           if subscribed else 999 if admin else 0),
-            "freeDailyLeft": billing.quota_left(user["id"], "daily_free",
-                                                S.free_daily_readings, "all")}
+                           if subscribed else 999 if admin else 0)}
 
 
 @app.get("/api/me")
@@ -210,7 +224,7 @@ def job_status(pid: str, user: dict = Depends(current_user)):
     if str(job.get("userId")) != uid:
         raise HTTPException(404, "no such job")
     snap = Q.snapshot(job)
-    snap["result"] = _decorate(snap.get("result"), user["id"])
+    snap["result"] = _decorate(snap.get("result"), user["id"], kind=snap.get("kind") or "")
     return JSONResponse(snap)
 
 
@@ -247,7 +261,26 @@ def _links(rid: str, uid: str, paid: bool) -> dict:
 
 
 def _report_unlocked(rep: dict, uid: str) -> bool:
-    return bool(rep.get("paid")) or is_admin_id(uid)
+    if bool(rep.get("paid")) or is_admin_id(uid):
+        return True
+    # Order may have granted the item even if reports.paid lagged.
+    try:
+        kind = rep.get("kind") or ""
+        item = "numerology_full" if kind == "numerology" else kind
+        if item and billing.entitled(uid, item, rep.get("id")):
+            return True
+        if item and billing.entitled(uid, item, None):
+            return True
+    except Exception:                                                 # noqa: BLE001
+        pass
+    return False
+
+
+def _gate_meta(kind: str, meta: dict, unlocked: bool) -> dict:
+    """Strip horary verdict from JSON when the report is still locked."""
+    if unlocked or kind != "horary" or not isinstance(meta, dict):
+        return meta
+    return {**meta, "answer": None, "verdicts": {}}
 
 
 @app.get("/api/file/{token}")
@@ -307,7 +340,7 @@ def serve_object(token: str):
                     headers={"Cache-Control": "private, max-age=600"})
 
 
-def _decorate(result: Any, uid: str) -> Any:
+def _decorate(result: Any, uid: str, kind: str = "") -> Any:
     """Turn storage keys in a job result into signed, expiring URLs."""
     if not isinstance(result, dict):
         return result
@@ -316,18 +349,25 @@ def _decorate(result: Any, uid: str) -> Any:
                               for k, v in result["overlays"].items()
                               if isinstance(v, str)}
     rid = result.get("reportId")
+    unlocked = bool(result.get("paid")) or is_admin_id(uid)
     if rid and "links" not in result:
-        result["links"] = _links(rid, uid, bool(result.get("paid")) or is_admin_id(uid))
+        result["links"] = _links(rid, uid, unlocked)
+    if isinstance(result.get("meta"), dict):
+        result["meta"] = _gate_meta(kind, result["meta"], unlocked)
     return result
 
 
 @app.get("/api/reports")
 def my_reports(user: dict = Depends(current_user)):
-    return [{"reportId": r["id"], "kind": r["kind"],
-             "paid": _report_unlocked(r, user["id"]),
-             "createdAt": r["created_at"], "meta": r["meta"],
-             "links": _links(r["id"], user["id"], r["paid"])}
-            for r in reports_for_user(user["id"])]
+    out = []
+    for r in reports_for_user(user["id"]):
+        unlocked = _report_unlocked(r, user["id"])
+        out.append({"reportId": r["id"], "kind": r["kind"],
+                    "paid": unlocked,
+                    "createdAt": r["created_at"],
+                    "meta": _gate_meta(r["kind"], r["meta"], unlocked),
+                    "links": _links(r["id"], user["id"], unlocked)})
+    return out
 
 
 @app.get("/api/reports/{rid}")
@@ -337,7 +377,8 @@ def one_report(rid: str, user: dict = Depends(current_user)):
         raise HTTPException(404, "no such report")
     unlocked = _report_unlocked(rep, user["id"])
     return {"reportId": rep["id"], "kind": rep["kind"], "paid": unlocked,
-            "meta": rep["meta"], "links": _links(rid, user["id"], unlocked)}
+            "meta": _gate_meta(rep["kind"], rep["meta"], unlocked),
+            "links": _links(rid, user["id"], unlocked)}
 
 
 @app.get("/api/reading/{rid}/full")
@@ -388,10 +429,19 @@ def prices():
 @app.post("/api/order")
 def create_order(body: OrderIn, user: dict = Depends(current_user)):
     try:
-        return billing.create_order(user["id"], body.item, ref_id=body.refId,
-                                    idempotency_key=body.idempotencyKey)
+        out = billing.create_order(user["id"], body.item, ref_id=body.refId,
+                                   idempotency_key=body.idempotencyKey)
     except KeyError:
         raise HTTPException(400, "unknown item")
+    # Demo unlock: when code-level auto-pay is on and no Razorpay key exists,
+    # mark paid immediately. Do not require ENV=dev — Railway staging often
+    # sets ENV=prod while still testing without a gateway.
+    if (S.dev_auto_pay and not S.razorpay_key_id
+            and out.get("status") == "created"):
+        billing.mark_paid(out["orderId"])
+        out["status"] = "paid"
+        out["demoPay"] = True
+    return out
 
 
 @app.get("/api/order/{public_id}")
@@ -401,6 +451,29 @@ def order_status(public_id: str, user: dict = Depends(current_user)):
         raise HTTPException(404, "no such order")
     return {"orderId": o["public_id"], "status": o["status"], "item": o["item"],
             "amount": o["amount_paise"] // 100}
+
+
+@app.post("/api/order/{public_id}/complete-dev")
+def order_complete_dev(public_id: str, user: dict = Depends(current_user)):
+    """Manual demo unlock for orders stuck at 'created' (no Razorpay)."""
+    if not S.dev_auto_pay or S.razorpay_key_id:
+        raise HTTPException(403, "demo unlock is off")
+    o = billing.order_by_public(public_id)
+    if not o or o["user_id"] != user["id"]:
+        raise HTTPException(404, "no such order")
+    billing.mark_paid(public_id)
+    return {"orderId": public_id, "status": "paid", "demoPay": True}
+
+
+@app.post("/api/order/{public_id}/mark-paid")
+def order_mark_paid_admin(public_id: str, user: dict = Depends(current_user)):
+    """Admin-only: confirm a payment that Razorpay captured but webhook missed."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    o = billing.order_by_public(public_id)
+    if not o:
+        raise HTTPException(404, "no such order")
+    return billing.mark_paid(public_id)
 
 
 @app.get("/api/place")
@@ -480,10 +553,29 @@ async def payment_webhook(request: Request):
         if S.env == "prod" or not S.dev_login:
             raise HTTPException(401, "signature verification failed")
 
+    event = payload.get("event", "")
+    pay_entity = _dig(payload, "payload", "payment", "entity") or {}
     if not order:
+        notes = pay_entity.get("notes") if isinstance(pay_entity, dict) else {}
+        if not isinstance(notes, dict):
+            notes = {}
+        email = (pay_entity.get("email")
+                 or (pay_entity.get("contact") if "@" in str(pay_entity.get("contact") or "") else "")
+                 or "")
+        amount = pay_entity.get("amount") or 0
+        pay_id = pay_entity.get("id") or ""
+        receipt = (notes.get("receipt") or notes.get("orderId") or notes.get("order_id")
+                   or public_id or "")
+        # Button payments often land as payment.captured; some accounts send authorized.
+        if amount and event in ("payment.captured", "payment.authorized",
+                                "order.paid", ""):
+            matched = billing.mark_paid_from_gateway_payment(
+                email=str(email), amount_paise=int(amount),
+                gateway_payment_id=str(pay_id), receipt=str(receipt or ""))
+            if matched:
+                return matched
         raise HTTPException(404, "order not found")
 
-    event = payload.get("event", "")
     if event.startswith("refund") or payload.get("refund"):
         billing.refund(order["public_id"])
         return {"ok": True, "refunded": True}
@@ -538,6 +630,27 @@ def notify(body: Notify):
     return {"ok": True}
 
 
+def _semantic_health() -> dict:
+    """Report whether MiniLM is active or the lexical fallback is in use."""
+    import sys
+    from pathlib import Path
+
+    astro = Path(__file__).resolve().parent / "engines" / "astro"
+    for p in (str(astro), str(astro.parent), str(astro.parent.parent)):
+        if p not in sys.path:
+            sys.path.insert(0, p)
+    try:
+        import semantic_fallback
+        from local_models import model_status
+
+        degraded = semantic_fallback.degraded()
+        return {"mode": "degraded_lexical" if degraded else "minilm",
+                "models": model_status(),
+                "with_confluence": os.getenv("WITH_CONFLUENCE", "1")}
+    except Exception as exc:                                        # noqa: BLE001
+        return {"mode": "unknown", "error": f"{type(exc).__name__}: {exc}"}
+
+
 @app.get("/health")
 def health():
     db_ok = True
@@ -548,7 +661,8 @@ def health():
         db_ok = False
     q = Q.health()
     queue_ok = q.get("mode") != "unavailable"
-    return {"ok": db_ok and queue_ok, "env": S.env, "db": db_ok, "queue": q}
+    return {"ok": db_ok and queue_ok, "env": S.env, "db": db_ok, "queue": q,
+            "semantic": _semantic_health()}
 
 
 @app.get("/api/queue")

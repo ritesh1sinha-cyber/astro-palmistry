@@ -6,10 +6,10 @@ Replaces AstroSage PDF extract for core chart facts: D1, divisional signs,
 Ashtakavarga, Vimshottari. Output matches astro_precompute.py schema.
 
 Usage:
-  python3 natal_from_pyjhora.py --name "Aditi Shipra" --dob 1989-07-29 \\
-      --time 00:05:00 --lat 25.6 --lon 85.117 --tz 5.5 --place Patna \\
-      -o Aditi_Shipra_precomputed_pyjhora.json \\
-      --diff _astro_sessions/.../Aditi_Shipra_precomputed.json
+  python3 natal_from_pyjhora.py --name "Sample User" --dob 1990-01-15 \\
+      --time 12:00:00 --lat 28.6139 --lon 77.2090 --tz 5.5 --place "New Delhi, India" \\
+      -o Sample_precomputed_pyjhora.json \\
+      --diff _astro_sessions/.../Sample_precomputed.json
 
 Requires PyJHora source (default: pyjhora/src in workspace) and:
   pip install pyswisseph numpy geocoder geopy timezonefinder

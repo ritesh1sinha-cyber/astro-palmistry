@@ -79,7 +79,7 @@ if job:
 print("\n— the other types a real driver hands back —")
 CASES = {
     "datetime": datetime(2026, 8, 5, 1, 30, tzinfo=timezone.utc),
-    "date": date(1985, 3, 8),
+    "date": date(1990, 1, 15),
     "Decimal": Decimal("1499.00"),
     "UUID in payload": uuid.uuid4(),
 }

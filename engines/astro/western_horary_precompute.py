@@ -6,7 +6,7 @@ Input: question, YYYY-MM-DD, HH:MM (24h IST), location
 Output: JSON with asc, mc, cusps, planets + house numbers for LLM (Swiss Ephemeris MOSEPH).
 
 Usage:
-  python3 western_horary_precompute.py "Will I get bonus?" "2026-04-10" "01:20" "Hyderabad" [out.json]
+  python3 western_horary_precompute.py "Will I get bonus?" "2026-04-10" "01:20" "New Delhi" [out.json]
 """
 
 from __future__ import annotations
@@ -51,14 +51,14 @@ def precompute_western(
     question: str,
     q_date_str: str,
     q_time_str: str,
-    location: str = "Hyderabad",
+    location: str = "New Delhi",
 ) -> dict:
     hour, minute = parse_time(q_time_str)
     year, month, day = map(int, q_date_str.split("-"))
     q_date_obj = Date(year, month, day)
 
     loc_key = location.lower().split(",")[0].strip()
-    lat, lon = LOCATIONS.get(loc_key, LOCATIONS["hyderabad"])
+    lat, lon = LOCATIONS.get(loc_key, LOCATIONS["delhi"])
 
     ut_hour = ist_to_ut(hour, minute)
     jd_adjustment = 0

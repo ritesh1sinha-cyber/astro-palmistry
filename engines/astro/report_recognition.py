@@ -1173,9 +1173,9 @@ def render(blocks: list) -> str:
   {sections}
   <div class="recog-ask">
     <span>Did these land?</span>
-    <button class="pillbtn" data-v="yes">Mostly right</button>
-    <button class="pillbtn" data-v="some">Some of it</button>
-    <button class="pillbtn" data-v="no">Not really</button>
+    <button type="button" class="pillbtn" data-v="yes">Mostly right</button>
+    <button type="button" class="pillbtn" data-v="some">Some of it</button>
+    <button type="button" class="pillbtn" data-v="no">Not really</button>
   </div>
 </section>"""
 

@@ -1054,10 +1054,25 @@ def _conf_badge(label: str) -> str:
 
 
 def detect_focus_domain(question: str, engine: Optional["SemanticEngine"] = None) -> Optional[str]:
-    """Map a client question to a life domain — keywords first, MiniLM fallback."""
+    """Map a client question to a life domain — MiniLM first, keywords assist."""
     q = (question or "").strip()
     if not q:
         return None
+    # Phase 1: semantic meaning first (paraphrase MiniLM).
+    try:
+        import semantic_question as SQ
+        routed = SQ.route(q)
+        if routed.domain and routed.domain != "general" and routed.domain_score >= 0.28:
+            return routed.domain
+        if routed.domain and routed.domain != "general" and routed.method == "minilm":
+            return routed.domain
+    except Exception:
+        pass
+    if engine is not None:
+        try:
+            return engine.assign_domain(q)
+        except Exception:
+            pass
     ql = q.lower()
     best_dom, best_hits = None, 0
     for dom, kws in QUESTION_KEYWORDS.items():
@@ -1074,8 +1089,6 @@ def detect_focus_domain(question: str, engine: Optional["SemanticEngine"] = None
             return mapped
     except Exception:
         pass
-    if engine is not None:
-        return engine.assign_domain(q)
     return None
 
 
@@ -2733,6 +2746,13 @@ def generate_confluence_reports(
             summary["remedy_path"] = remedy_path
     except Exception:
         pass
+    try:
+        import report_confluence as RC
+        RC.set_semantic_clusters(clusters)
+        summary["semantic_mode"] = RC.semantic_mode()
+    except Exception as exc:
+        print(f"[confluence] semantic bridge skipped: {type(exc).__name__}: {exc}",
+              flush=True)
     return conf_html, user_html, focus_html, summary
 
 

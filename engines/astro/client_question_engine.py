@@ -79,7 +79,8 @@ HOUSE_KEYWORDS: dict[int, list[str]] = {
     7: ["spouse", "marriage", "husband", "wife", "partner", "divorce", "business partner", "open enemy"],
     8: ["accident", "surgery", "inheritance", "chronic", "longevity", "hidden", "scandal", "insurance"],
     9: ["father", "guru", "luck", "fortune", "dharma", "religion", "long journey", "higher study", "visa"],
-    10: ["career", "job", "promotion", "profession", "boss", "status", "fame", "government"],
+    10: ["career", "job", "promotion", "profession", "boss", "status", "fame", "government",
+         "hike", "raise", "increment", "appraisal", "salary"],
     11: ["income", "gains", "wish", "friend", "network", "profit", "bonus"],
     12: ["loss", "expense", "foreign", "abroad", "hospitalization", "sleep", "isolation", "spiritual retreat"],
 }
@@ -138,11 +139,19 @@ def _detect_intent(q: str) -> str:
         return "recovery"
     if re.search(r"\b(court|litigation|lawsuit|case|win the case|legal battle|bail)\b", ql):
         return "legal_outcome"
-    if re.search(r"\b(when|timing|date|month|year|how long)\b", ql):
+    # Amount / magnitude — must NOT collapse to yes/no ("how much hike" ≠ "yes")
+    if re.search(
+        r"\bhow\s+much\b|\bhow\s+many\b|\bwhat\s+(?:percent|percentage|%)\b|"
+        r"\bwhat\s+amount\b|\bby\s+how\s+much\b|\bquantum\b|\bmagnitude\b",
+        ql,
+    ):
+        return "amount"
+    # True timing questions — do NOT treat bare "this year" as when (that is a yes/no horizon)
+    if re.search(r"\bwhen\b|\bhow long\b|\btiming\b|\bwhat date\b|\bin which (?:month|year)\b", ql):
         return "when"
     if re.search(r"\b(how serious|severity|danger|life threat)\b", ql):
         return "severity"
-    if re.search(r"\b(will|can|shall|should|is it possible|going to)\b", ql):
+    if re.search(r"\b(will|can|shall|should|is it possible|going to|is .+ likely)\b", ql):
         return "yes_no"
     return "general"
 
@@ -202,27 +211,61 @@ def _domain_from_topic_and_houses(topic: str, houses: list[int], q: str) -> str:
 
 
 def route_client_question(question: str) -> QuestionContext:
-    """Semantic map: question -> domain, houses, intent, event hooks."""
+    """Semantic map: question -> domain, houses, intent, event hooks.
+
+    Phase 1: MiniLM (paraphrase-multilingual) routes by meaning first; keyword
+    tables are assist only. Falls back to keywords if the encoder is absent.
+    """
     q = (question or "").strip()
     intent = _detect_intent(q)
-    topic = _refine_topic(q, detect_topic(q) if q else "general", intent)
-    houses, kw_hits = _houses_from_question(q)
 
-    tb = TOPIC_BHAVAS.get(topic, TOPIC_BHAVAS.get("general", {}))
-    topic_primary = int(tb.get("primary", 1))
-    if houses:
-        primary = houses[0] if topic == "general" else topic_primary
+    sem = None
+    try:
+        import semantic_question as SQ
+        sem = SQ.route(q) if q else None
+    except Exception as exc:  # noqa: BLE001
+        print(f"[client_question] semantic route skipped: {exc}", flush=True)
+
+    if sem and not (sem.degraded and sem.method == "keyword" and not sem.houses):
+        topic = _refine_topic(q, sem.topic or "general", intent)
+        # Prefer MiniLM houses; merge topic-bhavas favourable list
+        houses = list(sem.houses or [])
+        kw_hits = [f"minilm:h{sem.primary_house}", f"score={sem.house_score:.2f}"]
+        if sem.method == "keyword":
+            kw_houses, kw_hits = _houses_from_question(q)
+            if kw_houses:
+                houses = kw_houses
+        tb = TOPIC_BHAVAS.get(topic, TOPIC_BHAVAS.get("general", {}))
+        topic_primary = int(tb.get("primary", sem.primary_house or 1))
+        primary = int(sem.primary_house or topic_primary)
         if primary not in houses:
             houses = [primary] + [h for h in houses if h != primary]
+        for h in (tb.get("favorable") or []):
+            if h not in houses:
+                houses.append(h)
+        houses = houses[:5] or [primary]
+        domain = sem.domain if sem.domain and sem.domain != "general" else \
+            _domain_from_topic_and_houses(topic, houses, q)
+        fav = list(tb.get("favorable") or [])
+        deny = list(tb.get("denying") or [])
     else:
-        primary = topic_primary
-        houses = [primary]
-        sec = [h for h in (tb.get("favorable") or []) if h != primary]
-        houses.extend(sec[:2])
+        topic = _refine_topic(q, detect_topic(q) if q else "general", intent)
+        houses, kw_hits = _houses_from_question(q)
+        tb = TOPIC_BHAVAS.get(topic, TOPIC_BHAVAS.get("general", {}))
+        topic_primary = int(tb.get("primary", 1))
+        if houses:
+            primary = houses[0] if topic == "general" else topic_primary
+            if primary not in houses:
+                houses = [primary] + [h for h in houses if h != primary]
+        else:
+            primary = topic_primary
+            houses = [primary]
+            sec = [h for h in (tb.get("favorable") or []) if h != primary]
+            houses.extend(sec[:2])
+        fav = list(tb.get("favorable") or [])
+        deny = list(tb.get("denying") or [])
+        domain = _domain_from_topic_and_houses(topic, houses, q)
 
-    fav = list(tb.get("favorable") or [])
-    deny = list(tb.get("denying") or [])
-    domain = _domain_from_topic_and_houses(topic, houses, q)
     title = DOMAIN_TITLE.get(domain, domain.replace("_", " ").title())
 
     event_type = None
@@ -827,13 +870,21 @@ def synthesize_answer(ctx: QuestionContext, verdicts: list[TechniqueVerdict]) ->
     total = len(applicable) or 1
     pct = round(pos / total, 3)
 
-    # Direction for yes/no and recovery
+    # Direction for yes/no, recovery, and amount (never binary "yes" for "how much…")
     if ctx.intent == "recovery":
         answer = "recovery_likely" if pos > cau and pos >= neu else ("recovery_slow" if pos >= cau else "recovery_uncertain")
     elif ctx.intent == "legal_outcome":
         answer = "favorable" if pos > cau else ("challenging" if cau > pos else "mixed")
     elif ctx.intent == "when":
         answer = "window_found" if any(v.technique_id == "event_timing" and v.direction == "positive" for v in applicable) else "timing_partial"
+    elif ctx.intent == "amount":
+        # Softer gate than yes/no: magnitude lean, not a hard promise
+        if pos > cau and pct >= 0.5:
+            answer = "increase_favoured"
+        elif cau > pos:
+            answer = "increase_limited"
+        else:
+            answer = "amount_unclear"
     else:
         answer = "yes" if pos > cau and pct > GATE_PCT else ("no" if cau > pos and cau / total > GATE_PCT else "uncertain")
 
@@ -873,6 +924,18 @@ def synthesize_answer(ctx: QuestionContext, verdicts: list[TechniqueVerdict]) ->
         "mixed": "Legal result is mixed  -  neither clear win nor clear loss",
         "window_found": "A confirmed timing window exists for this event",
         "timing_partial": "Theme is promised but no fully confirmed date yet",
+        "increase_favoured": (
+            f"An upward move in {ctx.title.lower()} is favoured — "
+            "the chart does not name an exact figure or %"
+        ),
+        "increase_limited": (
+            f"Any rise in {ctx.title.lower()} looks modest or delayed — "
+            "not a clear large hike"
+        ),
+        "amount_unclear": (
+            f"The size of any {ctx.title.lower()} change is not clearly fixed — "
+            "ask as yes/no or timing for a sharper call"
+        ),
     }.get(answer, "Read the technique table below")
 
     return {

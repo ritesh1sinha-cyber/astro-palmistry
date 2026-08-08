@@ -384,6 +384,11 @@ _LOST_RE = re.compile(r"\blost\b|\bmissing\b|\bmisplac\w*|\bfind\b|\bfound\b|\bw
 _RETURN_RE = re.compile(r"\breturns?\b|\breturning\b|\bcome back\b|\bcomes? back\b|\bcoming back\b|"
                         r"\bdelivered?\b|\breleased?\b|\bfreed\b|\bset free\b", re.I)
 _WHEN_RE = re.compile(r"\bwhen\b", re.I)
+_AMOUNT_RE = re.compile(
+    r"\bhow\s+much\b|\bhow\s+many\b|\bwhat\s+(?:percent|percentage|%)\b|"
+    r"\bwhat\s+amount\b|\bby\s+how\s+much\b|\bquantum\b|\bmagnitude\b",
+    re.I,
+)
 # Third-party: a named person ("Will Luis…", "Sara's…") or a relative the querent asks about.
 _NAME_RE = re.compile(r"\b[Ww]ill\s+([A-Z][a-z]{2,})\b|\b([A-Z][a-z]{2,})['\u2019]s\b")
 # Words that look like names but aren't third parties (sentence starts, etc.).
@@ -394,7 +399,11 @@ _PRIORITY = [5, 7, 4, 10, 6, 9, 8, 12, 3, 11, 2, 1]  # specificity tie-break
 
 
 def parse_question(question: str) -> dict:
-    """Extract (quesited house, mode flags, third-party) from free text — deterministically."""
+    """Extract (quesited house, mode flags, third-party) from free text.
+
+    Phase 1: MiniLM maps semantic meaning → house; keyword/_INTENT_RULES assist
+    when scores are close or the encoder is unavailable.
+    """
     q = question.strip()
     scores: dict[int, int] = {}
     for pattern, house, weight in _INTENT_RULES:
@@ -406,14 +415,34 @@ def parse_question(question: str) -> dict:
     if lost and 2 not in scores and not any(h in scores for h in (5, 6, 7)):
         scores[2] = scores.get(2, 0) + 2  # a lost *object* defaults to the 2nd
 
+    # MiniLM-first house
+    sem_house = None
+    sem_score = 0.0
+    try:
+        import semantic_question as SQ
+        routed = SQ.route(q)
+        sem_house = int(routed.primary_house)
+        sem_score = float(routed.house_score or 0)
+        if routed.method == "minilm" and sem_house:
+            # Blend: give semantic house a strong vote
+            scores[sem_house] = scores.get(sem_house, 0) + max(3, int(round(sem_score * 8)))
+    except Exception:
+        pass
+
     if scores:
         best = max(scores.values())
         tied = [h for h, s in scores.items() if s == best]
         house = min(tied, key=lambda h: _PRIORITY.index(h)) if len(tied) > 1 else tied[0]
+    elif sem_house:
+        house = sem_house
     elif _BUY_RE.search(q):
         house = 2  # acquiring an unspecified movable
     else:
         house = 7  # generic "the other party / the matter"
+
+    # Prefer MiniLM when keyword path collapsed to generic 7 but semantics are clear
+    if house == 7 and sem_house and sem_house != 7 and sem_score >= 0.32 and not scores.get(7):
+        house = sem_house
 
     # Third-party: a named person ("Will Luis…", "Sara's…") or a relative the querent asks about.
     name_hit = None
@@ -428,8 +457,11 @@ def parse_question(question: str) -> dict:
         "lost": lost,
         "return": bool(_RETURN_RE.search(q)),
         "when": bool(_WHEN_RE.search(q)),
+        "amount": bool(_AMOUNT_RE.search(q)),
         "third_party": third_party,
         "scores": scores,
+        "semantic_house": sem_house,
+        "semantic_score": sem_score,
     }
 
 

@@ -426,6 +426,36 @@ def _fact(label: str, value: str, cls: str = "") -> str:
     return f"<div class='fact-row'><span class='fact-label'>{label}</span><span class='fact-value{c}'>{value}</span></div>"
 
 
+def _jamakkol_plain_text(jam: dict, jk: dict) -> str:
+    return {
+        "YES": "this old Tamil timing method gives a clean green light.",
+        "CONDITIONAL": "this Tamil timing method says it can work, but not without some friction along the way.",
+        "NO": f"this Tamil timing method points to obstacles — {jk.get('verdict_reason', '').lower() or 'the path is blocked for now'}.",
+        "NEUTRAL": "this Tamil timing method is non-committal — neither a clear yes nor no.",
+    }[jam["label"]]
+
+
+def _prashna_plain_text(pra: dict) -> str:
+    return {
+        "YES": "the chart of the moment puts you in a strong spot and the matter's natural ruler is well placed.",
+        "CONDITIONAL": "the chart of the moment is encouraging in parts and resistant in others — a mixed, effort-dependent picture.",
+        "NO": "the chart of the moment puts the matter's natural ruler in a weak spot, which argues against an easy outcome.",
+        "NEUTRAL": "the chart of the moment is fairly balanced, without a strong push either way.",
+    }[pra["label"]]
+
+
+def _kp_plain_text(kp: dict) -> str:
+    if not kp.get("available"):
+        return "no KP number was supplied, so this lane is not available for this reading."
+    sub = kp["sub_lord"]
+    return {
+        "YES": f"the single deciding planet in KP ({sub}) is pulling for you, and it's one of today's ruling planets.",
+        "CONDITIONAL": f"the deciding planet in KP ({sub}) is pulled both ways — it promises something but with strings attached.",
+        "NO": f"the deciding planet in KP ({sub}) is leaning against the matter.",
+        "NEUTRAL": f"the deciding planet in KP ({sub}) doesn't clearly favour either side.",
+    }[kp["label"]]
+
+
 def _jamakkol_card(data: dict, jam: dict) -> str:
     jk = data["jamakkol"]
     kav = jk["kavippu"]
@@ -453,12 +483,7 @@ def _jamakkol_card(data: dict, jam: dict) -> str:
         + _fact("Veedhi", f"{kav['veedhi']} Veedhi")
         + _fact("Kavippu", f"{kav['kavippu_sign']} — {ordinal(kh)} from Udhaya", kav_cls)
         + _fact("Verdict", f"{LABEL_CHIP[jam['label']][1]} — {jk.get('verdict_reason','')}", LABEL_CHIP[jam["label"]][2]))
-    plain = {
-        "YES": "this old Tamil timing method gives a clean green light.",
-        "CONDITIONAL": "this Tamil timing method says it can work, but not without some friction along the way.",
-        "NO": f"this Tamil timing method points to obstacles — {jk.get('verdict_reason','').lower() or 'the path is blocked for now'}.",
-        "NEUTRAL": "this Tamil timing method is non-committal — neither a clear yes nor no.",
-    }[jam["label"]]
+    plain = _jamakkol_plain_text(jam, jk)
     return _technique_card("JK", "badge-jk", "Jamakkol Prasanam",
                            "Tamil Prasanam — Aarudam / Udhayam / Veedhi / Kavippu method",
                            jam["label"], steps_html, "Jamakkol Summary", facts, plain=plain)
@@ -503,12 +528,7 @@ def _prashna_card(data: dict, pra: dict) -> str:
         + _fact("Malefics in Lagna", ", ".join(pra["malefics_in_lagna"]) or "None — clean", "bad" if pra["malefics_in_lagna"] else "good")
         + _fact(f"{ordinal(pra['primary_bhava'])} lord ({pra['topic_lord']})", f"in {ordinal(pra['tl_house'])} — {pra['tl_status']}", tl_cls)
         + _fact("Verdict", LABEL_CHIP[pra["label"]][1], LABEL_CHIP[pra["label"]][2]))
-    plain = {
-        "YES": "the chart of the moment puts you in a strong spot and the matter's natural ruler is well placed.",
-        "CONDITIONAL": "the chart of the moment is encouraging in parts and resistant in others — a mixed, effort-dependent picture.",
-        "NO": "the chart of the moment puts the matter's natural ruler in a weak spot, which argues against an easy outcome.",
-        "NEUTRAL": "the chart of the moment is fairly balanced, without a strong push either way.",
-    }[pra["label"]]
+    plain = _prashna_plain_text(pra)
     return _technique_card("PK", "badge-pk", "Prashna Kundali Siddhanta",
                            "Chart-based prashna — Arudha, Lagna, Jupiter grace, topic-bhava lord",
                            pra["label"], steps_html, "Prashna Kundali Summary", facts, plain=plain)
@@ -543,12 +563,7 @@ def _kp_card(data: dict, kp: dict) -> str:
         + _fact("Favourable bhavas", ", ".join(ordinal(h) for h in kp["favorable"]))
         + _fact("Ruling Planets", " · ".join(kp["rp"]))
         + _fact("Verdict", LABEL_CHIP[kp["label"]][1], LABEL_CHIP[kp["label"]][2]))
-    plain = {
-        "YES": f"the single deciding planet in KP ({sub}) is pulling for you, and it's one of today's ruling planets.",
-        "CONDITIONAL": f"the deciding planet in KP ({sub}) is pulled both ways — it promises something but with strings attached.",
-        "NO": f"the deciding planet in KP ({sub}) is leaning against the matter.",
-        "NEUTRAL": f"the deciding planet in KP ({sub}) doesn't clearly favour either side.",
-    }[kp["label"]]
+    plain = _kp_plain_text(kp)
     return _technique_card("KP", "badge-kp", "KP Horary",
                            "Krishnamurti Paddhati — cuspal sub-lord + Ruling Planets",
                            kp["label"], steps_html, "KP Summary", facts, plain=plain)
@@ -792,8 +807,80 @@ VERDICT_TO_DONE = {"YES": "YES", "LIKELY": "LIKELY", "UNCERTAIN": "UNCERTAIN",
                    "UNLIKELY": "UNLIKELY", "NO": "NO"}
 
 
+def _vedic_customer_summary(data: dict, j: dict) -> dict:
+    """Everything the customer-facing confluence answer (horary_answer.py) needs,
+    already reduced to plain sentences and short planet lists — no engine
+    internals (house tables, dignity scores, checklists) leak past this point.
+    """
+    jam, pra, kp = j["jamakkol"], j["prashna"], j["kp"]
+    jk = data["jamakkol"]
+    rp = data["ruling_planets"]["all_ruling_planets"]
+    topic = data["meta"]["detected_topic"]
+    karakas = TOPIC_KARAKA.get(topic, TOPIC_KARAKA["general"])
+    tb = TOPIC_BHAVAS.get(topic, TOPIC_BHAVAS["general"])
+
+    strengthen = list(dict.fromkeys(karakas + [pra["topic_lord"], pra["lagna_lord"]]))[:4]
+    pacify = [p for p, h in data["houses"].items() if h in tb["denying"] and p in NATURAL_MALEFIC][:4]
+
+    # A simple, defensible net score per planet from the three systems' own
+    # structured signals — not a re-interpretation, just a tally of what each
+    # system already flagged as helping or hurting.
+    net: dict[str, int] = {}
+
+    def _bump(names, weight):
+        if not weight:
+            return
+        for n in names:
+            if n:
+                net[n] = net.get(n, 0) + weight
+
+    if kp.get("available"):
+        _bump([kp["sub_lord"]], 2 if kp["label"] == "YES" else (-2 if kp["label"] == "NO" else 0))
+        _bump(rp[:3], 1)
+    _bump(pra.get("benefics_in_kendra", []), 1)
+    _bump(pra.get("malefics_in_lagna", []), -1)
+    _bump([pra["lagna_lord"]], 1 if pra["label"] == "YES" else (-1 if pra["label"] == "NO" else 0))
+    conj = jk.get("kavippu_conjunct_planets") or []
+    _bump(conj, -1 if jam["label"] in ("NO", "CONDITIONAL") else (1 if jam["label"] == "YES" else 0))
+
+    favour_planets = [p for p, v in sorted(net.items(), key=lambda kv: -kv[1]) if v > 0][:5]
+    against_planets = [p for p, v in sorted(net.items(), key=lambda kv: kv[1]) if v < 0][:5]
+
+    jup_sign = data["planets"]["Jupiter"]["sign"]
+    timing_lines = [
+        f"Ruling-Planet periods — watch {', '.join(rp[:4])}; their daśā/bhukti or transit tends to trigger movement.",
+    ]
+    kar_in_rp = [k for k in karakas if k in rp]
+    if kar_in_rp:
+        names = ", ".join(kar_in_rp)
+        if len(kar_in_rp) == 1:
+            timing_lines.append(
+                f"{names} is both the topic's natural karaka and a Ruling Planet right now — "
+                f"its period is the sharpest trigger.")
+        else:
+            timing_lines.append(
+                f"{names} are both topic karakas and Ruling Planets right now — "
+                f"their periods are the sharpest triggers.")
+    else:
+        timing_lines.append(
+            f"Jupiter is currently in sidereal {jup_sign} — its next sign change marks a broader "
+            f"chapter-shift for the matter.")
+
+    return {
+        "jamakkol": {"label": jam["label"], "plain": _jamakkol_plain_text(jam, jk)},
+        "prashna": {"label": pra["label"], "plain": _prashna_plain_text(pra)},
+        "kp": {"label": kp["label"], "plain": _kp_plain_text(kp), "available": kp.get("available", False)},
+        "rp": rp,
+        "favour_planets": favour_planets,
+        "against_planets": against_planets,
+        "strengthen_planets": strengthen,
+        "pacify_planets": pacify,
+        "timing_lines": timing_lines[:2],
+    }
+
+
 def generate_vedic_horary_html(question: str, q_date: str, q_time: str,
-                               location: str = "Hyderabad",
+                               location: str = "New Delhi",
                                kp_number: str = "") -> tuple[str, dict]:
     """Deterministic Vedic prashna report. Returns (html, judgment dict)."""
     data = precompute_horary(question, q_date, q_time, location, kp_number or "")
@@ -809,6 +896,7 @@ def generate_vedic_horary_html(question: str, q_date: str, q_time: str,
             "kp": j["kp"]["label"],
         },
         "topic": data["meta"]["detected_topic"],
+        "customer": _vedic_customer_summary(data, j),
     }
     return html_doc, j_out
 
@@ -818,7 +906,7 @@ def main() -> None:
     ap.add_argument("question")
     ap.add_argument("q_date", help="YYYY-MM-DD")
     ap.add_argument("q_time", help="HH:MM (24h IST)")
-    ap.add_argument("location", nargs="?", default="Hyderabad")
+    ap.add_argument("location", nargs="?", default="New Delhi")
     ap.add_argument("kp_number", nargs="?", default="")
     ap.add_argument("-o", "--out", default=None)
     args = ap.parse_args()

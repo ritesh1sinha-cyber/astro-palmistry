@@ -42,7 +42,7 @@ from typing import Any, Optional
 # The stylesheet moved to report_shell so horary, numerology, matching and the
 # palm tab render in the same visual language from ONE source. Interpolated
 # below as {_STYLE}, so this report is byte-identical to before the move.
-from report_shell import STYLE as _STYLE
+from report_shell import STYLE as _STYLE, EXTRA as _EXTRA, INTERACT as _INTERACT
 
 # ---------------------------------------------------------------------------
 # life areas — named the way people think about their lives, not by house
@@ -215,8 +215,12 @@ def score_area(pc: dict, area: Area) -> tuple:
     try:
         import report_confluence as CF
         verdict = CF.area_verdict(pc, area.key, area.house)
-        evidence = [f"<b>{v.method.capitalize()}</b> — {v.because}"
-                    for v in verdict["votes"]]
+        verdict = CF.merge_semantic_verdict(area.key, verdict)
+        if verdict.get("evidence"):
+            evidence = list(verdict["evidence"])
+        else:
+            evidence = [f"<b>{v.method.capitalize()}</b> — {v.because}"
+                        for v in verdict["votes"]]
         return verdict["direction"], evidence, verdict["score"], verdict
     except Exception:
         pass
@@ -261,10 +265,12 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
                   + (" — and it points straight at this area"
                      if live else " — this area is not its main focus"))
         lord = (pc.get("house_lords", {}).get(str(area.house)) or {}).get("lord", "")
+        headline = (verdict or {}).get("headline") or CLAIMS.get((area.key, direction), "")
+        if len(headline) > 220:
+            headline = headline[:217].rsplit(" ", 1)[0] + "…"
         card = Card(
             area=area.key, label=area.label, direction=direction,
-            headline=CLAIMS.get((area.key, direction), ""),
-            window=window, evidence=ev,
+            headline=headline, window=window, evidence=ev,
             action=ACTIONS.get(lord, "") if direction != "up" else "",
             mantra=MANTRA.get(lord, "") if direction == "down" else "",
             agreement=(verdict or {}).get("agreement", ""),
@@ -329,7 +335,7 @@ DIRECTION_LABEL = {"up": "favourable", "mixed": "mixed", "down": "under strain"}
 
 
 def render(pc: dict, *, name: str = "", question_html: str = "",
-           price: int = 1499, today: Optional[date] = None,
+           price: int = 298, today: Optional[date] = None,
            paid: bool = False, proof_html: str = "",
            daily_html: str = "", timing_html: str = "") -> str:
     today = today or date.today()
@@ -377,11 +383,7 @@ after it is worth your money.</p>
         pass
 
     def card_html(c: Card) -> str:
-        # Evidence is shown, never hidden behind a toggle. It is the proof the
-        # reading is computed from THIS chart rather than written for anyone —
-        # collapsing it hides the one thing that separates us from a horoscope
-        # column.
-        ev = "".join(f"<li>{e}</li>" for e in c.evidence)
+        agree = f'<span class="agree">{_e(c.agreement)}</span>' if c.agreement else ""
 
         if paid:
             when = f'<div class="when">{_e(c.window)}</div>'
@@ -389,6 +391,10 @@ after it is worth your money.</p>
                    f'<p>{_e(c.action)}</p>'
                    + (f'<p class="mantra">{_e(c.mantra)}</p>' if c.mantra else "")
                    + "</div>") if c.action else ""
+            ev = "".join(f"<li>{e}</li>" for e in c.evidence)
+            ev_block = (
+                f'<div class="evidence"><span class="ev-label">Why your chart says this</span>'
+                f'{agree}<ul>{ev}</ul></div>')
         else:
             when = ('<div class="when locked-inline">'
                     '<span class="lockicon">•</span> Exact dates in the full reading</div>')
@@ -396,6 +402,12 @@ after it is worth your money.</p>
                    '<span class="act-label">What helps</span>'
                    '<p class="blurred">{}</p></div>'.format(_e(c.action))
                    ) if c.action else ""
+            n_ev = len(c.evidence)
+            ev_block = (
+                f'<div class="evidence locked-inline"><span class="ev-label">Why your chart says this</span>'
+                f'{agree}<p><span class="lockicon">•</span> {n_ev} independent '
+                f'reading{"s" if n_ev != 1 else ""} in your chart land on this. '
+                f'The working is in the full reading.</p></div>')
 
         return f"""
 <article class="card" data-verdict="{c.direction}">
@@ -403,10 +415,7 @@ after it is worth your money.</p>
     <span class="pill {c.direction}">{DIRECTION_LABEL[c.direction]}</span></div>
   <p class="claim">{_e(c.headline)}</p>
   {when}
-  <div class="evidence">
-    <span class="ev-label">Why your chart says this</span>
-    {f'<span class="agree">{_e(c.agreement)}</span>' if c.agreement else ''}
-    <ul>{ev}</ul></div>
+  {ev_block}
   {act}
 </article>"""
 
@@ -419,11 +428,33 @@ after it is worth your money.</p>
 
     cards_html = "".join(card_html(c) for c in cards)
 
+    if paid:
+        chapter_h2 = (f"{_e(md.get('md_lord',''))}–{_e(ad.get('ad_lord',''))}, "
+                      f"to {_e(_pretty(_d(ad.get('end'))))}")
+        chapter_dasha = dasha_html
+    else:
+        chapter_h2 = f"{_e(md.get('md_lord',''))}–{_e(ad.get('ad_lord',''))}"
+        chapter_dasha = ""
+
+    timeline_section = ""
+    if paid:
+        timeline_section = f"""
+<h3 class="sec">The full period sequence</h3>
+<p class="sec-note">Your own timing sequence, with real dates.</p>
+<ol class="timeline">{tl}</ol>"""
+
+    buy_blurb = (
+        "Every life area above, the dated windows for each, and the remedies "
+        "matched to your chart."
+        if paid else
+        "Why every headline above reads the way it does, the dated window for "
+        "each, the five-year windows, the period sequence and your gemstones.")
+
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{_e(first)} — your reading</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<style>{_STYLE}</style></head><body><div class="wrap">
+<style>{_STYLE}{_EXTRA}</style></head><body><div class="wrap">
 <header>
   <div class="eyebrow">Your reading</div>
   <h1>{_e(first)}, here is what your chart<br/>is doing right now.</h1>
@@ -433,11 +464,10 @@ after it is worth your money.</p>
 
 <div class="now-box">
   <div class="lbl">The chapter you are in</div>
-  <h2>{_e(md.get('md_lord',''))}–{_e(ad.get('ad_lord',''))},
-      to {_e(_pretty(_d(ad.get('end'))))}</h2>
+  <h2>{chapter_h2}</h2>
   <p>{_e(PLANET_VOICE.get(md.get('md_lord',''),''))} sets the background;
      {_e(PLANET_VOICE.get(ad.get('ad_lord',''),''))} is what you are feeling week to week.</p>
-  {dasha_html}
+  {chapter_dasha}
 </div>
 
 {personality_html}
@@ -450,18 +480,15 @@ after it is worth your money.</p>
 
 {timing_html}
 
-<h3 class="sec">The full period sequence</h3>
-<p class="sec-note">Your own timing sequence, with real dates.</p>
-<ol class="timeline">{tl}</ol>
+{timeline_section}
 
 {question_html}
 
 <div class="buy">
   <h3>Unlock the full reading</h3>
-  <p>Every life area above, the dated windows for each, and the remedies
-  matched to your chart.</p>
-  <a class="cta" href="#unlock">Unlock — ₹{price}</a>
+  <p>{buy_blurb}</p>
+  <a class="cta" href="#unlock" data-unlock="1">Unlock — ₹{price}</a>
 </div>
 <footer>Calculated from your birth details alone · guidance, not a substitute
 for professional advice</footer>
-</div></body></html>"""
+</div>{_INTERACT}</body></html>"""

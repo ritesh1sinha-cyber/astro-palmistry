@@ -4,13 +4,17 @@ reads, split into a free half and a paid half.
 
 Two delivery shapes:
   • build_palm_reading      — legacy JSON for the old in-page card UI
-  • build_palm_html_reading — HTML halves from palm_api's report template
-                             (same iframe path astrology already uses)
+  • build_palm_html_reading — the served path: two HTML halves rendered by
+                             `palm_cards` (same iframe path astrology uses)
+
+The halves used to be produced by deep-copying the analysis and deleting fields
+from each copy, which put every numbered point and its estimated age on the free
+side and took the customer's own annotated photographs off the paid side. They
+are now rendered twice from one analysis, branching on `paid`.
 """
 
 from __future__ import annotations
 
-import copy
 import re
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
@@ -195,23 +199,9 @@ def _cite(a: Dict[str, Any]) -> str:
     return ""
 
 
-# ---------------------------------------------------------------------------
-# FREE vs PAID policy
-# ---------------------------------------------------------------------------
-# A purely age-based split breaks down for older users: palm_api's dated
-# markings cluster where the detected points fall on the lines, so a 40-year-old
-# can have every dated event behind them and nothing left to sell. So the split
-# is by VALUE, with the timeline still honouring "read up to today":
-#
-#   FREE  — proof + identity: scores, both overlays, who you are (character,
-#           mind), left-vs-right comparison, and every dated marking up to the
-#           user's current age.
-#   PAID  — the four decision domains people actually pay for (love, career,
-#           wealth, health), special marks + remedies, mount-by-mount analysis,
-#           and every dated marking that still lies ahead.
-#
-# This holds up at any age: a 22-year-old and a 55-year-old both get a
-# substantial free reading and a substantial paid report.
+# Aspect partition for the legacy JSON reading only. The HTML halves no longer
+# hide whole life areas: every area shows its verdict for free and locks the
+# working under it, which is the split `palm_cards` implements.
 FREE_ASPECTS = ("character", "mind")
 PAID_ASPECTS = ("love", "career", "wealth", "health", "fortune", "travel")
 
@@ -445,14 +435,32 @@ def build_palm_reading(raw: dict, p: dict, overlays: dict) -> dict:
 # HTML halves (pipeline template → iframe delivery, same shape as astrology)
 # ---------------------------------------------------------------------------
 def _scrub_palm_html(html: str) -> str:
-    """Customer-facing gate: no citations, no machinery talk."""
+    """Customer-facing gate: no citations, no machinery talk.
+
+    The scrubbers are prose cleaners and will happily rewrite a stylesheet:
+    one of them de-stutters repeated words, which quietly turned
+    `grid-template-columns:1fr 1fr` into `1fr`. `report_render.clean` already
+    stashes style and script blocks for exactly this reason, so do the same
+    around the voice pass that runs before it.
+    """
     out = re.sub(r'<ul class="aspect-cites">.*?</ul>', "", html or "",
                  flags=re.S | re.I)
+
+    keep: List[str] = []
+
+    def _stash(m: "re.Match[str]") -> str:
+        keep.append(m.group(0))
+        return f"\x00KEEP{len(keep) - 1}\x00"
+
+    out = re.sub(r"<(style|script)\b.*?</\1>", _stash, out, flags=re.S | re.I)
     try:
         import astro_voice as V
         out = V.strip_citations(V.strip_machinery(out), hide_system_names=True)
     except Exception:                                                 # noqa: BLE001
         pass
+    for i, block in enumerate(keep):
+        out = out.replace(f"\x00KEEP{i}\x00", block)
+
     try:
         from report_render import clean as rd_clean
         out = rd_clean(out)
@@ -461,142 +469,78 @@ def _scrub_palm_html(html: str) -> str:
     return out
 
 
-def _filter_aspects(conf: dict, keys: tuple) -> list:
-    return [a for a in (conf.get("life_aspects") or []) if a.get("key") in keys]
+FREE_SECTIONS = [
+    "Both palms, as the engine read them",
+    "What your hands say you are",
+    "Every life area, and which way it leans",
+    "Left hand against right hand",
+    "Your hand, read to today",
+]
+
+PAID_SECTIONS = [
+    "Why each life area reads the way it does",
+    "Every dated marking ahead of you",
+    "The line-by-line analysis, both hands",
+    "Mount by mount",
+    "What your special marks mean",
+    "Remedies keyed to your hand",
+]
 
 
-def _analysis_for_free(raw: dict, age: int) -> dict:
-    """Proof + identity: free aspects, left-vs-right, dated markings up to today."""
-    out = copy.deepcopy(raw)
-    conf = dict(out.get("confluence") or {})
-    conf["life_aspects"] = _filter_aspects(conf, FREE_ASPECTS)
-    preds = conf.get("predictions") or []
-    conf["predictions"] = [
-        p for p in preds
-        if isinstance(p.get("age"), int) and p["age"] <= age
-    ]
-    conf["marks"] = []  # remedies sit behind the paywall
-    out["confluence"] = conf
-    return out
+def _teaser(n_areas: int, n_ahead: int, n_points: int) -> str:
+    """Shown by palmPayCard on the site, so it has to stand on its own.
 
-
-def _analysis_for_paid(raw: dict, age: int) -> dict:
-    """Decision domains, forward markings, marks/remedies, mount readings."""
-    out = copy.deepcopy(raw)
-    # Per-hand overlays + numbered points already appear on the free half.
-    out["left"] = None
-    out["right"] = None
-    conf = dict(out.get("confluence") or {})
-    conf["life_aspects"] = _filter_aspects(conf, PAID_ASPECTS)
-    preds = conf.get("predictions") or []
-    conf["predictions"] = [
-        p for p in preds
-        if (isinstance(p.get("age"), int) and p["age"] > age)
-        or not isinstance(p.get("age"), int)
-    ]
-    # Left-vs-right synthesis already sat on the free half.
-    conf["lines"] = []
-    conf["mounts"] = []
-    # Summary belongs with the free orientation block.
-    conf["summary"] = ""
-    out["confluence"] = conf
-    return out
-
-
-def _paid_section_titles(raw: dict, age: int) -> List[str]:
-    conf = raw.get("confluence") or {}
-    titles: List[str] = []
-    for a in _filter_aspects(conf, PAID_ASPECTS):
-        t = (a.get("title") or a.get("key") or "").strip()
-        if t:
-            titles.append(t)
-    for p in conf.get("predictions") or []:
-        if isinstance(p.get("age"), int) and p["age"] > age:
-            titles.append(f"Age {p['age']} — {p.get('title', 'Your palm')}")
-        elif not isinstance(p.get("age"), int):
-            titles.append(p.get("title") or "Ahead of you")
-    if conf.get("marks"):
-        titles.append("Remedies for your marks")
-    # de-dupe, keep order
-    seen, out = set(), []
-    for t in titles:
-        if t and t not in seen:
-            seen.add(t)
-            out.append(t)
-    return out
-
-
-def _inject_before_body_end(html: str, snippet: str) -> str:
-    """Place the paywall note inside .report-wrap, just before </body>."""
-    if not snippet:
-        return html
-    m = re.search(r'</div>\s*</body\s*>', html or "", flags=re.I | re.S)
-    if m:
-        return html[:m.start()] + snippet + html[m.start():]
-    m2 = re.search(r"</body\s*>", html or "", flags=re.I)
-    if m2:
-        return html[:m2.start()] + snippet + html[m2.start():]
-    return (html or "") + snippet
-
-
-def _locked_note_html(paid_sections: List[str], teaser: str) -> str:
-    if not paid_sections:
-        return ""
-    items = "".join(f"<li><b>{re.sub(r'<[^>]+>', '', t)}</b></li>"
-                    for t in paid_sections[:8])
-    more = (f"<li>+ {len(paid_sections) - 8} more sections</li>"
-            if len(paid_sections) > 8 else "")
-    safe_teaser = re.sub(r"<[^>]+>", "", teaser or "")
-    return f"""
-<article class="report-card" style="border:1px dashed #c9a227;
-background:rgba(201,162,39,.07)">
-  <h2>{len(paid_sections)} more sections in the full report</h2>
-  <p>{safe_teaser}</p>
-  <ul>{items}{more}</ul>
-</article>"""
-
-
-def build_palm_html_reading(raw: dict, p: dict) -> Tuple[str, str, dict]:
+    It used to promise only the dated markings still ahead, which read as an
+    empty offer for anyone whose markings all sit behind them. The working
+    behind the verdicts is the part that is always there to sell.
     """
-    Build free/paid HTML from the palm_api report template.
+    parts = [f"the chart working behind all {n_areas} verdicts"] if n_areas else []
+    if n_ahead:
+        parts.append(f"{n_ahead} dated marking{'s' if n_ahead != 1 else ''} still ahead of you")
+    if n_points:
+        parts.append(f"the line-by-line reading of all {n_points} numbered points")
+    if not parts:
+        return ("The full reading opens the working behind every verdict, your "
+                "mounts, your marks and the remedies keyed to them.")
+    return "The full reading opens " + ", ".join(parts) + "."
+
+
+def build_palm_html_reading(raw: dict, p: dict, *,
+                            price: int = 499) -> Tuple[str, str, dict]:
+    """
+    Build free/paid HTML for one palm reading.
 
     Returns (free_html, paid_html, meta) — same contract as report_render.*.
-    Overlays are embedded as data URIs so each half is a standalone document
-    inside the site iframe (no extra signed image round-trips).
+    Rendered twice against the same analysis rather than split, because the
+    paywall sits inside each life-area card: the verdict is free and the working
+    under it is not. Overlays are embedded as data URIs so each half is a
+    standalone document inside the site iframe.
     """
-    from palm_api.pipeline import render_lane_html
+    from . import palm_cards as PC
 
     req = _Req(p)
     age = req.age
     name = req.name or "Seeker"
 
-    # Reuse the JSON path's teaser / section list so paywall copy stays consistent.
-    sketch = build_reading(raw, req, overlays={})
-    paid_sections = list(sketch.get("meta", {}).get("paidSections") or [])
-    if not paid_sections:
-        paid_sections = _paid_section_titles(raw, age)
-    teaser = sketch.get("teaser") or ""
-
-    free_raw = _analysis_for_free(raw, age)
-    paid_raw = _analysis_for_paid(raw, age)
-
-    free_html = render_lane_html(
-        free_raw, client_name=name, embed_overlays=True)
-    paid_html = render_lane_html(
-        paid_raw, client_name=name, embed_overlays=True)
-
-    free_html = _inject_before_body_end(
-        free_html, _locked_note_html(paid_sections, teaser))
-
-    free_html = _scrub_palm_html(free_html)
-    paid_html = _scrub_palm_html(paid_html)
-
-    # Mild title tweak on the paid half so the two iframes don't read identical.
-    paid_html = paid_html.replace(
-        "Palmistry analysis report", "Full palmistry reading", 1)
-
-    dom_key = (raw.get("confluence") or {}).get("dominant_hand") or req.dominant
+    conf = raw.get("confluence") or {}
+    dom_key = conf.get("dominant_hand") or req.dominant
     dom = raw.get(dom_key) or raw.get("right") or raw.get("left") or {}
+
+    aspects = conf.get("life_aspects") or []
+    dom_items = dom.get("numbered_checklist") or []
+    dated = [(i.get("timing") or {}).get("estimated_age") for i in dom_items
+             if i.get("kind") == "line"]
+    dated = [a for a in dated if isinstance(a, int)]
+    behind = [a for a in dated if a <= age]
+    ahead = [a for a in dated if a > age]
+    n_points = sum(len((raw.get(h) or {}).get("numbered_checklist") or [])
+                   for h in ("left", "right"))
+
+    common = dict(name=name, age=age, gender=req.gender,
+                  dominant=req.dominant, price=price)
+    free_html = _scrub_palm_html(PC.render(raw, paid=False, **common))
+    paid_html = _scrub_palm_html(PC.render(raw, paid=True, **common))
+
     quality = (dom.get("features") or {}).get("quality") or {}
     guidance = (dom.get("features") or {}).get("photo_guidance") or {}
 
@@ -606,14 +550,13 @@ def build_palm_html_reading(raw: dict, p: dict) -> Tuple[str, str, dict]:
         "photoQuality": quality.get("grade"),
         "photoScore": quality.get("score"),
         "photoAdvice": guidance.get("suggestions") or [],
-        "summary": (raw.get("confluence") or {}).get("summary", ""),
-        "teaser": teaser,
-        "freeSections": [a.get("title") for a in _filter_aspects(
-            raw.get("confluence") or {}, FREE_ASPECTS) if a.get("title")],
-        "paidSections": paid_sections,
-        "pastCount": sketch.get("meta", {}).get("pastCount"),
-        "futureCount": sketch.get("meta", {}).get("futureCount"),
-        "datedAhead": sketch.get("meta", {}).get("datedAhead"),
-        "scores": sketch.get("scores"),
+        "summary": conf.get("summary", ""),
+        "teaser": _teaser(len(aspects), len(ahead), n_points),
+        "freeSections": list(FREE_SECTIONS),
+        "paidSections": list(PAID_SECTIONS),
+        "pastCount": len(behind),
+        "futureCount": len(ahead),
+        "datedAhead": len(ahead),
+        "scores": build_scores(dom, {a.get("key"): a for a in aspects}),
     }
     return free_html, paid_html, meta

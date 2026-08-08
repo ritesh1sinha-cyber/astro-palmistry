@@ -44,9 +44,10 @@ services:
       context: .
       dockerfile: deploy/Dockerfile.local
       args:
-        WITH_CONFLUENCE: "0"      # "1" adds torch (~2 GB) for the full report
+        WITH_CONFLUENCE: "1"      # MiniLM semantic grouping for full confluence report
     environment:
       ENV: dev
+      WITH_CONFLUENCE: "1"
       DATABASE_URL: postgresql+psycopg://astro:localdev@postgres:5432/astro
       REDIS_URL: redis://redis:6379/0
       APP_SECRET: local-dev-only-not-a-secret
@@ -70,6 +71,7 @@ services:
       - ./api.py:/app/api.py:ro
       - ./worker.py:/app/worker.py:ro
       - ./e2e_check.py:/app/e2e_check.py:ro
+      - ./.config:/app/.config:ro
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}

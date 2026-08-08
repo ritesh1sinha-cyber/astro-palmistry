@@ -22,6 +22,11 @@ timezonefinder
 geopy
 geocoder
 
-# confluence report lane only (~2 GB) — skip on light workers
-# sentence-transformers>=2.2
-# torch>=2.4
+# confluence report lane — MiniLM semantic grouping (~2 GB with torch)
+# Installed in Docker when WITH_CONFLUENCE=1 (default). For bare pip on a laptop:
+#   pip install "torch==2.5.1" --index-url https://download.pytorch.org/whl/cpu
+#   pip install "sentence-transformers>=3.0,<6"
+#   python deploy/ensure_semantic_models.py
+# Need torch>=2.5 — 2.4.x breaks MiniLM (DTensor ImportError via transformers).
+# sentence-transformers>=3.0,<6
+# torch==2.5.1

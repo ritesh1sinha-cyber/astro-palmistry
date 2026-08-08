@@ -89,12 +89,12 @@ LEAK = re.compile(
 # produces false positives.
 DECIMAL_SPLIT = re.compile(r"\b\d+\.\s+\d\b")
 
-RITESH = {"name": "Ritesh Kumar Sinha", "dob": "1985-03-08", "tob": "13:05",
-          "place": "Patna", "lat": 25.5941, "lon": 85.1376, "tz": 5.5,
+SAMPLE = {"name": "Sample User", "dob": "1990-01-15", "tob": "12:00",
+          "place": "New Delhi, India", "lat": 28.6139, "lon": 77.2090, "tz": 5.5,
           "gender": 0}
-ADITI = {"name": "Aditi", "dob": "1989-07-29", "tob": "00:05",
-         "place": "Patna", "lat": 25.5941, "lon": 85.1376, "tz": 5.5,
-         "gender": 1}
+PARTNER = {"name": "Partner", "dob": "1992-06-20", "tob": "08:30",
+           "place": "New Delhi, India", "lat": 28.6139, "lon": 77.2090, "tz": 5.5,
+           "gender": 1}
 
 RESULTS: list[tuple[str, bool]] = []
 SAVED: list[tuple[str, Path]] = []
@@ -117,7 +117,7 @@ def main() -> int:
     import core.handlers as H
 
     init_schema()
-    user = upsert_user(email="e2e-design@test.local", name="Ritesh Kumar Sinha")
+    user = upsert_user(email="e2e-design@test.local", name="E2E Tester")
 
     def halves(rid: str) -> tuple[str, str]:
         fk, pk = report_keys(rid)
@@ -162,18 +162,18 @@ def main() -> int:
     print("Every reading below is generated, stored, and read back from storage.")
     print("=" * 74)
 
-    audit("numerology", H.h_numerology(user, dict(RITESH))["reportId"],
+    audit("numerology", H.h_numerology(user, dict(SAMPLE))["reportId"],
           must=("life path", "lo shu", "personal year", "--ink:#16181d"),
           paid_must=("life path",))
 
     audit("kundali_match", H.h_kundali_match(user, {
-        "groomName": "Ritesh", "groomDob": RITESH["dob"],
-        "groomTob": RITESH["tob"], "groomLat": RITESH["lat"],
-        "groomLon": RITESH["lon"], "groomTz": 5.5, "groomPlace": "Patna",
-        "brideName": "Aditi", "brideDob": ADITI["dob"], "brideTob": ADITI["tob"],
-        "brideLat": ADITI["lat"], "brideLon": ADITI["lon"], "brideTz": 5.5,
-        "bridePlace": "Patna"})["reportId"],
-        must=("36", "Ritesh", "Aditi"),
+        "groomName": "Sample", "groomDob": SAMPLE["dob"],
+        "groomTob": SAMPLE["tob"], "groomLat": SAMPLE["lat"],
+        "groomLon": SAMPLE["lon"], "groomTz": 5.5, "groomPlace": "New Delhi, India",
+        "brideName": "Partner", "brideDob": PARTNER["dob"], "brideTob": PARTNER["tob"],
+        "brideLat": PARTNER["lat"], "brideLon": PARTNER["lon"], "brideTz": 5.5,
+        "bridePlace": "New Delhi, India"})["reportId"],
+        must=("36", "Sample", "Partner"),
         # A compatibility report's remedies are the dosha remedies. Career
         # gemstones appearing here was a real copy-paste bug.
         must_not=("gemstone",),
@@ -182,13 +182,13 @@ def main() -> int:
     audit("horary", H.h_horary(user, {
         "question": "Will the property deal go through?",
         "qDate": "2026-08-04", "qTime": "21:40",
-        "location": "Patna, India"})["reportId"],
+        "location": "New Delhi, India"})["reportId"],
         must=("you asked", "property"),
-        must_not=("the two traditions disagree",),
-        paid_must=("working",))
+        must_not=("the two traditions disagree", "Full working"),
+        paid_must=("Final verdict",))
 
     # ---- tabs that used to be JSON + site chrome; now cards-v2 HTML ----
-    daily = H.h_daily(user, dict(RITESH))
+    daily = H.h_daily(user, dict(SAMPLE))
     if daily.get("locked"):
         print("\ndaily: LOCKED (quota) — skip HTML audit")
         RESULTS.append(("daily not locked on fresh user", False))
@@ -201,7 +201,7 @@ def main() -> int:
                         (daily.get("meta") or {}).get("design") == "cards-v2"))
 
     muh = H.h_muhurat(user, {
-        **RITESH, "eventId": "marriage", "date": "2026-11-20"})
+        **SAMPLE, "eventId": "marriage", "date": "2026-11-20"})
     audit("muhurat", muh["reportId"],
           must=("muhurat", "--ink:#16181d"),
           paid_must=("check",),)
@@ -209,10 +209,10 @@ def main() -> int:
                     (muh.get("meta") or {}).get("design") == "cards-v2"))
 
     btr = H.h_btr(user, {
-        **RITESH, "events": {"first_job": "2007-08-01",
-                             "marriage": "2011-02-13",
-                             "child": "2014-06-01",
-                             "higher_education": "2005-07-15"}})
+        **SAMPLE, "events": {"first_job": "2012-08-01",
+                             "marriage": "2016-02-13",
+                             "child": "2019-06-01",
+                             "higher_education": "2010-07-15"}})
     if btr.get("skipped"):
         print(f"\nbtr: SKIPPED — {btr.get('reason')}")
         RESULTS.append(("btr produced a report", False))
@@ -224,7 +224,7 @@ def main() -> int:
                         (btr.get("meta") or {}).get("design") == "cards-v2"))
 
     print("\n(the flagship: 12 specialist lanes, then the confluence)")
-    r = H.h_full_report(user, {**RITESH, "question": "When will I change my job?"})
+    r = H.h_full_report(user, {**SAMPLE, "question": "When will I change my job?"})
     audit("full_report", r["reportId"],
           must=("data-verdict", "your past", "everything, one price",
                 "--ink:#16181d"),

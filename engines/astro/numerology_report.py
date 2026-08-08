@@ -8,8 +8,8 @@ Avasthi / rules38). Every number, cycle and date is computed; the interpretive
 prose comes from fixed, book-faithful lookup tables (same approach as palm_api).
 
 Usage:
-    python3 numerology_report.py --name "Ritz" --dob 1985-03-08 \
-        --sex Male --report-date 2026-04-08 --out reports/Numerology_Ritz_1985-03-08.html
+    python3 numerology_report.py --name "Sample" --dob 1990-01-15 \
+        --sex Male --report-date 2026-04-08 --out reports/Numerology_Sample_1990-01-15.html
 """
 from __future__ import annotations
 

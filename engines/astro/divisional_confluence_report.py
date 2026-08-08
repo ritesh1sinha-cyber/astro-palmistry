@@ -8,7 +8,7 @@ divisional_chart-tillD10.pdf (OCR corpus). Confluence rows reuse the live
 multi-technique engine (KP, Jaimini, Daśā, Aṣṭakavarga, pillar, etc.).
 
 CLI:
-    python divisional_confluence_report.py --varga D1 --name Ritesh
+    python divisional_confluence_report.py --varga D1 --name Sample
 """
 from __future__ import annotations
 
@@ -3504,12 +3504,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Divisional chart confluence report")
     ap.add_argument("--varga", default="D1",
                     help="D1, D2, D3, D4, D7, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45, D60 (or 'all')")
-    ap.add_argument("--name", default="Ritesh")
-    ap.add_argument("--dob", default="1985-03-08")
-    ap.add_argument("--time", default="13:05")
-    ap.add_argument("--place", default="Patna, India")
-    ap.add_argument("--lat", type=float, default=25.5941)
-    ap.add_argument("--lon", type=float, default=85.1376)
+    ap.add_argument("--name", default="Sample")
+    ap.add_argument("--dob", default="1990-01-15")
+    ap.add_argument("--time", default="12:00")
+    ap.add_argument("--place", default="New Delhi, India")
+    ap.add_argument("--lat", type=float, default=28.6139)
+    ap.add_argument("--lon", type=float, default=77.2090)
     ap.add_argument("--tz", type=float, default=5.5)
     ap.add_argument("-o", "--out", default="")
     args = ap.parse_args()

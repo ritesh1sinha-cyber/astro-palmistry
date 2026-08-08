@@ -113,7 +113,7 @@ TARABALA_RULES: dict[int, dict] = {
     8: {
         "name": "Mitra",
         "tone": "auspicious",
-        "summary": "Friend-star - alliances help.",
+        "summary": "Friend-star day — alliances help.",
         "dos": [
             ("Meet allies, mentors, or peers for a focused working session.", "Tarabala/Mitra - OCR Mitr"),
             ("Send one gratitude message to a supporter.", "Tarabala/Mitra"),
@@ -236,27 +236,29 @@ def _load_nakshatra_effects() -> dict[str, str]:
     return {}
 
 
+#: Classical planet colours (rules40/41). Held as a table rather than parsed
+#: out of the GEM_DATA behaviour prose: that parse missed "white clothes" for
+#: Venus and then fell through to the sub-gem name, so the daily card offered
+#: "Fire Opal" as a colour to wear while the Do line, reading the same planet
+#: from its own table, correctly said pastel pink.
+PLANET_COLOUR: dict[str, str] = {
+    "Sun": "white, cream, or gold",
+    "Moon": "white or pearl",
+    "Mars": "red or coral",
+    "Mercury": "green",
+    "Jupiter": "yellow or saffron",
+    "Venus": "white or pastel pink",
+    "Saturn": "navy, black, or charcoal",
+    "Rahu": "smoke grey or dark multicolour",
+    "Ketu": "ash grey or brown",
+}
+
+
 def color_from_gem_rules(planet: str) -> tuple[str, str]:
-    """Extract wear/colour hint from rules40/41 GEM_DATA behavior - no invented palette."""
-    g = GEM_DATA.get(planet, {})
-    behavior = g.get("behavior", "")
-    charity = g.get("charity", "")
-    sub = g.get("sub", "")
-    # Parse explicit wear hints from behavior
-    bl = behavior.lower()
-    if "wear white" in bl:
-        color = "white or pearl"
-    elif "wear red" in bl:
-        color = "red or coral"
-    elif "green clothes" in bl or "green" in bl:
-        color = "green"
-    elif "yellow" in bl:
-        color = "yellow or saffron"
-    elif "black" in bl or "blue" in bl:
-        color = "navy or charcoal"
-    else:
-        color = sub.split("/")[0].strip() if sub else "neutral cream"
-    return color, f"rules40/41 {planet} behavior: {behavior[:60]}"
+    """The colour to lean on for a planet, and that planet's practice note."""
+    colour = PLANET_COLOUR.get(planet, "a calm neutral")
+    behavior = GEM_DATA.get(planet, {}).get("behavior", "")
+    return colour, (f"{behavior}." if behavior else "")
 
 
 def pick_variant(items: list, seed: int) -> tuple[str, str] | None:

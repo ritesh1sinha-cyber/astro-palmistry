@@ -73,6 +73,13 @@ def _ord(n: Any) -> str:
                      else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
 
 
+def _area_for_house(house: int) -> str:
+    """Map house → report_confluence area key (same as question_answer)."""
+    return {10: "career", 2: "money", 7: "love", 4: "home", 5: "children",
+            1: "health", 9: "learning", 12: "inner", 6: "health",
+            3: "career", 11: "money", 8: "health"}.get(int(house), "")
+
+
 def build(pc: dict, *, today: Optional[date] = None) -> dict:
     """The present and the last six months, from period plus live transit."""
     today = today or date.today()
@@ -142,9 +149,30 @@ def build(pc: dict, *, today: Optional[date] = None) -> dict:
             f"({_e(yog_now.get('lord'))}) until "
             f"{_e(_pretty(__import__('report_confluence')._d(yog_now.get('end'))))}.")
 
+    # Multi-technique confluence for the houses this period activates —
+    # clubs Parashari / SAV / dasha agreement even when systems word themes differently.
+    conf_bits = []
+    try:
+        for h in (active or [])[:2]:
+            area = _area_for_house(h)
+            if not area:
+                continue
+            v = CF.area_verdict(pc, area, h)
+            label = HOUSE_LIFE.get(h, area)
+            tone = {"up": "supportive", "down": "demanding", "mixed": "mixed"}.get(
+                v.get("direction"), "mixed")
+            conf_bits.append(
+                f"Across methods, <b>{_e(label)}</b> reads as <b>{tone}</b> "
+                f"({_e(v.get('agreement') or v.get('label') or '')}).")
+        if conf_bits:
+            lines.extend(conf_bits)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[present_read] area confluence skipped: {exc}", flush=True)
+
     return {"today": today, "since": back, "lines": lines,
             "direction": dasha["direction"], "agreement": dasha["agreement"],
-            "period": f"{md}–{ad}", "live": live}
+            "period": f"{md}–{ad}", "live": live,
+            "active_houses": active}
 
 
 def render(block: dict, *, tab: str = "") -> str:
@@ -164,9 +192,9 @@ def render(block: dict, *, tab: str = "") -> str:
   <ul class="present-list">{items}</ul>
   <div class="present-ask">
     <span>Does this describe your last six months?</span>
-    <button class="pillbtn" data-mm="yes">Yes, closely</button>
-    <button class="pillbtn" data-mm="partly">Partly</button>
-    <button class="pillbtn" data-mm="no">Not at all</button>
+    <button type="button" class="pillbtn" data-mm="yes">Yes, closely</button>
+    <button type="button" class="pillbtn" data-mm="partly">Partly</button>
+    <button type="button" class="pillbtn" data-mm="no">Not at all</button>
   </div>
   {mismatch_modal(tab)}
 </section>"""
@@ -202,10 +230,10 @@ def mismatch_modal(tab: str = "") -> str:
       are their own record.</li>
     </ol>
     <div class="mm-actions">
-      <a class="cta-dark" href="#tab-btr">Fix my birth time</a>
-      <a class="cta-light" href="#tab-question">Ask a question instead</a>
-      <a class="cta-light" href="#tab-palm">Read my palms</a>
+      <a class="cta-dark" href="#" data-nav="btr">Fix my birth time</a>
+      <a class="cta-light" href="#" data-nav="horary">Ask a question instead</a>
+      <a class="cta-light" href="#" data-nav="read">Read my palms</a>
     </div>
-    <button class="mm-close" data-close="1">Close</button>
+    <button type="button" class="mm-close" data-close="1">Close</button>
   </div>
 </div>"""
