@@ -119,6 +119,12 @@ class Settings:
     secret: str = os.getenv("APP_SECRET", "dev-only-change-me")
     google_client_id: str = field(default_factory=lambda: _cfg(
         "google_client_id", "GOOGLE_CLIENT_ID", ""))
+    # Cloudflare Turnstile (I'm-not-a-robot). Site key is public; secret is
+    # server-only. Empty secret = check disabled (local / e2e).
+    turnstile_site_key: str = field(default_factory=lambda: _cfg(
+        "turnstile_site_key", "TURNSTILE_SITE_KEY", ""))
+    turnstile_secret: str = field(default_factory=lambda: _cfg(
+        "turnstile_secret", "TURNSTILE_SECRET", ""))
     # Guest / admin test logins (passcode + password). Off when False.
     dev_login: bool = _CODE_DEV_LOGIN
     dev_auto_pay: bool = _CODE_DEV_AUTO_PAY
@@ -154,6 +160,7 @@ class Settings:
         "palm_full":      _int("PRICE_PALM", 29800),
         "full_report":    _int("PRICE_REPORT", 29800),
         "horary":         _int("PRICE_HORARY", 29800),
+        "user_question":  _int("PRICE_QUESTION", 29800),
         "future_event":   _int("PRICE_TIMING", 29800),
         "kundali_match":  _int("PRICE_MATCH", 29800),
         "muhurat":        _int("PRICE_MUHURAT", 29800),

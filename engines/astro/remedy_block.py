@@ -46,6 +46,21 @@ WEAR_LABEL = {
     "avoid": ("Do not wear this stone", "down"),
 }
 
+_DIGNITY_PLAIN = {
+    "exalted": "very strong",
+    "moolatrikona": "on its best ground",
+    "own_sign": "in its own sign",
+    "friendly_sign": "comfortably placed",
+    "neutral_sign": "neither strong nor weak",
+    "enemy_sign": "under strain",
+    "debilitated": "very weak",
+}
+
+
+def _dig_plain(code: str) -> str:
+    key = (code or "").strip().lower()
+    return _DIGNITY_PLAIN.get(key, key.replace("_", " "))
+
 
 def _e(t: Any) -> str:
     return _html.escape(str(t or ""))
@@ -93,7 +108,7 @@ def _stone_row(item: dict) -> str:
       <span class="stone-verdict">{_e(label)}</span>
     </div>
     <div class="stone-role">{_e(item.get('role', ''))}
-      {f"— {_e(snap.get('planet'))} in your {_e(snap.get('house'))}th, {_e(snap.get('dignity','').replace('_',' '))}" if snap else ""}</div>
+      {f". {_e(snap.get('planet'))} in your {_e(snap.get('house'))}th, {_e(_dig_plain(snap.get('dignity','')))}" if snap else ""}</div>
     {f'<div class="stone-detail">{detail}</div>' if detail else ''}
     {f'<div class="stone-why">{_e(reasons[0])}</div>' if reasons else ''}
     <div class="stone-alt"><b>Instead / alongside:</b>
@@ -130,7 +145,7 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
   <div class="ev-label">{_e(heading)}</div>
   {f'<p class="remedy-lede">{_e(lede)}</p>' if lede else ''}
   {f'''<div class="remedy-do">
-    <div class="remedy-do-label">Start here — no belief required</div>
+    <div class="remedy-do-label">Start here. No belief required</div>
     <p>{_e(practical)}</p>
   </div>''' if practical else ''}
   <ul class="stones">{''.join(_stone_row(st) for st in stones)}</ul>

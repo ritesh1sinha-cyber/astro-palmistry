@@ -61,35 +61,39 @@ def _line_confluence(
         return None
     if dom_det != non_det:
         present = dom_label if dom_det else non_label
-        statement = (
-            f"Your {title.lower()} reads clearly on your {present} hand only. "
-            f"This points to {theme} that is "
-            + ("actively expressed in your current life."
-               if dom_det else "more an innate tendency than a developed trait yet.")
-        )
+        try:
+            import palm_voice as PV
+            pred = PV.compose(
+                scenario=(
+                    f"Your {theme} reads clearly on your {present} hand only — "
+                    + ("actively expressed in your current life."
+                       if dom_det else "more an innate tendency than a developed trait yet.")
+                ),
+                backing=f"{PV._line_name(key)} one-hand ({present})",
+            )
+            statement = pred.text_block()
+        except Exception:  # noqa: BLE001
+            statement = (
+                f"Your {theme} reads clearly on your {present} hand only."
+            )
         return {"key": key, "title": title, "agreement": "one_hand", "statement": statement}
 
     ds, ns = _line_strength(dom), _line_strength(non)
-    if ds > ns + 1:
-        agreement = "developed"
-        statement = (
-            f"Your {title.lower()} is stronger on your dominant ({dom_label}) hand than your "
-            f"innate ({non_label}) blueprint — you have actively built up your {theme} beyond "
-            f"what you were born with."
-        )
-    elif ns > ds + 1:
-        agreement = "latent"
-        statement = (
-            f"Your innate {title.lower()} ({non_label} hand) is stronger than how it shows now "
-            f"({dom_label}) — natural {theme} that you may be under-using; there is room to "
-            f"reclaim it."
-        )
-    else:
+    try:
+        import palm_voice as PV
+        if ds > ns + 1:
+            agreement = "developed"
+            pred = PV.line_confluence_statement(key, dom_label, theme, "developed")
+        elif ns > ds + 1:
+            agreement = "latent"
+            pred = PV.line_confluence_statement(key, non_label, theme, "latent")
+        else:
+            agreement = "reinforced"
+            pred = PV.line_confluence_statement(key, dom_label, theme, "reinforced")
+        statement = pred.text_block()
+    except Exception:  # noqa: BLE001
         agreement = "reinforced"
-        statement = (
-            f"Your {title.lower()} is consistent across both hands — a stable, reinforced pattern "
-            f"in your {theme}."
-        )
+        statement = f"Your {theme} is consistent across both hands."
     return {"key": key, "title": title, "agreement": agreement, "statement": statement}
 
 
@@ -115,12 +119,24 @@ def _mount_confluence(
         if d == 0 and n == 0:
             continue
         if abs(d - n) >= 1:
-            if d > n:
-                txt = (f"Your Mount of {label} is more developed now ({dom_label}) than innately "
-                       f"({non_label}) — a quality you have grown into.")
-            else:
-                txt = (f"Your Mount of {label} is naturally fuller ({non_label}) than it shows now "
-                       f"({dom_label}) — an inborn strength worth expressing more.")
+            try:
+                import palm_voice as PV
+                plain = PV._mount_name(m)
+                if d > n:
+                    pred = PV.compose(
+                        scenario=f"You have grown into more {label.split('(')[0].strip().lower()} — "
+                                 f"it shows more on your {dom_label} hand than you were born with.",
+                        backing=f"{plain} stronger on {dom_label} hand",
+                    )
+                else:
+                    pred = PV.compose(
+                        scenario=f"Natural {label.split('(')[0].strip().lower()} is there — "
+                                 f"express it more; your {non_label} hand shows the fuller pattern.",
+                        backing=f"{plain} stronger on {non_label} hand",
+                    )
+                txt = pred.text_block()
+            except Exception:  # noqa: BLE001
+                txt = f"Your {label} reads differently between hands."
             out.append({"mount": m, "statement": txt})
     return out
 
@@ -141,16 +157,32 @@ def _marks_confluence(
         if meaning:
             return meaning
         title = m.get("title", "A mark")
-        zone = str(m.get("zone", "palm")).title()
-        return f"{title} on your {zone} mount."
+        zone = str(m.get("zone", "palm")).lower()
+        try:
+            import palm_voice as PV
+            loc = PV._mount_name(zone)
+            return f"{title} on {loc}."
+        except Exception:  # noqa: BLE001
+            return f"{title} on your palm."
 
     out: list[dict[str, str]] = []
     for kz, m in dom_marks.items():
         base = _base(m)
-        if kz in non_marks:
-            txt = f"{base} It shows on BOTH hands, so give it real weight — a stable, lifelong mark."
-        else:
-            txt = f"{base} It shows on your {dom_label} (dominant) hand, so it is active in your life right now."
+        try:
+            import palm_voice as PV
+            if kz in non_marks:
+                pred = PV.compose(
+                    scenario=f"{base} It shows on both hands — give it real weight.",
+                    backing=f"mark on {PV._mount_name(str(m.get('zone', 'palm')))} both hands",
+                )
+            else:
+                pred = PV.compose(
+                    scenario=f"{base} It shows on your {dom_label} hand — active in your life now.",
+                    backing=f"mark on {PV._mount_name(str(m.get('zone', 'palm')))} ({dom_label})",
+                )
+            txt = pred.text_block()
+        except Exception:  # noqa: BLE001
+            txt = base
         out.append({"statement": txt})
     for kz, m in non_marks.items():
         if kz in dom_marks:
@@ -188,6 +220,8 @@ def _human_predictions(dom_checklist: list[dict[str, Any]]) -> list[dict[str, An
 def build_confluence(
     blocks: dict[str, Any],
     active_hand: str,
+    *,
+    saraswati_signals: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Combine right + left analysis blocks into one confluence reading."""
     right = blocks.get("right")
@@ -244,7 +278,8 @@ def build_confluence(
             "Innate strengths you may be under-using: " + ", ".join(latent) + "."
         )
 
-    life_aspects = build_life_aspects(blocks, active_hand)
+    life_aspects = build_life_aspects(
+        blocks, active_hand, saraswati_signals=saraswati_signals)
 
     return {
         "dominant_hand": dom_key,

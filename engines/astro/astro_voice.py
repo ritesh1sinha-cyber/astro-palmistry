@@ -217,6 +217,19 @@ JARGON_TERMS: list[tuple[str, str]] = [
     ("dasa", "period"),
     ("vargas", "divisional charts"),
     ("varga", "divisional chart"),
+    ("neutral_sign", "neither strong nor weak"),
+    ("own_sign", "in its own sign"),
+    ("enemy_sign", "under strain"),
+    ("friendly_sign", "comfortably placed"),
+    ("moolatrikona", "in its best sign"),
+    ("Maha-lord", "main period lord"),
+    ("Antar-lord", "sub-period lord"),
+    ("Chara-lord", "sign-based period lord"),
+    ("Yogini-lord", "lunar cycle lord"),
+    ("BAV", "transit score"),
+    ("SAV", "house score"),
+    ("bindu", "support point"),
+    ("bindus", "support points"),
 
     # chart anatomy
     ("lagna lord", "ruler of your rising sign"),
@@ -254,6 +267,9 @@ JARGON_TERMS: list[tuple[str, str]] = [
 
     # the karakas
     ("atmakaraka", "your defining planet"),
+    ("karaka", "natural significator"),
+    ("argala", "planetary intervention"),
+    ("bindu", "support point"),
     ("amatyakaraka", "your career indicator"),
     ("bhratrikaraka", "your sibling indicator"),
     ("matrikaraka", "your mother indicator"),
@@ -736,13 +752,13 @@ def chart_opening(ctx: dict) -> str:
     second = ""
     if moon:
         moon_lines = [
-            f" Your Moon sits in <b>{moon}</b>{f' ({moon_nak})' if moon_nak else ''} — "
-            f"that is the part of you that reacts before you have time to think, "
+            f" Your Moon sits in <b>{moon}</b>{f' ({moon_nak})' if moon_nak else ''}. "
+            f"That is the part of you that reacts before you have time to think, "
             f"and it is where this reading looks first for how life actually feels to you.",
             f" The Moon in <b>{moon}</b>{f' ({moon_nak})' if moon_nak else ''} carries your "
             f"instinct and your moods, and much of what follows is read from it.",
             f" With the Moon in <b>{moon}</b>{f' ({moon_nak})' if moon_nak else ''}, your inner "
-            f"weather has its own pattern — one this reading takes seriously.",
+            f"weather has its own pattern. One this reading takes seriously.",
         ]
         second = _pick(moon_lines, ctx, 7)
 
@@ -751,8 +767,8 @@ def chart_opening(ctx: dict) -> str:
         period = f"<b>{md}</b>" + (f"–<b>{ad}</b>" if ad else "")
         age_bit = f" at {age}" if age else ""
         third_lines = [
-            f" Right now{age_bit} you are living through your {period} period — so nothing here "
-            f"is generic advice about a sign; it is dated to the chapter you are actually in.",
+            f" Right now{age_bit} you are living through your {period} period. "
+            f"Nothing here is generic advice about a sign; it is dated to the chapter you are actually in.",
             f" You are currently{age_bit} inside the {period} chapter of your life, and every "
             f"timing below is measured from there.",
             f" The period running now{age_bit} is {period}, and that is the lens the whole "
@@ -760,7 +776,9 @@ def chart_opening(ctx: dict) -> str:
         ]
         third = _pick(third_lines, ctx, 13)
 
-    return f"<p>{open_}{second}{third}</p>"
+    from report_language import normalize_sentence_dashes
+    body = normalize_sentence_dashes(f"{open_}{second}{third}")
+    return f"<p>{body}</p>"
 
 
 def palm_opening(ctx: dict) -> str:

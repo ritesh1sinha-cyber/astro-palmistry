@@ -169,7 +169,8 @@ def _gem_safety(
 
     if ph in DUSTHANA and role not in ("Lagna lord", "H1 lord"):
         verdict = "avoid"
-        reasons.append(f"rules41: {planet} rules/occupies dusthana H{ph}")
+        reasons.append(
+            f"{planet} rules or sits in your {ph}th house — a pressure house; gem not advised")
     if dig in DEBIL:
         if role in ("Lagna lord (H1)", "Lagna lord", "H1 lord") and planet == "Mercury":
             verdict = "mantra_only"
@@ -203,7 +204,7 @@ def _gem_safety(
 
     if planet == "Saturn" and verdict == "recommended":
         verdict = "test_required"
-        reasons.append("Blue Sapphire must be tested 3 days (rules41)")
+        reasons.append("Blue Sapphire must be tested for three days before permanent wear")
 
     if planet in ("Mars", "Rahu") and ph in (6, 8, 11) and dig in ("moolatrikona", "exalted", "own_sign"):
         if verdict == "recommended":
@@ -212,7 +213,12 @@ def _gem_safety(
             reasons.append(f"Strong malefic {planet}  coral/gomed can overheat results; mantra only")
 
     if dig in ("exalted", "own_sign", "moolatrikona") and ph not in DUSTHANA:
-        reasons.append(f"{planet} well placed ({dig}, H{ph})  gem favourable if verdict allows")
+        dig_plain = {
+            "exalted": "very strong", "own_sign": "in its own sign",
+            "moolatrikona": "on its best ground",
+        }.get(dig, dig.replace("_", " "))
+        reasons.append(
+            f"{planet} well placed ({dig_plain}, {ph}th house) — gem favourable if verdict allows")
 
     wear_mode = "primary_ok"
     if verdict == "avoid":

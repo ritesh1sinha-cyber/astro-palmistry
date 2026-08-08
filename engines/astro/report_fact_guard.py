@@ -120,6 +120,11 @@ DIGNITY_TERMS = {
     "in its best sign": "moolatrikona",
     "in its own sign": "own",
     "too close to the sun to act freely": "combust",
+    "neither strong nor weak": "neutral_sign",
+    "comfortably placed": "friendly_sign",
+    "under strain": "enemy_sign",
+    "at its strongest": "exalted",
+    "at its weakest": "debilitated",
 }
 
 # Verdict *direction*. Wording is free to change; direction is not.

@@ -679,6 +679,8 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
             f"Here is the straight answer, then exactly why the chart says it.</p>")
         verdict_block = (
             f"<h1 class=\"verdict-line\">{headline}</h1>"
+            f"<p class=\"pred-why\"><b>Why:</b> Western read {_e(j.get('verdict','mixed'))}; "
+            f"Vedic {_e(r.get('label','mixed'))}; confidence {_e(r.get('confidence','moderate'))}.</p>"
             f"<p class=\"confidence\"><strong>How sure is this?</strong> {conf_line}</p>")
         verdict_flag = ("up" if r["favourable"] else
                         "down" if r["favourable"] is False else "mixed")

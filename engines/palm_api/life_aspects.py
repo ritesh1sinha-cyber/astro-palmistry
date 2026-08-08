@@ -15,7 +15,7 @@ classic confluence weighting (both hands agree = stable, dependable trait).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from palm_api.report_format import book_label
 
@@ -170,7 +170,7 @@ RULES: list[Rule] = [
          "Your heart line starts under the middle finger — you love seriously, with a real sense of duty, and a self-protective streak. You don't hand your heart over cheaply, and the right person has to be patient to reach it.",
          "case_studies_modern_50", None, "From Saturn, a more selfish sexuality."),
     Rule("love", lambda v: v.has_minor("girdle_of_venus"),
-         "There's a Girdle of Venus in your palm — you feel everything intensely. You're sensitive and highly strung in matters of the heart, and you do best with a calm, steady partner who isn't thrown by the depth of your feeling.",
+         "You feel everything intensely in matters of the heart — sensitive and highly strung — and you do best with a calm, steady partner who isn't thrown by the depth of your feeling.",
          "succinct_palmistry", None, ""),
     Rule("love", lambda v: v.has_minor("marriage"),
          "I can see clear union lines on the edge of your hand below the little finger. Significant, committed relationships are written right into your palm — these are the bonds that shape your life.",
@@ -252,7 +252,7 @@ RULES: list[Rule] = [
          "There are travel lines in your palm — journeys and moves that genuinely matter in your story, not just the odd holiday. Movement is woven into your life.",
          "succinct_palmistry", None, ""),
     Rule("travel", lambda v: v.has_mark("star", "moon"),
-         "There's a star on your Moon mount. Take a little extra care on long trips and around water — but read it the right way, because it also marks a vivid, almost psychic intuition that you should learn to trust.",
+         "Take a little extra care on long trips and around water — but read it the right way, because it also marks a vivid intuition that you should learn to trust.",
          "succinct_palmistry", None, "A star on Moon Mount: travels, danger of accident, psychic breakthrough."),
 
     # ---------------- SPECIAL MARKS & DESTINY ----------------
@@ -266,11 +266,11 @@ RULES: list[Rule] = [
          "A trident in your palm strongly boosts the luck and success of wherever it falls — it's one of the most auspicious marks you can carry, and you have it.",
          "succinct_palmistry", None, "A trident indicates celebrity and wealth."),
     Rule("fortune", lambda v: v.has_mark("cross", "saturn"),
-         "I can see a cross on Saturn — that points to a karmic test around duty and responsibility. When it arrives, meet it with patience rather than force; pushed gently, it turns in your favour rather than against you.",
+         "A cross under your middle finger points to a karmic test around duty and responsibility. When it arrives, meet it with patience rather than force.",
          "palmistry_for_all", 66,
          "A cross found on the Fate Line and on the Mount of Saturn marks a fated turning point."),
     Rule("fortune", lambda v: v.has_mark("grille"),
-         "There's a grille here, which shows energy that scatters when you're restless or pulled in too many directions. The remedy is simple to say and harder to do: pick your focus and channel that energy on purpose, or it leaks away.",
+         "Energy scatters when you're restless or pulled in too many directions. Pick your focus and channel it on purpose, or it leaks away.",
          "succinct_palmistry", None, "The grille shows energy scattered through restlessness."),
     Rule("fortune", lambda v: v.has_mark("triangle"),
          "A triangle here is mental skill applied well — a constructive, fortunate mark. You have a way of thinking your path through to a good outcome.",
@@ -288,7 +288,12 @@ def _strength(matched: int, reinforced: int) -> tuple[str, str]:
     return "none", ""
 
 
-def build_life_aspects(blocks: dict[str, Any], active_hand: str) -> list[dict[str, Any]]:
+def build_life_aspects(
+    blocks: dict[str, Any],
+    active_hand: str,
+    *,
+    saraswati_signals: Optional[dict[str, list[dict[str, Any]]]] = None,
+) -> list[dict[str, Any]]:
     """Confluence reading grouped by life aspect (dominant hand led, both-hand weighted)."""
     dom_key = "left" if active_hand == "left" else "right"
     non_key = "right" if dom_key == "left" else "left"
@@ -335,6 +340,37 @@ def build_life_aspects(blocks: dict[str, Any], active_hand: str) -> list[dict[st
             "reinforced_count": reinforced,
             "points": points,
         })
+
+    # Saraswati book lane — merge as extra confluence points, not a new section
+    extra = saraswati_signals or {}
+    by_key = {row["key"]: row for row in out}
+    for akey, sigs in extra.items():
+        if akey not in dict(ASPECTS):
+            continue
+        row = by_key.get(akey)
+        if not row:
+            title = dict(ASPECTS).get(akey, akey.title())
+            row = {
+                "key": akey, "title": title, "summary": "",
+                "strength": "none", "strength_note": "",
+                "reinforced_count": 0, "points": [],
+            }
+            out.append(row)
+            by_key[akey] = row
+        added = 0
+        for sig in sigs[:4]:
+            txt = (sig.get("text") or "").strip()
+            if not txt or any(p.get("text") == txt for p in row["points"]):
+                continue
+            row["points"].append(sig)
+            row["summary"] = (row["summary"] + " " + txt).strip()
+            if sig.get("reinforced"):
+                row["reinforced_count"] += 1
+            added += 1
+        if added:
+            n_pts = len(row["points"])
+            n_ref = row["reinforced_count"]
+            row["strength"], row["strength_note"] = _strength(n_pts, n_ref)
     return out
 
 

@@ -60,6 +60,9 @@ JARGON = {
     "graha/rashi": r"\b(?:graha|rashi|rasi)\b",
     "yoga (untranslated)": r"\byoga\b(?!\s*:)",
     "vimshottari": r"\bvimshottari\b",
+    "karaka (bare)": r"\bkaraka\b",
+    "argala": r"\bargala\b",
+    "book_lines marketing": r"strongest chapter of the decade",
     "trikona/kendra": r"\b(?:trikona|kendra|dusthana|upachaya)\b",
 }
 

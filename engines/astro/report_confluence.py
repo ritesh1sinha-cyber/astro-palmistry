@@ -462,10 +462,21 @@ def area_votes(pc: dict, area_key: str, house: int) -> list:
     # object that took no part in building the chart, which is why it is worth
     # a vote of its own even when no photograph was supplied.
     votes.extend(palm_votes(pc, area_key))
+
+    # 8–10. Deep-dive evidence: 108 rules, slow transits, period-clock rating
+    try:
+        import deep_evidence as DE
+        ctx = DE.current()
+        if ctx:
+            for method, val, because in ctx.vote_triplet(area_key, house):
+                votes.append(Vote(method, val, because))
+    except Exception:  # noqa: BLE001
+        pass
     return votes
 
 
-def palm_votes(pc: dict, area_key: str, palm_features: Any = None) -> list:
+def palm_votes(pc: dict, area_key: str, palm_features: Any = None,
+               bridge_result: Any = None) -> list:
     """The palm-correlation lane's single vote, or none.
 
     Imported at call time and only for ImportError: the bridge pulls in OpenCV
@@ -477,7 +488,16 @@ def palm_votes(pc: dict, area_key: str, palm_features: Any = None) -> list:
         from palm_astro_bridge import palm_votes as _pv
     except ImportError:
         return []
-    return _pv(pc, area_key, palm_features)
+    bridge = bridge_result
+    if bridge is None:
+        try:
+            import deep_evidence as DE
+            ctx = DE.current()
+            if ctx is not None:
+                bridge = ctx.palm_bridge()
+        except Exception:  # noqa: BLE001
+            bridge = None
+    return _pv(pc, area_key, palm_features, bridge_result=bridge)
 
 
 def area_verdict(pc: dict, area_key: str, house: int) -> dict:
@@ -523,8 +543,13 @@ def area_verdict(pc: dict, area_key: str, house: int) -> dict:
             agreement = f"none of the {total} methods takes a side"
     else:
         agreement = f"{same} of {len(decided)} methods with a view agree"
-    return {"direction": direction, "score": round(score, 2), "votes": votes,
-            "agreement": agreement, "confidence": confidence}
+    result = {"direction": direction, "score": round(score, 2), "votes": votes,
+              "agreement": agreement, "confidence": confidence}
+    try:
+        result["agreement"] = customer_confidence(result) or agreement
+    except Exception:  # noqa: BLE001
+        pass
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -655,11 +680,11 @@ def dasha_confluence(pc: dict, when: Optional[date] = None) -> dict:
 # ---------------------------------------------------------------------------
 
 LAGNA_TRAIT = {
-    "Aries": "You move first and think about it afterwards — usually faster than the people around you are comfortable with.",
+    "Aries": "You move first and think about it afterwards, usually faster than the people around you are comfortable with.",
     "Taurus": "You are slow to start and almost impossible to stop once you have.",
     "Gemini": "You think in several directions at once, which reads as restlessness to people who only think in one.",
     "Cancer": "You feel the room before anyone speaks, and you carry more of other people's weather than you admit.",
-    "Leo": "You need your work to be seen. Not praised — seen. There is a difference and you know it.",
+    "Leo": "You need your work to be seen. Not praised. Seen. There is a difference and you know it.",
     "Virgo": "You notice the flaw first. It makes you excellent and it makes you tired.",
     "Libra": "You weigh both sides so fairly that deciding costs you more than it costs most people.",
     "Scorpio": "You keep more back than you let on, and you read other people faster than they read you.",
@@ -672,7 +697,7 @@ LAGNA_TRAIT = {
 MOON_TRAIT = {
     "Aries": "Under pressure you get sharp and want it settled today.",
     "Taurus": "Under pressure you go still and wait it out.",
-    "Gemini": "Under pressure you talk it through — with anyone available.",
+    "Gemini": "Under pressure you talk it through with anyone available.",
     "Cancer": "Under pressure you retreat to whoever feels like home.",
     "Leo": "Under pressure you need someone to tell you the work mattered.",
     "Virgo": "Under pressure you organise something. It is how you take back control.",
@@ -687,7 +712,7 @@ MOON_TRAIT = {
 AK_TRAIT = {
     "Sun": "your standing in the world",
     "Moon": "your emotional life and the people you care for",
-    "Mars": "your fights — the ones worth having and the ones not",
+    "Mars": "your fights, the ones worth having and the ones not",
     "Mercury": "your mind and how you use it",
     "Jupiter": "what you believe and who you teach",
     "Venus": "love, beauty, and what you are willing to give for them",
@@ -719,15 +744,16 @@ def _human_yoga(line: str) -> str:
 
 
 def personality(pc: dict) -> dict:
+    from report_language import client_prose
     lagna = (pc.get("lagna") or {}).get("sign", "")
     moon = pc.get("planets", {}).get("Moon") or {}
     ak = (pc.get("jaimini") or {}).get("atmakaraka", "")
     pillar = pc.get("pillar", {}) or {}
-    traits = [t for t in (LAGNA_TRAIT.get(lagna), MOON_TRAIT.get(moon.get("sign"))) if t]
+    traits = [client_prose(t) for t in (LAGNA_TRAIT.get(lagna), MOON_TRAIT.get(moon.get("sign"))) if t]
     if ak:
-        traits.append(
-            f"The thread running through your whole life is {AK_TRAIT.get(ak, 'your own path')} "
-            f"— {ak} carries that in your chart.")
+        traits.append(client_prose(
+            f"The thread running through your whole life is {AK_TRAIT.get(ak, 'your own path')}. "
+            f"{ak} carries that in your chart."))
     nb = pillar.get("neecha_bhanga") or {}
     if nb.get("neecha_bhanga_present"):
         traits.append(
@@ -803,27 +829,48 @@ def _dir_from_cluster(cl) -> str:
 
 
 def merge_semantic_verdict(area_key: str, verdict: dict) -> dict:
-    """Rule votes supply evidence; MiniLM cluster picks direction and headline."""
+    """Rule votes supply direction and evidence; semantic cluster adjusts confidence only."""
     cl = semantic_cluster_for_area(area_key)
     if not cl:
         return verdict
     systems = _cluster_field(cl, "systems", []) or []
     conf = str(_cluster_field(cl, "confidence", "MODERATE") or "MODERATE")
     direction = _dir_from_cluster(cl)
-    affirmation = str(_cluster_field(cl, "affirmation", "") or "").strip()
     texts = [str(t).strip() for t in (_cluster_field(cl, "texts", []) or []) if t]
     out = dict(verdict)
-    out["direction"] = direction
+    # Keep rule-vote direction unless semantic cluster is unanimous and strong
+    if systems and len(systems) >= 2:
+        out["direction"] = direction
     out["semantic"] = True
     out["semantic_mode"] = _semantic_mode
-    if affirmation:
-        out["headline"] = affirmation
+    # Do NOT replace headline with BOOK_LINES affirmation — keep concrete CLAIMS
     n = len(systems)
-    out["agreement"] = (f"{n} methods align · {conf}" if n
-                        else f"semantic cluster · {conf}")
     out["confidence"] = conf.lower()
-    ev = texts[:3]
-    for v in (verdict.get("votes") or [])[:2]:
-        ev.append(f"{v.method} — {v.because}")
-    out["evidence"] = ev[:5]
+    out["agreement"] = customer_confidence(out) or (
+        f"{n} methods align · {conf}" if n else f"semantic cluster · {conf}")
+    # Keep structured votes for scoring; do not attach raw because strings
+    # or deep_evidence prose to customer-facing evidence lists.
+    out["evidence"] = []
     return out
+
+
+def customer_confidence(verdict: dict) -> str:
+    """Plain confidence chip — never 'N of M methods with a view agree'."""
+    try:
+        import predict_voice as PV
+        votes = verdict.get("votes") or []
+        direction = verdict.get("direction", "mixed")
+        decided = [v for v in votes if getattr(v, "direction", "mixed") != "mixed"]
+        same = sum(1 for v in decided if getattr(v, "direction", "mixed") == direction)
+        return PV.confidence_word(same, len(decided) or len(votes), direction)
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def headline_from_verdict(area_key: str, direction: str, verdict: dict) -> str:
+    """Plain scenario headline — never raw vote because strings."""
+    try:
+        import predict_voice as PV
+        return PV.AREA_SCENE.get((area_key, direction), "")
+    except Exception:  # noqa: BLE001
+        return ""

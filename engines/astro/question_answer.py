@@ -88,6 +88,12 @@ TOPICS = (
           significators=("Sun", "Jupiter", "Mars"),
           patterns=(r"\bhealth\b", r"\billness\b", r"\brecover", r"\bsurgery\b",
                     r"\bdisease\b")),
+    Topic("children", "Children & family", "children",
+          houses=(5, 9, 11),
+          significators=("Jupiter",),
+          patterns=(r"\bkids?\b", r"\bchild", r"\bchildren\b", r"\bprogeny\b",
+                    r"\bson\b", r"\bdaughter\b", r"\bbaby\b", r"\bpregnant\b",
+                    r"\bhow many\b.*\b(kids?|child)")),
 )
 
 FALLBACK = Topic("general", "Your question", "what you asked about",
@@ -117,6 +123,7 @@ def classify(question: str) -> Topic:
         key = {
             "career": "promotion", "finance": "money", "property": "property",
             "travel": "foreign", "health": "health", "education": "study",
+            "children": "children", "family": "children",
         }.get(dom)
         if key:
             for t in TOPICS:
@@ -144,10 +151,63 @@ def _ord(n: Any) -> str:
                      else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
 
 
+_DIGNITY = {
+    "exalted": "very strong",
+    "moolatrikona": "very strong",
+    "own_sign": "in its own sign",
+    "friendly_sign": "comfortable",
+    "neutral_sign": "neither strong nor weak",
+    "enemy_sign": "under strain",
+    "debilitated": "very weak",
+    "neutral": "neither strong nor weak",
+}
+
+_ROUTE_METHOD = {
+    "minilm": "your wording",
+    "semantic": "your wording",
+    "regex": "the question pattern",
+}
+
+
+def _human_dignity(code: str) -> str:
+    key = (code or "").strip().lower().replace(" ", "_")
+    return _DIGNITY.get(key, key.replace("_", " ") if key else "mixed")
+
+
+def _plain_line(text: str) -> str:
+    """Customer-facing one-liner — no method tags or book citations."""
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    for code, human in _DIGNITY.items():
+        raw = re.sub(rf"\b{re.escape(code)}\b", human, raw, flags=re.I)
+    try:
+        import report_confluence as CF
+        return CF._plain(raw)  # noqa: SLF001
+    except Exception:  # noqa: BLE001
+        return raw
+
+
+def _plain_agreement(text: str) -> str:
+    raw = (text or "").strip()
+    if not raw:
+        return "the methods have not settled on one side yet"
+    low = raw.lower()
+    if "align · moderate" in low or "align · mod" in low:
+        return raw.split("·")[0].strip() + " — a moderate read, not unanimous"
+    if "align · high" in low:
+        return raw.split("·")[0].strip() + " — a strong agreement"
+    if "align · low" in low:
+        return raw.split("·")[0].strip() + " — most methods push back"
+    return _plain_line(raw)
+
+
 # ---------------------------------------------------------------------------
 
 def answer(pc: dict, question: str, *, start: Optional[date] = None,
-           years: int = 7) -> dict:
+           years: int = 7, lat: Optional[float] = None,
+           lon: Optional[float] = None, tz: float = 5.5,
+           route: Any = None) -> dict:
     """Find the windows where this specific thing can actually happen."""
     start = start or date.today()
     topic = classify(question)
@@ -155,7 +215,16 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
     import report_timing as RT
 
     primary = topic.houses[0]
-    promise = CF.area_verdict(pc, _area_for(primary), primary)
+    area_key = _area_for(primary)
+    promise = CF.area_verdict(pc, area_key, primary)
+    promise = CF.merge_semantic_verdict(area_key, promise)
+
+    deep: dict = {}
+    try:
+        import deep_evidence as DE
+        deep = DE.for_area(area_key, house=primary)
+    except Exception:  # noqa: BLE001
+        deep = {}
 
     hl = pc.get("house_lords", {}) or {}
     planets = pc.get("planets", {}) or {}
@@ -220,14 +289,35 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
         lord = info.get("lord", "")
         if not lord:
             continue
-        dig = str(info.get("lord_dignity") or "").replace("_", " ")
+        dig = _human_dignity(str(info.get("lord_dignity") or ""))
         sits = info.get("lord_house")
         detail = dig
         if sits:
-            detail += ", placed in your " + _ord(sits)
+            detail += ", placed in your " + _ord(sits) + " house"
         if lord in topic.significators:
-            detail += "; also a classical significator for this question"
+            detail += "; also a natural significator for this question"
         chart_lines.append((_ord(h) + " house — " + lord, detail))
+
+    # Deep-dive layer: divisional chart + classical rules for this question
+    for fact in (deep.get("house_facts") or [])[:2]:
+        chart_lines.append(("Your chart", _plain_line(fact)))
+    varga = deep.get("varga") or {}
+    vdiag = (varga.get("diagnosis") or "").strip()
+    if vdiag:
+        vname = (varga.get("name") or varga.get("code") or "Divisional chart").strip()
+        chart_lines.append((vname, _plain_line(vdiag)))
+    for rule in (deep.get("rules_pos") or [])[:2]:
+        chart_lines.append(("Classical rule", _plain_line(rule)))
+    for rule in (deep.get("rules_neg") or [])[:1]:
+        chart_lines.append(("Watch", _plain_line(rule)))
+    if deep.get("transit", {}).get("note"):
+        chart_lines.append(("Sky now", _plain_line(deep["transit"]["note"])))
+    cw = deep.get("current_window") or {}
+    if cw.get("word"):
+        chart_lines.append((
+            "Period outlook",
+            f"{cw.get('period', 'Now')}: {cw.get('word', '')}"
+            + (f" — {cw['reason'][:80]}" if cw.get("reason") else "")))
 
     vim_now = CF.vimshottari_at(pc, start)
     yog_now = (CF.yogini_at(pc, start) or {}).get("lord", "")
@@ -235,11 +325,78 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
         f", lunar cycle on {yog_now}" if yog_now else "")
 
     strong = [w for w in windows if w["strong"]]
+
+    route_info: dict = {}
+    if route is not None:
+        route_info = {
+            "domain": getattr(route, "domain", "") or "",
+            "primary_house": getattr(route, "primary_house", 0) or 0,
+            "topic": getattr(route, "topic", "") or "",
+            "method": getattr(route, "method", "") or "",
+        }
+    else:
+        try:
+            import semantic_question as SQ
+            r = SQ.route(question)
+            route_info = {
+                "domain": r.domain, "primary_house": r.primary_house,
+                "topic": r.topic, "method": r.method,
+            }
+        except Exception:  # noqa: BLE001
+            route_info = {}
+
+    votes = promise.get("votes") or []
+    n_methods = len(votes)
+    n_up = sum(1 for v in votes if getattr(v, "value", 0) > 0.3)
+    n_down = sum(1 for v in votes if getattr(v, "value", 0) < -0.3)
+
+    area_report = None
+    try:
+        import area_report as AR
+        area_report = AR.build_area(
+            pc, area_key, primary, today=start, question=question)
+    except Exception:  # noqa: BLE001
+        area_report = None
+
+    prediction = None
+    if area_report:
+        import predict_voice as PV
+        prediction = PV.Prediction(
+            scenario=area_report.prediction,
+            backing=area_report.proof,
+            direction=area_report.direction,
+        )
+    else:
+        try:
+            import predict_voice as PV
+            now = CF.vimshottari_at(pc, start)
+            hl_info = hl.get(str(primary)) or {}
+            live = [w for w in windows if w["start"] <= start][:2]
+            transits = [{"planet": w["planet"], "house": w["house"], "bav": w["bav"]}
+                        for w in live]
+            prediction = PV.compose(
+                area_key, direction=promise.get("direction", "mixed"),
+                md_lord=now.get("md", ""), ad_lord=now.get("ad", ""),
+                house=primary, lord=hl_info.get("lord", ""),
+                dignity=str(hl_info.get("lord_dignity") or ""),
+                lord_house=hl_info.get("lord_house"), transits=transits,
+                varga=deep.get("varga") or {},
+                varga_strength=(deep.get("varga") or {}).get("strength", "mixed"),
+                window_rating=deep.get("current_rating", "mix"),
+                include_period_lord=False,
+            )
+        except Exception:  # noqa: BLE001
+            prediction = None
+
     return {"topic": topic, "question": question, "promise": promise,
             "chart_lines": chart_lines, "now_label": now_label,
             "windows": windows, "best": best, "nearest": nearest,
             "strong_count": len(strong), "horizon": years,
-            "start": start}
+            "start": start, "deep": deep,
+            "deep_verdict": (deep.get("overall") or {}).get("text", ""),
+            "route": route_info, "area_key": area_key,
+            "n_methods": n_methods, "n_up": n_up, "n_down": n_down,
+            "prediction": prediction, "area_report": area_report}
 
 
 def _area_for(house: int) -> str:
@@ -248,86 +405,106 @@ def _area_for(house: int) -> str:
             3: "career", 11: "money", 8: "health"}.get(house, "career")
 
 
+def answer_meta(result: dict) -> dict:
+    """Compact verdict for JSON meta (frontend card when unlocked)."""
+    promise = result.get("promise") or {}
+    best = result.get("best")
+    topic = result.get("topic")
+    if not best:
+        return {
+            "label": f"No clear window for {getattr(topic, 'subject', 'this')} "
+                     f"in the next {result.get('horizon', 7)} years",
+            "confidence": "moderate",
+            "direction": promise.get("direction", "mixed"),
+        }
+    lead = ("Yes — and the chart is specific about when."
+            if best.get("strong") else
+            "Yes, but the timing is narrower than you would like.")
+    if promise.get("direction") == "down" and not best.get("strong"):
+        lead = "Possible, but your chart does not strongly favour this."
+    conf = promise.get("confidence", "moderate")
+    if result.get("n_methods", 0) >= 5 and promise.get("direction") in ("up", "down"):
+        conf = "high" if promise["direction"] == "up" else "low"
+    return {"label": lead, "confidence": conf,
+            "direction": promise.get("direction", "mixed"),
+            "best_from": _pretty(best.get("start")),
+            "best_to": _pretty(best.get("end"))}
+
+
 # ---------------------------------------------------------------------------
 
 def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
-    """The free view: the chart's working, with the verdict withheld.
-
-    Operator's call, and commercially it is the right one — if the answer is
-    free, nobody buys the reading. What keeps it from being a bait-and-switch is
-    that the free half is genuinely substantial: the reader sees which planets
-    rule the question, where they sit and in what condition, which periods are
-    running, and what is crossing those houses today with what strength.
-    Everything except the conclusion those facts point to.
-    """
+    """Free half: plain prediction + one Why line; verdict and dates locked."""
     topic = result["topic"]
     who = (name or "").split()[0] if name else ""
     windows = result["windows"]
+    promise = result["promise"]
+    route = result.get("route") or {}
+    pred = result.get("prediction")
 
-    rows = "".join(
-        "<li><b>{}</b> — {}</li>".format(_e(a), _e(b))
-        for a, b in (result.get("chart_lines") or []))
+    main_pred = ""
+    if pred is not None:
+        main_pred = pred.html()
+    else:
+        try:
+            import predict_voice as PV
+            p = PV.compose(
+                result.get("area_key", "career"),
+                direction=promise.get("direction", "mixed"),
+            )
+            main_pred = p.html()
+        except Exception:  # noqa: BLE001
+            main_pred = ""
 
-    live = [w for w in windows if w["start"] <= result["start"]]
-    transit_rows = "".join(
-        "<li><b>{}</b> is crossing your {} house from {} right now, carrying "
-        "<b>{} of 8</b> classical support points there.</li>".format(
-            _e(w["planet"]), _ord(w["house"]), _e(w["sign"]), w["bav"])
-        for w in live[:2])
-
-    transit_block = ""
-    if transit_rows:
-        transit_block = (
-            '<div class="evidence"><span class="ev-label">What is crossing '
-            'those houses today</span><ul class="qa-why">'
-            + transit_rows + "</ul></div>")
+    route_block = ""
+    if route.get("domain") or topic.key != "general":
+        ph = topic.houses[0] if topic.key != "general" else route.get("primary_house", 0)
+        domain = route.get("domain") or topic.key
+        route_block = (
+            f'<p class="qa-route">We read this as a <b>{_e(domain)}</b> '
+            f'question, centred on your {_ord(ph)} house.</p>')
 
     return """
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {question}</div>
-  <p class="qa-lede">{who}here is exactly what your chart is doing on this
-  question. The dates and the answer are in the paid reading — everything below
-  is the working, so you can see this is your chart being read and not a
-  template.</p>
+  {route_block}
+  <p class="qa-lede">{who}here is what your chart is doing on this question now.
+  The straight answer, dated windows and remedy are in the paid reading.</p>
 
   <div class="qa-promise">
     <b>{label}</b> is read from your {houses} houses. {note}
   </div>
 
-  <div class="evidence">
-    <span class="ev-label">The planets that govern your question</span>
-    <ul class="qa-why">{rows}</ul>
-  </div>
+  {main_pred}
 
-  {transit_block}
-
-  <div class="evidence">
-    <span class="ev-label">Periods running right now</span>
-    <ul class="qa-why">
-      <li>{now_label}</li>
-      <li>{agreement} on whether your chart favours this at all.</li>
-    </ul>
+  <div class="qa-window locked">
+    <div class="qa-wlabel">The verdict</div>
+    <p class="blurred">Your chart reads XXXXXXX for this question — the straight
+    answer from every method combined.</p>
   </div>
 
   <div class="qa-window locked">
-    <div class="qa-wlabel">The answer itself</div>
-    <p class="blurred">Yes — the strongest window falls between XXXXXXX XXXX and
-    XXXXXXX XXXX, with a nearer partial window before it, because XXXXXXX
-    crosses your XXth at N of 8 while the XXXXXXX period runs.</p>
+    <div class="qa-wlabel">When it can happen</div>
+    <p class="blurred">The strongest window falls between XXXXXXX XXXX and
+    XXXXXXX XXXX, with a nearer partial window before it.</p>
     <p><b>{n} windows were found and scored across the next {horizon}
     years.</b> The unlock gives you every date, which of them your chart
     actually backs, and what to do inside each one — ₹{price}.</p>
   </div>
+
+  <div class="qa-window locked">
+    <div class="qa-wlabel">The remedy</div>
+    <p class="blurred">What to strengthen or pacify for this question — the
+    classical answer tied to the planets that rule it.</p>
+  </div>
 </section>""".format(
         question=_e(result["question"]),
+        route_block=route_block,
         who=_e(who + ", ") if who else "",
         label=_e(topic.label),
         houses=_e(", ".join(_ord(h) for h in topic.houses)),
         note=_e(topic.note),
-        rows=rows,
-        transit_block=transit_block,
-        now_label=_e(result.get("now_label", "")),
-        agreement=_e(result["promise"]["agreement"]),
+        main_pred=main_pred,
         n=len(windows), horizon=result["horizon"], price=price)
 
 
@@ -356,28 +533,45 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     lead = ("Yes — and the chart is specific about when."
             if best["strong"] else
             "Yes, but the timing is narrower than you would like.")
+    deep_txt = (result.get("deep_verdict") or "").strip()
+    if deep_txt:
+        lead = f"{deep_txt} {lead}"
     if promise["direction"] == "down" and not best["strong"]:
         lead = ("This is possible but your chart does not favour it. "
                 "The window below is the best of a weak set.")
 
+    def _window_scenario(w: dict) -> str:
+        if w.get("strong"):
+            return (f"This is the window where your chart actually backs "
+                    f"{topic.subject} — between {_pretty(w['start'])} and "
+                    f"{_pretty(w['end'])}.")
+        if (w.get("bav") or 0) >= 5:
+            return (f"An opening appears between {_pretty(w['start'])} and "
+                    f"{_pretty(w['end'])}, though your chart does not fully "
+                    f"guarantee the outcome.")
+        return (f"A partial window runs from {_pretty(w['start'])} to "
+                f"{_pretty(w['end'])} — expect movement, not a finished result.")
+
+    def _window_backing(w: dict) -> str:
+        sup = (w.get("bav") or 0) >= 5
+        parts = [
+            f"{w.get('period', '')} running",
+            (f"{w.get('planet', '')} crossing your {_ord(w.get('house'))} house "
+             f"({'well supported' if sup else 'weakly supported'})"),
+        ]
+        if w.get("period_hits"):
+            parts.append("period activates this question")
+        if w.get("yogini"):
+            parts.append(f"lunar cycle on {w['yogini']}")
+        return "; ".join(p for p in parts if p)
+
     def window_block(w: dict, label: str) -> str:
-        hits = (", ".join(w["period_hits"]) if w["period_hits"]
-                else "no period lord for this question")
         return f"""
   <div class="qa-window {'strong' if w['strong'] else 'weak'}">
     <div class="qa-wlabel">{_e(label)}</div>
     <div class="qa-when">{_e(_pretty(w['start']))} → {_e(_pretty(w['end']))}</div>
-    <ul class="qa-why">
-      <li><b>Period</b> — {_e(w['period'])}
-        {f", with the lunar cycle on {_e(w['yogini'])}" if w['yogini'] else ""}.
-        Active for this question: {_e(hits)}.</li>
-      <li><b>Trigger</b> — {_e(w['planet'])} transits your
-        {_ord(w['house'])} house from {_e(w['sign'])}, carrying
-        <b>{w['bav']} of 8</b> support points
-        {'— enough to actually deliver' if w['bav'] >= 5
-         else '— thin, so expect an opening rather than a result'}.</li>
-      <li><b>Agreement</b> — {_e(w['dasha_label'])}</li>
-    </ul>
+    <p class="pred-scenario">{_e(_window_scenario(w))}</p>
+    <p class="pred-why"><b>Why:</b> {_e(_window_backing(w))}</p>
   </div>"""
 
     blocks = ""
@@ -419,15 +613,31 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     with what to do in each — ₹{price}.</p>
   </div>"""
 
+    try:
+        import report_confluence as CF
+        promise_conf = CF.customer_confidence(promise) or promise.get("agreement", "")
+    except Exception:  # noqa: BLE001
+        promise_conf = promise.get("agreement", "")
+
+    main_pred = ""
+    pred = result.get("prediction")
+    if pred is not None:
+        main_pred = pred.html()
+    elif promise.get("headline"):
+        main_pred = (
+            f'<div class="prediction"><p class="pred-scenario">'
+            f'{_e(promise["headline"])}</p></div>')
+
     return f"""
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
   <p class="qa-lede">{_e(who + ', ' if who else '')}here is the straight answer,
   then the chart behind it.</p>
   <h2 class="qa-verdict">{_e(lead)}</h2>
+  {main_pred}
   <p class="qa-promise"><b>Does your chart even offer this?</b>
   {_e(topic.label)} reads <b>{_e(promise['direction'])}</b> in your chart —
-  {_e(promise['agreement'])}. {_e(topic.note)}</p>
+  {_e(promise_conf)}. {_e(topic.note)}</p>
   {blocks}
   {gap_note}
   <p class="qa-caveat">Timing is a window, not a date. What the chart says is

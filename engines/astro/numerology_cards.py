@@ -186,6 +186,7 @@ def _where_now(c: dict, pos: dict, *, paid: bool) -> str:
   this year by <b>{_e(NR.PLANET[antar])}</b> and right now by
   <b>{_e(praty['planet'])}</b>.</p>
   <p>{_e(_short(core))}</p>
+  <p class="pred-why"><b>Why:</b> {_e(f"{maha['planet']} mahadasha, {NR.PLANET[antar]} antar, {praty['planet']} pratyantar")}.</p>
 </div>"""
     if not paid:
         return current
@@ -267,7 +268,7 @@ part you can adjust.</p>
   <div class="card-top"><span class="area">Name harmony</span>
     <span class="pill {pill}">{_e(pill_txt)}</span></div>
   <p class="claim">{_e(verdict)}</p>
-  <p class="fine"><b>Technical basis:</b> {_e(detail)}</p>
+  <p class="pred-why"><b>Why:</b> {_e(detail)}</p>
   {body}
 </article>"""
 

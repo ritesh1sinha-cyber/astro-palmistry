@@ -50,6 +50,22 @@ def _safe(fn, *a, **k) -> str:
         return ""
 
 
+def _voice_polish(html: str) -> str:
+    """Plain-English pass for customer fragments (no personal opening block)."""
+    try:
+        import os
+        import astro_voice as V
+        out = V.strip_leaks(html or "")
+        out = V.strip_machinery(out)
+        out = V.humanise(out)
+        out = V.strip_citations(out, hide_system_names=True)
+        if os.getenv("PLAIN_ENGLISH", "1") == "1":
+            out = V.translate_jargon(V.rephrase(out), keep_original=False)
+        return out
+    except Exception:                                                # noqa: BLE001
+        return html
+
+
 def _scrub(html: str) -> str:
     """Last gate before a customer sees anything. Never bypass this.
 
@@ -113,6 +129,21 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
     today = today or date.today()
     first = (name or "").split()[0] if name else ""
 
+    import deep_evidence as DE
+    DE.begin(pc, lat=lat, lon=lon, tz=tz, today=today)
+    try:
+        return _full_report_inner(
+            pc, name=name, question=question, today=today, price=price,
+            bundle_price=bundle_price, lat=lat, lon=lon, tz=tz, daily=daily,
+            first=first)
+    finally:
+        DE.end()
+
+
+def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
+                       today: date, price: int = 298, bundle_price: int = 298,
+                       lat: float = 0.0, lon: float = 0.0, tz: float = 5.5,
+                       daily: Any = None, first: str = "") -> tuple:
     present_html = ""
     try:
         import present_read as PR
@@ -135,7 +166,8 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
         import report_timing as RT
         areas = [(a.key, a.house) for a in RC.AREAS]
         labels = {a.key: a.label for a in RC.AREAS}
-        timing_rows = RT.best_windows(pc, areas, years=5, limit=4)
+        timing_rows = RT.best_windows(pc, areas, years=5, limit=4,
+                                      lat=lat, lon=lon, tz=tz)
         timing_html = RT.render(pc, timing_rows, labels)
         n_periods = len(RC.build_timeline(pc, today=today))
     except Exception as exc:                                         # noqa: BLE001
@@ -143,25 +175,10 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
     n_windows = len(timing_rows)
 
     q_html = ""
-    if question:
-        try:
-            import question_answer as QA
-            q_html = QA.render(QA.answer(pc, question, years=7), name=first,
-                               paid=False)
-        except Exception as exc:                                     # noqa: BLE001
-            print(f"[report_render] question failed: {exc}", flush=True)
 
     def build(paid: bool) -> str:
         import report_cards as RC
         remedy = _safe(_remedy, pc, name=first, paid=paid, price=price)
-        qh = q_html
-        if question and paid:
-            try:
-                import question_answer as QA
-                qh = QA.render(QA.answer(pc, question, years=7), name=first,
-                               paid=True)
-            except Exception:                                        # noqa: BLE001
-                pass
         if paid:
             tail = timing_html + remedy
         else:
@@ -171,7 +188,7 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
                     + _bundle(bundle_price))
         body = RC.render(
             pc, name=name, price=price, today=today, paid=paid,
-            question_html=qh,
+            question_html="",
             proof_html=present_html + past_html,
             timing_html=tail)
         return _scrub(body)
@@ -199,7 +216,7 @@ def _remedy(pc: dict, *, name: str = "", paid: bool = False,
     return RB.render(
         RB.build(pc, domain="", name=name), paid=paid, price=price,
         lede="Your chart's difficult places all have a classical answer. Some of "
-             "them say do NOT wear the obvious stone — that half is free, "
+             "them say do NOT wear the obvious stone. That half is free, "
              "because nobody else will tell you.")
 
 
@@ -296,6 +313,42 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
                              "Which planets are in favour and which are working against you",
                              "The timing — dated windows",
                              "The remedy — what tips this your way"],
+            "teasers": {}}
+    return free, paid, meta
+
+
+# ---------------------------------------------------------------------------
+# user question — natal chart, half free (working) / paid (verdict + dates + remedy)
+# ---------------------------------------------------------------------------
+def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
+                  price: int = 298, lat: float = 0.0, lon: float = 0.0,
+                  tz: float = 5.5, today: Optional[date] = None) -> tuple:
+    import question_answer as QA
+    today = today or date.today()
+    first = (name or "").split()[0] if name else ""
+
+    result = QA.answer(pc, question, lat=lat, lon=lon, tz=tz, route=route)
+    free_body = _voice_polish(QA.render(result, name=first, paid=False, price=price))
+    paid_body = _voice_polish(QA.render(result, name=first, paid=True, price=price))
+    try:
+        import remedy_block as RB
+        rb = RB.build(pc, domain=result.get("area_key", ""), question=question,
+                      name=first)
+        paid_body += RB.render(rb, paid=True, price=price,
+                               lede="What your chart says to do about this question.")
+    except Exception:                                                # noqa: BLE001
+        pass
+
+    title = f"Your question — {question[:60]}"
+    free = RS.page(title, _scrub(free_body))
+    paid = RS.page(title, _scrub(paid_body))
+    answer = QA.answer_meta(result)
+    meta = {"design": "cards-v2", "answer": answer, "question": question,
+            "price": price,
+            "paidSections": ["The verdict — what your chart actually says",
+                             "Dated windows — when to move",
+                             "Watch-out rules for this question",
+                             "Chart-targeted remedy"],
             "teasers": {}}
     return free, paid, meta
 

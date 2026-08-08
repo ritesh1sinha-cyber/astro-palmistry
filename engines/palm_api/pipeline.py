@@ -146,7 +146,17 @@ def analyze_image_paths(
         blocks_for_conf[hand] = block
 
     if results.get("right") and results.get("left"):
-        results["confluence"] = build_confluence(blocks_for_conf, active_hand)
+        saraswati: dict = {}
+        try:
+            from palm_api.saraswati_lane import signals as saraswati_signals
+            dom_key = "left" if active_hand == "left" else "right"
+            dom_feats = ((results.get(dom_key) or {}).get("features") or {})
+            saraswati = saraswati_signals(
+                [str(p) for _, p in ordered], dom_feats, active_hand)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[palm] saraswati lane skipped: {exc}", flush=True)
+        results["confluence"] = build_confluence(
+            blocks_for_conf, active_hand, saraswati_signals=saraswati or None)
 
     results["reference_text"] = build_reference_text(blocks_for_conf if blocks_for_conf else results)
     return results

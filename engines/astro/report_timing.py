@@ -153,7 +153,9 @@ def windows_for_area(pc: dict, area_key: str, house: int, *,
 
 
 def best_windows(pc: dict, areas: list, *, start: Optional[date] = None,
-                 years: int = 5, limit: int = 5) -> list:
+                 years: int = 5, limit: int = 5,
+                 lat: Optional[float] = None, lon: Optional[float] = None,
+                 tz: float = 5.5) -> list:
     """The handful of windows worth naming, across every life area."""
     start = start or date.today()
     segments = transit_segments(pc, start=start, years=years)
@@ -161,6 +163,20 @@ def best_windows(pc: dict, areas: list, *, start: Optional[date] = None,
     for key, house in areas:
         allrows += windows_for_area(pc, key, house, start=start,
                                     years=years, segments=segments)
+    # Boost scores with deep-evidence period-clock rating when cache is active
+    try:
+        import deep_evidence as DE
+        de_ctx = DE.current()
+        if de_ctx:
+            for r in allrows:
+                de = de_ctx.for_area(r["area"], house=r.get("house", 0))
+                rating = de.get("current_rating", "mix")
+                boost = {"fav": 0.4, "mix": 0.0, "chal": -0.4}.get(rating, 0)
+                r["score"] = round(r.get("score", 0) + boost, 2)
+                if de.get("evidence_lines"):
+                    r["deep_note"] = de["evidence_lines"][0][:120]
+    except Exception:  # noqa: BLE001
+        pass
     # strongest first, but never two of the same area back to back
     allrows.sort(key=lambda r: -abs(r["score"]))
     picked, seen = [], set()
@@ -178,20 +194,34 @@ def best_windows(pc: dict, areas: list, *, start: Optional[date] = None,
 # ---------------------------------------------------------------------------
 
 def explain(row: dict, area_label: str) -> str:
-    """One sentence a reader can act on, with the reasoning underneath."""
-    verb, theme = TRANSIT_VOICE.get(row["planet"], ("moves through", ""))
+    """One sentence a reader can act on."""
     strong = row["bav"] >= 5
     if row["aligned"]:
-        lead = (f"{area_label} is the thing to push in this window.")
-    elif row["promise"] == "down" and strong:
-        lead = (f"A real opening in {area_label.lower()}, but your chart does "
+        return f"{area_label} is the thing to push in this window."
+    if row["promise"] == "down" and strong:
+        return (f"A real opening in {area_label.lower()}, but your chart does "
                 f"not promise much here — take it, do not bet on it.")
-    elif not strong:
-        lead = (f"{row['planet']} reaches {area_label.lower()} in this window "
+    if not strong:
+        return (f"{row['planet']} reaches {area_label.lower()} in this window "
                 f"but arrives weak. Expect the offer without the delivery.")
-    else:
-        lead = f"A mixed window for {area_label.lower()}."
-    return lead
+    return f"A mixed window for {area_label.lower()}."
+
+
+def _window_backing(row: dict) -> str:
+    """One compressed Why line for a timing window."""
+    try:
+        import predict_voice as PV
+        sup = (row.get("bav") or 0) >= 5
+        parts = [
+            f"chart reads {row.get('promise', 'mixed')} on this area",
+            f"{row.get('planet', '')} crossing your {PV._ord(row.get('house'))} house "
+            f"({'well supported' if sup else 'weakly supported'})",
+        ]
+        if row.get("period_owns_area"):
+            parts.append("period activates this area")
+        return "; ".join(parts)
+    except Exception:  # noqa: BLE001
+        return "promise, period and transit line up here"
 
 
 def render(pc: dict, rows: list, labels: dict) -> str:
@@ -208,20 +238,10 @@ def render(pc: dict, rows: list, labels: dict) -> str:
     <div class="win-head">{_e(label)} · <span class="win-tag">{_e(
         'aligned' if r['aligned'] else 'partial')}</span></div>
     <p class="win-lead">{_e(explain(r, label))}</p>
-    <ul class="win-why">
-      <li><b>Promise</b> — your chart reads {_e(r['promise'])} on this area</li>
-      <li><b>Period</b> — {_e(r['dasha_label'])}
-          {'· and it activates this area directly' if r['period_owns_area'] else ''}</li>
-      <li><b>Trigger</b> — {_e(r['planet'])} {_e(verb)} your {_ord(r['house'])}
-          house from {_e(r['sign'])}, carrying <b>{r['bav']} of 8</b> support
-          points there{' — strong enough to deliver' if r['bav'] >= 5
-                       else ' — too weak to deliver on its own'}</li>
-    </ul>
+    <p class="pred-why"><b>Why:</b> {_e(_window_backing(r))}</p>
   </li>""")
     return f"""
 <h3 class="sec">When it actually happens</h3>
-<p class="sec-note">A period on its own does not make an event. These are the
-windows where your chart's promise, the running period, and a slow planet
-crossing the right house all line up — and where that planet has the classical
-support points to deliver.</p>
+<p class="sec-note">These are the windows where promise, period and a slow planet
+crossing the right house all line up on your chart.</p>
 <ol class="windows-list">{''.join(items)}</ol>"""

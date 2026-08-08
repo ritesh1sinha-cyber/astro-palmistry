@@ -233,6 +233,14 @@ def _read_to_today(items: List[dict], *, first: str, age: int) -> str:
 </div>"""
 
 
+def _mark_zone_plain(zone: str) -> str:
+    try:
+        import palm_voice as PV
+        return PV._mount_name((zone or "palm").lower())
+    except Exception:  # noqa: BLE001
+        return "your palm"
+
+
 def _marks(dom: dict, conf: dict, *, paid: bool) -> str:
     raw_marks = (dom.get("features") or {}).get("special_marks") or []
     if not raw_marks and not (conf.get("marks") or []):
@@ -242,8 +250,11 @@ def _marks(dom: dict, conf: dict, *, paid: bool) -> str:
                        for m in (conf.get("marks") or []) if m.get("statement"))
         if not rows:
             rows = "".join(
-                f'<li><b>{_e(m.get("title"))}</b> on your {_e(str(m.get("zone","palm")).title())} '
-                f'mount — {_e(m.get("meaning"))}</li>' for m in raw_marks)
+                f'<li><p class="pred-scenario"><b>{_e(m.get("title"))}</b> — '
+                f'{_e(m.get("meaning"))}</p>'
+                f'<p class="pred-why"><b>Why:</b> mark on '
+                f'{_e(_mark_zone_plain(str(m.get("zone", "palm"))))}</p></li>'
+                for m in raw_marks)
         return f"""
 <h3 class="sec">Your special marks, and what each one means</h3>
 <p class="sec-note">Rarer than the lines, and read differently: a mark modifies
@@ -251,8 +262,9 @@ whatever it sits on.</p>
 <div class="card"><ul class="palm-list plain">{rows}</ul></div>"""
 
     named = "".join(
-        f'<li><b>{_e(m.get("title"))}</b> on your '
-        f'{_e(str(m.get("zone", "palm")).title())} mount</li>' for m in raw_marks)
+        f'<li><b>{_e(m.get("title"))}</b> on '
+        f'{_e(_mark_zone_plain(str(m.get("zone", "palm"))))}</li>'
+        for m in raw_marks)
     if not named:
         return ""
     n = len(raw_marks)
@@ -263,7 +275,7 @@ mean is the part you have to unlock.</p>
 <div class="card">
   <ul class="palm-list plain">{named}</ul>
   <div class="when locked-inline"><span class="lockicon">&bull;</span>
-  {n} mark{'s' if n != 1 else ''} found. What each one does to the mount it sits
+  {n} mark{'s' if n != 1 else ''} found. What each one does to the area it sits
   on, and the remedy attached to it, are in the full reading.</div>
 </div>"""
 
@@ -290,9 +302,17 @@ calendar. Treat the age as a window, not a day.</p>
 
 
 def _mounts(conf: dict, items: List[dict]) -> str:
-    rows = "".join(
-        f'<li><b>{_e(i.get("title"))}</b><p>{_e(_verdict(i))}</p></li>'
-        for i in items if i.get("kind") == "mount" and _verdict(i))
+    rows = ""
+    for i in items:
+        if i.get("kind") != "mount" or not _verdict(i):
+            continue
+        verdict = _verdict(i)
+        if "Why:" in verdict:
+            rows += f'<li>{_e(verdict).replace(chr(10), "<br/>")}</li>'
+        else:
+            rows += (f'<li><p class="pred-scenario"><b>{_e(i.get("title"))}</b> — '
+                     f'{_e(verdict)}</p>'
+                     f'<p class="pred-why"><b>Why:</b> {_e(i.get("title", "mount"))} area</p></li>')
     rows += "".join(f'<li><p>{_e(m.get("statement"))}</p></li>'
                     for m in (conf.get("mounts") or []) if m.get("statement"))
     if not rows:

@@ -1,0 +1,465 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Meera — your reading</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9.144,400;9.144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--ink:#16181d;--muted:#6a7080;--line:#e6e4df;--bg:#fbfaf8;
+--up:#1c6b45;--down:#a3341f;--mixed:#8a6a1f;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;
+line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:0 20px 80px}
+header{padding:44px 0 22px}
+.eyebrow{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
+color:var(--muted);font-weight:600}
+h1{font-family:Fraunces,Georgia,serif;font-size:2rem;line-height:1.12;
+margin:10px 0 12px;font-weight:600;letter-spacing:-.015em}
+.chartline{font-size:.86rem;color:var(--muted)}
+.now-box{background:var(--ink);color:#f7f5f1;border-radius:14px;
+padding:20px 22px;margin:22px 0 30px}
+.now-box .lbl{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+opacity:.6;font-weight:600}
+.now-box h2{font-family:Fraunces,serif;font-size:1.3rem;margin:8px 0 6px;font-weight:600}
+.now-box p{margin:0;font-size:.9rem;opacity:.85}
+h3.sec{font-family:Fraunces,serif;font-size:1.25rem;margin:38px 0 4px;font-weight:600}
+.sec-note{font-size:.82rem;color:var(--muted);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+padding:18px 20px;margin-bottom:12px}
+.card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.area{font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;
+font-weight:600;color:var(--muted)}
+.pill{font-size:.66rem;font-weight:600;padding:3px 9px;border-radius:99px;
+letter-spacing:.04em}
+.pill.up{background:#e4f2ea;color:var(--up)}
+.pill.down{background:#fbeae6;color:var(--down)}
+.pill.mixed{background:#fbf1de;color:var(--mixed)}
+.claim{font-family:Fraunces,serif;font-size:1.12rem;line-height:1.4;
+margin:12px 0 10px}
+.when{font-size:.78rem;font-weight:600;color:var(--muted);
+letter-spacing:.02em;margin-bottom:10px}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{font-size:.78rem;color:var(--muted);cursor:pointer;font-weight:500}
+details ul{margin:10px 0 0;padding-left:18px;font-size:.85rem;color:#3d4250}
+details li{margin:6px 0}
+.action{margin-top:12px;background:#f6f4ef;border-radius:10px;padding:12px 14px}
+.act-label{font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;
+font-weight:600;color:var(--mixed)}
+.action p{margin:6px 0 0;font-size:.88rem}
+.mantra{font-style:italic;color:var(--muted);font-size:.82rem!important}
+.blurred{filter:blur(4.5px);user-select:none;opacity:.6}
+.locked-inline .lockicon{color:var(--mixed);font-weight:700}
+.when.locked-inline{color:var(--mixed);font-weight:600}
+.evidence{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+.ev-label{font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;
+font-weight:600;color:var(--muted)}
+.agree{float:right;font-size:.66rem;font-weight:600;color:var(--muted);
+background:#f1efea;border-radius:99px;padding:2px 9px}
+.evidence ul{margin:8px 0 0;padding-left:18px;font-size:.85rem;color:#3d4250}
+.evidence li{margin:6px 0}
+.proof{background:#fff;border:2px solid var(--ink);border-radius:14px;
+padding:22px;margin:26px 0}
+.proof h3{font-family:Fraunces,serif;font-size:1.22rem;margin:0 0 8px;font-weight:600}
+.proof p{font-size:.9rem;margin:0 0 12px}
+.proof .hits{list-style:none;margin:14px 0 0;padding:0}
+.proof .hits li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;
+border-top:1px solid var(--line);font-size:.88rem}
+.proof .tick{color:var(--up);font-weight:700}
+.proof .miss{color:var(--muted);font-weight:700}
+.daily{background:#f2efe9;border-radius:14px;padding:20px 22px;margin:26px 0}
+.daily .lbl{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+font-weight:600;color:var(--muted)}
+.daily h3{font-family:Fraunces,serif;font-size:1.16rem;margin:8px 0 10px;font-weight:600}
+.dodont{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+@media(max-width:520px){.dodont{grid-template-columns:1fr}}
+.dodont div{background:#fff;border-radius:10px;padding:10px 12px;font-size:.84rem}
+.dodont .t{font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;
+font-weight:600;margin-bottom:5px}
+.do .t{color:var(--up)} .dont .t{color:var(--down)}
+.windows{list-style:none;margin:10px 0 0;padding:0;font-size:.85rem}
+.windows li{display:flex;gap:10px;padding:6px 0;border-top:1px solid #e0dcd4}
+.windows b{min-width:96px;font-variant-numeric:tabular-nums}
+.windows-list{list-style:none;margin:0;padding:0}
+.win{background:#fff;border:1px solid var(--line);border-left-width:4px;
+border-radius:12px;padding:16px 18px;margin-bottom:12px}
+.win.up{border-left-color:var(--up)}
+.win.down{border-left-color:var(--down)}
+.win.mixed{border-left-color:var(--mixed)}
+.win-when{font-size:.74rem;font-weight:600;letter-spacing:.04em;
+color:var(--muted);font-variant-numeric:tabular-nums}
+.win-head{font-family:Fraunces,serif;font-size:1.05rem;margin:4px 0 6px;
+font-weight:600}
+.win-tag{font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;
+color:var(--muted);font-family:Inter,sans-serif;font-weight:600}
+.win-lead{margin:0 0 10px;font-size:.94rem}
+.win-why{margin:0;padding-left:16px;font-size:.83rem;color:#3d4250}
+.win-why li{margin:4px 0}
+.personal p{margin:8px 0 0;font-size:.83rem;color:#3d4250}
+.dasha-conf{margin-top:14px;border-top:1px solid rgba(255,255,255,.18);
+padding-top:12px}
+.dsys{display:flex;justify-content:space-between;font-size:.82rem;
+padding:3px 0;opacity:.9}
+.dsys span{opacity:.65}
+.dagree{margin-top:9px;font-size:.8rem;opacity:.8}
+.persona .traits{list-style:none;margin:0;padding:0}
+.persona .traits li{font-family:Fraunces,serif;font-size:1.02rem;
+line-height:1.45;padding:9px 0;border-bottom:1px solid var(--line)}
+.persona .traits li:last-child{border-bottom:0}
+.yogas{margin-top:12px;background:#f6f4ef;border-radius:10px;padding:12px 14px}
+.yogas ul{margin:8px 0 0;padding-left:18px;font-size:.84rem}
+ol.timeline{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}
+ol.timeline li{position:relative;padding:0 0 20px 20px}
+ol.timeline li::before{content:"";position:absolute;left:-7px;top:5px;width:12px;
+height:12px;border-radius:50%;background:#fff;border:2px solid var(--line)}
+ol.timeline li.now::before{background:var(--ink);border-color:var(--ink)}
+.tl-when{font-size:.74rem;font-weight:600;color:var(--muted);letter-spacing:.03em}
+.tl-body{font-size:.92rem;margin-top:2px}
+.tl-areas{display:block;font-size:.78rem;color:var(--muted);margin-top:2px}
+.buy{background:var(--ink);color:#f7f5f1;border-radius:14px;padding:24px;
+margin-top:32px;text-align:center}
+.buy h3{font-family:Fraunces,serif;font-size:1.2rem;margin:0 0 8px;font-weight:600}
+.buy p{font-size:.88rem;opacity:.85;margin:0 0 16px}
+.buy .cta{display:inline-block;background:#f7f5f1;color:var(--ink);
+padding:12px 26px;border-radius:99px;font-weight:600;font-size:.9rem;
+text-decoration:none}
+footer{margin-top:40px;font-size:.74rem;color:var(--muted);text-align:center}
+.prediction{margin:14px 0;padding:14px 16px;background:#fff;border:1px solid var(--line);
+border-radius:12px}
+.pred-scenario{margin:0 0 10px;font-size:.92rem;line-height:1.55}
+.pred-why{margin:0;font-size:.82rem;color:#3d4250;line-height:1.45}
+.pred-list .prediction{list-style:none}
+.present-list.pred-list{list-style:none;padding:0;margin:0}
+.present-list.pred-list>li{margin-bottom:12px}
+
+/* Shell additions for the tabs that are not the flagship card report. */
+.tabhead{padding:38px 0 16px}
+.tabhead .eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;
+font-weight:700;color:var(--mixed)}
+.tabhead h1{font-family:Fraunces,Georgia,serif;font-size:1.75rem;line-height:1.14;
+margin:10px 0 8px;font-weight:600;letter-spacing:-.015em}
+.tabhead .sub{font-size:.86rem;color:var(--muted);margin:0}
+.routes{display:grid;gap:10px;margin:8px 0 26px}
+.route{display:flex;justify-content:space-between;align-items:center;gap:12px;
+background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:14px 16px;text-decoration:none;color:inherit}
+.route b{font-size:.95rem}
+.route span{font-size:.8rem;color:var(--muted)}
+.route .go{font-size:.72rem;font-weight:700;color:var(--mixed);
+letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+footer.fine{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);
+font-size:.72rem;color:var(--muted);line-height:1.6}
+details.workings{margin:28px 0;border:1px solid var(--line);border-radius:12px;
+background:var(--card);overflow:hidden}
+details.workings summary{cursor:pointer;padding:14px 18px;font-size:.82rem;
+font-weight:600;color:var(--muted);list-style:none}
+details.workings summary::-webkit-details-marker{display:none}
+details.workings[open] summary{border-bottom:1px solid var(--line)}
+.workings-wrap,.workings-body{padding:14px 18px 18px;font-size:.84rem;
+color:#3d4250;line-height:1.55}
+.workings-body h4,.workings-body h5{font-family:Fraunces,Georgia,serif;
+font-size:1rem;margin:18px 0 8px;color:var(--ink)}
+.workings-body table{width:100%;border-collapse:collapse;font-size:.78rem;margin:10px 0}
+.workings-body th,.workings-body td{border:1px solid var(--line);padding:6px 8px;
+text-align:left;vertical-align:top}
+.workings-main>summary{font-size:.88rem;color:var(--ink)}
+/* tab_renderers shared dialect */
+.tab{margin:8px 0 28px}
+.tab-head{margin-bottom:14px}
+.tab-kind{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+font-weight:700;color:var(--mixed)}
+.tab-head h2{font-family:Fraunces,Georgia,serif;font-size:1.45rem;line-height:1.2;
+margin:8px 0 0;font-weight:600}
+.tab-lead{font-size:.98rem;margin:12px 0 8px}
+.tab-sub{font-size:.86rem;color:var(--muted);margin:0 0 14px}
+.tab-caveat{font-size:.8rem;color:var(--muted);margin:16px 0 0}
+.tab-sec{font-family:Fraunces,serif;font-size:1.05rem;margin:22px 0 8px;font-weight:600}
+.tab-cta{background:#f6f4ef;border-radius:12px;padding:14px 16px;margin-top:18px;
+font-size:.9rem}
+.tab-cta .fine{font-size:.78rem;color:var(--muted);margin:8px 0 0}
+.score-hero{display:flex;gap:18px;align-items:center;margin:14px 0}
+.score-num{font-family:Fraunces,serif;font-size:3rem;font-weight:600;line-height:1}
+.score-num span{font-size:1.1rem;color:var(--muted);font-weight:500}
+.score-side{flex:1}
+.score-band{font-size:.9rem;font-weight:600;margin-bottom:6px}
+.bar{height:8px;background:#eeebe4;border-radius:99px;overflow:hidden;margin:6px 0}
+.bar span{display:block;height:100%;background:var(--ink);border-radius:99px}
+.bar span.good{background:var(--up)}.bar span.bad{background:var(--down)}
+.koots{list-style:none;margin:10px 0 0;padding:0}
+.koot{padding:10px 0;border-top:1px solid var(--line)}
+.koot-top{display:flex;justify-content:space-between;gap:10px;font-size:.9rem}
+.koot-score{font-variant-numeric:tabular-nums;font-weight:600}
+.koot-what{font-size:.78rem;color:var(--muted);margin:4px 0 6px}
+.mm-dosha{background:#fbeae6;border-radius:12px;padding:14px 16px;margin-top:16px}
+.btr-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
+@media(min-width:560px){.btr-grid{grid-template-columns:repeat(4,1fr)}}
+.btr-grid div{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:12px 14px}
+.btr-grid span{display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+color:var(--muted);font-weight:600;margin-bottom:4px}
+.btr-grid b{font-size:1.05rem}
+.btr-stakes{background:#fbeae6;border-radius:12px;padding:14px 16px;margin-top:14px}
+.btr-answer{background:#e4f2ea;border-radius:12px;padding:16px 18px;margin-top:16px}
+.btr-time{font-family:Fraunces,serif;font-size:2rem;color:var(--up);margin:6px 0}
+.muh-hero{background:var(--card);border:1px solid var(--line);border-radius:14px;
+padding:18px 20px;margin:12px 0 16px;border-left:4px solid var(--mixed)}
+.muh-hero[data-verdict="good"]{border-left-color:var(--up)}
+.muh-hero[data-verdict="bad"]{border-left-color:var(--down)}
+.muh-verdict{font-family:Fraunces,serif;font-size:1.6rem;font-weight:600;margin:0 0 6px}
+.muh-checks{list-style:none;margin:8px 0 0;padding:0}
+.muh-checks li{padding:8px 0;border-top:1px solid var(--line);font-size:.88rem}
+.muh-checks li.ok b{color:var(--up)}.muh-checks li.bad b{color:var(--down)}
+.num-grid{display:grid;gap:10px;margin:12px 0}
+.num-card{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);
+border-radius:12px;padding:14px 16px}
+.num-big{font-family:Fraunces,serif;font-size:2.2rem;font-weight:600;min-width:2.2rem}
+.num-body{flex:1}
+.num-body p{margin:3px 0 6px;font-size:.88rem;color:#3d4250}
+.lo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px}
+.lo-cell{border:1px solid var(--line);border-radius:10px;padding:10px 8px;text-align:center;
+background:var(--card);min-height:5.4rem}
+.lo-cell.empty{border-style:dashed;background:#faf8f4}
+.lo-n{display:block;font-size:.64rem;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.lo-count{display:block;font-family:Fraunces,serif;font-size:1.5rem;line-height:1.3;
+letter-spacing:.06em}
+.lo-cell.empty .lo-count{color:var(--down)}
+.lo-what{display:block;font-size:.68rem;color:var(--muted);line-height:1.25}
+.num-label{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+font-weight:600}
+.num-src{font-size:.74rem;color:var(--muted)}
+.num-year,.num-future{background:#f6f4ef;border-radius:12px;padding:14px 16px;margin:14px 0}
+.num-seq{list-style:none;margin:8px 0 0;padding:0}
+.num-seq li{display:flex;gap:12px;padding:6px 0;border-top:1px solid var(--line)}
+.num-extra{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.num-extra div{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:10px 12px;font-size:.82rem}
+.num-extra span{display:block;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;
+color:var(--muted);font-weight:600;margin-bottom:3px}
+.fine{font-size:.78rem;color:var(--muted)}
+.locked-inline{color:var(--mixed)}
+/* daily reading */
+.daily .agree{float:right}
+.daily .pill{display:inline-block;margin-top:8px}
+.lanes{list-style:none;margin:0;padding:0}
+.lanes li{display:grid;grid-template-columns:8.5rem 1fr auto;gap:10px;
+align-items:baseline;padding:9px 0;border-top:1px solid var(--line);font-size:.86rem}
+.lanes li:first-child{border-top:0}
+.lanes li>span:first-child{font-weight:600}
+@media(max-width:520px){.lanes li{grid-template-columns:1fr auto}
+.lanes li>span:first-child{grid-column:1/-1}}
+.windows li.w-up{border-left:3px solid var(--up);padding-left:10px}
+.windows li.w-down{border-left:3px solid var(--down);padding-left:10px}
+/* palm reading */
+.pill.faint{background:#f1efea;color:var(--muted)}
+.palm-shots{margin:8px 0 18px}
+.palm-imgs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 8px}
+@media(max-width:480px){.palm-imgs{grid-template-columns:1fr}}
+.palm-imgs figure{margin:0}
+.palm-imgs img{width:100%;display:block;border:1px solid var(--line);border-radius:12px}
+.palm-imgs figcaption{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+font-weight:600;color:var(--muted);margin-top:6px;text-align:center}
+.palm-scores{list-style:none;margin:10px 0 0;padding:0}
+.palm-scores li{display:grid;grid-template-columns:5.5rem 1fr 2.2rem;gap:10px;
+align-items:center;padding:6px 0;font-size:.85rem}
+.palm-scores b{text-align:right;font-variant-numeric:tabular-nums}
+.palm-list{list-style:none;margin:0;padding:0}
+.palm-list li{padding:10px 0;border-top:1px solid var(--line);font-size:.9rem}
+.palm-list li:first-child{border-top:0}
+.palm-list p{margin:4px 0 0;font-size:.88rem;color:#3d4250}
+.palm-list.plain li{font-size:.88rem;color:#3d4250}
+.palm-points{list-style:none;margin:8px 0 0;padding:0}
+.palm-points li{padding:8px 0;border-top:1px solid var(--line)}
+.palm-points p{margin:3px 0 0}
+.pt-when{margin-left:8px;font-size:.74rem;font-weight:600;color:var(--mixed);
+font-variant-numeric:tabular-nums}
+b.both{font-size:.72rem;color:var(--up);letter-spacing:.02em}
+/* Present reading + recognition feedback (accuracy pills / mismatch modal) */
+.present{margin:22px 0 28px}
+.present-head .ev-label,.recog-label{font-size:.64rem;letter-spacing:.13em;
+text-transform:uppercase;font-weight:600;color:var(--muted)}
+.present-head h3{font-family:Fraunces,serif;font-size:1.22rem;margin:8px 0 6px;font-weight:600}
+.present-lede{font-size:.9rem;color:#3d4250;margin:0 0 12px}
+.present-list{margin:0 0 14px;padding-left:18px;font-size:.9rem}
+.present-list li{margin:8px 0}
+.present-ask,.recog-ask{display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:.86rem}
+.present-ask>span,.recog-ask>span{width:100%;color:var(--muted);font-weight:500}
+.pillbtn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);
+font:inherit;font-size:.82rem;font-weight:600;padding:8px 14px;border-radius:99px;
+cursor:pointer}
+.pillbtn:hover{border-color:var(--ink)}
+.pillbtn.on{background:var(--ink);color:#f7f5f1;border-color:var(--ink)}
+.pillbtn:disabled{opacity:.55;cursor:default}
+.feedback-thanks{margin-top:12px;font-size:.88rem;color:var(--up);font-weight:600}
+.recognition .recog-ask{margin-top:18px}
+.recog-block{margin:16px 0;padding-top:12px;border-top:1px solid var(--line)}
+.recog-claim{font-family:Fraunces,serif;font-size:1.02rem;margin:10px 0 4px;font-weight:500}
+.recog-why{font-size:.78rem;color:var(--muted);margin:0 0 8px}
+.recog-why span{font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+font-size:.64rem;margin-right:6px}
+.mm-overlay{position:fixed;inset:0;background:rgba(22,24,29,.48);display:flex;
+align-items:flex-end;justify-content:center;padding:16px;z-index:40}
+@media(min-width:560px){.mm-overlay{align-items:center}}
+.mm-overlay[hidden]{display:none!important}
+.mm-box{background:#fff;border-radius:16px;padding:22px 20px 18px;max-width:440px;
+width:100%;max-height:min(88vh,640px);overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.18)}
+.mm-box h3{font-family:Fraunces,serif;font-size:1.2rem;margin:8px 0 10px;font-weight:600}
+.mm-box p{font-size:.88rem;margin:0 0 10px;color:#3d4250}
+.mm-routes{margin:8px 0 14px;padding-left:18px;font-size:.86rem;color:#3d4250}
+.mm-routes li{margin:8px 0}
+.mm-actions{display:grid;gap:8px;margin:14px 0 10px}
+.cta-dark,.cta-light{display:block;text-align:center;text-decoration:none;font-weight:600;
+font-size:.88rem;padding:12px 14px;border-radius:99px}
+.cta-dark{background:var(--ink);color:#f7f5f1}
+.cta-light{background:#f6f4ef;color:var(--ink);border:1px solid var(--line)}
+.mm-close{appearance:none;display:block;width:100%;border:0;background:transparent;
+color:var(--muted);font:inherit;font-size:.82rem;font-weight:600;padding:10px;
+cursor:pointer}
+</style></head><body><div class="wrap">
+<header> <div class="eyebrow">Your reading</div> <h1>Meera, here is what your chart<br/>is doing right now.</h1> <div class="chartline">Aries rising · Moon in Leo (Purva Phalguni) · read 08 August 2026</div>
+</header> <div class="now-box"> <div class="lbl">The chapter you are in</div> <h2>Rahu–Jupiter</h2> <p>ambition and the unfamiliar sets the background; opportunity, teachers and expansion is what you feel week to week.</p> </div> <h3 class="sec">Who your chart says you are</h3>
+<p class="sec-note">Read this first. If it does not describe you, nothing
+after it is worth your money.</p>
+<div class="card persona"> <ul class="traits"><li>You move first and think about it afterwards, usually faster than the people around you are comfortable with.</li><li>Under pressure you need someone to tell you the work mattered.</li><li>The thread running through your whole life is your fights, the ones worth having and the ones not. Mars carries that in your chart.</li></ul> </div> <section class="present"> <div class="present-head"> <span class="ev-label">Where you are right now, free and checkable</span> <h3>The last six months, and what you are inside of today</h3> </div> <p class="present-lede">Read this before anything else. It describes a period you have just lived through, so you can judge it immediately. That is the point of putting it first.</p> <ul class="present-list pred-list"><li><div class="prediction" data-verdict="up"><p class="pred-scenario">You are in a Rahu–Jupiter stretch. Doors open partway. Ask someone senior to speak for you. Sponsorship matters now. This is a supportive chapter.</p><p class="pred-why"><b>Why:</b> Rahu–Jupiter period activates your 3rd house</p></div></li><li><div class="prediction" data-verdict="mixed"><p class="pred-scenario">Jupiter has been pressing on home, property and your mother since June 2026. Go steady rather than force outcomes. This eases after October 2026.</p><p class="pred-why"><b>Why:</b> Jupiter crossing your 4th house (more pressure than payoff)</p></div></li><li><div class="prediction" data-verdict="mixed"><p class="pred-scenario">Saturn has been pressing on expense, rest, travel and what you are letting go of since January 2026. Go steady rather than force outcomes. This eases after January 2027.</p><p class="pred-why"><b>Why:</b> Saturn crossing your 12th house (more pressure than payoff)</p></div></li><li><div class="prediction" data-verdict="mixed"><p class="pred-scenario">The work is solid; the recognition is slower than the work. Both are true at once. Your career chart is well-built for career and public standing. Moon protects this area in the career chart. Mixed signals. Patience over big moves.</p><p class="pred-why"><b>Why:</b> Rahu–Jupiter period activates your 3rd house; career chart: Saturn mixed in 3rd house</p></div></li><li><div class="prediction" data-verdict="mixed"><p class="pred-scenario">Opportunity comes, but through effort rather than luck. Your learning chart backs study, teachers and grasp of subjects through Saturn, strong where it counts. The ruler sits in your 5th house in that chart. Mixed signals. Patience over big moves.</p><p class="pred-why"><b>Why:</b> Rahu–Jupiter period activates your 9th house; learning chart: Saturn strong in 5th house; strong Jupiter, Saturn</p></div></li><li><div class="prediction" data-verdict="mixed"><p class="pred-scenario">The shorter lunar rhythm runs through Jupiter until April 2027. Week-to-week mood follows that tone.</p><p class="pred-why"><b>Why:</b> lunar cycle on Dhanya (Jupiter)</p></div></li></ul> <div class="present-ask"> <span>Does this describe your last six months?</span> <button type="button" class="pillbtn" data-mm="yes">Yes, closely</button> <button type="button" class="pillbtn" data-mm="partly">Partly</button> <button type="button" class="pillbtn" data-mm="no">Not at all</button> </div> <div class="mm-overlay" id="mismatch" hidden> <div class="mm-box"> <div class="ev-label">Then something upstream is wrong</div> <h3>Most likely, your birth time is not accurate.</h3> <p>This is the common case, not a rare one. Hospital records round to the nearest five or ten minutes, and families remember approximately. A <b>twenty-minute error moves your rising sign</b>. Once that moves, every house shifts, so every prediction built on it shifts with it. A reading that does not sound like you is usually a chart that is not quite yours.</p> <p>Three ways forward, in order of how much they need from you:</p> <ol class="mm-routes"> <li><b>Birth-time rectification</b>. Give us four or five dates from your life and we test hundreds of candidate minutes against them, then rebuild your chart on the one that fits. This is the real fix.</li> <li><b>Ask a question instead</b>. A horary reading is cast from the moment you ask, so it needs <b>no birth time at all</b>. If your birth data is unreliable, this is the most accurate thing we can do for you.</li> <li><b>Read your palms</b>. Needs no birth data whatsoever. Your hands are their own record.</li> </ol> <div class="mm-actions"> <a class="cta-dark" href="#" data-nav="btr">Fix my birth time</a> <a class="cta-light" href="#" data-nav="horary">Ask a question instead</a> <a class="cta-light" href="#" data-nav="read">Read my palms</a> </div> <button type="button" class="mm-close" data-close="1">Close</button> </div>
+</div>
+</section>
+<section class="proof recognition"> <h3>Your past, before you tell us any of it</h3> <p>You have not told us anything except when and where you were born. Everything below is read from that. Nothing here is a guess about dates. These are patterns that have been running for years.</p> <p><b>Read these 9 statements and be honest with yourself.</b> If most of them are wrong, close this page and keep your money. If most of them are right, the same chart is what the predictions are built on.</p> <div class="recog-block"> <div class="recog-label">Your health</div> <p class="recog-claim">You were built by difficulty rather than by encouragement. There is a hardness in you that shows up when you are tired, and the people closest to you have seen it.</p><p class="recog-why"><span>Why</span> Papa-Adhi Yoga: malefics (Rahu, Sun) occupy the 6th/7th/8th from the Moon.</p><p class="recog-claim">You have come through a stretch that visibly changed the people who went through it with you. They call it strength; you know most of it was stubbornness.</p><p class="recog-why"><span>Why</span> Rahu (in the 10th) is strongly joined by Sun, Venus.</p><p class="recog-claim">You fight off illness better than average. the same is true of opposition generally. People who take you on tend to tire before you do.</p><p class="recog-why"><span>Why</span> Classical strength score for your 6th house: 34 of 56, above average</p> </div> <div class="recog-block"> <div class="recog-label">Money, historically</div> <p class="recog-claim">Money has reached you at least once from a source you did not earn week by week. a legacy, a settlement, an insurance, or someone else&#x27;s resources becoming yours to manage.</p><p class="recog-why"><span>Why</span> Mars in the 8th (neutral to the 2nd lord). Every 8th-house planet aspects the 2nd (wealth). </p><p class="recog-claim">You are better at earning than at holding. Income has rarely been the problem; what stays is.</p><p class="recog-why"><span>Why</span> Classical strength score for your 11th house: 34 of 56, above average. against 30 of 56, above average</p> </div> <div class="recog-block"> <div class="recog-label">How you are in love</div> <p class="recog-claim">People notice you before you have said anything. That has opened doors and it has also attracted the wrong sort of attention.</p> </div> <div class="recog-block"> <div class="recog-label">Your work</div> <p class="recog-claim">Government, public-sector or state-funded work has run through your line. as employer, as client, or as the thing your family assumed you would do.</p><p class="recog-why"><span>Why</span> The 9th lord Jupiter is in a trine (5th/9th) from lagna in Navamsha (D1 house 3rd). In Navamsha the 9th lord is in the 9th from D9 lagna.</p><p class="recog-claim">Your openings have come through your reputation rather than through applications. More than once, someone vouched for you in a room you were not in.</p><p class="recog-why"><span>Why</span> The 9th (Dharma) lord Jupiter and 10th (Karma) lord Saturn are in mutual aspect. a Dharma-Karmadhipati Yoga.</p><p class="recog-claim">People bring you their problems, including strangers. You have read situations correctly. and read people&#x27;s motives correctly. often enough that it has unsettled you.</p><p class="recog-why"><span>Why</span> Ketu with Venus + a trine lord.</p> </div> <div class="recog-ask"> <span>Did these land?</span> <button type="button" class="pillbtn" data-v="yes">Mostly right</button> <button type="button" class="pillbtn" data-v="some">Some of it</button> <button type="button" class="pillbtn" data-v="no">Not really</button> </div>
+</section> <h3 class="sec">What this period is doing to each part of your life</h3>
+<p class="sec-note">Ordered by how strongly your chart speaks, not by convention.</p> 
+<section class="qa">
+  <div class="qa-asked"><b>You asked:</b> When will I get promoted?</div>
+  <p class="qa-route">We read this as a <b>career</b> question, centred on your 10th house.</p>
+  <p class="qa-lede">Meera, here is what your chart is doing on this question now.
+  The straight answer, dated windows and remedy are in the paid reading.</p>
+
+  <div class="qa-promise">
+    <b>Promotion or a step up</b> is read from your 10th, 11th, 1st houses. 
+  </div>
+
+  <div class="prediction" data-verdict="mixed"><p class="pred-scenario">The work is solid; the recognition is slower than the work. Both are true at once. Your career chart is well-built for career and public standing. Moon protects this area in the career chart. Mixed signals. Patience…</p><p class="pred-why"><b>Why:</b> career chart: Saturn mixed; house strength under strain; Rahu–Jupiter; lunar Jupiter</p></div>
+
+  <div class="qa-window locked">
+    <div class="qa-wlabel">The verdict</div>
+    <p class="blurred">Your chart reads XXXXXXX for this question — the straight
+    answer from every method combined.</p>
+  </div>
+
+  <div class="qa-window locked">
+    <div class="qa-wlabel">When it can happen</div>
+    <p class="blurred">The strongest window falls between XXXXXXX XXXX and
+    XXXXXXX XXXX, with a nearer partial window before it.</p>
+    <p><b>6 windows were found and scored across the next 7
+    years.</b> The unlock gives you every date, which of them your chart
+    actually backs, and what to do inside each one — ₹298.</p>
+  </div>
+
+  <div class="qa-window locked">
+    <div class="qa-wlabel">The remedy</div>
+    <p class="blurred">What to strengthen or pacify for this question — the
+    classical answer tied to the planets that rule it.</p>
+  </div>
+</section>
+<article class="card" data-verdict="mixed"> <div class="card-top"><span class="area">Work &amp; Career</span> <span class="pill mixed">mixed</span></div> <p class="claim">The work is solid; the recognition is slower than the work. Both are true at once. Your career chart is well-built for career and public standing. Moon protects this area in the career chart. Mixed signals. Patience…</p> <div class="when locked-inline"><span class="lockicon">•</span> Exact dates in the full reading</div> <div class="evidence"><span class="ev-label">Why your chart says this</span><span class="agree">split read</span><p class="pred-why locked-inline"><span class="lockicon">•</span> The one-line chart read is in the full report.</p></div> <div class="action locked-inline"><span class="act-label">What helps</span><p class="blurred">Ask one senior person to speak for you. This opens through a sponsor, not through effort.</p></div>
+</article>
+<article class="card" data-verdict="up"> <div class="card-top"><span class="area">Money</span> <span class="pill up">favourable</span></div> <p class="claim">Money arrives more easily than usual, and more of it stays. Your wealth chart is workable on savings and what you accumulate, but not automatic. Mercury strengthens the wealth chart. Mixed signals. Patience over big…</p> <div class="when locked-inline"><span class="lockicon">•</span> Exact dates in the full reading</div> <div class="evidence"><span class="ev-label">Why your chart says this</span><span class="agree">strong agreement</span><p class="pred-why locked-inline"><span class="lockicon">•</span> The one-line chart read is in the full report.</p></div> </article>
+<article class="card" data-verdict="up"> <div class="card-top"><span class="area">Love &amp; Marriage</span> <span class="pill up">favourable</span></div> <p class="claim">Your closest relationship steadies and deepens through this stretch. Your marriage chart backs marriage and partnership through Venus, strong where it counts. Venus adds extra backing there. Mixed signals. Patience…</p> <div class="when locked-inline"><span class="lockicon">•</span> Exact dates in the full reading</div> <div class="evidence"><span class="ev-label">Why your chart says this</span><span class="agree">strong agreement</span><p class="pred-why locked-inline"><span class="lockicon">•</span> The one-line chart read is in the full report.</p></div> </article>
+<article class="card" data-verdict="mixed"> <div class="card-top"><span class="area">Children</span> <span class="pill mixed">mixed</span></div> <p class="claim">Progress with children is real but uneven; patience does more than pressure. Your children chart is well-built for children and creative legacy. Jupiter protects this area in the children chart. Mixed signals.…</p> <div class="when locked-inline"><span class="lockicon">•</span> Exact dates in the full reading</div> <div class="evidence"><span class="ev-label">Why your chart says this</span><span class="agree">split read</span><p class="pred-why locked-inline"><span class="lockicon">•</span> The one-line chart read is in the full report.</p></div> <div class="action locked-inline"><span class="act-label">What helps</span><p class="blurred">Ask one senior person to speak for you. This opens through a sponsor, not through effort.</p></div>
+</article>
+<article class="card" data-verdict="mixed"> <div class="card-top"><span class="area">Inner Life</span> <span class="pill mixed">mixed</span></div> <p class="claim">A quiet restlessness runs under the surface of this period. Your spiritual chart is workable on faith and inner growth, but not automatic. Jupiter protects this area in the spiritual chart. Mixed signals. Patience…</p> <div class="when locked-inline"><span class="lockicon">•</span> Exact dates in the full reading</div> <div class="evidence"><span class="ev-label">Why your chart says this</span><span class="agree">split read</span><p class="pred-why locked-inline"><span class="lockicon">•</span> The one-line chart read is in the full report.</p></div> <div class="action locked-inline"><span class="act-label">What helps</span><p class="blurred">Ask one senior person to speak for you. This opens through a sponsor, not through effort.</p></div>
+</article>
+<article class="card" data-verdict="mixed"> <div class="card-top"><span class="area">Home &amp; Family</span> <span class="pill mixed">mixed</span></div> <p class="claim">Home is mostly settled, with one recurring pull on your attention. Your home chart is workable on property, family roots and domestic peace, but not automatic. The ruler sits in your 11th house in that chart. Mixed…</p> <div class="when locked-inline"><span class="lockicon">•</span> Exact dates in the full reading</div> <div class="evidence"><span class="ev-label">Why your chart says this</span><span class="agree">split read</span><p class="pred-why locked-inline"><span class="lockicon">•</span> The one-line chart read is in the full report.</p></div> <div class="action locked-inline"><span class="act-label">What helps</span><p class="blurred">Ask one senior person to speak for you. This opens through a sponsor, not through effort.</p></div>
+</article>
+<article class="card" data-verdict="mixed"> <div class="card-top"><span class="area">Learning &amp; Luck</span> <span class="pill mixed">mixed</span></div> <p class="claim">Opportunity comes, but through effort rather than luck. Your learning chart backs study, teachers and grasp of subjects through Saturn, strong where it counts. The ruler sits in your 5th house in that chart. Mixed…</p> <div class="when locked-inline"><span class="lockicon">•</span> Exact dates in the full reading</div> <div class="evidence"><span class="ev-label">Why your chart says this</span><span class="agree">split read</span><p class="pred-why locked-inline"><span class="lockicon">•</span> The one-line chart read is in the full report.</p></div> <div class="action locked-inline"><span class="act-label">What helps</span><p class="blurred">Ask one senior person to speak for you. This opens through a sponsor, not through effort.</p></div>
+</article>
+<article class="card" data-verdict="mixed"> <div class="card-top"><span class="area">Health &amp; Energy</span> <span class="pill mixed">mixed</span></div> <p class="claim">Energy is adequate but not abundant. Sleep is the variable that decides the rest. Your health chart is workable on vitality and recurring health patterns, but not automatic. Venus protects this area in the health…</p> <div class="when locked-inline"><span class="lockicon">•</span> Exact dates in the full reading</div> <div class="evidence"><span class="ev-label">Why your chart says this</span><span class="agree">split read</span><p class="pred-why locked-inline"><span class="lockicon">•</span> The one-line chart read is in the full report.</p></div> <div class="action locked-inline"><span class="act-label">What helps</span><p class="blurred">Ask one senior person to speak for you. This opens through a sponsor, not through effort.</p></div>
+</article> <section class="remedy-card"> <div class="ev-label">Gemstones — what is wrong for you, free</div> <p class="remedy-lede">Before anything we would sell you, here is what you should <b>not</b> wear. This is free because it is the part most people are never told.</p> <ul class="stones"> <li class="stone down" data-verdict="down"> <div class="stone-top"> <b>Red Coral (Moonga)</b> <span class="stone-verdict">Do not wear this stone</span> </div> <div class="stone-role">Lagna lord (H1). Mars in your 8th, in its own sign</div> <div class="stone-why">Mars rules or sits in your 8th house — a pressure house; gem not advised</div> <div class="stone-alt"><b>Instead / alongside:</b> Hanuman Chalisa daily; Mangal Gayatri 108x · Red masoor dal on Tuesday; sweets to dogs</div> </li> <li class="stone mixed" data-verdict="mixed"> <div class="stone-top"> <b>Gomed (Hessonite)</b> <span class="stone-verdict">Do not wear the stone — mantra only</span> </div> <div class="stone-role">Mahadasha lord. Rahu in your 10th, neither strong nor weak</div> <div class="stone-why">Rahu gemstone not advised unless dasha is active and placement is supportive</div> <div class="stone-alt"><b>Instead / alongside:</b> Rahu Gayatri 108x · Coconut or blanket on Saturday</div> </li></ul> <div class="remedy-locked"> <b>What you should wear is the other half.</b> 2 stones came back suitable for your chart — with the metal, the finger, the day to begin and the trial period — alongside the mantras, the charity, and the practical action that matters more than any stone. ₹298 </div> <p class="fine">Any jeweller will sell you the stone for your sign. Almost none will check whether your chart can carry it.</p>
+</section>
+<section class="section locked-preview"> <h2 class="sec">What the full reading adds</h2> <div class="card"><div class="when locked-inline" style="margin:8px 0"><span class="lockicon">•</span> <strong>Why each area reads the way it does</strong> — The chart working behind all 8 headlines.</div><div class="when locked-inline" style="margin:8px 0"><span class="lockicon">•</span> <strong>The dated window for every life area</strong> — When each part of your life actually moves.</div><div class="when locked-inline" style="margin:8px 0"><span class="lockicon">•</span> <strong>When it actually happens</strong> — 4 dated windows across the next five years.</div><div class="when locked-inline" style="margin:8px 0"><span class="lockicon">•</span> <strong>The full period sequence</strong> — 6 periods with real dates.</div><div class="when locked-inline" style="margin:8px 0"><span class="lockicon">•</span> <strong>What helps in each area</strong> — The practical step and mantra where one applies.</div><div class="when locked-inline" style="margin:8px 0"><span class="lockicon">•</span> <strong>Every gemstone that suits you</strong> — Metal, finger and the day to begin.</div></div> <div class="buy"> <h3>The working and the dates</h3> <p>You have the verdict on each life area. Unlock why, when, and what to do.</p> <a class="cta" href="#unlock" data-unlock="1">Unlock — ₹298</a> </div>
+</section>
+<section class="card" style="background:#16181d;color:#f7f5f1;border:0"> <div class="ev-label" style="color:#c9a227">Everything, one package</div> <h3 style="font-family:Fraunces,serif;font-size:1.3rem;margin:8px 0 8px"> Want the full bundle for your family?</h3> <p style="margin:0 0 10px;font-size:.9rem;opacity:.85">The complete set — full chart reading, birth-time rectification, kundali matching, palm reading, numerology, questions, daily readings and remedies — is arranged by hand. Write to us and we will set it up for you.</p> <p style="margin:0 0 14px;font-size:.9rem"> <a href="mailto:admin@graharekha.co.in" style="color:#f4d79b;font-weight:600;text-decoration:underline"> admin@graharekha.co.in</a></p> <p style="margin:0;font-size:.78rem;opacity:.6">If your birth time is uncertain, start with birth-time rectification — every other reading is built on it.</p>
+</section> <div class="buy"> <h3>Unlock the full reading</h3> <p>Why every headline above reads the way it does, the dated window for each, the five-year windows, the period sequence and your gemstones.</p> <a class="cta" href="#unlock" data-unlock="1">Unlock — ₹298</a>
+</div>
+<footer>Calculated from your birth details alone · guidance, not a substitute
+for professional advice</footer>
+</div>
+<script>
+(function(){
+  var MODAL_HTML = '<div class="mm-overlay" id="mismatch" hidden>'
+    + '<div class="mm-box">'
+    + '<div class="ev-label">Then something upstream is wrong</div>'
+    + '<h3>Most likely, your birth time is not accurate.</h3>'
+    + '<p>This is the common case, not a rare one. Hospital records round to the '
+    + 'nearest five or ten minutes, and families remember approximately. A '
+    + '<b>twenty-minute error moves your rising sign</b>. Once that moves, '
+    + 'every house shifts, so every prediction built on it shifts with it.</p>'
+    + '<p>Three ways forward:</p>'
+    + '<ol class="mm-routes">'
+    + '<li><b>Birth-time rectification</b>. Test candidate minutes against dates from your life.</li>'
+    + '<li><b>Ask a question instead</b>. Horary needs no birth time.</li>'
+    + '<li><b>Read your palms</b>. Needs no birth data.</li>'
+    + '</ol>'
+    + '<div class="mm-actions">'
+    + '<a class="cta-dark" href="#" data-nav="btr">Fix my birth time</a>'
+    + '<a class="cta-light" href="#" data-nav="horary">Ask a question instead</a>'
+    + '<a class="cta-light" href="#" data-nav="read">Read my palms</a>'
+    + '</div>'
+    + '<button type="button" class="mm-close" data-close="1">Close</button>'
+    + '</div></div>';
+  function thanksNear(el, msg){
+    var ask = el && el.closest('.present-ask, .recog-ask');
+    if(!ask) return;
+    ask.querySelectorAll('.pillbtn').forEach(function(b){ b.disabled = true; });
+    el.classList.add('on');
+    var t = ask.parentNode.querySelector('.feedback-thanks');
+    if(!t){
+      t = document.createElement('div');
+      t.className = 'feedback-thanks';
+      ask.insertAdjacentElement('afterend', t);
+    }
+    t.textContent = msg;
+  }
+  function ensureMismatch(){
+    var m = document.getElementById('mismatch');
+    if(m) return m;
+    document.body.insertAdjacentHTML('beforeend', MODAL_HTML);
+    return document.getElementById('mismatch');
+  }
+  function showMismatch(){
+    var m = ensureMismatch();
+    if(m) m.hidden = false;
+  }
+  function hideMismatch(){
+    var m = document.getElementById('mismatch');
+    if(m) m.hidden = true;
+  }
+  function navigate(target){
+    var view = 'astro', pane = target;
+    if(target === 'read' || target === 'palm'){ view = 'read'; pane = null; }
+    else if(target === 'horary' || target === 'question'){ pane = 'horary'; }
+    else if(target === 'btr'){ pane = 'btr'; }
+    try{
+      parent.postMessage({source:'graharekha', action:'navigate', view:view, pane:pane}, '*');
+    }catch(e){}
+    hideMismatch();
+  }
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-mm],[data-v],[data-close],[data-nav],[data-unlock],a[href="#unlock"]');
+    if(!btn) return;
+    e.preventDefault();
+    if(btn.hasAttribute('data-close')){ hideMismatch(); return; }
+    if(btn.hasAttribute('data-unlock') || btn.getAttribute('href') === '#unlock'){
+      try{ parent.postMessage({source:'graharekha', action:'unlock'}, '*'); }catch(err){}
+      return;
+    }
+    if(btn.hasAttribute('data-nav')){ navigate(btn.getAttribute('data-nav')); return; }
+    var v = btn.getAttribute('data-mm') || btn.getAttribute('data-v');
+    if(v === 'yes'){
+      thanksNear(btn, 'Good. The chart is reading you correctly. Keep going.');
+      return;
+    }
+    if(v === 'partly' || v === 'some' || v === 'no'){
+      thanksNear(btn, 'Noted. A wrong present reading usually means the birth time needs a check.');
+      showMismatch();
+    }
+  });
+})();
+</script>
+</body></html>
