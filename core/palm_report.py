@@ -466,6 +466,11 @@ def _scrub_palm_html(html: str) -> str:
         out = rd_clean(out)
     except Exception:                                                 # noqa: BLE001
         pass
+    try:
+        import palm_voice as PV
+        out = PV.polish_html(out)
+    except Exception:                                                 # noqa: BLE001
+        pass
     return out
 
 

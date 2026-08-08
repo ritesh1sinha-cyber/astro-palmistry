@@ -815,7 +815,8 @@ def build(pc: dict, palm_features: Any = None) -> dict[str, Any]:
     }
 
 
-def palm_votes(pc: dict, area_key: str, palm_features: Any = None) -> list:
+def palm_votes(pc: dict, area_key: str, palm_features: Any = None,
+               bridge_result: Any = None) -> list:
     """One vote for this area, per report_confluence's one-vote-per-method rule.
 
     The lane leans on the balance of its own statements for the area, the same
@@ -827,7 +828,10 @@ def palm_votes(pc: dict, area_key: str, palm_features: Any = None) -> list:
     """
     from report_confluence import Vote        # at call time: no import cycle
 
-    result = build(pc, palm_features)
+    if bridge_result is not None:
+        result = bridge_result
+    else:
+        result = build(pc, palm_features)
     mine = result["by_area"].get(area_key) or []
     leaning = [s for s in mine if abs(s["tone"]) >= 0.4]
     if not leaning:

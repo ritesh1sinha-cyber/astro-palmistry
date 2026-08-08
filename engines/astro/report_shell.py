@@ -144,6 +144,13 @@ margin-top:32px;text-align:center}
 padding:12px 26px;border-radius:99px;font-weight:600;font-size:.9rem;
 text-decoration:none}
 footer{margin-top:40px;font-size:.74rem;color:var(--muted);text-align:center}
+.prediction{margin:14px 0;padding:14px 16px;background:#fff;border:1px solid var(--line);
+border-radius:12px}
+.pred-scenario{margin:0 0 10px;font-size:.92rem;line-height:1.55}
+.pred-why{margin:0;font-size:.82rem;color:#3d4250;line-height:1.45}
+.pred-list .prediction{list-style:none}
+.present-list.pred-list{list-style:none;padding:0;margin:0}
+.present-list.pred-list>li{margin-bottom:12px}
 """
 
 FONTS = ('<link href="https://fonts.googleapis.com/css2?'
@@ -348,13 +355,13 @@ INTERACT = """
     + '<h3>Most likely, your birth time is not accurate.</h3>'
     + '<p>This is the common case, not a rare one. Hospital records round to the '
     + 'nearest five or ten minutes, and families remember approximately. A '
-    + '<b>twenty-minute error moves your rising sign</b> — and once that moves, '
+    + '<b>twenty-minute error moves your rising sign</b>. Once that moves, '
     + 'every house shifts, so every prediction built on it shifts with it.</p>'
     + '<p>Three ways forward:</p>'
     + '<ol class="mm-routes">'
-    + '<li><b>Birth-time rectification</b> — test candidate minutes against dates from your life.</li>'
-    + '<li><b>Ask a question instead</b> — horary needs no birth time.</li>'
-    + '<li><b>Read your palms</b> — needs no birth data.</li>'
+    + '<li><b>Birth-time rectification</b>. Test candidate minutes against dates from your life.</li>'
+    + '<li><b>Ask a question instead</b>. Horary needs no birth time.</li>'
+    + '<li><b>Read your palms</b>. Needs no birth data.</li>'
     + '</ol>'
     + '<div class="mm-actions">'
     + '<a class="cta-dark" href="#" data-nav="btr">Fix my birth time</a>'
@@ -412,7 +419,7 @@ INTERACT = """
     if(btn.hasAttribute('data-nav')){ navigate(btn.getAttribute('data-nav')); return; }
     var v = btn.getAttribute('data-mm') || btn.getAttribute('data-v');
     if(v === 'yes'){
-      thanksNear(btn, 'Good — the chart is reading you correctly. Keep going.');
+      thanksNear(btn, 'Good. The chart is reading you correctly. Keep going.');
       return;
     }
     if(v === 'partly' || v === 'some' || v === 'no'){

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from report_language import client_prose
+
 # What each dasha lord tends to do in real life (area-agnostic baseline).
 DASHA_IMPACT = {
     "Sun": "visibility and authority move — put your name on work that outlasts the quarter",
@@ -58,8 +60,8 @@ def dasha_impact(lord: str, *, area: str = "", end_pretty: str = "",
         parts.append(area_bit)
     text = "; ".join(parts)
     if end_pretty:
-        return f"{lord} runs until {end_pretty}: {text}."
-    return f"{lord} period: {text}."
+        return client_prose(f"{lord} runs until {end_pretty}: {text}.")
+    return client_prose(f"{lord} period: {text}.")
 
 
 def period_impact(md_lord: str, ad_lord: str, *, end_pretty: str = "",
@@ -75,8 +77,8 @@ def period_impact(md_lord: str, ad_lord: str, *, end_pretty: str = "",
     else:
         return ""
     if end_pretty:
-        return f"{core} — through {end_pretty}."
-    return f"{core}."
+        return client_prose(f"{core}. Through {end_pretty}.")
+    return client_prose(f"{core}.")
 
 
 def placement_impact(planet: str, house: Any, dignity: str = "",
@@ -92,7 +94,7 @@ def placement_impact(planet: str, house: Any, dignity: str = "",
         house_phrase = f"the {h}th house"
     except (TypeError, ValueError):
         house_phrase = "this house"
-    return f"{planet} in {house_phrase}: {dig_line}."
+    return client_prose(f"{planet} in {house_phrase}: {dig_line}.")
 
 
 def varga_impact(code: str, strength: str, *, area_name: str = "") -> str:
@@ -100,19 +102,19 @@ def varga_impact(code: str, strength: str, *, area_name: str = "") -> str:
     s = (strength or "mixed").lower()
     line = VARGA_IMPACT.get(s, VARGA_IMPACT["mixed"])
     label = area_name or code or "this area"
-    return f"The {code} chart for {label} is {s} — {line}."
+    return client_prose(f"The {code} chart for {label} is {s}. {line}.")
 
 
 def window_impact(rating: str, *, period: str = "", reason: str = "") -> str:
     """Dasha window rating → actionable line."""
     word = {
         "fav": "a good window to push this area",
-        "mix": "workable with patience — mixed signals",
-        "chal": "demanding — avoid big bets here",
+        "mix": "workable with patience. Mixed signals",
+        "chal": "demanding. Avoid big bets here",
     }.get((rating or "mix").lower(), "mixed signals")
     out = word
     if period:
         out = f"{period}: {word}"
     if reason:
         out += f" ({reason[:90]})"
-    return out
+    return client_prose(out)

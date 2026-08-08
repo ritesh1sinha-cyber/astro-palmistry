@@ -71,8 +71,19 @@ def neutralize_partner_pronouns(line: str) -> str:
     return line
 
 
+def normalize_sentence_dashes(text: str) -> str:
+    """Replace sentence-joining em dashes with full stops; keep ranges intact."""
+    if not text:
+        return ""
+    out = re.sub(r"\s+—\s+", ". ", text)
+    out = re.sub(r"\.\s+\.", ".", out)
+    out = re.sub(r"\.{2,}", ".", out)
+    return out.strip()
+
+
 def client_prose(line: str) -> str:
     """Full client-text pass for scraped or composed prediction lines."""
     line = neutralize_spouse_terms(line)
     line = neutralize_partner_pronouns(line)
+    line = normalize_sentence_dashes(line)
     return line

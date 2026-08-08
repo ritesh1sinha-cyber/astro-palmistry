@@ -98,6 +98,13 @@ nav.tabs button[aria-current="true"]{color:#1b1405;background:var(--gold);font-w
 main{position:relative;z-index:1;padding-bottom:120px}
 .view{display:none;animation:fade .35s ease}
 .view.on{display:block}
+.legal-doc h3{font-size:17px;margin:22px 0 8px;color:var(--ink)}
+.legal-doc h3:first-child{margin-top:0}
+.legal-doc p,.legal-doc li{color:var(--muted);font-size:14.5px;line-height:1.65}
+.legal-doc ul{margin:8px 0 0;padding-left:1.2em}
+.legal-doc li{margin:6px 0}
+.legal-doc a{color:var(--gold-soft);text-decoration:underline;text-underline-offset:2px}
+.hp-field{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .card{
   background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
@@ -698,7 +705,8 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <div id="astroMain" style="display:none">
   <div class="subnav" id="astroNav">
    <button data-a="report"  aria-current="true">Full report</button>
-   <button data-a="horary">Ask a question</button>
+   <button data-a="horary">Horary</button>
+   <button data-a="question">Ask your chart</button>
    <button data-a="daily">Daily reading</button>
    <button data-a="numero">Numerology</button>
    <button data-a="match">Kundali Matching</button>
@@ -766,8 +774,6 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
       </ul>
      </div>
     </div>
-    <div class="field" style="margin-top:6px"><label for="aQuestion">One question to focus the report (optional)</label>
-     <input class="inp" id="aQuestion" placeholder="e.g. Should I take the offer abroad?"></div>
     <button class="btn btn-gold btn-block" onclick="astroJob('full_report')">Generate my report — free half</button>
     <p class="hint" style="text-align:center">Takes 1–3 minutes. We'll show queue position and a live ETA.</p>
    </div>
@@ -799,6 +805,23 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
     <p class="hint" style="margin:8px 0 14px">Your question is read for the moment you tap submit — no need to enter the time.</p>
     <button class="btn btn-gold btn-block" onclick="astroJob('horary')">Read my question — free</button>
     <p class="hint" style="text-align:center">Four classical methods, each read on its own — then one answer.</p>
+   </div>
+  </div>
+
+  <!-- pane: user question (natal chart) -->
+  <div class="apane" id="ap-question" style="display:none">
+   <div class="card">
+    <div class="eyebrow">Your chart · one question</div>
+    <h3 style="font-size:24px;margin:8px 0 6px">Ask your birth chart anything.</h3>
+    <p style="color:var(--muted);font-size:14.5px">We read your question with MiniLM, then cross-check divisional charts,
+       house lords, classical rules, dasha windows and every specialist lane. The working is free;
+       the verdict, dated windows and remedy are ₹298.</p>
+    <div class="field" style="margin-top:14px"><label for="uqQ">Your question</label>
+     <textarea class="inp" id="uqQ" rows="3" placeholder="e.g. Should I take the offer abroad?"></textarea>
+     <div class="err">Required</div></div>
+    <p class="hint" style="margin:8px 0 14px">Uses the birth details above — same chart as the full report, so it runs in seconds if you already generated one.</p>
+    <button class="btn btn-gold btn-block" onclick="astroJob('user_question')">Read my chart on this — free half</button>
+    <p class="hint" style="text-align:center">Divisional chart + 12 lanes + period clock — verdict locked until unlock.</p>
    </div>
   </div>
 
@@ -986,9 +1009,148 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
     </div>
     <div class="field"><label for="qEmail">Email</label><input class="inp" id="qEmail" type="email" placeholder="you@email.com"><div class="err">Enter a valid email</div></div>
     <div class="field"><label for="qMsg">What would you like to ask?</label><textarea class="inp" id="qMsg" placeholder="Career, marriage timing, health, a decision you're weighing…"></textarea><div class="err">Required</div></div>
+    <div class="hp-field" aria-hidden="true"><label for="qWebsite">Website</label><input id="qWebsite" name="website" type="text" tabindex="-1" autocomplete="off"></div>
     <button class="btn btn-gold btn-block" onclick="sendEnquiry()">Send request</button>
-    <p class="hint" style="text-align:center">We usually reply within one working day.</p>
+    <p class="hint" style="text-align:center">We usually reply within one working day. Protected by Cloudflare Turnstile.</p>
    </div>
+  </div>
+ </div>
+</section>
+
+<!-- ================= PRIVACY ================= -->
+<section class="view" id="v-privacy">
+ <div class="wrap sec">
+  <div class="sec-head"><div class="eyebrow">Legal</div><h2>Privacy policy</h2>
+   <p>How GrahaRekha collects, uses and protects your information. Last updated: 8 August 2026.</p></div>
+  <div class="card legal-doc">
+   <h3>Who we are</h3>
+   <p>GrahaRekha (<a href="https://www.graharekha.co.in">graharekha.co.in</a>) provides palmistry and astrology readings online.
+      For privacy questions, email <a href="mailto:admin@graharekha.co.in">admin@graharekha.co.in</a>.</p>
+
+   <h3>What we collect</h3>
+   <ul>
+    <li><b>Account:</b> name and email when you sign in with Google or a guest session.</li>
+    <li><b>Reading inputs:</b> birth details you enter, place names, and palm photos you upload for a reading.</li>
+    <li><b>Payments:</b> order id, amount, and status. Card/UPI details are handled by Razorpay — we do not store your full payment credentials.</li>
+    <li><b>Technical:</b> session cookies and basic server logs needed to run the service securely.</li>
+   </ul>
+
+   <h3>How we use it</h3>
+   <ul>
+    <li>To create and show your readings and unlock paid reports you purchase.</li>
+    <li>To confirm payments, prevent fraud, and support you if access fails.</li>
+    <li>To improve reliability and product quality. We do not sell your personal data.</li>
+   </ul>
+
+   <h3>Palm images &amp; birth data</h3>
+   <p>Palm images and birth details are used only to produce your reading and keep your account history.
+      Treat readings as entertainment and cultural interest — not medical, legal, or financial advice.</p>
+
+   <h3>Sharing</h3>
+   <p>We use processors that help us operate the site (for example hosting, database, authentication, and Razorpay for payments).
+      They receive only what is needed to perform that role. We may disclose information if required by law.</p>
+
+   <h3>Retention &amp; your choices</h3>
+   <p>We keep account and order records as long as needed to provide the service and meet legal/accounting duties.
+      To request access or deletion of your account data, email
+      <a href="mailto:admin@graharekha.co.in">admin@graharekha.co.in</a> from the address on your account.</p>
+
+   <h3>Security</h3>
+   <p>We use industry-standard safeguards (HTTPS, signed sessions, webhook verification for payments).
+      No method of transmission is 100% secure; please keep your login device private.</p>
+
+   <p class="hint" style="margin-top:18px">Questions? See <a href="#" onclick="go('contact');return false">Contact</a>.</p>
+  </div>
+ </div>
+</section>
+
+<!-- ================= TERMS ================= -->
+<section class="view" id="v-terms">
+ <div class="wrap sec">
+  <div class="sec-head"><div class="eyebrow">Legal</div><h2>Terms of use</h2>
+   <p>By using GrahaRekha you agree to these terms. Last updated: 8 August 2026.</p></div>
+  <div class="card legal-doc">
+   <h3>Service</h3>
+   <p>GrahaRekha offers AI-assisted palmistry and astrology readings, including free previews and paid full reports.
+      Features may change as we improve the product.</p>
+
+   <h3>Eligibility</h3>
+   <p>You must be <b>18 or older</b> to create an account or purchase a report. You are responsible for the accuracy of
+      the details and images you submit.</p>
+
+   <h3>Accounts</h3>
+   <p>Keep your sign-in secure. Activity under your account is your responsibility. We may suspend access for abuse,
+      fraud, or payment disputes.</p>
+
+   <h3>Paid reports</h3>
+   <p>Prices are shown before checkout (currently ₹298 for standard unlocks unless stated otherwise).
+      Payment is processed by Razorpay. Access is granted when our system confirms payment for your order.
+      Digital reports are licensed for your personal use — not for resale or republication.</p>
+
+   <h3>No guarantees</h3>
+   <p>Readings are for entertainment, reflection, and cultural interest. They are <b>not</b> medical, legal,
+      psychological, financial, or professional advice. No outcome is guaranteed. Decisions you make remain yours alone.</p>
+
+   <h3>Acceptable use</h3>
+   <ul>
+    <li>Do not upload images of other people without permission, or unlawful content.</li>
+    <li>Do not attempt to break, scrape, or reverse-engineer the service beyond normal use.</li>
+    <li>Do not misuse payment flows or request refunds in bad faith after content is delivered.</li>
+   </ul>
+
+   <h3>Intellectual property</h3>
+   <p>Site design, copy, and generated report layouts belong to GrahaRekha. You retain rights to photos you upload;
+      you grant us a limited licence to process them for your reading.</p>
+
+   <h3>Liability</h3>
+   <p>To the fullest extent permitted by law, GrahaRekha is not liable for indirect or consequential loss, or for
+      decisions made based on a reading. Our total liability for a paid report is limited to the amount you paid for that order.</p>
+
+   <h3>Changes</h3>
+   <p>We may update these terms. Continued use after a change means you accept the revised terms.
+      For help: <a href="mailto:admin@graharekha.co.in">admin@graharekha.co.in</a> ·
+      <a href="#" onclick="go('contact');return false">Contact</a>.</p>
+  </div>
+ </div>
+</section>
+
+<!-- ================= REFUNDS ================= -->
+<section class="view" id="v-refunds">
+ <div class="wrap sec">
+  <div class="sec-head"><div class="eyebrow">Legal</div><h2>Refund policy</h2>
+   <p>How payments and unlocks work for digital reports. Last updated: 8 August 2026.</p></div>
+  <div class="card legal-doc">
+   <h3>Digital products</h3>
+   <p>GrahaRekha sells digital readings and unlocks. Once a paid report is <b>delivered or unlocked</b> on your account,
+      the purchase is final — <b>no refund</b>.</p>
+
+   <h3>What “delivered” means</h3>
+   <ul>
+    <li>Your order status is paid / the paywall opens the full report, or</li>
+    <li>We manually unlock the same report for your account after confirming payment.</li>
+   </ul>
+
+   <h3>Payment succeeded but report still locked</h3>
+   <p>This is not a refund case by default — we will help you get access. Email
+      <a href="mailto:admin@graharekha.co.in">admin@graharekha.co.in</a> with:</p>
+   <ul>
+    <li>Your account email</li>
+    <li>Order id (e.g. OD-……)</li>
+    <li>Razorpay payment id or screenshot of the successful payment</li>
+   </ul>
+   <p>We aim to confirm and unlock within one working day.</p>
+
+   <h3>Duplicate charges</h3>
+   <p>If you were charged twice for the same unlock, write to us with both payment proofs. We will refund the duplicate charge
+      after verification.</p>
+
+   <h3>Change of mind</h3>
+   <p>We do not refund because you changed your mind, disagreed with the reading, or expected a different style of content
+      after the report was unlocked.</p>
+
+   <h3>How to reach us</h3>
+   <p><a href="mailto:admin@graharekha.co.in">admin@graharekha.co.in</a> ·
+      <a href="#" onclick="go('contact');return false">Contact page</a> · phone/WhatsApp on Contact.</p>
   </div>
  </div>
 </section>
@@ -1000,9 +1162,9 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <div>© <span id="yr"></span> GrahaRekha · graharekha.co.in</div>
   <div style="display:flex;gap:18px;flex-wrap:wrap">
    <a href="#" onclick="go('contact');return false">Contact</a>
-   <a href="#" onclick="toast('Privacy policy — link your hosted page here');return false">Privacy</a>
-   <a href="#" onclick="toast('Terms — link your hosted page here');return false">Terms</a>
-   <a href="#" onclick="toast('Refund policy — link your hosted page here');return false">Refunds</a>
+   <a href="#" onclick="go('privacy');return false">Privacy</a>
+   <a href="#" onclick="go('terms');return false">Terms</a>
+   <a href="#" onclick="go('refunds');return false">Refunds</a>
   </div>
  </div>
  <div class="disclaim"><b>Please read:</b> Palmistry readings on this site are generated with AI assistance and are offered for entertainment, reflection and cultural interest. They are not medical, legal, psychological or financial advice, and no outcome is guaranteed. Palm images are used only to produce your reading. You must be 18 or older to purchase a report.</div>
@@ -1076,6 +1238,8 @@ const CONFIG = {
   payeeName:    'GrahaRekha',
   razorpayPaymentButtonId: 'pl_TMzAWfueT93HPY',
   razorpayKeyId: '',
+  turnstileSiteKey: '',
+  turnstileRequired: false,
   price:        298,
   priceStrike:  298,
   currency:     '₹',
@@ -1089,7 +1253,7 @@ const CONFIG = {
   jobStuckSec:      480,  // offer retry / cancel after this many seconds
   // --- astrology module ---
   liveApi:          true, // false = self-contained demo with sample data
-  astroPrices:      { full_report:298, horary:298, future_event:298,
+  astroPrices:      { full_report:298, horary:298, user_question:298, future_event:298,
                       kundali_match:298, muhurat:298, subscription:298,
                       numerology_full:298, btr:298, palm_full:298 }
 };
@@ -1399,9 +1563,10 @@ async function submitGuestLogin(){
   }
   if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin"></span> Signing in…'; }
   try{
+    const turnstileToken = await getTurnstileToken('Quick check before guest sign-in.');
     const r = await fetch(CONFIG.apiBase + '/api/auth/dev', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ email:'guest@graharekha.co.in', name:'Guest Seeker', passcode })
+      body:JSON.stringify({ email:'guest@graharekha.co.in', name:'Guest Seeker', passcode, turnstileToken })
     });
     let data = null, detail = '';
     try{ data = await r.json(); detail = data.detail || ''; }catch(e){}
@@ -1437,9 +1602,10 @@ async function submitAdminLogin(){
     return;
   }
   try{
+    const turnstileToken = await getTurnstileToken('Quick check before admin sign-in.');
     const r = await fetch(CONFIG.apiBase + '/api/auth/admin', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username, password})
+      body:JSON.stringify({username, password, turnstileToken})
     });
     if(!r.ok){
       let msg = 'Admin login failed';
@@ -1547,9 +1713,76 @@ async function loadPublicConfig(){
     if(j.googleClientId) CONFIG.googleClientId = j.googleClientId;
     if(j.razorpayPaymentButtonId) CONFIG.razorpayPaymentButtonId = j.razorpayPaymentButtonId;
     if(j.razorpayKeyId) CONFIG.razorpayKeyId = j.razorpayKeyId;
+    if(j.turnstileSiteKey) CONFIG.turnstileSiteKey = j.turnstileSiteKey;
+    CONFIG.turnstileRequired = !!j.turnstileRequired;
     const adminBtn = $('#adminAuth');
     if(adminBtn) adminBtn.style.display = j.adminLogin === false ? 'none' : '';
+    preloadTurnstile();
   }catch(e){}
+}
+
+/* ---------- Cloudflare Turnstile (I'm not a robot) ---------- */
+let _tsScript = null;
+function preloadTurnstile(){
+  if(!CONFIG.turnstileSiteKey || _tsScript) return;
+  _tsScript = document.createElement('script');
+  _tsScript.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  _tsScript.async = true;
+  document.head.appendChild(_tsScript);
+}
+function waitForTurnstileApi(ms){
+  ms = ms || 8000;
+  if(window.turnstile) return Promise.resolve(true);
+  if(!CONFIG.turnstileSiteKey) return Promise.resolve(false);
+  preloadTurnstile();
+  return new Promise(resolve=>{
+    const t0 = Date.now();
+    const iv = setInterval(()=>{
+      if(window.turnstile){ clearInterval(iv); resolve(true); }
+      else if(Date.now() - t0 > ms){ clearInterval(iv); resolve(false); }
+    }, 50);
+  });
+}
+/** Returns a one-time Turnstile token, or '' when the check is not configured. */
+async function getTurnstileToken(reason){
+  if(!CONFIG.turnstileSiteKey) return '';
+  const ready = await waitForTurnstileApi();
+  if(!ready || !window.turnstile){
+    if(CONFIG.turnstileRequired) throw new Error('Security check failed to load. Please refresh and try again.');
+    return '';
+  }
+  return new Promise((resolve, reject)=>{
+    const m = document.createElement('div');
+    m.className = 'modal on';
+    m.setAttribute('role','dialog');
+    m.innerHTML = `<div class="modal-box" style="text-align:center;max-width:400px">
+      <div class="eyebrow">Security check</div>
+      <h3 style="margin:8px 0 6px">Confirm you're human</h3>
+      <p class="hint">${esc(reason || 'This stops bots from overloading GrahaRekha.')}</p>
+      <div id="tsMount" style="display:flex;justify-content:center;margin:16px 0;min-height:65px"></div>
+      <button class="btn btn-ghost btn-sm" type="button" id="tsCancel">Cancel</button>
+    </div>`;
+    document.body.appendChild(m);
+    let wid = null;
+    const done = (fn, val)=>{
+      try{ if(wid != null && window.turnstile) turnstile.remove(wid); }catch(e){}
+      m.remove();
+      fn(val);
+    };
+    m.querySelector('#tsCancel').onclick = ()=> done(reject, new Error('Security check cancelled'));
+    m.addEventListener('click', e=>{ if(e.target===m) done(reject, new Error('Security check cancelled')); });
+    try{
+      wid = turnstile.render(m.querySelector('#tsMount'), {
+        sitekey: CONFIG.turnstileSiteKey,
+        theme: 'light',
+        callback: (token)=> done(resolve, token),
+        'error-callback': ()=> done(reject, new Error('Security check failed. Please try again.')),
+        'expired-callback': ()=>{ try{ turnstile.reset(wid); }catch(e){} }
+      });
+    }catch(e){
+      done(reject, new Error('Security check failed to start.'));
+    }
+  });
 }
 
 /* ---------- flow / stepper ---------- */
@@ -1755,12 +1988,13 @@ async function submitReading(){
   if(!(S.imgs.left&&S.imgs.right)) return;
   const b=$('#submitBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Submitting…';
   try{
+    const turnstileToken = await getTurnstileToken('Confirm you\'re human before we run your palm reading.');
     const payload={ userId:S.user.id, email:S.user.email, name:S.details.name,
       gender:S.details.gender, age:S.details.age,
       dominant:S.details.dominant,
       leftHand:S.imgs.left, rightHand:S.imgs.right };
     const job = MOCK ? mockEnqueue() : await api('/api/job',{method:'POST',
-      body:JSON.stringify({kind:'palm', payload})});
+      body:JSON.stringify({kind:'palm', payload, turnstileToken})});
     S.job=job; S.busy=true; syncFlow(); renderQueue(job); watchJob(job.jobId);
   }catch(e){
     console.error(e);
@@ -1771,6 +2005,7 @@ async function submitReading(){
     // with the earlier "could not reach the reading service".
     const st = e && e.status;
     toast(st === 401 ? ((e && e.detail) || 'Please sign in again.')
+      : st === 403 ? ((e && e.detail) || e.message || 'Please complete the security check.')
       : st === 413 ? 'Those photos are too large for the server to accept (413).'
       : (e && e.detail) ? e.detail
       : (e && e.message && !/^HTTP /.test(e.message)) ? e.message
@@ -2240,9 +2475,10 @@ async function startPay(){
     return;
   }
   try{
+    const turnstileToken = await getTurnstileToken('Confirm you\'re human before checkout.');
     const order = MOCK
       ? { orderId:'OD-DEMO', amount:CONFIG.price, item:'palm_full' }
-      : await api('/api/order',{method:'POST', body:JSON.stringify({item:'palm_full', refId:S.readingId})});
+      : await api('/api/order',{method:'POST', body:JSON.stringify({item:'palm_full', refId:S.readingId, turnstileToken})});
     if(order.status === 'paid'){ unlock(); return; }
     showPayModal(order, {
       title: 'Unlock your full report',
@@ -2250,7 +2486,7 @@ async function startPay(){
       onPaid: unlock,
       fetchOrder: (id)=> api('/api/order/'+id)
     });
-  }catch(e){ toast('Could not start payment. Please try again.'); }
+  }catch(e){ toast(e.message || 'Could not start payment. Please try again.'); }
 }
 function closePay(){ closePayModal(); }
 function drawQR(intent,serverImg,boxId){
@@ -2297,19 +2533,46 @@ async function unlock(){
 const emailOk=v=>/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v);
 async function sendEnquiry(){
   const n=$('#qName').value.trim(), p=$('#qPhone').value.trim(), e=$('#qEmail').value.trim(), m=$('#qMsg').value.trim();
+  const hp=($('#qWebsite')?.value||'').trim();
   let ok=true;
   ok = bad('#qName',!n) && ok; ok = bad('#qPhone',p.length<7) && ok;
   ok = bad('#qEmail',!emailOk(e)) && ok; ok = bad('#qMsg',m.length<5) && ok;
   if(!ok) return toast('Please complete the highlighted fields');
-  try{ if(!MOCK) await api('/api/enquiry',{method:'POST',body:JSON.stringify({name:n,phone:p,email:e,message:m})}); }catch(err){}
-  ['#qName','#qPhone','#qEmail','#qMsg'].forEach(s=>$(s).value='');
-  toast('Request sent — we will reply within a working day');
+  try{
+    if(!MOCK){
+      const turnstileToken = await getTurnstileToken('Confirm you\'re human before sending.');
+      const r = await fetch(CONFIG.apiBase + '/api/enquiry', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:n,phone:p,email:e,message:m,turnstileToken,website:hp})
+      });
+      if(!r.ok){
+        let detail='';
+        try{ detail=(await r.json()).detail||''; }catch(err){}
+        throw new Error(detail || 'Could not send request');
+      }
+    }
+    ['#qName','#qPhone','#qEmail','#qMsg'].forEach(s=>{ const el=$(s); if(el) el.value=''; });
+    toast('Request sent — we will reply within a working day');
+  }catch(err){ toast(err.message || 'Could not send request'); }
 }
 async function notifyMe(){
   const v=$('#notifyEmail').value.trim();
   if(!emailOk(v)) return toast('Please enter a valid email');
-  try{ if(!MOCK) await api('/api/notify',{method:'POST',body:JSON.stringify({email:v})}); }catch(e){}
-  $('#notifyEmail').value=''; toast('You are on the list');
+  try{
+    if(!MOCK){
+      const turnstileToken = await getTurnstileToken('Confirm you\'re human to join the list.');
+      const r = await fetch(CONFIG.apiBase + '/api/notify', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email:v,turnstileToken})
+      });
+      if(!r.ok){
+        let detail='';
+        try{ detail=(await r.json()).detail||''; }catch(err){}
+        throw new Error(detail || 'Could not join the list');
+      }
+    }
+    $('#notifyEmail').value=''; toast('You are on the list');
+  }catch(e){ toast(e.message || 'Could not join the list'); }
 }
 
 
@@ -2449,7 +2712,7 @@ function clearAstroBirthForm(){
   ids.forEach(id=>{ const el=$(id); if(el){ el.value=''; bad(id, false); } });
   const tz=$('#aTz'); if(tz) tz.value='5.5';
   const g=$('#aGender'); if(g) g.value='0';
-  const q=$('#aQuestion'); if(q) q.value='';
+  const q=$('#uqQ'); if(q) q.value='';
   const note=$('#aPlaceNote'); if(note) note.textContent='We fill coordinates from the city you pick.';
   // Close manual coords if open so the form reads as a fresh start.
   const adv=$('#astroCoords');
@@ -2566,8 +2829,14 @@ function birthPayload(){
   S.astroBirth = captureAstroBirth(); save();
   return { name:v('#aName'), dob:v('#aDob'), tob:v('#aTob'), place:v('#aPlace'),
            lat:parseFloat(lat), lon:parseFloat(lon),
-           tz:parseFloat($('#aTz').value||'5.5'), gender:parseInt($('#aGender').value,10),
-           question: ($('#aQuestion')?$('#aQuestion').value:'')||'' };
+           tz:parseFloat($('#aTz').value||'5.5'), gender:parseInt($('#aGender').value,10) };
+}
+function userQuestionPayload(){
+  const base = birthPayload();
+  if(!base) return null;
+  const q = ($('#uqQ')?$('#uqQ').value:'').trim();
+  if(!q){ toast('Type your question first.'); return null; }
+  return Object.assign({}, base, { question: q });
 }
 function horaryPayload(){
   const q=($('#hQ').value||'').trim();
@@ -2625,15 +2894,27 @@ async function astroSummary(){
 
 function astroErr(e){
   if(e && e.status === 401) return 'Please sign in again.';
+  if(e && e.status === 403){
+    try{ const d = JSON.parse(e.body||'{}'); if(d.detail) return d.detail; }catch(err){}
+    return 'Please complete the “I’m not a robot” check and try again.';
+  }
   if(e && e.status === 429) return 'That was a lot of requests — give it a moment.';
   if(e && e.status === 503) return 'We are at capacity right now. Please try again shortly.';
+  if(e && e.body){
+    try{
+      const d = JSON.parse(e.body);
+      if(typeof d.detail === 'string' && d.detail) return d.detail;
+      if(Array.isArray(d.detail) && d.detail[0] && d.detail[0].msg) return d.detail[0].msg;
+    }catch(err){}
+  }
   return (e && e.message) || 'Something went wrong.';
 }
 
 async function astroRun(kind, payload, onQueue){
   const started = Date.now();
   let failStreak = 0;
-  let j = await astroApi('/api/job', { kind, payload });
+  const turnstileToken = await getTurnstileToken('Confirm you\'re human before we start this reading.');
+  let j = await astroApi('/api/job', { kind, payload, turnstileToken });
   while(j.status === 'queued' || j.status === 'processing'){
     j._elapsed = (Date.now() - started) / 1000;
     if(onQueue) onQueue(j);
@@ -2655,6 +2936,7 @@ async function astroRun(kind, payload, onQueue){
 async function astroJob(kind){
   if(kind === 'match') kind = 'kundali_match';
   const payload = kind === 'horary' ? horaryPayload()
+                : kind === 'user_question' ? userQuestionPayload()
                 : kind === 'kundali_match' ? matchPayload()
                 : kind === 'muhurat' ? muhuratPayload()
                 : kind === 'btr' ? btrPayload()
@@ -2751,7 +3033,7 @@ function wireReportFrame(f){
     + '<p>A twenty-minute error can move your rising sign — and once that moves, every house shifts.</p>'
     + '<div class="mm-actions">'
     + '<a class="cta-dark" href="#" data-nav="btr">Fix my birth time</a>'
-    + '<a class="cta-light" href="#" data-nav="horary">Ask a question instead</a>'
+    + '<a class="cta-light" href="#" data-nav="horary">Ask a horary question instead</a>'
     + '<a class="cta-light" href="#" data-nav="read">Read my palms</a></div>'
     + '<button type="button" class="mm-close" data-close="1">Close</button></div></div>';
   function thanksNear(el, msg){
@@ -2772,7 +3054,8 @@ function wireReportFrame(f){
   function navigate(target){
     var view = 'astro', pane = target;
     if(target === 'read' || target === 'palm'){ view = 'read'; pane = null; }
-    else if(target === 'horary' || target === 'question'){ pane = 'horary'; }
+    else if(target === 'horary'){ pane = 'horary'; }
+    else if(target === 'question'){ pane = 'question'; }
     else if(target === 'btr'){ pane = 'btr'; }
     try{ parent.postMessage({source:'graharekha', action:'navigate', view:view, pane:pane}, '*'); }catch(e){}
     var m = document.getElementById('mismatch'); if(m) m.hidden = true;
@@ -2826,7 +3109,8 @@ function astroPayCard(item, price, refId, sections, teasers, opts){
 
 async function astroPay(item, refId){
   try{
-    const o = await astroApi('/api/order', { item, refId: refId || null });
+    const turnstileToken = await getTurnstileToken('Confirm you\'re human before checkout.');
+    const o = await astroApi('/api/order', { item, refId: refId || null, turnstileToken });
     if(o.status === 'paid'){
       toast('Unlocked');
       if(item === 'subscription') astroJob('daily');
@@ -3054,6 +3338,25 @@ function renderAstroResult(kind, r){
       astroPayCard('full_report', r.price, r.reportId, m.paidSections, m.teasers);
     return;
   }
+  if(kind === 'user_question'){
+    const m = r.meta || {};
+    const ans = m.answer || {};
+    const conf = String(ans.confidence||'').toLowerCase();
+    const cls = conf.startsWith('high') ? 'ok' : (conf.startsWith('low') ? 'warn' : '');
+    out.innerHTML = `<div class="card">
+        <div class="eyebrow">Ask your chart</div>
+        <h3 style="font-size:22px;margin:8px 0 4px">“${esc((m.question||''))}”</h3>
+        ${(r.paid && ans.label)?`<div class="vcard ${cls}" style="margin:14px 0">
+            <div class="vlabel">The answer</div>
+            <div class="vbig">${esc(ans.label)}</div>
+            <div class="vconf">confidence ${esc(String(ans.confidence||'moderate'))}${
+              ans.best_from?` · strongest window ${esc(ans.best_from)}–${esc(ans.best_to||'')}`:''}</div>
+          </div>`:''}
+        ${frameFor((r.paid && r.links.paid) ? r.links.paid : r.links.free)}</div>` +
+      (r.paid ? ''
+              : astroPayCard('user_question', r.price, r.reportId, (m.paidSections||[]), (m.teasers||{})));
+    return;
+  }
   if(kind === 'horary'){
     const v = (r.meta||{}).verdicts || {};
     const card = (tag, d)=>{
@@ -3078,7 +3381,7 @@ function renderAstroResult(kind, r){
     const conf = String(ans.confidence||'').toLowerCase();
     const cls = conf.startsWith('high') ? 'ok' : (conf.startsWith('low') ? 'warn' : '');
     out.innerHTML = `<div class="card">
-        <div class="eyebrow">Your question</div>
+        <div class="eyebrow">Horary · Prashna</div>
         <h3 style="font-size:22px;margin:8px 0 4px">“${esc((r.meta||{}).question||'')}”</h3>
         <p class="hint">asked ${esc((r.meta||{}).asked||'')}</p>
         ${(r.paid && ans.label)?`<div class="vcard ${cls}" style="margin:14px 0">

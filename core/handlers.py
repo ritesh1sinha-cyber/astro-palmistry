@@ -288,7 +288,7 @@ def h_full_report(user: dict, p: dict) -> dict:
 
     conf_path, user_path, _focus, _payload = generate_confluence_reports(
         "", str(work), chart.get("person_name") or "Seeker", str(chart["dob"]), slug,
-        client_question=p.get("question", ""), precomputed_path=str(pc_path),
+        client_question="", precomputed_path=str(pc_path),
         birth_time=str(chart["tob"]), latitude=float(chart["lat"]),
         longitude=float(chart["lon"]), timezone=float(chart["tz_offset"]),
         place_name=chart.get("place") or "", gender=gender_code(chart.get("gender")))
@@ -320,7 +320,6 @@ def h_full_report(user: dict, p: dict) -> dict:
     import report_render as RD
     free_html, paid_html, meta = RD.full_report(
         pc, name=chart.get("person_name") or "Seeker",
-        question=p.get("question", ""),
         price=S.price("full_report") // 100,
         bundle_price=S.price("bundle_all") // 100,
         lat=float(chart["lat"]), lon=float(chart["lon"]),
@@ -433,6 +432,54 @@ def h_horary(user: dict, p: dict) -> dict:
     meta = {**hmeta, "verdicts": verdicts, "price": horary_price}
     saved = _save_report(user["id"], None, "horary", free_html, paid_html,
                          meta, paid)
+    saved["price"] = meta["price"]
+    return saved
+
+
+def h_user_question(user: dict, p: dict) -> dict:
+    """Natal-chart question: MiniLM route + deep-evidence/lane confluence."""
+    q = (p.get("question") or "").strip()
+    if not q:
+        raise UserError("Type your question first.")
+
+    try:
+        import semantic_fallback
+        semantic_fallback.install()
+    except Exception:                                    # never block a report
+        pass
+
+    route = None
+    try:
+        import semantic_question as SQ
+        route = SQ.route(q)
+        print(f"[user_question] semantic route method={route.method} "
+              f"house={route.primary_house} domain={route.domain} "
+              f"topic={route.topic} h_sc={route.house_score:.2f}", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[user_question] semantic route skipped: {exc}", flush=True)
+
+    chart = get_or_create_chart(user["id"], p)
+    pc = precompute_for(chart)
+
+    import deep_evidence as DE
+    import report_render as RD
+    uq_price = S.price("user_question") // 100
+    DE.begin(pc, lat=float(chart["lat"]), lon=float(chart["lon"]),
+             tz=float(chart["tz_offset"]))
+    try:
+        free_html, paid_html, meta = RD.user_question(
+            pc, question=q, route=route,
+            name=chart.get("person_name") or "",
+            price=uq_price,
+            lat=float(chart["lat"]), lon=float(chart["lon"]),
+            tz=float(chart["tz_offset"]))
+    finally:
+        DE.end()
+
+    paid = entitled(user["id"], "user_question", chart["id"])
+    saved = _save_report(user["id"], chart["id"], "user_question",
+                         free_html, paid_html, meta, paid)
+    saved["chartId"] = chart["id"]
     saved["price"] = meta["price"]
     return saved
 
@@ -680,6 +727,7 @@ HANDLERS = {
     "chart_summary": h_chart_summary,
     "numerology": h_numerology,
     "full_report": h_full_report,
+    "user_question": h_user_question,
     "horary": h_horary,
     "daily": h_daily,
     "kundali_match": h_kundali_match,

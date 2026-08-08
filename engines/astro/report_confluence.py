@@ -475,7 +475,8 @@ def area_votes(pc: dict, area_key: str, house: int) -> list:
     return votes
 
 
-def palm_votes(pc: dict, area_key: str, palm_features: Any = None) -> list:
+def palm_votes(pc: dict, area_key: str, palm_features: Any = None,
+               bridge_result: Any = None) -> list:
     """The palm-correlation lane's single vote, or none.
 
     Imported at call time and only for ImportError: the bridge pulls in OpenCV
@@ -487,7 +488,16 @@ def palm_votes(pc: dict, area_key: str, palm_features: Any = None) -> list:
         from palm_astro_bridge import palm_votes as _pv
     except ImportError:
         return []
-    return _pv(pc, area_key, palm_features)
+    bridge = bridge_result
+    if bridge is None:
+        try:
+            import deep_evidence as DE
+            ctx = DE.current()
+            if ctx is not None:
+                bridge = ctx.palm_bridge()
+        except Exception:  # noqa: BLE001
+            bridge = None
+    return _pv(pc, area_key, palm_features, bridge_result=bridge)
 
 
 def area_verdict(pc: dict, area_key: str, house: int) -> dict:
@@ -533,8 +543,13 @@ def area_verdict(pc: dict, area_key: str, house: int) -> dict:
             agreement = f"none of the {total} methods takes a side"
     else:
         agreement = f"{same} of {len(decided)} methods with a view agree"
-    return {"direction": direction, "score": round(score, 2), "votes": votes,
-            "agreement": agreement, "confidence": confidence}
+    result = {"direction": direction, "score": round(score, 2), "votes": votes,
+              "agreement": agreement, "confidence": confidence}
+    try:
+        result["agreement"] = customer_confidence(result) or agreement
+    except Exception:  # noqa: BLE001
+        pass
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -665,11 +680,11 @@ def dasha_confluence(pc: dict, when: Optional[date] = None) -> dict:
 # ---------------------------------------------------------------------------
 
 LAGNA_TRAIT = {
-    "Aries": "You move first and think about it afterwards — usually faster than the people around you are comfortable with.",
+    "Aries": "You move first and think about it afterwards, usually faster than the people around you are comfortable with.",
     "Taurus": "You are slow to start and almost impossible to stop once you have.",
     "Gemini": "You think in several directions at once, which reads as restlessness to people who only think in one.",
     "Cancer": "You feel the room before anyone speaks, and you carry more of other people's weather than you admit.",
-    "Leo": "You need your work to be seen. Not praised — seen. There is a difference and you know it.",
+    "Leo": "You need your work to be seen. Not praised. Seen. There is a difference and you know it.",
     "Virgo": "You notice the flaw first. It makes you excellent and it makes you tired.",
     "Libra": "You weigh both sides so fairly that deciding costs you more than it costs most people.",
     "Scorpio": "You keep more back than you let on, and you read other people faster than they read you.",
@@ -682,7 +697,7 @@ LAGNA_TRAIT = {
 MOON_TRAIT = {
     "Aries": "Under pressure you get sharp and want it settled today.",
     "Taurus": "Under pressure you go still and wait it out.",
-    "Gemini": "Under pressure you talk it through — with anyone available.",
+    "Gemini": "Under pressure you talk it through with anyone available.",
     "Cancer": "Under pressure you retreat to whoever feels like home.",
     "Leo": "Under pressure you need someone to tell you the work mattered.",
     "Virgo": "Under pressure you organise something. It is how you take back control.",
@@ -697,7 +712,7 @@ MOON_TRAIT = {
 AK_TRAIT = {
     "Sun": "your standing in the world",
     "Moon": "your emotional life and the people you care for",
-    "Mars": "your fights — the ones worth having and the ones not",
+    "Mars": "your fights, the ones worth having and the ones not",
     "Mercury": "your mind and how you use it",
     "Jupiter": "what you believe and who you teach",
     "Venus": "love, beauty, and what you are willing to give for them",
@@ -729,15 +744,16 @@ def _human_yoga(line: str) -> str:
 
 
 def personality(pc: dict) -> dict:
+    from report_language import client_prose
     lagna = (pc.get("lagna") or {}).get("sign", "")
     moon = pc.get("planets", {}).get("Moon") or {}
     ak = (pc.get("jaimini") or {}).get("atmakaraka", "")
     pillar = pc.get("pillar", {}) or {}
-    traits = [t for t in (LAGNA_TRAIT.get(lagna), MOON_TRAIT.get(moon.get("sign"))) if t]
+    traits = [client_prose(t) for t in (LAGNA_TRAIT.get(lagna), MOON_TRAIT.get(moon.get("sign"))) if t]
     if ak:
-        traits.append(
-            f"The thread running through your whole life is {AK_TRAIT.get(ak, 'your own path')} "
-            f"— {ak} carries that in your chart.")
+        traits.append(client_prose(
+            f"The thread running through your whole life is {AK_TRAIT.get(ak, 'your own path')}. "
+            f"{ak} carries that in your chart."))
     nb = pillar.get("neecha_bhanga") or {}
     if nb.get("neecha_bhanga_present"):
         traits.append(
@@ -829,40 +845,32 @@ def merge_semantic_verdict(area_key: str, verdict: dict) -> dict:
     out["semantic_mode"] = _semantic_mode
     # Do NOT replace headline with BOOK_LINES affirmation — keep concrete CLAIMS
     n = len(systems)
-    out["agreement"] = (f"{n} methods align · {conf}" if n
-                        else f"semantic cluster · {conf}")
     out["confidence"] = conf.lower()
-    ev = list(out.get("evidence") or [])
-    for t in texts[:2]:
-        if t and t not in ev:
-            ev.append(t)
-    for v in (verdict.get("votes") or [])[:3]:
-        line = f"{v.method} — {v.because}"
-        if line not in ev:
-            ev.append(line)
-    # Prepend deep-evidence lines when cache is active
-    try:
-        import deep_evidence as DE
-        de = DE.for_area(area_key)
-        for line in (de.get("evidence_lines") or [])[:3]:
-            if line and line not in ev:
-                ev.insert(0, line)
-    except Exception:  # noqa: BLE001
-        pass
-    out["evidence"] = ev[:6]
+    out["agreement"] = customer_confidence(out) or (
+        f"{n} methods align · {conf}" if n else f"semantic cluster · {conf}")
+    # Keep structured votes for scoring; do not attach raw because strings
+    # or deep_evidence prose to customer-facing evidence lists.
+    out["evidence"] = []
     return out
 
 
-def headline_from_verdict(area_key: str, direction: str, verdict: dict) -> str:
-    """Concrete headline from top vote + CLAIMS — never generic BOOK_LINES."""
-    votes = verdict.get("votes") or []
-    top = sorted(votes, key=lambda v: abs(v.value), reverse=True)
-    if top:
-        because = (top[0].because or "").strip()
-        if because and len(because) > 30:
-            return because[:220].rsplit(" ", 1)[0] + ("…" if len(because) > 220 else "")
+def customer_confidence(verdict: dict) -> str:
+    """Plain confidence chip — never 'N of M methods with a view agree'."""
     try:
-        import report_cards as RC
-        return RC.CLAIMS.get((area_key, direction), "")
+        import predict_voice as PV
+        votes = verdict.get("votes") or []
+        direction = verdict.get("direction", "mixed")
+        decided = [v for v in votes if getattr(v, "direction", "mixed") != "mixed"]
+        same = sum(1 for v in decided if getattr(v, "direction", "mixed") == direction)
+        return PV.confidence_word(same, len(decided) or len(votes), direction)
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def headline_from_verdict(area_key: str, direction: str, verdict: dict) -> str:
+    """Plain scenario headline — never raw vote because strings."""
+    try:
+        import predict_voice as PV
+        return PV.AREA_SCENE.get((area_key, direction), "")
     except Exception:  # noqa: BLE001
         return ""

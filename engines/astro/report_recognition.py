@@ -51,6 +51,8 @@ import html as _html
 import re
 from typing import Any
 
+from report_language import client_prose
+
 BENEFIC = ("Jupiter", "Venus", "Mercury", "Moon")
 MALEFIC = ("Saturn", "Mars", "Sun", "Rahu", "Ketu")
 
@@ -755,9 +757,10 @@ def why_planet(pc: dict, planet: str, *, note: str = "") -> str:
         bits.append(f"({sign})")
     dig = _dig_plain(info.get("dignity"))
     if dig and dig != "neutrally placed":
-        bits.append(f"— {dig}")
+        bits.append(f", {dig}")
     out = " ".join(bits)
-    return f"{out}. {note}" if note else out
+    result = f"{out}. {note}" if note else out
+    return client_prose(result)
 
 
 def why_lord(pc: dict, house: int, *, note: str = "") -> str:
@@ -773,7 +776,8 @@ def why_lord(pc: dict, house: int, *, note: str = "") -> str:
     if dig:
         bits.append(f", {dig}")
     out = " ".join(bits).replace(" ,", ",")
-    return f"{out}. {note}" if note else out
+    result = f"{out}. {note}" if note else out
+    return client_prose(result)
 
 
 def why_sav(pc: dict, house: int) -> str:
@@ -782,8 +786,9 @@ def why_sav(pc: dict, house: int) -> str:
         v = sav[house - 1]
         band = ("above average" if v >= 30 else
                 "below average" if v <= 25 else "average")
-        return (f"Classical strength score for your {_ord_n(house)} house: "
-                f"{v} of 56 — {band}")
+        return client_prose(
+            f"Classical strength score for your {_ord_n(house)} house: "
+            f"{v} of 56, {band}")
     return ""
 
 
@@ -1150,6 +1155,8 @@ def render(blocks: list) -> str:
         return ""
     def one(c) -> str:
         text, why = (c if isinstance(c, tuple) else (c, ""))
+        text = client_prose(text)
+        why = client_prose(why) if why else ""
         return (f'<p class="recog-claim">{_e(text)}</p>'
                 + (f'<p class="recog-why"><span>Why</span> {_e(why)}</p>'
                    if why else ""))
@@ -1164,8 +1171,8 @@ def render(blocks: list) -> str:
 <section class="proof recognition">
   <h3>Your past, before you tell us any of it</h3>
   <p>You have not told us anything except when and where you were born.
-  Everything below is read from that. Nothing here is a guess about dates —
-  these are patterns that have been running for years.</p>
+  Everything below is read from that. Nothing here is a guess about dates.
+  These are patterns that have been running for years.</p>
   <p><b>Read these {n} statements and be honest with yourself.</b> If most of
   them are wrong, close this page and keep your money. If most of them are
   right, the same chart is what the predictions are built on.</p>

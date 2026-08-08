@@ -32,7 +32,7 @@ FREE_ITEMS = {"chart_summary", "numerology", "daily_free"}
 # would take Rs 2,100 and unlock nothing. It expands here, once, and both the
 # purchase path and the promo path go through `expand()` so they cannot drift.
 BUNDLE_ITEMS = ("full_report", "btr", "kundali_match", "palm_full",
-                "future_event", "horary", "muhurat", "daily",
+                "future_event", "horary", "user_question", "muhurat", "daily",
                 "numerology_full")
 
 

@@ -47,12 +47,31 @@ RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
 RAZORPAY_PAYMENT_BUTTON_ID=pl_TMzAWfueT93HPY
+
+# Cloudflare Turnstile (“I’m not a robot”) — blocks bot spam on jobs/orders/forms.
+# Create at https://dash.cloudflare.com/ → Turnstile → Add site
+# Hostnames: www.graharekha.co.in, graharekha.co.in, localhost
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET=
 ```
 
 `GOOGLE_CLIENT_ID` is **required for the Google button on production**. Local
 dev can read it from the gitignored `.config` file; Railway cannot. Without this
 variable, `/api/public-config` returns `"googleClientId":""` and the site shows
 guest/admin only.
+
+### Cloudflare Turnstile setup
+
+1. Open [Cloudflare Dashboard → Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) (free).
+2. **Add site** → Widget mode: **Managed** (shows the checkbox when needed).
+3. Hostnames: `www.graharekha.co.in`, `graharekha.co.in`, and `localhost` for local tests.
+4. Copy **Site Key** → Railway `TURNSTILE_SITE_KEY`.
+5. Copy **Secret Key** → Railway `TURNSTILE_SECRET`.
+6. Redeploy Railway (and refresh the Vercel site).
+
+While `TURNSTILE_SECRET` is empty, the API skips the check (safe for local e2e).
+Once the secret is set, readings, checkout, guest/admin login, contact, and notify
+require a valid token from the browser widget.
 
 In [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials),
 Authorized JavaScript origins must include:

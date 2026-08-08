@@ -245,9 +245,9 @@ def _moon_proof(reading: dict, first: str) -> str:
         return ""
     return f"""
 <div class="proof">
-  <div class="ev-label">Technical basis</div>
-  <p><b>{_e(first)}:</b> {" · ".join(bits)}. This is measured from your birth
+  <p class="pred-scenario"><b>{_e(first)}:</b> today is measured from your birth
   chart, not from a generic sun sign.</p>
+  <p class="pred-why"><b>Why:</b> {" · ".join(bits)}</p>
 </div>"""
 
 
@@ -402,9 +402,9 @@ def _ashtakavarga(reading: dict) -> str:
 
     lord_rows = ""
     for row in (av.get("dasha_lords") or []):
-        span = (f'{row["bav"]}/8 in {row.get("sign")}'
+        span = (f'{row.get("sign")} ({("well supported" if (row.get("bav") or 0) >= 5 else "weakly supported")})'
                 if row.get("bav") is not None
-                else f'{row.get("sign")}, sign total {row.get("sav")}')
+                else f'{row.get("sign")}, house total {row.get("sav")}')
         lord_rows += (
             f'<li><b>{_e(row.get("role"))} lord {_e(row.get("planet"))}</b>'
             f'<span class="pt-when">{_e(span)}</span>'
@@ -415,8 +415,9 @@ def _ashtakavarga(reading: dict) -> str:
         row = av.get(key) or {}
         if row.get("bav") is None:
             continue
-        general += (f'<li>{_e(label)}: BAV {_e(row.get("bav"))}/8, '
-                    f'sign SAV {_e(row.get("sav"))}</li>')
+        general += (f'<li>{_e(label)}: '
+                    f'{"well supported" if (row.get("bav") or 0) >= 5 else "weakly supported"} '
+                    f'in {_e(row.get("sign"))}</li>')
 
     lords_block = ""
     if lord_rows:
@@ -428,10 +429,9 @@ def _ashtakavarga(reading: dict) -> str:
   <ul class="palm-points">{lord_rows}</ul>"""
 
     return f"""
-<h3 class="sec">Ashtakavarga on today's transit houses</h3>
-<p class="sec-note">Every sign in your chart carries a bindu score, computed at
-birth. A planet crossing a well-scored sign delivers; the same planet crossing a
-thin one has to work for it.</p>
+<h3 class="sec">How well today's sky is supported on your chart</h3>
+<p class="sec-note">Each sign in your chart was scored at birth. A planet crossing
+a well-scored sign delivers; the same planet on a thin sign has to work for it.</p>
 <div class="card">
   {f'<p class="claim">{_e(moon.get("sav_line"))}</p>' if moon.get("sav_line") else ''}
   {f'<p>{_e(moon.get("bav_line"))}</p>' if moon.get("bav_line") else ''}
@@ -600,9 +600,7 @@ def _technical_snapshot(reading: dict, n_lanes: int) -> str:
     if not parts:
         return ""
     return f"""
-<p class="fine" style="margin:18px 0"><b>Technical basis:</b>
-  {_e(" · ".join(parts))}.
-</p>"""
+<p class="pred-why" style="margin:18px 0"><b>Why:</b> {_e(" · ".join(parts))}.</p>"""
 
 
 def _extras(reading: dict) -> str:

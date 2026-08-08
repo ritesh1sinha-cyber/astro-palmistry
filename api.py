@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from core import billing, promo, queue as Q
+from core import billing, promo, queue as Q, turnstile as TS
 from core.auth import COOKIE, current_user, is_admin, is_admin_id, login_admin, login_dev, login_with_google, logout
 from core.config import S
 from core.db import (engine, extend_partitions, init_schema, job_get,
@@ -88,18 +88,21 @@ def _startup() -> None:
 # ===========================================================================
 class GoogleIn(BaseModel):
     idToken: str
+    turnstileToken: str = ""
 
 
 class DevIn(BaseModel):
     email: str = "guest@graharekha.co.in"
     name: str = "Guest Seeker"
     passcode: str = ""
+    turnstileToken: str = ""
 
 
 class AdminIn(BaseModel):
     username: str = ""
     email: str = ""          # legacy
     password: str
+    turnstileToken: str = ""
 
 
 def _set_cookie(resp: Response, token: str) -> None:
@@ -117,6 +120,8 @@ def public_config():
         "brand": "GrahaRekha",
         "razorpayKeyId": S.razorpay_key_id or "",
         "razorpayPaymentButtonId": S.razorpay_payment_button_id or "",
+        "turnstileSiteKey": S.turnstile_site_key or "",
+        "turnstileRequired": TS.enabled(),
     }
 
 
@@ -131,6 +136,7 @@ def auth_google(body: GoogleIn, request: Request, response: Response):
 
 @app.post("/api/auth/dev")
 def auth_dev(body: DevIn, request: Request, response: Response):
+    TS.require_human(request, token=body.turnstileToken)
     user, token = login_dev(body.email, body.name, passcode=body.passcode,
                             ip=request.client.host if request.client else "",
                             ua=request.headers.get("user-agent", ""))
@@ -140,6 +146,7 @@ def auth_dev(body: DevIn, request: Request, response: Response):
 
 @app.post("/api/auth/admin")
 def auth_admin(body: AdminIn, request: Request, response: Response):
+    TS.require_human(request, token=body.turnstileToken)
     user, token = login_admin(username=body.username, email=body.email,
                               password=body.password,
                               ip=request.client.host if request.client else "",
@@ -185,11 +192,13 @@ def me(user: dict = Depends(current_user)):
 class JobIn(BaseModel):
     kind: str
     payload: dict = Field(default_factory=dict)
+    turnstileToken: str = ""
 
 
 @app.post("/api/job")
-def submit_job(body: JobIn, user: dict = Depends(current_user)):
+def submit_job(body: JobIn, request: Request, user: dict = Depends(current_user)):
     from core.handlers import HANDLERS
+    TS.require_human(request, token=body.turnstileToken)
     if body.kind not in HANDLERS:
         raise HTTPException(400, f"unknown kind; try {sorted(HANDLERS)}")
     if not Q.rate_ok(user["id"]):
@@ -276,9 +285,12 @@ def _report_unlocked(rep: dict, uid: str) -> bool:
     return False
 
 
+_LOCKED_KINDS = frozenset({"horary", "user_question"})
+
+
 def _gate_meta(kind: str, meta: dict, unlocked: bool) -> dict:
-    """Strip horary verdict from JSON when the report is still locked."""
-    if unlocked or kind != "horary" or not isinstance(meta, dict):
+    """Strip verdict fields from JSON when the report is still locked."""
+    if unlocked or kind not in _LOCKED_KINDS or not isinstance(meta, dict):
         return meta
     return {**meta, "answer": None, "verdicts": {}}
 
@@ -415,6 +427,7 @@ class OrderIn(BaseModel):
     item: str
     refId: Optional[str] = None
     idempotencyKey: Optional[str] = None
+    turnstileToken: str = ""
 
 
 @app.get("/api/prices")
@@ -427,7 +440,8 @@ def prices():
 
 
 @app.post("/api/order")
-def create_order(body: OrderIn, user: dict = Depends(current_user)):
+def create_order(body: OrderIn, request: Request, user: dict = Depends(current_user)):
+    TS.require_human(request, token=body.turnstileToken)
     try:
         out = billing.create_order(user["id"], body.item, ref_id=body.refId,
                                    idempotency_key=body.idempotencyKey)
@@ -601,15 +615,21 @@ class Enquiry(BaseModel):
     phone: str
     email: str
     message: str
+    turnstileToken: str = ""
+    # Honeypot — real users leave blank; bots often fill it.
+    website: str = ""
 
 
 @app.post("/api/enquiry")
-def enquiry(body: Enquiry, user: Optional[dict] = None):
+def enquiry(body: Enquiry, request: Request):
+    if (body.website or "").strip():
+        return {"ok": True}  # silently accept spam
+    TS.require_human(request, token=body.turnstileToken)
     from sqlalchemy import text as _t
     with tx() as c:
         c.execute(_t("INSERT INTO enquiries (id,user_id,name,phone,email,message,"
                      "status,created_at) VALUES (:i,:u,:n,:p,:e,:m,'new',:t)"),
-                  {"i": new_id(), "u": (user or {}).get("id"), "n": body.name,
+                  {"i": new_id(), "u": None, "n": body.name,
                    "p": body.phone, "e": body.email, "m": body.message, "t": now()})
     return {"ok": True}
 
@@ -617,10 +637,15 @@ def enquiry(body: Enquiry, user: Optional[dict] = None):
 class Notify(BaseModel):
     email: str
     topic: str = "launch"
+    turnstileToken: str = ""
+    website: str = ""
 
 
 @app.post("/api/notify")
-def notify(body: Notify):
+def notify(body: Notify, request: Request):
+    if (body.website or "").strip():
+        return {"ok": True}
+    TS.require_human(request, token=body.turnstileToken)
     from sqlalchemy import text as _t
     with tx() as c:
         c.execute(_t("INSERT INTO waitlist (email,topic,created_at) VALUES (:e,:tp,:t)"

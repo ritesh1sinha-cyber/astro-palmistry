@@ -113,6 +113,8 @@ def render_match(meta: dict, *, groom: str = "", bride: str = "",
     </div>
   </div>
   <p class="tab-lead">{_e(lead)}</p>
+  <p class="pred-why"><b>Why:</b> {_e(f'{total} of {mx} classical tests; {len(passed)} passed'
+    + (f"; {', '.join(k.get('label','') for k in failed)} scored zero" if failed else ""))}.</p>
   <p class="tab-sub">Moon stars — {_e(groom)}: <b>{_e(stars.get('groom'))}</b>
   ({_e(stars.get('groomMoon'))}) · {_e(bride)}: <b>{_e(stars.get('bride'))}</b>
   ({_e(stars.get('brideMoon'))}). The whole 36-point system is computed from
@@ -192,6 +194,8 @@ def render_btr(res: dict, *, paid: bool = False, price: int = 999) -> str:
     <div><span>Best fit found</span><b>{b_score}</b></div>
     <div><span>Confidence</span><b>{_e(conf.title())}</b></div>
   </div>
+  <p class="pred-why"><b>Why:</b> {_e(f'{used} life events scored against your stated time ({t_score}) and the best candidate ({b_score})'
+    + (f"; rising sign shifts by {moves}" if changes else ""))}.</p>
   <div class="evidence"><span class="ev-label">How this was worked out</span>
     <ul>
       <li>{used} life events you supplied were scored against every candidate
@@ -354,6 +358,8 @@ def render_muhurat(summary: dict, detail: Optional[dict] = None, *,
   <div class="muh-hero" data-verdict="{tone}">
     <div class="muh-verdict">{_e(verdict.upper())}</div>
     <p class="tab-lead">{_e(lead)}</p>
+    <p class="pred-why"><b>Why:</b> {_e(f'classical verdict {verdict}'
+    + (f"; {summary.get('checkCount', len(checks))} checks run" if checks or summary.get('checkCount') else ""))}.</p>
   </div>
   {f'<p class="tab-sub">{_e(headline)}</p>' if headline else ""}
   {partner}

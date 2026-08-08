@@ -25,7 +25,7 @@ FEATURE_MEANING: dict[tuple[str, str, str], str] = {
     ("life", "depth", "deep"): "Your life line is deep — strong vitality, resistance to illness, steady life force.",
     ("life", "depth", "medium"): "Your life line is moderate in depth — average stamina; your health responds to lifestyle.",
     ("life", "depth", "thin"): "Your life line is thin — sensitive constitution; conserve your energy.",
-    ("life", "start_zone", "mars"): "Your life line rises from the Mount of Mars — courageous vitality; you may face competitive tests.",
+    ("life", "start_zone", "mars"): "Your life line rises from the inner thumb pad — courageous vitality; you may face competitive tests.",
     ("life", "start_zone", "jupiter"): "Your life line rises toward Jupiter — ambition and self-belief shape your early direction.",
     ("life", "start_zone", "between"): "Your life line starts between zones — mixed family influence on your vitality.",
     ("head", "depth", "deep"): "Your head line is deep — you focus strongly and think before you act.",
@@ -65,27 +65,27 @@ FEATURE_MEANING: dict[tuple[str, str, str], str] = {
 }
 
 MOUNT_MEANING: dict[tuple[str, str], str] = {
-    ("jupiter", "prominent"): "As per your Mount of Jupiter, it is full — leadership, pride, desire for recognition.",
-    ("jupiter", "flat"): "As per your Mount of Jupiter, it is flat — build self-belief; you may underplay your ambition.",
-    ("jupiter", "moderate"): "As per your Mount of Jupiter, it is moderate — balanced confidence and pride.",
-    ("saturn", "prominent"): "As per your Mount of Saturn, it is prominent — discipline, seriousness, patient karma.",
-    ("saturn", "flat"): "As per your Mount of Saturn, it is flat — you take duties lightly; avoid chronic avoidance.",
-    ("saturn", "moderate"): "As per your Mount of Saturn, it is moderate — steady sense of responsibility.",
-    ("venus", "prominent"): "As per your Mount of Venus, it is full — warmth, family bonds, sensual vitality.",
-    ("venus", "flat"): "As per your Mount of Venus, it is flat — cooler affection until trust grows.",
-    ("venus", "moderate"): "As per your Mount of Venus, it is moderate — balanced warmth in love and family.",
-    ("apollo", "prominent"): "As per your Mount of Sun (Apollo), it is prominent — creativity, recognition, love of arts.",
-    ("apollo", "flat"): "As per your Mount of Sun (Apollo), it is flat — you prefer private success over fame.",
-    ("apollo", "moderate"): "As per your Mount of Sun (Apollo), it is moderate — balanced creative confidence.",
-    ("mercury", "prominent"): "As per your Mount of Mercury, it is prominent — business skill, sharp communication.",
-    ("mercury", "flat"): "As per your Mount of Mercury, it is flat — simple speech; less drive in commerce.",
-    ("mercury", "moderate"): "As per your Mount of Mercury, it is moderate — practical communication and wit.",
-    ("mars", "prominent"): "As per your Mount of Mars, it is prominent — courage, fight, physical resilience.",
-    ("mars", "flat"): "As per your Mount of Mars, it is flat — you avoid conflict; energy is gentle.",
-    ("mars", "moderate"): "As per your Mount of Mars, it is moderate — balanced courage and stamina.",
-    ("moon", "prominent"): "As per your Mount of Moon, it is prominent — imagination, travel, restlessness.",
-    ("moon", "flat"): "As per your Mount of Moon, it is flat — you are grounded; less wanderlust.",
-    ("moon", "moderate"): "As per your Mount of Moon, it is moderate — balanced imagination.",
+    ("jupiter", "prominent"): "You carry natural confidence and a desire to lead — pride and recognition matter to you.",
+    ("jupiter", "flat"): "You may underplay your ambition; building self-belief is the work here.",
+    ("jupiter", "moderate"): "Balanced confidence — you want recognition without needing to dominate.",
+    ("saturn", "prominent"): "Discipline and seriousness run deep; you carry responsibility patiently.",
+    ("saturn", "flat"): "You take duties lightly — avoid chronic avoidance of what must be done.",
+    ("saturn", "moderate"): "A steady sense of responsibility without heaviness.",
+    ("venus", "prominent"): "Warmth, family bonds and sensual vitality come easily to you.",
+    ("venus", "flat"): "Affection runs cooler until trust grows — warmth is there, but guarded.",
+    ("venus", "moderate"): "Balanced warmth in love and family life.",
+    ("apollo", "prominent"): "Creativity, recognition and love of the arts are strong in you.",
+    ("apollo", "flat"): "You prefer private success over public fame.",
+    ("apollo", "moderate"): "Balanced creative confidence without needing applause.",
+    ("mercury", "prominent"): "Business skill and sharp communication are natural strengths.",
+    ("mercury", "flat"): "Simple speech; less drive in commerce unless you push it.",
+    ("mercury", "moderate"): "Practical communication and wit in balance.",
+    ("mars", "prominent"): "Courage, fight and physical resilience are pronounced.",
+    ("mars", "flat"): "You avoid conflict; your energy is gentle rather than combative.",
+    ("mars", "moderate"): "Balanced courage and stamina.",
+    ("moon", "prominent"): "Imagination, travel and restlessness colour your temperament.",
+    ("moon", "flat"): "You are grounded; less wanderlust than most.",
+    ("moon", "moderate"): "Balanced imagination without constant restlessness.",
 }
 
 FINGER_MEANING: dict[tuple[str, str], str] = {
@@ -127,9 +127,9 @@ THUMB_LENGTH_MEANING: dict[str, str] = {
     "average": "Your thumb is of balanced length — a workable mix of will-power and adaptability.",
 }
 THUMB_WILL_MEANING: dict[str, str] = {
-    "will_dominant": "Your upper (will) phalange is the larger — you act first and think afterwards; decisive, sometimes impulsive.",
-    "logic_dominant": "Your lower (logic) phalange is the larger — you plan and reason carefully, though you may hesitate to act.",
-    "balanced": "Your will and logic phalanges are balanced — you weigh things, then act.",
+    "will_dominant": "You act first and think afterwards — decisive, sometimes impulsive.",
+    "logic_dominant": "You plan and reason carefully, though you may hesitate to act.",
+    "balanced": "You weigh things, then act — will and reason in balance.",
 }
 THUMB_OPEN_MEANING: dict[str, str] = {
     "wide": "Your thumb opens wide from the hand — generous, open-handed and independent.",
@@ -415,58 +415,32 @@ def _make_verdict(
     meanings: list[str],
     book_clause: str,
 ) -> str:
-    """One-sentence conclusive prediction in second person."""
-    if kind == "line" and age:
-        if key == "life" and props.get("depth") == "deep":
-            return (
-                f"As per your life line at about age {age}, you enter a meaningful chapter in vitality and direction — "
-                f"your deep line supports recovery and endurance through it."
-            )
-        if key == "head" and props.get("start_relation") == "merged":
-            return (
-                f"As per your head line near age {age}, your choices may be held back by caution or family influence — "
-                f"the books advise you to build confidence and speak up for your needs."
-            )
-        if key == "heart":
-            style = (
-                "you tend toward reserved, serious attachment"
-                if props.get("start_zone") == "saturn"
-                else "relationship and emotional decisions come to the fore"
-            )
-            return f"As per your heart line near age {age}, {style}."
-        if key == "fate" and props.get("quality") == "broken":
-            return (
-                f"As per your fate line at about age {age}, you face a career or life-role change — "
-                f"plan for transition rather than resisting it."
-            )
-        if key == "fate":
-            return (
-                f"As per your fate line at about age {age}, your vocation and public life are in focus — "
-                f"expect progress or pressure on your career path."
-            )
-        return (
-            f"As per {line_phrase(key)} at about age {age}, you meet {LINE_AGE_EVENT.get(key, 'an important life change')}."
-        )
-
-    if kind == "mount":
-        level = props.get("level", "")
-        m = meanings[0] if meanings else f"{mount_phrase(key)} reads as {level}"
-        return f"Reading for you: {m}"
-
-    if kind == "finger":
-        m = meanings[0] if meanings else f"{finger_phrase(key)} shows average length."
-        return f"Reading for you: {m}"
-
-    if kind == "morphology":
-        return f"Reading for you: {' '.join(meanings[:2])}"
-
-    if kind == "mark":
-        return f"Reading for you: {meanings[0]}" if meanings else "Reading for you: a special mark is present."
-
-    if kind == "thumb":
-        return f"Reading for you: {meanings[0]}" if meanings else "Reading for you: your thumb shows balanced will and logic."
-
-    return "Reading for you: see your measured features and book citation below."
+    """One prediction + Why line in second person."""
+    try:
+        import palm_voice as PV
+        if kind == "line":
+            return PV.format_line_verdict(key, age, props).text_block()
+        if kind == "mount":
+            return PV.format_mount_verdict(
+                key, props.get("level", ""), meanings[0] if meanings else "").text_block()
+        if kind == "finger":
+            m = meanings[0] if meanings else f"your {key} finger shows average length."
+            return PV.compose(scenario=m, backing=f"{key} finger length").text_block()
+        if kind == "morphology":
+            return PV.compose(
+                scenario=" ".join(meanings[:2]) or "Your hand shape sets the tone for everything below.",
+                backing="hand type morphology",
+            ).text_block()
+        if kind == "mark":
+            return PV.format_mark_verdict(key, meanings[0] if meanings else "").text_block()
+        if kind == "thumb":
+            return PV.compose(
+                scenario=meanings[0] if meanings else "Your thumb shows balanced will and logic.",
+                backing="thumb proportions",
+            ).text_block()
+    except Exception:  # noqa: BLE001
+        pass
+    return "Your hands show a clear pattern here."
 
 
 def _match_rules_by_keywords(

@@ -80,11 +80,11 @@ def current() -> Optional["DeepEvidence"]:
     return _active
 
 
-def for_area(area_key: str) -> dict:
+def for_area(area_key: str, *, house: Optional[int] = None) -> dict:
     ctx = current()
     if ctx is None:
         return {}
-    return ctx.for_area(area_key)
+    return ctx.for_area(area_key, house=house)
 
 
 def _ord(n: Any) -> str:
@@ -116,6 +116,19 @@ class DeepEvidence:
         self._caches: Optional[dict] = None
         self._transit_positions: Optional[dict] = None
         self._area: dict[str, dict] = {}
+        self._palm_bridge: Optional[dict] = None
+        self._palm_bridge_loaded: bool = False
+
+    def palm_bridge(self) -> Optional[dict]:
+        """Memoised astro-palmistry bridge — one build() per report, not per area."""
+        if not self._palm_bridge_loaded:
+            self._palm_bridge_loaded = True
+            try:
+                from palm_astro_bridge import build  # noqa: PLC0415
+                self._palm_bridge = build(self.pc, None)
+            except Exception:  # noqa: BLE001
+                self._palm_bridge = {}
+        return self._palm_bridge
 
     def _ensure_base(self) -> None:
         if self._verdicts is not None:
@@ -215,12 +228,58 @@ class DeepEvidence:
             note = f"{note}. {extra}" if note else extra
         return {"support": support, "pressure": pressure, "note": note}
 
+    def _varga_field_facts(self, varga: str, key: str,
+                          karakas: tuple) -> dict:
+        """Field-specific divisional facts (house lord, karaka) — not prose."""
+        try:
+            from chart_summary_report import SIGN_LORDS, NAT_BENEFIC, NAT_MALEFIC  # noqa: PLC0415
+            from final_user_report import (  # noqa: PLC0415
+                VARGA_FOCUS, _DIG_GOOD, _dig, _v_house_of, _v_occupants,
+                _v_sign_of_house, _varga_lagna, _varga_sign,
+            )
+        except Exception:  # noqa: BLE001
+            return {}
+
+        vl = _varga_lagna(self.pc, varga)
+        if not vl:
+            return {}
+        H, plain, _sec = VARGA_FOCUS.get(key, (1, "this area", None))
+        hsign = _v_sign_of_house(vl, H)
+        hlord = SIGN_LORDS.get(hsign, "")
+        hlordsign = _varga_sign(self.pc, varga, hlord)
+        hldig = _dig(hlord, hlordsign)
+        hlhouse = _v_house_of(vl, hlordsign)
+        occ = _v_occupants(self.pc, varga, hsign)
+        if H in (3, 6, 10, 11):
+            mal = []
+        else:
+            mal = [m for m in occ if m in NAT_MALEFIC and m != hlord
+                   and _dig(m, hsign) not in _DIG_GOOD]
+        ben = [b for b in occ if b in NAT_BENEFIC and b != hlord]
+        kar = next((k for k in karakas if k), "")
+        karsign = _varga_sign(self.pc, varga, kar) if kar else ""
+        kardig = _dig(kar, karsign)
+        karhouse = _v_house_of(vl, karsign) if karsign else 0
+        return {
+            "field_house": H,
+            "field_plain": plain,
+            "field_lord": hlord,
+            "field_lord_dignity": hldig,
+            "field_lord_house": hlhouse,
+            "benefics_in_field": ben,
+            "malefics_in_field": mal,
+            "karaka": kar,
+            "karaka_dignity": kardig,
+            "karaka_house": karhouse,
+        }
+
     def _varga_block(self, varga: str, key: str, karakas: tuple) -> dict:
         out = {"code": varga, "name": varga, "gov": "", "strength": "mixed",
-               "diagnosis": ""}
+               "diagnosis": "", "ruler": "", "ruler_dignity": "",
+               "ruler_house": 0, "strong_planets": []}
         try:
             from chart_summary_report import VARGA_GOV, _varga_data  # noqa: PLC0415
-            from final_user_report import _varga_diagnosis, _strength_of, _label  # noqa: PLC0415
+            from final_user_report import _varga_diagnosis  # noqa: PLC0415
         except Exception:  # noqa: BLE001
             return out
 
@@ -229,9 +288,14 @@ class DeepEvidence:
         out["name"] = vname
         out["gov"] = vgov
         if varga != "D1":
-            vd = _varga_data(self.pc, varga, vname, vgov)
-            out["strength"] = (vd or {}).get("vcls", "mixed")
+            vd = _varga_data(self.pc, varga, vname, vgov) or {}
+            out["strength"] = vd.get("vcls", "mixed")
+            out["ruler"] = vd.get("lord", "")
+            out["ruler_dignity"] = vd.get("ldig", "")
+            out["ruler_house"] = vd.get("lhouse", 0)
+            out["strong_planets"] = list(vd.get("strong_list") or [])
             out["diagnosis"] = _varga_diagnosis(self.pc, varga, key, list(karakas))
+            out.update(self._varga_field_facts(varga, key, karakas))
         return out
 
     def _windows_for_field(self, area_key: str, varga: str, key: str,
