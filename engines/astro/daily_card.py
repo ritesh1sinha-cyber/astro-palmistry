@@ -362,10 +362,18 @@ def _dasha(reading: dict) -> str:
             continue
         span = (f"{_nice_date(start)} — {_nice_date(end)}"
                 if start and end else "")
+        impact = note
+        if not impact:
+            try:
+                import impact as IMP
+                end_p = _nice_date(end) if end else ""
+                impact = IMP.dasha_impact(lord, end_pretty=end_p).rstrip(".")
+            except Exception:  # noqa: BLE001
+                impact = ""
         rows.append(
             f'<li><b>{_e(label)}: {_e(lord)}</b>'
             + (f'<span class="pt-when">{_e(span)}</span>' if span else "")
-            + (f"<p>{_e(note)}</p>" if note else "") + "</li>")
+            + (f"<p>{_e(impact)}</p>" if impact else "") + "</li>")
 
     karmic = vc.get("karmic_dasha")
     karmic_line = ('<p class="fine">This is a karmic pairing — the two lords are '

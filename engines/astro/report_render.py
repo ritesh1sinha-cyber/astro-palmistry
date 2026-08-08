@@ -113,6 +113,21 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
     today = today or date.today()
     first = (name or "").split()[0] if name else ""
 
+    import deep_evidence as DE
+    DE.begin(pc, lat=lat, lon=lon, tz=tz, today=today)
+    try:
+        return _full_report_inner(
+            pc, name=name, question=question, today=today, price=price,
+            bundle_price=bundle_price, lat=lat, lon=lon, tz=tz, daily=daily,
+            first=first)
+    finally:
+        DE.end()
+
+
+def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
+                       today: date, price: int = 298, bundle_price: int = 298,
+                       lat: float = 0.0, lon: float = 0.0, tz: float = 5.5,
+                       daily: Any = None, first: str = "") -> tuple:
     present_html = ""
     try:
         import present_read as PR
@@ -135,7 +150,8 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
         import report_timing as RT
         areas = [(a.key, a.house) for a in RC.AREAS]
         labels = {a.key: a.label for a in RC.AREAS}
-        timing_rows = RT.best_windows(pc, areas, years=5, limit=4)
+        timing_rows = RT.best_windows(pc, areas, years=5, limit=4,
+                                      lat=lat, lon=lon, tz=tz)
         timing_html = RT.render(pc, timing_rows, labels)
         n_periods = len(RC.build_timeline(pc, today=today))
     except Exception as exc:                                         # noqa: BLE001
@@ -146,8 +162,8 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
     if question:
         try:
             import question_answer as QA
-            q_html = QA.render(QA.answer(pc, question, years=7), name=first,
-                               paid=False)
+            q_html = QA.render(QA.answer(pc, question, years=7, lat=lat, lon=lon,
+                                         tz=tz), name=first, paid=False)
         except Exception as exc:                                     # noqa: BLE001
             print(f"[report_render] question failed: {exc}", flush=True)
 
@@ -158,8 +174,8 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
         if question and paid:
             try:
                 import question_answer as QA
-                qh = QA.render(QA.answer(pc, question, years=7), name=first,
-                               paid=True)
+                qh = QA.render(QA.answer(pc, question, years=7, lat=lat, lon=lon,
+                                         tz=tz), name=first, paid=True)
             except Exception:                                        # noqa: BLE001
                 pass
         if paid:

@@ -158,16 +158,15 @@ STAGE_THEME = {
 def _p108(pc: dict) -> dict:
     """{rule_no: RuleVerdict} for the natal rules that HIT, or {} if unavailable.
 
-    Lazy and defensive on purpose: this module is otherwise a pure function of
-    a precomputed dict, and importing the 108 engine drags in astro_precompute.
-    If that import fails the block must still render off the hand-written rules
-    rather than take the page down.
-
-    Deliberately uncached. The obvious optimisation is to stash the verdicts on
-    `pc`, but `pc` gets JSON-serialised by other parts of the pipeline and
-    RuleVerdict is a dataclass, so that would break them. evaluate_all runs once
-    per build() and is cheap next to the chart computation itself.
+    Uses the shared deep_evidence cache when active (one evaluate_all per report).
     """
+    try:
+        import deep_evidence as DE
+        ctx = DE.current()
+        if ctx is not None:
+            return ctx.natal_rule_hits()
+    except Exception:  # noqa: BLE001
+        pass
     hits: dict = {}
     try:
         from prediction108_rules import evaluate_all  # noqa: PLC0415

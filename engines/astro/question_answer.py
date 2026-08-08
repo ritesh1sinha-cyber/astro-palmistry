@@ -147,7 +147,8 @@ def _ord(n: Any) -> str:
 # ---------------------------------------------------------------------------
 
 def answer(pc: dict, question: str, *, start: Optional[date] = None,
-           years: int = 7) -> dict:
+           years: int = 7, lat: Optional[float] = None,
+           lon: Optional[float] = None, tz: float = 5.5) -> dict:
     """Find the windows where this specific thing can actually happen."""
     start = start or date.today()
     topic = classify(question)
@@ -155,7 +156,16 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
     import report_timing as RT
 
     primary = topic.houses[0]
-    promise = CF.area_verdict(pc, _area_for(primary), primary)
+    area_key = _area_for(primary)
+    promise = CF.area_verdict(pc, area_key, primary)
+    promise = CF.merge_semantic_verdict(area_key, promise)
+
+    deep: dict = {}
+    try:
+        import deep_evidence as DE
+        deep = DE.for_area(area_key, house=primary)
+    except Exception:  # noqa: BLE001
+        deep = {}
 
     hl = pc.get("house_lords", {}) or {}
     planets = pc.get("planets", {}) or {}
@@ -229,6 +239,26 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
             detail += "; also a classical significator for this question"
         chart_lines.append((_ord(h) + " house — " + lord, detail))
 
+    # Deep-dive layer: divisional chart + classical rules for this question
+    for fact in (deep.get("house_facts") or [])[:2]:
+        chart_lines.append(("Chart structure", fact))
+    vdiag = (deep.get("varga") or {}).get("diagnosis", "")
+    if vdiag:
+        vcode = (deep.get("varga") or {}).get("code", "")
+        chart_lines.append((f"{vcode} chart", vdiag))
+    for rule in (deep.get("rules_pos") or [])[:2]:
+        chart_lines.append(("Classical rule", rule))
+    for rule in (deep.get("rules_neg") or [])[:1]:
+        chart_lines.append(("Watch", rule))
+    if deep.get("transit", {}).get("note"):
+        chart_lines.append(("Sky now", deep["transit"]["note"]))
+    cw = deep.get("current_window") or {}
+    if cw.get("word"):
+        chart_lines.append((
+            "Period outlook",
+            f"{cw.get('period', 'Now')}: {cw.get('word', '')}"
+            + (f" — {cw['reason'][:80]}" if cw.get("reason") else "")))
+
     vim_now = CF.vimshottari_at(pc, start)
     yog_now = (CF.yogini_at(pc, start) or {}).get("lord", "")
     now_label = f"{vim_now.get('md','')}-{vim_now.get('ad','')}" + (
@@ -239,7 +269,8 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
             "chart_lines": chart_lines, "now_label": now_label,
             "windows": windows, "best": best, "nearest": nearest,
             "strong_count": len(strong), "horizon": years,
-            "start": start}
+            "start": start, "deep": deep,
+            "deep_verdict": (deep.get("overall") or {}).get("text", "")}
 
 
 def _area_for(house: int) -> str:
@@ -356,6 +387,9 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     lead = ("Yes — and the chart is specific about when."
             if best["strong"] else
             "Yes, but the timing is narrower than you would like.")
+    deep_txt = (result.get("deep_verdict") or "").strip()
+    if deep_txt:
+        lead = f"{deep_txt} {lead}"
     if promise["direction"] == "down" and not best["strong"]:
         lead = ("This is possible but your chart does not favour it. "
                 "The window below is the best of a weak set.")

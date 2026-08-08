@@ -169,6 +169,30 @@ def build(pc: dict, *, today: Optional[date] = None) -> dict:
     except Exception as exc:  # noqa: BLE001
         print(f"[present_read] area confluence skipped: {exc}", flush=True)
 
+    # Deep-dive evidence for the houses this period activates
+    try:
+        import deep_evidence as DE
+        seen_areas: set = set()
+        for h in (active or [])[:2]:
+            area = _area_for_house(h)
+            if not area or area in seen_areas:
+                continue
+            seen_areas.add(area)
+            de = DE.for_area(area, house=h)
+            if de.get("varga", {}).get("diagnosis"):
+                lines.append(f"<b>{_e(HOUSE_LIFE.get(h, area))}</b>: "
+                             f"{_e(de['varga']['diagnosis'])}")
+            cw = de.get("current_window") or {}
+            if cw.get("word"):
+                lines.append(
+                    f"For this area, the running period is "
+                    f"<b>{_e(cw.get('word', ''))}</b>"
+                    + (f" — {_e(cw['reason'][:90])}" if cw.get("reason") else ""))
+            if de.get("transit", {}).get("note"):
+                lines.append(f"In the sky now: {_e(de['transit']['note'])}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[present_read] deep evidence skipped: {exc}", flush=True)
+
     return {"today": today, "since": back, "lines": lines,
             "direction": dasha["direction"], "agreement": dasha["agreement"],
             "period": f"{md}–{ad}", "live": live,

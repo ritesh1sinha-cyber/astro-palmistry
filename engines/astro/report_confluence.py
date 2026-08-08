@@ -462,6 +462,16 @@ def area_votes(pc: dict, area_key: str, house: int) -> list:
     # object that took no part in building the chart, which is why it is worth
     # a vote of its own even when no photograph was supplied.
     votes.extend(palm_votes(pc, area_key))
+
+    # 8–10. Deep-dive evidence: 108 rules, slow transits, period-clock rating
+    try:
+        import deep_evidence as DE
+        ctx = DE.current()
+        if ctx:
+            for method, val, because in ctx.vote_triplet(area_key, house):
+                votes.append(Vote(method, val, because))
+    except Exception:  # noqa: BLE001
+        pass
     return votes
 
 
@@ -803,27 +813,56 @@ def _dir_from_cluster(cl) -> str:
 
 
 def merge_semantic_verdict(area_key: str, verdict: dict) -> dict:
-    """Rule votes supply evidence; MiniLM cluster picks direction and headline."""
+    """Rule votes supply direction and evidence; semantic cluster adjusts confidence only."""
     cl = semantic_cluster_for_area(area_key)
     if not cl:
         return verdict
     systems = _cluster_field(cl, "systems", []) or []
     conf = str(_cluster_field(cl, "confidence", "MODERATE") or "MODERATE")
     direction = _dir_from_cluster(cl)
-    affirmation = str(_cluster_field(cl, "affirmation", "") or "").strip()
     texts = [str(t).strip() for t in (_cluster_field(cl, "texts", []) or []) if t]
     out = dict(verdict)
-    out["direction"] = direction
+    # Keep rule-vote direction unless semantic cluster is unanimous and strong
+    if systems and len(systems) >= 2:
+        out["direction"] = direction
     out["semantic"] = True
     out["semantic_mode"] = _semantic_mode
-    if affirmation:
-        out["headline"] = affirmation
+    # Do NOT replace headline with BOOK_LINES affirmation — keep concrete CLAIMS
     n = len(systems)
     out["agreement"] = (f"{n} methods align · {conf}" if n
                         else f"semantic cluster · {conf}")
     out["confidence"] = conf.lower()
-    ev = texts[:3]
-    for v in (verdict.get("votes") or [])[:2]:
-        ev.append(f"{v.method} — {v.because}")
-    out["evidence"] = ev[:5]
+    ev = list(out.get("evidence") or [])
+    for t in texts[:2]:
+        if t and t not in ev:
+            ev.append(t)
+    for v in (verdict.get("votes") or [])[:3]:
+        line = f"{v.method} — {v.because}"
+        if line not in ev:
+            ev.append(line)
+    # Prepend deep-evidence lines when cache is active
+    try:
+        import deep_evidence as DE
+        de = DE.for_area(area_key)
+        for line in (de.get("evidence_lines") or [])[:3]:
+            if line and line not in ev:
+                ev.insert(0, line)
+    except Exception:  # noqa: BLE001
+        pass
+    out["evidence"] = ev[:6]
     return out
+
+
+def headline_from_verdict(area_key: str, direction: str, verdict: dict) -> str:
+    """Concrete headline from top vote + CLAIMS — never generic BOOK_LINES."""
+    votes = verdict.get("votes") or []
+    top = sorted(votes, key=lambda v: abs(v.value), reverse=True)
+    if top:
+        because = (top[0].because or "").strip()
+        if because and len(because) > 30:
+            return because[:220].rsplit(" ", 1)[0] + ("…" if len(because) > 220 else "")
+    try:
+        import report_cards as RC
+        return RC.CLAIMS.get((area_key, direction), "")
+    except Exception:  # noqa: BLE001
+        return ""

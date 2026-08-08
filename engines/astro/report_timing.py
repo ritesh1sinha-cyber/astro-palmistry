@@ -153,7 +153,9 @@ def windows_for_area(pc: dict, area_key: str, house: int, *,
 
 
 def best_windows(pc: dict, areas: list, *, start: Optional[date] = None,
-                 years: int = 5, limit: int = 5) -> list:
+                 years: int = 5, limit: int = 5,
+                 lat: Optional[float] = None, lon: Optional[float] = None,
+                 tz: float = 5.5) -> list:
     """The handful of windows worth naming, across every life area."""
     start = start or date.today()
     segments = transit_segments(pc, start=start, years=years)
@@ -161,6 +163,20 @@ def best_windows(pc: dict, areas: list, *, start: Optional[date] = None,
     for key, house in areas:
         allrows += windows_for_area(pc, key, house, start=start,
                                     years=years, segments=segments)
+    # Boost scores with deep-evidence period-clock rating when cache is active
+    try:
+        import deep_evidence as DE
+        de_ctx = DE.current()
+        if de_ctx:
+            for r in allrows:
+                de = de_ctx.for_area(r["area"], house=r.get("house", 0))
+                rating = de.get("current_rating", "mix")
+                boost = {"fav": 0.4, "mix": 0.0, "chal": -0.4}.get(rating, 0)
+                r["score"] = round(r.get("score", 0) + boost, 2)
+                if de.get("evidence_lines"):
+                    r["deep_note"] = de["evidence_lines"][0][:120]
+    except Exception:  # noqa: BLE001
+        pass
     # strongest first, but never two of the same area back to back
     allrows.sort(key=lambda r: -abs(r["score"]))
     picked, seen = [], set()
@@ -179,6 +195,8 @@ def best_windows(pc: dict, areas: list, *, start: Optional[date] = None,
 
 def explain(row: dict, area_label: str) -> str:
     """One sentence a reader can act on, with the reasoning underneath."""
+    if row.get("deep_note"):
+        return row["deep_note"]
     verb, theme = TRANSIT_VOICE.get(row["planet"], ("moves through", ""))
     strong = row["bav"] >= 5
     if row["aligned"]:

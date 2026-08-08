@@ -254,6 +254,9 @@ JARGON_TERMS: list[tuple[str, str]] = [
 
     # the karakas
     ("atmakaraka", "your defining planet"),
+    ("karaka", "natural significator"),
+    ("argala", "planetary intervention"),
+    ("bindu", "support point"),
     ("amatyakaraka", "your career indicator"),
     ("bhratrikaraka", "your sibling indicator"),
     ("matrikaraka", "your mother indicator"),

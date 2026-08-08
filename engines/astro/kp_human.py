@@ -195,9 +195,13 @@ def human_dasha(kp: "KPChart") -> str:
         return "Dasha dates missing from the KP extract."
     lord = m.get("lord", "")
     cur = kp.current_antar()
-    lines = [
-        f"Since {fmt(m['start'])} you are in {lord} mahadasha until {fmt(m['end'])} - {planet_voice(lord)} chapter.",
-    ]
+    try:
+        import impact as IMP
+        md_line = IMP.dasha_impact(lord, end_pretty=fmt(m["end"]))
+    except Exception:  # noqa: BLE001
+        md_line = (f"Since {fmt(m['start'])} you are in {lord} mahadasha until "
+                   f"{fmt(m['end'])} — {planet_voice(lord)} chapter.")
+    lines = [md_line]
     if cur.get("lord"):
         lines.append(antar_focus(kp, cur["lord"]))
     ven = _venus_antar(kp)

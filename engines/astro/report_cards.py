@@ -221,6 +221,10 @@ def score_area(pc: dict, area: Area) -> tuple:
         else:
             evidence = [f"<b>{v.method.capitalize()}</b> — {v.because}"
                         for v in verdict["votes"]]
+        headline = verdict.get("headline") or CF.headline_from_verdict(
+            area.key, verdict["direction"], verdict)
+        if headline:
+            verdict["headline"] = headline
         return verdict["direction"], evidence, verdict["score"], verdict
     except Exception:
         pass
@@ -311,10 +315,16 @@ def build_timeline(pc: dict, *, today: Optional[date] = None,
                         if a.house in houses or a.house == sits
                         or any(h in a.support for h in houses)
                         or sits in a.support})
+        end_p = _pretty(_d(ad.get("end")))
+        try:
+            import impact as IMP
+            impact_line = IMP.dasha_impact(lord, end_pretty=end_p)
+        except Exception:  # noqa: BLE001
+            impact_line = PLANET_VOICE.get(lord, "")
         rows.append({
             "window": _window(ad.get("start"), ad.get("end"), today),
             "lord": lord,
-            "theme": PLANET_VOICE.get(lord, ""),
+            "theme": impact_line or PLANET_VOICE.get(lord, ""),
             "areas": areas[:3],
             "current": ad.get("status") == "current",
         })
@@ -429,11 +439,23 @@ after it is worth your money.</p>
     cards_html = "".join(card_html(c) for c in cards)
 
     if paid:
+        end_p = _pretty(_d(ad.get("end")))
+        try:
+            import impact as IMP
+            chapter_impact = IMP.period_impact(
+                md.get("md_lord", ""), ad.get("ad_lord", ""), end_pretty=end_p)
+        except Exception:  # noqa: BLE001
+            chapter_impact = (
+                f"{PLANET_VOICE.get(md.get('md_lord',''),'')} sets the background; "
+                f"{PLANET_VOICE.get(ad.get('ad_lord',''),'')} is what you feel week to week.")
         chapter_h2 = (f"{_e(md.get('md_lord',''))}–{_e(ad.get('ad_lord',''))}, "
-                      f"to {_e(_pretty(_d(ad.get('end'))))}")
+                      f"to {_e(end_p)}")
         chapter_dasha = dasha_html
     else:
         chapter_h2 = f"{_e(md.get('md_lord',''))}–{_e(ad.get('ad_lord',''))}"
+        chapter_impact = (
+            f"{PLANET_VOICE.get(md.get('md_lord',''),'')} sets the background; "
+            f"{PLANET_VOICE.get(ad.get('ad_lord',''),'')} is what you feel week to week.")
         chapter_dasha = ""
 
     timeline_section = ""
@@ -465,8 +487,7 @@ after it is worth your money.</p>
 <div class="now-box">
   <div class="lbl">The chapter you are in</div>
   <h2>{chapter_h2}</h2>
-  <p>{_e(PLANET_VOICE.get(md.get('md_lord',''),''))} sets the background;
-     {_e(PLANET_VOICE.get(ad.get('ad_lord',''),''))} is what you are feeling week to week.</p>
+  <p>{_e(chapter_impact)}</p>
   {chapter_dasha}
 </div>
 
