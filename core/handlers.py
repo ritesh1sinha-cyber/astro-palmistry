@@ -361,7 +361,8 @@ def h_full_report(user: dict, p: dict) -> dict:
 
 
 def h_horary(user: dict, p: dict) -> dict:
-    # MiniLM for question → house / topic (Phase 1). Lexical fallback if absent.
+    # Question → house / topic. Optional life-area dropdown pins the domain.
+    area = ""
     try:
         import semantic_fallback
         semantic_fallback.install()
@@ -369,12 +370,15 @@ def h_horary(user: dict, p: dict) -> dict:
         pass
     try:
         import semantic_question as SQ
-        routed = SQ.route(p.get("question") or "")
+        area = SQ.normalize_area(p.get("area") or "")
+        routed = SQ.route(p.get("question") or "", area=area)
         print(f"[horary] semantic route method={routed.method} "
               f"house={routed.primary_house} domain={routed.domain} "
-              f"topic={routed.topic} h_sc={routed.house_score:.2f}", flush=True)
+              f"topic={routed.topic} area={area or '-'} "
+              f"h_sc={routed.house_score:.2f}", flush=True)
     except Exception as exc:  # noqa: BLE001
         print(f"[horary] semantic route skipped: {exc}", flush=True)
+        area = (p.get("area") or "").strip().lower()
 
     htmls, verdicts = {}, {}
     western_judgment: dict = {}
@@ -393,8 +397,15 @@ def h_horary(user: dict, p: dict) -> dict:
     if vgen is None:
         from vedic_horary_report import generate_vedic_horary_html as vgen
     try:
-        h, j = vgen(p["question"], p["qDate"], p["qTime"],
-                    p.get("location", "New Delhi"), str(p.get("kpNumber") or ""))
+        try:
+            h, j = vgen(p["question"], p["qDate"], p["qTime"],
+                        p.get("location", "New Delhi"),
+                        str(p.get("kpNumber") or ""), area=area)
+        except TypeError:
+            # Older hotfix wrappers may not accept area= yet.
+            h, j = vgen(p["question"], p["qDate"], p["qTime"],
+                        p.get("location", "New Delhi"),
+                        str(p.get("kpNumber") or ""))
         htmls["vedic"] = h
         verdicts["vedic"] = {k: j.get(k) for k in ("verdict", "confidence", "score", "systems")}
         vedic_customer = j.get("customer") or {}
@@ -402,7 +413,15 @@ def h_horary(user: dict, p: dict) -> dict:
         verdicts["vedic"] = {"error": f"{type(exc).__name__}: {exc}"}
     try:
         from western_horary_report import generate_western_horary_html as wgen
-        h, j = wgen(p["question"], p["qDate"], p["qTime"], p.get("location", "New Delhi"))
+        qh = None
+        if area:
+            try:
+                import semantic_question as SQ
+                qh = SQ.AREA_TO_HOUSE.get(area)
+            except Exception:                                         # noqa: BLE001
+                qh = None
+        h, j = wgen(p["question"], p["qDate"], p["qTime"],
+                    p.get("location", "New Delhi"), quesited_house=qh)
         htmls["western"] = h
         verdicts["western"] = {k: j.get(k) for k in ("verdict", "confidence")}
         western_judgment = j
@@ -437,7 +456,7 @@ def h_horary(user: dict, p: dict) -> dict:
 
 
 def h_user_question(user: dict, p: dict) -> dict:
-    """Natal-chart question: MiniLM route + deep-evidence/lane confluence."""
+    """Natal-chart question: area dropdown + wording → deep evidence / timing."""
     q = (p.get("question") or "").strip()
     if not q:
         raise UserError("Type your question first.")
@@ -448,15 +467,19 @@ def h_user_question(user: dict, p: dict) -> dict:
     except Exception:                                    # never block a report
         pass
 
+    area = ""
     route = None
     try:
         import semantic_question as SQ
-        route = SQ.route(q)
+        area = SQ.normalize_area(p.get("area") or "")
+        route = SQ.route(q, area=area)
         print(f"[user_question] semantic route method={route.method} "
               f"house={route.primary_house} domain={route.domain} "
-              f"topic={route.topic} h_sc={route.house_score:.2f}", flush=True)
+              f"topic={route.topic} area={area or '-'} "
+              f"h_sc={route.house_score:.2f}", flush=True)
     except Exception as exc:  # noqa: BLE001
         print(f"[user_question] semantic route skipped: {exc}", flush=True)
+        area = (p.get("area") or "").strip().lower()
 
     chart = get_or_create_chart(user["id"], p)
     pc = precompute_for(chart)
@@ -468,7 +491,7 @@ def h_user_question(user: dict, p: dict) -> dict:
              tz=float(chart["tz_offset"]))
     try:
         free_html, paid_html, meta = RD.user_question(
-            pc, question=q, route=route,
+            pc, question=q, route=route, area=area,
             name=chart.get("person_name") or "",
             price=uq_price,
             lat=float(chart["lat"]), lon=float(chart["lon"]),

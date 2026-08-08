@@ -42,8 +42,12 @@ STRIP_PATTERNS = [
     r"\bDeterministic rule engine\b",
     r"\bdeterministic rule engine\b",
     r"\bno[- ]LLM\b", r"\bNO[- ]LLM\b", r"\bwithout an LLM\b",
+    r"\bMiniLM\b", r"\bminilm\b", r"\bsentence[- ]transformers?\b",
+    r"\blexical fallback\b",
     r"\brule-based\b", r"\bhard-coded\b", r"\bheuristic(ally)?\b",
     r"\bfallback template\b", r"\btemplate line\b",
+    r"\bDeterministic Python engine\b",
+    r"\bComputed with Python\b[^.]*\.?",
     # internal calibration notes: honest engineering, but they read to a paying
     # customer as "we didn't really do the work"
     r"⚠\s*Uncalibrated[^<]*",
@@ -77,6 +81,18 @@ LEAK_STRIPS: list[tuple[str, str]] = [
     (r"\s*(?:Rebuild(?:\s+corpus)?:\s*)?<code>\s*python3?[^<]*</code>\.?", ""),
     (r"\s*Rebuild(?:\s+corpus)?:\s*python3?\s+[\w.]+\.py\.?", ""),
     (r"\s*Engine:\s*\+?\s*[\w\s]*?\d*\.\s*(?=</p>|$)", ""),
+    # Internal model / script names must never reach a paying customer.
+    (r"\bWe read your question with MiniLM,?\s*", "We read your question, "),
+    (r"\b(?:with\s+)?MiniLM\b,?\s*", ""),
+    (r"\bminilm\b,?\s*", ""),
+    (r"\bsentence[- ]transformers?\b,?\s*", ""),
+    (r"\blexical fallback\b,?\s*", ""),
+    (r"\bDeterministic Python engine(?:\s*\(no LLM\))?", ""),
+    (r"Computed with Python\s+[\w.]+(?:\s*\([^)]*\))?(?:\s*[—\-]\s*)?",
+     "Computed from the ephemeris"),
+    (r"<code>\s*[\w./\-]+\.py\s*</code>", ""),
+    (r"\bpython3?\s+[\w./\-]+\.py\b", ""),
+    (r"\b[\w./\-]+\.py\b", ""),
 
     # "the plain-language version for the client is user_report_ritxx.html"
     (r"\s*This is the analyst view\s*—\s*the plain-language version for the "

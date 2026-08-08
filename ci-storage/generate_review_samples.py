@@ -85,7 +85,7 @@ def gen_astro_after() -> dict:
     return {
         "full_report_has_qa": "qa-asked" in free,
         "user_question_has_locked": all(x in uq_free for x in (
-            "The verdict", "When it can happen", "The remedy")),
+            "The verdict", "Timing — when to move", "The remedy")),
         "user_question_paid_verdict": "qa-verdict" in uq_paid,
         "paths": {k: str(v) for k, v in paths.items()},
         "answer_meta": uq_meta.get("answer"),

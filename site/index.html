@@ -620,7 +620,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
  </div>
 
  <div class="wrap sec" style="padding-top:0">
-  <div class="sec-head"><h2>Straight answers</h2></div>
+  <div class="sec-head"><h2>FAQ : Straight answers</h2></div>
   <div class="faq-list">
    <details><summary>I don't know my exact birth time. Is this useless to me?</summary>
     <p>No — this is the case we built for. Palmistry needs no birth data.
@@ -843,6 +843,24 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
     <h3 style="font-size:24px;margin:8px 0 6px">Ask one question. Get one clear answer.</h3>
     <p style="color:var(--muted);font-size:14.5px">No birth chart needed — horary reads the moment you ask.
        Each method's own reading is free. The verdict they add up to, the timing and the remedy are ₹298.</p>
+    <div class="field" style="margin-top:14px"><label for="hArea">Area of life</label>
+     <select class="inp" id="hArea">
+      <option value="">Let it work out from your question</option>
+      <option value="career">Job / career</option>
+      <option value="promotion">Promotion or raise</option>
+      <option value="business">Business / self-employment</option>
+      <option value="finance">Money / wealth</option>
+      <option value="property">Property / home</option>
+      <option value="marriage">Marriage / relationship</option>
+      <option value="children">Children</option>
+      <option value="education">Education / study</option>
+      <option value="health">Health</option>
+      <option value="travel">Foreign travel / relocation</option>
+      <option value="legal">Legal / court matter</option>
+      <option value="general">Something else</option>
+     </select>
+     <p class="hint" style="margin-top:8px">Pick the area first — we read it together with your wording so the answer stays on the right houses.</p>
+    </div>
     <div class="field" style="margin-top:14px"><label for="hQ">Your question</label>
      <input class="inp" id="hQ" placeholder="Will I get the promotion this year?"><div class="err">Required</div></div>
     <div class="field placeholder-field"><label for="hLoc">Where are you asking from?</label>
@@ -870,15 +888,33 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
    <div class="card">
     <div class="eyebrow">Your chart · one question</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Ask your birth chart anything.</h3>
-    <p style="color:var(--muted);font-size:14.5px">We read your question with MiniLM, then cross-check divisional charts,
-       house lords, classical rules, dasha windows and every specialist lane. The working is free;
+    <p style="color:var(--muted);font-size:14.5px">Pick the area of life, ask in your own words, and we cross-check the
+       houses, lords, classical rules, dasha windows and timing. The working is free;
        the verdict, dated windows and remedy are ₹298.</p>
+    <div class="field" style="margin-top:14px"><label for="uqArea">Area of life</label>
+     <select class="inp" id="uqArea">
+      <option value="">Let it work out from your question</option>
+      <option value="career">Job / career</option>
+      <option value="promotion">Promotion or raise</option>
+      <option value="business">Business / self-employment</option>
+      <option value="finance">Money / wealth</option>
+      <option value="property">Property / home</option>
+      <option value="marriage">Marriage / relationship</option>
+      <option value="children">Children</option>
+      <option value="education">Education / study</option>
+      <option value="health">Health</option>
+      <option value="travel">Foreign travel / relocation</option>
+      <option value="legal">Legal / court matter</option>
+      <option value="general">Something else</option>
+     </select>
+     <p class="hint" style="margin-top:8px">The area keeps the reading on the right houses; your question fills in the detail.</p>
+    </div>
     <div class="field" style="margin-top:14px"><label for="uqQ">Your question</label>
      <textarea class="inp" id="uqQ" rows="3" placeholder="e.g. Should I take the offer abroad?"></textarea>
      <div class="err">Required</div></div>
     <p class="hint" style="margin:8px 0 14px">Uses the birth details above — same chart as the full report, so it runs in seconds if you already generated one.</p>
     <button class="btn btn-gold btn-block" onclick="astroJob('user_question')">Read my chart on this — free half</button>
-    <p class="hint" style="text-align:center">Divisional chart + 12 lanes + period clock — verdict locked until unlock.</p>
+    <p class="hint" style="text-align:center">House lords, dashas, timing windows and remedy — verdict locked until unlock.</p>
    </div>
   </div>
 
@@ -2901,7 +2937,8 @@ function userQuestionPayload(){
   if(!base) return null;
   const q = ($('#uqQ')?$('#uqQ').value:'').trim();
   if(!q){ toast('Type your question first.'); return null; }
-  return Object.assign({}, base, { question: q });
+  const area = ($('#uqArea')?$('#uqArea').value:'').trim();
+  return Object.assign({}, base, { question: q, area: area });
 }
 function horaryPayload(){
   const q=($('#hQ').value||'').trim();
@@ -2922,7 +2959,8 @@ function horaryPayload(){
   }
   S.horaryPlace = captureHoraryPlace(); save();
   const now=new Date(), pad=n=>String(n).padStart(2,'0');
-  return { question:q,
+  const area = ($('#hArea')?$('#hArea').value:'').trim();
+  return { question:q, area: area,
     qDate: `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`,
     qTime: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
     location: place,

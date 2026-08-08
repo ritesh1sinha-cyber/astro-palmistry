@@ -72,6 +72,7 @@ AREA_VARGA = {
     "health": ("D30", "the health chart"),
     "learning": ("D24", "the learning chart"),
     "inner": ("D20", "the spiritual chart"),
+    "legal": ("D6", "the dispute chart"),
 }
 
 # A single varga is one opinion too. Each area gets a second, classically
@@ -86,6 +87,7 @@ AREA_VARGA = {
 AREA_VARGA_CROSS = {
     "career": "D5", "money": "D11", "love": "D7", "home": "D16",
     "children": "D5", "health": "D6", "learning": "D45", "inner": "D60",
+    "legal": "D9",
 }
 
 VARGA_PHRASE = {

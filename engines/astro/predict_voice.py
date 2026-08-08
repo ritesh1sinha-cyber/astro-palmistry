@@ -72,6 +72,17 @@ AREA_SCENE: dict[tuple[str, str], str] = {
     ("inner", "down"): (
         "Rest is not optional in this stretch. Withdrawal is doing something, not avoiding it."
     ),
+    ("legal", "up"): (
+        "The chart favours a resolution in your direction — a good stretch to press "
+        "the matter rather than let it sit."
+    ),
+    ("legal", "mixed"): (
+        "The matter moves, but slowly, with some give-and-take on both sides."
+    ),
+    ("legal", "down"): (
+        "This is not the strongest stretch for a legal matter. Protect your "
+        "position and avoid escalating further right now."
+    ),
 }
 
 AREA_LABEL = {
@@ -83,6 +94,7 @@ AREA_LABEL = {
     "health": "your health and energy",
     "learning": "study and luck",
     "inner": "your inner life",
+    "legal": "your legal matter",
 }
 
 VARGA_PLAIN = {

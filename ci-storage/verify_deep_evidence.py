@@ -131,7 +131,7 @@ def check_user_question_html() -> bool:
     if "qa-asked" not in free:
         print("FAIL [user_question free] missing qa-asked block")
         ok = False
-    for locked in ("The verdict", "When it can happen", "The remedy"):
+    for locked in ("The verdict", "Timing — when to move", "The remedy"):
         if locked not in free:
             print(f"FAIL [user_question free] missing locked section {locked!r}")
             ok = False

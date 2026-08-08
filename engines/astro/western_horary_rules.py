@@ -398,11 +398,12 @@ _RELATIVE_RE = re.compile(r"\bmy\s+(friend|brother|sister|mother|father|son|daug
 _PRIORITY = [5, 7, 4, 10, 6, 9, 8, 12, 3, 11, 2, 1]  # specificity tie-break
 
 
-def parse_question(question: str) -> dict:
+def parse_question(question: str, area: str = "") -> dict:
     """Extract (quesited house, mode flags, third-party) from free text.
 
-    Phase 1: MiniLM maps semantic meaning → house; keyword/_INTENT_RULES assist
-    when scores are close or the encoder is unavailable.
+    Optional life-area dropdown pins the house. Otherwise semantic routing
+    maps meaning → house; keyword/_INTENT_RULES assist when scores are close
+    or the encoder is unavailable.
     """
     q = question.strip()
     scores: dict[int, int] = {}
@@ -415,21 +416,28 @@ def parse_question(question: str) -> dict:
     if lost and 2 not in scores and not any(h in scores for h in (5, 6, 7)):
         scores[2] = scores.get(2, 0) + 2  # a lost *object* defaults to the 2nd
 
-    # MiniLM-first house
+    # Semantic house (+ optional area dropdown)
     sem_house = None
     sem_score = 0.0
+    area_house = None
     try:
         import semantic_question as SQ
-        routed = SQ.route(q)
+        area = SQ.normalize_area(area)
+        if area:
+            area_house = SQ.AREA_TO_HOUSE.get(area)
+        routed = SQ.route(q, area=area)
         sem_house = int(routed.primary_house)
         sem_score = float(routed.house_score or 0)
-        if routed.method == "minilm" and sem_house:
-            # Blend: give semantic house a strong vote
+        if (routed.method == "minilm" or area) and sem_house:
+            # Blend: give semantic / area house a strong vote
             scores[sem_house] = scores.get(sem_house, 0) + max(3, int(round(sem_score * 8)))
     except Exception:
         pass
 
-    if scores:
+    # Dropdown area is an explicit reader choice — prefer it over keyword noise.
+    if area_house:
+        house = area_house
+    elif scores:
         best = max(scores.values())
         tied = [h for h, s in scores.items() if s == best]
         house = min(tied, key=lambda h: _PRIORITY.index(h)) if len(tied) > 1 else tied[0]
@@ -440,8 +448,9 @@ def parse_question(question: str) -> dict:
     else:
         house = 7  # generic "the other party / the matter"
 
-    # Prefer MiniLM when keyword path collapsed to generic 7 but semantics are clear
-    if house == 7 and sem_house and sem_house != 7 and sem_score >= 0.32 and not scores.get(7):
+    # Prefer semantic house when keyword path collapsed to generic 7
+    if (not area_house and house == 7 and sem_house and sem_house != 7
+            and sem_score >= 0.32 and not scores.get(7)):
         house = sem_house
 
     # Third-party: a named person ("Will Luis…", "Sara's…") or a relative the querent asks about.

@@ -867,7 +867,7 @@ def render(data: dict, question: str, j: dict, judge_dt: str, location: str) -> 
   {plain_html}
 
   <h2>Chart data</h2>
-  <p class="meta">Computed with Python pyswisseph (MOSEPH), Tropical, geocentric, Placidus \u2014 <code>western_horary_precompute.py</code>.</p>
+  <p class="meta">Computed with Swiss Ephemeris (MOSEPH), Tropical, geocentric, Placidus.</p>
   <div class="card"><table>
     <thead><tr><th>Point</th><th>Sign</th><th>{DEG}</th><th>House</th></tr></thead>
     <tbody>{''.join(rows)}</tbody>

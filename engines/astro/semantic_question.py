@@ -164,6 +164,70 @@ QA_TOPIC_BY_DOMAIN: dict[str, str] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# User-selectable life area (frontend dropdown, both horary and "ask your
+# chart"). Free text stays primary — a specific word in the question always
+# wins over the dropdown — but when wording is vague ("how are things
+# looking?") the dropdown gives every engine a real signal instead of a
+# guess. One shared list keeps the three question engines (natal, Vedic
+# horary, Western horary) and the frontend from drifting out of sync.
+# ---------------------------------------------------------------------------
+LIFE_AREAS: list[tuple[str, str]] = [
+    ("", "Let it work out the area from your question"),
+    ("career", "Job / career"),
+    ("promotion", "Promotion or raise"),
+    ("business", "Business / self-employment"),
+    ("finance", "Money / wealth"),
+    ("property", "Property / home"),
+    ("marriage", "Marriage / relationship"),
+    ("children", "Children"),
+    ("education", "Education / study"),
+    ("health", "Health"),
+    ("travel", "Foreign travel / relocation"),
+    ("legal", "Legal / court matter"),
+    ("general", "Something else"),
+]
+
+# area -> question_answer.py Topic key
+AREA_TO_QA_TOPIC: dict[str, str] = {
+    "career": "job_change", "promotion": "promotion", "business": "business",
+    "finance": "money", "property": "property", "marriage": "marriage",
+    "children": "children", "education": "study", "health": "health",
+    "travel": "foreign", "legal": "legal",
+}
+
+# area -> horary_precompute.py TOPIC_KEYWORDS key
+AREA_TO_HORARY_TOPIC: dict[str, str] = {
+    "career": "career", "promotion": "career", "business": "career",
+    "finance": "finance", "property": "finance", "marriage": "marriage",
+    "children": "children", "education": "education", "health": "health",
+    "travel": "travel", "legal": "general",
+}
+
+# area -> classical house, for western_horary_rules.py's scoring bias
+AREA_TO_HOUSE: dict[str, int] = {
+    "career": 10, "promotion": 10, "business": 10, "finance": 2,
+    "property": 4, "marriage": 7, "children": 5, "education": 9,
+    "health": 6, "travel": 9, "legal": 9,
+}
+
+# area -> semantic DOMAIN_ANCHORS key (promotion/business fold into career)
+AREA_TO_DOMAIN: dict[str, str] = {
+    "career": "career", "promotion": "career", "business": "career",
+    "finance": "finance", "property": "property", "marriage": "marriage",
+    "children": "children", "education": "education", "health": "health",
+    "travel": "travel", "legal": "legal", "general": "general",
+}
+
+# Valid area keys the frontend may send (empty string = auto)
+VALID_AREAS = frozenset(k for k, _ in LIFE_AREAS if k)
+
+
+def normalize_area(area: str) -> str:
+    a = (area or "").strip().lower()
+    return a if a in VALID_AREAS else ""
+
+
 @dataclass
 class SemanticRoute:
     question: str
@@ -280,17 +344,24 @@ def _keyword_topic(q: str) -> str:
         return "general"
 
 
-def route(question: str, *, min_score: float = 0.28) -> SemanticRoute:
-    """Map free text → domain + houses + horary topic (MiniLM-first)."""
+def route(question: str, *, area: str = "", min_score: float = 0.28) -> SemanticRoute:
+    """Map free text (+ optional life-area dropdown) → domain / houses / topic.
+
+    When the reader picks an area from the dropdown, that area wins the domain,
+    primary house and horary topic — the free-text question still refines the
+    read inside that area. An explicit house number in the wording (handled by
+    callers such as question_answer.classify) is the only stronger signal.
+    """
     q = (question or "").strip()
-    if not q:
+    area = normalize_area(area)
+    if not q and not area:
         return SemanticRoute(question="", domain="general", primary_house=1,
                              houses=[1], topic="general", method="keyword",
                              degraded=True)
 
     eng = _model()
-    kw_houses = _keyword_houses(q)
-    kw_topic = _keyword_topic(q)
+    kw_houses = _keyword_houses(q) if q else []
+    kw_topic = _keyword_topic(q) if q else "general"
 
     if eng is None:
         primary = kw_houses[0] if kw_houses else DOMAIN_PRIMARY_HOUSE.get(
@@ -302,12 +373,19 @@ def route(question: str, *, min_score: float = 0.28) -> SemanticRoute:
                 if h == primary and d not in ("current", "general"):
                     domain = d
                     break
+        topic = kw_topic
+        if area:
+            domain = AREA_TO_DOMAIN.get(area, domain)
+            primary = AREA_TO_HOUSE.get(area, primary)
+            topic = AREA_TO_HORARY_TOPIC.get(area, topic)
+            houses = [primary] + [h for h in houses if h != primary]
         return SemanticRoute(
-            question=q, domain=domain, primary_house=primary, houses=houses,
-            topic=kw_topic, method="keyword", degraded=True)
+            question=q, domain=domain, primary_house=primary, houses=houses[:4],
+            topic=topic, method="keyword", degraded=True)
 
     np = eng["np"]
-    emb = eng["model"].encode([q], normalize_embeddings=True)[0]
+    emb = eng["model"].encode([q or area or "general"],
+                              normalize_embeddings=True)[0]
     domain, d_sc = _best_key(emb, eng["domain"], np)
     house, h_sc = _best_key(emb, eng["house"], np)
     topic, t_sc = _best_key(emb, eng["topic"], np)
@@ -332,14 +410,17 @@ def route(question: str, *, min_score: float = 0.28) -> SemanticRoute:
         (9, "travel", ("visa", "immigration", "abroad study")),
     )
     ql = q.lower()
-    for h_force, d_force, terms in _STRONG:
-        if any(t in ql for t in terms):
-            house, h_sc = h_force, max(float(h_sc or 0), 0.55)
-            domain, d_sc = d_force, max(float(d_sc or 0), 0.55)
-            if h_force not in ranked:
-                ranked.insert(0, h_force)
-            break
-    if kw_houses:
+    # Skip strong-token override when the reader already named the area —
+    # otherwise "promotion" inside a vague children question could steal H10.
+    if not area:
+        for h_force, d_force, terms in _STRONG:
+            if any(t in ql for t in terms):
+                house, h_sc = h_force, max(float(h_sc or 0), 0.55)
+                domain, d_sc = d_force, max(float(d_sc or 0), 0.55)
+                if h_force not in ranked:
+                    ranked.insert(0, h_force)
+                break
+    if kw_houses and not area:
         kw_h = kw_houses[0]
         kw_sc = float(house_scores.get(kw_h, 0.0))
         if kw_h != house:
@@ -372,6 +453,18 @@ def route(question: str, *, min_score: float = 0.28) -> SemanticRoute:
     if primary not in houses:
         houses = [primary] + houses
     houses = list(dict.fromkeys(houses))[:4]
+
+    # Dropdown area is an explicit reader choice — pin domain / house / topic
+    # to it. Free text still shaped the ranking above for supporting houses.
+    if area:
+        domain = AREA_TO_DOMAIN.get(area, domain)
+        primary = AREA_TO_HOUSE.get(area, primary)
+        topic = AREA_TO_HORARY_TOPIC.get(area, topic)
+        houses = [primary] + [h for h in houses if h != primary]
+        houses = list(dict.fromkeys(houses))[:4]
+        d_sc = max(float(d_sc or 0), 0.9)
+        h_sc = max(float(h_sc or 0), 0.9)
+        t_sc = max(float(t_sc or 0), 0.9)
 
     return SemanticRoute(
         question=q,

@@ -795,8 +795,7 @@ def render(data: dict, j: dict) -> str:
 <footer><div class="container">
   Prashna chart cast for {meta['q_time_ist']} IST, {meta['q_date']}, {meta['location']} ·
   {lg['sign']} {fmt_deg(lg['degree'])} Lagna ({lg['nakshatra']}) · Lahiri ayanāṁśa {lg.get('ayanamsa','')}°<br>
-  Systems: Jamakkol Prasanam · Prashna Kundali Siddhanta · KP Horary (cuspal sub-lord + Ruling Planets) ·
-  Deterministic Python engine (no LLM)<br>
+  Systems: Jamakkol Prasanam · Prashna Kundali Siddhanta · KP Horary (cuspal sub-lord + Ruling Planets)<br>
   Generated: {meta['q_date']}
 </div></footer>
 </body></html>"""
@@ -881,9 +880,11 @@ def _vedic_customer_summary(data: dict, j: dict) -> dict:
 
 def generate_vedic_horary_html(question: str, q_date: str, q_time: str,
                                location: str = "New Delhi",
-                               kp_number: str = "") -> tuple[str, dict]:
+                               kp_number: str = "",
+                               area: str = "") -> tuple[str, dict]:
     """Deterministic Vedic prashna report. Returns (html, judgment dict)."""
-    data = precompute_horary(question, q_date, q_time, location, kp_number or "")
+    data = precompute_horary(question, q_date, q_time, location,
+                             kp_number or "", area=area)
     j = judge_vedic(data)
     html_doc = render(data, j)
     j_out = {

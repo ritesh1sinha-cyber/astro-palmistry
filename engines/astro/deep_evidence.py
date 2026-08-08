@@ -29,6 +29,8 @@ AREA_DEEP: dict[str, tuple] = {
                  ("Mercury", "Jupiter")),
     "inner": ("D20", "spiritual", "faith & inner growth", (12, 9),
               ("Jupiter", "Ketu")),
+    "legal": ("D6", "troubles", "legal matters & disputes", (6, 9, 12),
+              ("Mars", "Saturn", "Mercury")),
 }
 
 _DOMAIN_KW: dict[str, tuple[str, ...]] = {
@@ -44,6 +46,8 @@ _DOMAIN_KW: dict[str, tuple[str, ...]] = {
                "sixth", "eighth"),
     "learning": ("educat", "learn", "study", "intellig", "knowledge", "4th", "5th"),
     "inner": ("spiritual", "moksha", "dharma", "12th", "9th", "ketu", "mind"),
+    "legal": ("legal", "court", "lawsuit", "litigation", "dispute", "case",
+              "6th", "sixth"),
 }
 
 _RATE_NAME = {

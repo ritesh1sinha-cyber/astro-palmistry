@@ -1065,19 +1065,32 @@ TOPIC_KEYWORDS = {
 }
 
 
-def detect_topic(question: str) -> str:
-    """Map free-text question → horary topic. MiniLM first, keywords assist."""
+def detect_topic(question: str, area: str = "") -> str:
+    """Map free-text (+ optional life-area dropdown) → horary topic."""
     q = (question or "").strip()
-    if not q:
-        return "general"
     try:
         import semantic_question as SQ
-        routed = SQ.route(q)
-        if routed.topic and routed.topic != "general":
-            if routed.method == "minilm" or routed.topic_score >= 0.28:
-                return routed.topic
+        area = SQ.normalize_area(area)
+        if area:
+            forced = SQ.AREA_TO_HORARY_TOPIC.get(area)
+            if forced:
+                # Still allow a more specific health sub-topic from the wording.
+                if forced == "health" and q:
+                    ql = q.lower()
+                    if any(kw in ql for kw in TOPIC_KEYWORDS.get("disease_cure", [])):
+                        return "disease_cure"
+                    if any(kw in ql for kw in TOPIC_KEYWORDS.get("disease", [])):
+                        return "disease"
+                return forced
+        if q:
+            routed = SQ.route(q, area=area)
+            if routed.topic and routed.topic != "general":
+                if routed.method == "minilm" or routed.topic_score >= 0.28:
+                    return routed.topic
     except Exception:
         pass
+    if not q:
+        return "general"
     ql = q.lower()
     # Order matters: more specific topics first
     priority = ["disease_cure", "disease", "children", "marriage", "career", "health",
@@ -1273,6 +1286,7 @@ def precompute_horary(
     q_time_str: str,     # HH:MM  (24hr IST)
     location: str = "New Delhi",
     kp_number: str = "",
+    area: str = "",
 ) -> dict:
     """
     Master function: compute all horary/prashna math and return structured JSON.
@@ -1306,8 +1320,8 @@ def precompute_horary(
     # Whole-sign house placements
     houses = compute_houses(lagna_sign, planets)
 
-    # Detect topic
-    topic = detect_topic(question)
+    # Detect topic (life-area dropdown pins the domain when set)
+    topic = detect_topic(question, area=area)
 
     # KP Horary (Chart A + Chart B when Swiss Ephemeris available)
     kp_data = {}

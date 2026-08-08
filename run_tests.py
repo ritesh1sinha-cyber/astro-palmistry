@@ -45,6 +45,8 @@ SUITES: list[tuple[str, list[str], str]] = [
      [sys.executable, "engines/astro/anchor_engine_test.py"], ""),
     ("lane leaks and all 9 lanes voting",
      [sys.executable, "engines/astro/lane_sweep_test.py"], "jhora"),
+    ("ask-your-chart house classification and intent",
+     [sys.executable, "engines/astro/question_answer_test.py"], ""),
     ("card design renders per kind",
      [sys.executable, "engines/astro/report_render_test.py"], ""),
     ("palm cards keep both hands and clean copy",

@@ -317,8 +317,12 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
 
     # No shell heading: build_answer_html already opens with the question and
     # when it was asked. Passing them again printed the question twice.
-    free = RS.page(f"Your question — {question[:60]}", _scrub(free_body))
-    paid = RS.page(f"Your question — {question[:60]}", _scrub(paid_body))
+    # Voice polish strips machinery (python paths, MiniLM, rebuild notes) and
+    # keeps the tone consistent with every other customer report.
+    free = RS.page(f"Your question — {question[:60]}",
+                   _scrub(_voice_polish(free_body)))
+    paid = RS.page(f"Your question — {question[:60]}",
+                   _scrub(_voice_polish(paid_body)))
     meta = {"design": "cards-v2", "answer": answer, "question": question,
             "asked": asked, "price": horary_price,
             "paidSections": ["The verdict — all four methods combined",
@@ -334,20 +338,27 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
 # ---------------------------------------------------------------------------
 def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
                   price: int = 298, lat: float = 0.0, lon: float = 0.0,
-                  tz: float = 5.5, today: Optional[date] = None) -> tuple:
+                  tz: float = 5.5, today: Optional[date] = None,
+                  area: str = "") -> tuple:
     import question_answer as QA
     today = today or date.today()
     first = (name or "").split()[0] if name else ""
 
-    result = QA.answer(pc, question, lat=lat, lon=lon, tz=tz, route=route)
+    result = QA.answer(pc, question, lat=lat, lon=lon, tz=tz, route=route,
+                       area=area)
     free_body = _voice_polish(QA.render(result, name=first, paid=False, price=price))
     paid_body = _voice_polish(QA.render(result, name=first, paid=True, price=price))
     try:
         import remedy_block as RB
         rb = RB.build(pc, domain=result.get("area_key", ""), question=question,
                       name=first)
-        paid_body += RB.render(rb, paid=True, price=price,
-                               lede="What your chart says to do about this question.")
+        # Timing is already in the body; remedy closes the paid reading — the
+        # two things a person asking a life question actually wants to act on.
+        paid_body += RB.render(
+            rb, paid=True, price=price,
+            heading="The remedy — what tips the timing your way",
+            lede="Practical first, then the classical support for the planets "
+                 "that own this question.")
     except Exception:                                                # noqa: BLE001
         pass
 
@@ -356,9 +367,10 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     paid = RS.page(title, _scrub(paid_body))
     answer = QA.answer_meta(result)
     meta = {"design": "cards-v2", "answer": answer, "question": question,
+            "area": area or result.get("area") or "",
             "price": price,
             "paidSections": ["The verdict — what your chart actually says",
-                             "Dated windows — when to move",
+                             "Timing — dated windows when to move",
                              "Watch-out rules for this question",
                              "Chart-targeted remedy"],
             "teasers": {}}

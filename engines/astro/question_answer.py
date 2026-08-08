@@ -71,8 +71,15 @@ TOPICS = (
     Topic("property", "Property or a home", "buying property",
           houses=(4, 2, 11),
           significators=("Mars", "Venus", "Saturn"),
-          patterns=(r"\bhouse\b", r"\bproperty\b", r"\bflat\b", r"\bland\b",
-                    r"\bhome loan\b")),
+          # Never match bare "house" — "5th house" / "house of children" must
+          # not be stolen into the 4th. Require property context.
+          patterns=(r"\bproperty\b", r"\bflat\b", r"\bland\b", r"\bhome loan\b",
+                    r"\breal\s*estate\b", r"\bapartment\b",
+                    r"\b(buy|buying|bought|own|owning|sell|selling)\b.{0,24}\b"
+                    r"(house|home|flat|plot)\b",
+                    r"\b(house|home|flat|plot)\b.{0,24}\b"
+                    r"(buy|buying|bought|loan|emi|mortgage)\b",
+                    r"\b(my|a|new|own)\s+house\b", r"\b(my|a|new)\s+home\b")),
     Topic("foreign", "Going abroad", "a move abroad",
           houses=(12, 9, 3),
           significators=("Rahu", "Moon", "Jupiter"),
@@ -94,29 +101,167 @@ TOPICS = (
           patterns=(r"\bkids?\b", r"\bchild", r"\bchildren\b", r"\bprogeny\b",
                     r"\bson\b", r"\bdaughter\b", r"\bbaby\b", r"\bpregnant\b",
                     r"\bhow many\b.*\b(kids?|child)")),
+    Topic("marriage", "Marriage or a relationship", "your marriage or relationship",
+          houses=(7, 2, 11),
+          significators=("Venus", "Jupiter", "Mars"),
+          patterns=(r"\bmarry\b", r"\bmarriage\b", r"\bwedding\b", r"\bhusband\b",
+                    r"\bwife\b", r"\bspouse\b", r"\bfianc", r"\bpartner\b",
+                    r"\brelationship\b", r"\bgirlfriend\b", r"\bboyfriend\b",
+                    r"\bengagement\b", r"\bdivorce\b", r"\bbreak ?up\b")),
+    Topic("legal", "A legal matter or dispute", "your legal matter",
+          houses=(6, 9, 12),
+          significators=("Mars", "Saturn", "Mercury"),
+          patterns=(r"\bcourt\b", r"\blawsuit\b", r"\blegal\b", r"\bcase\b",
+                    r"\bdispute\b", r"\blitigation\b", r"\bbail\b")),
 )
 
 FALLBACK = Topic("general", "Your question", "what you asked about",
                  houses=(1, 10, 11), significators=("Jupiter", "Saturn"),
                  patterns=())
 
+# Someone who names a house directly ("my 5th house", "house number 5",
+# "fifth house") is telling us exactly which chart to read. Trusting that
+# over keyword guesses is what stops "how is my 5th house" from being
+# hijacked by the property topic's bare "house" keyword and answered as a
+# 4th-house (property) question instead.
+_WORD_HOUSE_NUM = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6,
+    "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10, "eleventh": 11,
+    "twelfth": 12,
+}
+_HOUSE_RE = re.compile(
+    r"\b(\d{1,2})\s*(?:st|nd|rd|th)?\s*house\b"
+    r"|\bhouse\s*(?:no\.?|number|#)?\s*(\d{1,2})\b"
+    r"|\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|"
+    r"tenth|eleventh|twelfth)\s+house\b", re.I)
 
-def classify(question: str) -> Topic:
-    """Map free-text → Topic. MiniLM domain/house first; regex patterns assist."""
+_HOUSE_LABEL = {
+    1: "Self and vitality", 2: "Wealth and family",
+    3: "Courage and effort", 4: "Home and inner peace",
+    5: "Children, creativity and intelligence",
+    6: "Health, debts and daily struggle", 7: "Marriage and partnership",
+    8: "Transformation and longevity", 9: "Luck, dharma and higher learning",
+    10: "Career and public standing", 11: "Gains and larger networks",
+    12: "Loss, foreign lands and release",
+}
+_HOUSE_SUBJECT = {
+    1: "your health and vitality", 2: "your wealth and family",
+    3: "your courage and effort", 4: "your home and inner peace",
+    5: "your children, creativity and intelligence",
+    6: "your health, debts and daily struggle",
+    7: "your marriage and partnerships", 8: "transformation and longevity",
+    9: "your luck, dharma and higher learning",
+    10: "your career and public standing", 11: "your gains and networks",
+    12: "loss, foreign lands and release",
+}
+_HOUSE_KARAKA = {
+    1: ("Sun",), 2: ("Jupiter", "Mercury"), 3: ("Mars", "Mercury"),
+    4: ("Moon", "Mars", "Venus"), 5: ("Jupiter",), 6: ("Mars", "Saturn"),
+    7: ("Venus",), 8: ("Saturn",), 9: ("Jupiter", "Sun"),
+    10: ("Sun", "Mercury", "Saturn"), 11: ("Jupiter",), 12: ("Saturn", "Ketu"),
+}
+
+
+def _house_from_text(q: str) -> Optional[int]:
+    m = _HOUSE_RE.search(q)
+    if not m:
+        return None
+    if m.group(1):
+        n = int(m.group(1))
+    elif m.group(2):
+        n = int(m.group(2))
+    else:
+        n = _WORD_HOUSE_NUM.get((m.group(3) or "").lower())
+    return n if n and 1 <= n <= 12 else None
+
+
+def _topic_for_house(house: int) -> Topic:
+    """A named house wins outright — reuse a matching Topic if one exists
+    (so "5th house" still gets the children topic's dasha/significator
+    logic), otherwise build one from classical significations."""
+    for t in TOPICS:
+        if t.houses and t.houses[0] == house:
+            return t
+    return Topic(
+        f"house{house}", f"Your {_ord(house)} house — {_HOUSE_LABEL.get(house, '')}",
+        _HOUSE_SUBJECT.get(house, f"your {_ord(house)} house"),
+        houses=(house,), significators=_HOUSE_KARAKA.get(house, ()),
+        patterns=())
+
+
+def _topic_by_key(key: str) -> Optional[Topic]:
+    for t in TOPICS:
+        if t.key == key:
+            return t
+    return None
+
+
+# When the reader picks an area, only let free-text refine *within* that area
+# (career + "promotion" → promotion). Never let an unrelated keyword steal
+# the read (children area + bare "house" must not become property).
+_AREA_COMPAT: dict[str, frozenset[str]] = {
+    "career": frozenset({"job_change", "promotion", "business"}),
+    "promotion": frozenset({"promotion", "job_change"}),
+    "business": frozenset({"business", "job_change"}),
+    "finance": frozenset({"money"}),
+    "property": frozenset({"property"}),
+    "marriage": frozenset({"marriage"}),
+    "children": frozenset({"children"}),
+    "education": frozenset({"study"}),
+    "health": frozenset({"health"}),
+    "travel": frozenset({"foreign"}),
+    "legal": frozenset({"legal"}),
+}
+
+
+def classify(question: str, area: str = "") -> Topic:
+    """Map free-text (+ optional life-area dropdown) → Topic.
+
+    Order: explicit house number → wording refined inside the chosen area →
+    the area itself → wording with no area → semantic guess.
+    """
     raw = (question or "").strip()
     q = re.sub(r"\s+", " ", raw.lower())
-    # Exact pattern hits still win (job_change vs promotion, etc.)
+    house_n = _house_from_text(q)
+    if house_n:
+        return _topic_for_house(house_n)
+
+    try:
+        import semantic_question as SQ
+        area = SQ.normalize_area(area)
+    except Exception:  # noqa: BLE001
+        area = (area or "").strip().lower()
+
+    if area:
+        allowed = _AREA_COMPAT.get(area)
+        if allowed:
+            for topic in TOPICS:
+                if topic.key not in allowed:
+                    continue
+                for pat in topic.patterns:
+                    if re.search(pat, q):
+                        return topic
+        try:
+            import semantic_question as SQ
+            t = _topic_by_key(SQ.AREA_TO_QA_TOPIC.get(area, ""))
+            if t:
+                return t
+            house = SQ.AREA_TO_HOUSE.get(area)
+            if house:
+                return _topic_for_house(house)
+        except Exception:  # noqa: BLE001
+            pass
+
     for topic in TOPICS:
         for pat in topic.patterns:
             if re.search(pat, q):
                 return topic
-    # Semantic fallback when wording does not match regex (e.g. "profession lift")
+
     try:
         import semantic_question as SQ
-        routed = SQ.route(raw)
+        routed = SQ.route(raw, area=area)
         dom = routed.domain
         house = routed.primary_house
-        # Prefer topic whose primary house matches semantic house
         by_house = [t for t in TOPICS if t.houses and t.houses[0] == house]
         if by_house:
             return by_house[0]
@@ -124,11 +269,11 @@ def classify(question: str) -> Topic:
             "career": "promotion", "finance": "money", "property": "property",
             "travel": "foreign", "health": "health", "education": "study",
             "children": "children", "family": "children",
+            "marriage": "marriage", "legal": "legal",
         }.get(dom)
-        if key:
-            for t in TOPICS:
-                if t.key == key:
-                    return t
+        t = _topic_by_key(key) if key else None
+        if t:
+            return t
     except Exception:
         pass
     return FALLBACK
@@ -188,6 +333,34 @@ def _plain_line(text: str) -> str:
         return raw
 
 
+_INTENT_RE = {
+    "amount": re.compile(r"\bhow\s+(much|many)\b", re.I),
+    "when": re.compile(r"\bwhen\b|\bhow\s+long\b|\btiming\b|"
+                        r"\bwhich\s+(year|month)\b", re.I),
+    "yesno": re.compile(r"\b(will|can|shall|should|is\s+it\s+possible|"
+                         r"going\s+to)\b", re.I),
+    "how": re.compile(r"^\s*how\b|\bhow\s+is\b|\bhow\s+does\b|\bhow\s+about\b|"
+                       r"\btell\s+me\s+about\b|\bdescribe\b|\banalys|\bwhat\s+about\b|"
+                       r"\bwhat\s+does\b|\bhow\s+will\b", re.I),
+}
+
+
+def _intent(question: str) -> str:
+    """"When will X" wants a yes/no-shaped answer with a date. "How is my
+    5th house" wants an explanation — forcing it through the yes/no template
+    ("Does your chart even offer this?") reads as a non sequitur."""
+    q = (question or "").strip()
+    if _INTENT_RE["amount"].search(q):
+        return "amount"
+    if _INTENT_RE["when"].search(q):
+        return "when"
+    if _INTENT_RE["how"].search(q):
+        return "how"
+    if _INTENT_RE["yesno"].search(q):
+        return "yesno"
+    return "general"
+
+
 def _plain_agreement(text: str) -> str:
     raw = (text or "").strip()
     if not raw:
@@ -207,15 +380,24 @@ def _plain_agreement(text: str) -> str:
 def answer(pc: dict, question: str, *, start: Optional[date] = None,
            years: int = 7, lat: Optional[float] = None,
            lon: Optional[float] = None, tz: float = 5.5,
-           route: Any = None) -> dict:
+           route: Any = None, area: str = "") -> dict:
     """Find the windows where this specific thing can actually happen."""
     start = start or date.today()
-    topic = classify(question)
+    topic = classify(question, area=area)
     import report_confluence as CF
     import report_timing as RT
 
     primary = topic.houses[0]
-    area_key = _area_for(primary)
+    # Prefer the topic's life area over the primary-house default — otherwise
+    # a legal question (6th house) is mis-tagged as "health" for deep evidence
+    # and the remedy block.
+    _TOPIC_AREA = {
+        "job_change": "career", "promotion": "career", "business": "career",
+        "money": "money", "property": "home", "foreign": "inner",
+        "study": "learning", "health": "health", "children": "children",
+        "marriage": "love", "legal": "legal",
+    }
+    area_key = _TOPIC_AREA.get(topic.key) or _area_for(primary)
     promise = CF.area_verdict(pc, area_key, primary)
     promise = CF.merge_semantic_verdict(area_key, promise)
 
@@ -337,7 +519,7 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
     else:
         try:
             import semantic_question as SQ
-            r = SQ.route(question)
+            r = SQ.route(question, area=area)
             route_info = {
                 "domain": r.domain, "primary_house": r.primary_house,
                 "topic": r.topic, "method": r.method,
@@ -394,14 +576,17 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
             "strong_count": len(strong), "horizon": years,
             "start": start, "deep": deep,
             "deep_verdict": (deep.get("overall") or {}).get("text", ""),
-            "route": route_info, "area_key": area_key,
+            "route": route_info, "area_key": area_key, "area": area or "",
             "n_methods": n_methods, "n_up": n_up, "n_down": n_down,
             "prediction": prediction, "area_report": area_report}
 
 
 def _area_for(house: int) -> str:
+    # House 6 is only a Topic's primary house for the legal topic today (health's
+    # primary is 1), so repointing it away from "health" does not affect anything
+    # else — it just stops a court-case question from getting sleep-and-energy prose.
     return {10: "career", 2: "money", 7: "love", 4: "home", 5: "children",
-            1: "health", 9: "learning", 12: "inner", 6: "health",
+            1: "health", 9: "learning", 12: "inner", 6: "legal",
             3: "career", 11: "money", 8: "health"}.get(house, "career")
 
 
@@ -469,7 +654,8 @@ def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
   <div class="qa-asked"><b>You asked:</b> {question}</div>
   {route_block}
   <p class="qa-lede">{who}here is what your chart is doing on this question now.
-  The straight answer, dated windows and remedy are in the paid reading.</p>
+  The straight answer, the dated timing windows, and the remedy for what to
+  do inside them are in the paid reading.</p>
 
   <div class="qa-promise">
     <b>{label}</b> is read from your {houses} houses. {note}
@@ -484,18 +670,19 @@ def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
   </div>
 
   <div class="qa-window locked">
-    <div class="qa-wlabel">When it can happen</div>
+    <div class="qa-wlabel">Timing — when to move</div>
     <p class="blurred">The strongest window falls between XXXXXXX XXXX and
     XXXXXXX XXXX, with a nearer partial window before it.</p>
     <p><b>{n} windows were found and scored across the next {horizon}
-    years.</b> The unlock gives you every date, which of them your chart
-    actually backs, and what to do inside each one — ₹{price}.</p>
+    years.</b> Unlock for every date, which of them your chart actually backs,
+    and the remedy that tips each one your way — ₹{price}.</p>
   </div>
 
   <div class="qa-window locked">
     <div class="qa-wlabel">The remedy</div>
     <p class="blurred">What to strengthen or pacify for this question — the
-    classical answer tied to the planets that rule it.</p>
+    classical answer tied to the planets that rule it, plus the practical
+    step that matters more than any stone.</p>
   </div>
 </section>""".format(
         question=_e(result["question"]),
@@ -520,6 +707,13 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     if not best:
         # Refusing is a real answer. Inventing a date is how this category
         # earned its reputation.
+        house_rows = "".join(
+            f"<li><b>{_e(label)}</b>{' — ' + _e(detail) if detail else ''}</li>"
+            for label, detail in (result.get("chart_lines") or []) if label)
+        house_block = (
+            f'<div class="evidence"><span class="ev-label">The house and '
+            f'planet behind this</span><ul>{house_rows}</ul></div>'
+            if house_rows else "")
         return f"""
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
@@ -528,17 +722,31 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   <p>That is a real finding, not a dodge. The houses that govern this
   ({', '.join(_ord(h) for h in topic.houses)}) get no strong planetary trigger
   in that time. Anyone who gives you a date from this chart is guessing.</p>
+  {house_block}
 </section>"""
 
-    lead = ("Yes — and the chart is specific about when."
-            if best["strong"] else
-            "Yes, but the timing is narrower than you would like.")
+    intent = _intent(result.get("question", ""))
+    direction_word = {"up": "supports", "down": "does not favour",
+                       "mixed": "is mixed on"}.get(promise["direction"], "is mixed on")
+
+    if intent in ("how", "general"):
+        # "How is my 5th house" is not a yes/no question — answering it with
+        # "Yes — and the chart is specific about when" is a non sequitur.
+        # Lead with what the chart actually shows, timing stays below as
+        # supporting evidence rather than the headline.
+        lead = (f"Your chart {direction_word} {topic.subject}.")
+        promise_heading = "What your chart shows"
+    else:
+        lead = ("Yes — and the chart is specific about when."
+                if best["strong"] else
+                "Yes, but the timing is narrower than you would like.")
+        promise_heading = "Does your chart even offer this?"
+        if promise["direction"] == "down" and not best["strong"]:
+            lead = ("This is possible but your chart does not favour it. "
+                    "The window below is the best of a weak set.")
     deep_txt = (result.get("deep_verdict") or "").strip()
     if deep_txt:
         lead = f"{deep_txt} {lead}"
-    if promise["direction"] == "down" and not best["strong"]:
-        lead = ("This is possible but your chart does not favour it. "
-                "The window below is the best of a weak set.")
 
     def _window_scenario(w: dict) -> str:
         if w.get("strong"):
@@ -628,6 +836,21 @@ def render(result: dict, *, name: str = "", paid: bool = False,
             f'<div class="prediction"><p class="pred-scenario">'
             f'{_e(promise["headline"])}</p></div>')
 
+    # The house-by-house, planet-by-planet reasoning was always computed in
+    # answer() but never shown — the reader only saw a verdict and dates,
+    # never the chart that produced them. Surfacing it here is what makes
+    # this a chart reading rather than a fortune-cookie yes/no.
+    house_rows = "".join(
+        f"<li><b>{_e(label)}</b>{' — ' + _e(detail) if detail else ''}</li>"
+        for label, detail in (result.get("chart_lines") or []) if label)
+    house_block = (
+        f'<div class="evidence"><span class="ev-label">The house and planet '
+        f'behind this</span><ul>{house_rows}</ul></div>') if house_rows else ""
+
+    now_label = (result.get("now_label") or "").strip()
+    now_line = (f'<p class="qa-now">Right now you are running <b>{_e(now_label)}</b>.</p>'
+               if now_label else "")
+
     return f"""
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
@@ -635,13 +858,18 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   then the chart behind it.</p>
   <h2 class="qa-verdict">{_e(lead)}</h2>
   {main_pred}
-  <p class="qa-promise"><b>Does your chart even offer this?</b>
+  <p class="qa-promise"><b>{_e(promise_heading)}</b>
   {_e(topic.label)} reads <b>{_e(promise['direction'])}</b> in your chart —
   {_e(promise_conf)}. {_e(topic.note)}</p>
+  {now_line}
+  {house_block}
+  <h3 class="sec">Timing — when to move</h3>
+  <p class="sec-note">These are the windows where the period and the sky agree
+  with the houses that own this question.</p>
   {blocks}
   {gap_note}
   <p class="qa-caveat">Timing is a window, not a date. What the chart says is
   <em>when the conditions are right</em> — you still have to apply, ask, and
-  move inside it.</p>
+  move inside it. The remedy below is what tips those windows your way.</p>
   {upsell}
 </section>"""
