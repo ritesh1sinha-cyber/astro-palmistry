@@ -158,7 +158,6 @@ main{position:relative;z-index:1;padding-bottom:120px}
 }
 .hero p.lede{font-size:clamp(16px,2.2vw,18px);color:var(--muted);max-width:42ch;margin:0 0 28px}
 .hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:26px}
-.hero-logo{width:clamp(64px,9vw,84px);height:auto;margin-bottom:18px;border-radius:50%}
 .tagline{
   font-family:var(--serif);font-weight:600;letter-spacing:-.01em;
   font-size:clamp(19px,2.6vw,25px);line-height:1.35;margin:0 0 10px;
@@ -195,11 +194,12 @@ main{position:relative;z-index:1;padding-bottom:120px}
 .trust span{display:flex;align-items:center;gap:7px}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--gold)}
 .palm-art{
-  position:relative;border-radius:24px;padding:32px 28px;
-  background:linear-gradient(145deg,#faf8f4 0%,#f0ece3 100%);
-  border:1px solid var(--line);box-shadow:var(--shadow)
+  position:relative;border-radius:24px;padding:22px;
+  background:linear-gradient(145deg,#0d1220 0%,#171d30 100%);
+  border:1px solid var(--line);box-shadow:var(--shadow);
+  display:flex;align-items:center;justify-content:center
 }
-.palm-art svg{width:100%;height:auto;max-width:320px;margin:0 auto}
+.palm-art img{width:100%;height:auto;max-width:400px;display:block;margin:0 auto}
 .float-chip{display:none}
 
 /* ---------- steps ---------- */
@@ -576,7 +576,6 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
  <div class="wrap hero">
   <div class="hero-grid">
    <div>
-    <img class="hero-logo" src="img/logo.png" alt="GrahaRekha — astrology, palmistry, numerology">
     <div class="eyebrow">Twelve methods · one verdict</div>
     <h1 class="brand-hero">GrahaRekha</h1>
     <p class="brand-sub">graha · planet &nbsp;·&nbsp; rekha · line</p>
@@ -595,17 +594,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
     </div>
    </div>
    <div class="palm-art">
-    <svg viewBox="0 0 300 340" fill="none" aria-hidden="true">
-     <path d="M96 300c-14-16-27-34-31-53-3-13 13-22 22-11l14 17V116a13 13 0 0 1 26 0v52m0 0V96a13 13 0 0 1 26 0v66m0-3V99a13 13 0 0 1 26 0v58m0-2v-32a13 13 0 0 1 26 0v75c0 38-28 67-63 67-21 0-36-7-46-21" stroke="url(#gg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".92"/>
-     <path d="M104 195c22 6 36 22 41 44" stroke="#c9a227" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>
-     <path d="M100 213c26 2 44 15 53 34" stroke="#e3c76d" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>
-     <path d="M112 250c16-3 30 3 39 16" stroke="#f4d79b" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>
-     <circle cx="145" cy="239" r="3" fill="#f4d79b"/><circle cx="163" cy="216" r="2.4" fill="#c9a227"/><circle cx="122" cy="266" r="2.2" fill="#e3c76d"/>
-     <circle cx="240" cy="60" r="2" fill="#f4d79b" opacity=".8"/><circle cx="264" cy="102" r="1.4" fill="#f4d79b" opacity=".6"/><circle cx="40" cy="70" r="1.6" fill="#f4d79b" opacity=".6"/><circle cx="62" cy="40" r="1.2" fill="#c9a227" opacity=".7"/>
-     <path d="M240 60l24 42M40 70l22-30" stroke="#f4d79b" stroke-width=".7" opacity=".35"/>
-    </svg>
-    <div class="float-chip fc1" aria-hidden="true"></div>
-    <div class="float-chip fc2" aria-hidden="true"></div>
+    <img src="img/logo.png" alt="GrahaRekha — astrology, palmistry, numerology. One verdict.">
    </div>
   </div>
  </div>
