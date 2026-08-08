@@ -83,9 +83,21 @@ def _scrub(html: str) -> str:
         from no_longevity import scrub
     except Exception:                                                # noqa: BLE001
         return html
-    if "<style" not in html and "<script" not in html:
-        return scrub(html)
+    out = scrub(html) if "<style" not in html and "<script" not in html \
+        else _scrub_stashed(html, scrub)
 
+    # Direct, concise voice — cut filler without touching a fact. The card
+    # design skips `astro_voice.personalise` for most kinds, so this is the
+    # only gate horary / daily / numerology / muhurat / BTR prose passes.
+    try:
+        from astro_voice import concise
+        out = concise(out)
+    except Exception:                                                # noqa: BLE001
+        pass
+    return out
+
+
+def _scrub_stashed(html: str, scrub) -> str:
     import re as _re
     keep: list[str] = []
 

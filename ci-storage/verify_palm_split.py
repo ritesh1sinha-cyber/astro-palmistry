@@ -23,6 +23,7 @@ RIGHT = FIX / "real_right.jpg"
 UNLOCKED_EVIDENCE = re.compile(
     r'<div class="evidence"><span class="ev-label">What your hands show</span>')
 AREA = re.compile(r'<span class="area">([^<]+)</span>')
+CUSTOMER_JUNK = ("triplicity", "chart-from-palm", "weekday-born", "phalange count")
 
 
 def req(method, path, body=None, token=None, timeout=120):
@@ -123,6 +124,8 @@ def main():
     c.has("free", free, "data-unlock")
     c.has("free", free, "What the full reading adds")
     c.has("free", free, "palm-imgs")
+    c.has("free", free, "Left hand")
+    c.has("free", free, "Right hand")
     c.has("free", free, "evidence locked-inline")
     # Always present: it is built from hand shape, thumb and fingers, not from
     # the dated markings, which the engine only produces for the major lines.
@@ -139,6 +142,8 @@ def main():
 
     # paid: everything unlocked, and it is a superset
     c.has("paid", paid, "palm-imgs")
+    c.has("paid", paid, "Left hand")
+    c.has("paid", paid, "Right hand")
     c.has("paid", paid, '<ul class="palm-points">')
     c.has("paid", paid, '<details class="workings')
     c.has("paid", paid, "Mount by mount")
@@ -148,6 +153,10 @@ def main():
     c.lacks("paid", paid, 'data-unlock="1"')
     c.want(bool(UNLOCKED_EVIDENCE.search(paid)), "paid",
            "evidence lists present under the cards")
+
+    for label, html in (("free", free), ("paid", paid)):
+        for phrase in CUSTOMER_JUNK:
+            c.lacks(label, html.lower(), phrase)
 
     # the free half must hide no life area
     free_areas, paid_areas = set(AREA.findall(free)), set(AREA.findall(paid))

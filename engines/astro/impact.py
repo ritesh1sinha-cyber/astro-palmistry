@@ -6,6 +6,16 @@ from typing import Any, Optional
 
 from report_language import client_prose
 
+
+def _ord(n: Any) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return str(n)
+    return f"{n}" + ("th" if 10 <= n % 100 <= 20
+                     else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
+
+
 # What each dasha lord tends to do in real life (area-agnostic baseline).
 DASHA_IMPACT = {
     "Sun": "visibility and authority move — put your name on work that outlasts the quarter",
@@ -91,7 +101,7 @@ def placement_impact(planet: str, house: Any, dignity: str = "",
     dig_line = DIGNITY_IMPACT.get(dig, DIGNITY_IMPACT["neutral_sign"])
     try:
         h = int(house)
-        house_phrase = f"the {h}th house"
+        house_phrase = f"the {_ord(h)} house"
     except (TypeError, ValueError):
         house_phrase = "this house"
     return client_prose(f"{planet} in {house_phrase}: {dig_line}.")

@@ -8,6 +8,15 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+
+def _ord(n: Any) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return str(n)
+    return f"{n}" + ("th" if 10 <= n % 100 <= 20
+                     else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
+
 try:
     from client_report_html import client_css, floating_toc_html, finalize_report_html
 except ImportError:
@@ -474,7 +483,7 @@ def _moonology_section(mo: dict) -> str:
     if mo.get("house_oil") or mo.get("house_archangel") or mo.get("house_goddess"):
         cosmic_block = f"""
   <div class="card" style="border-left:4px solid #7ec8e3">
-    <h3>Cosmic helpers - {_e(mo.get('house_zone', ''))} ({_e(mo.get('house_from_asc', ''))}th House)</h3>"""
+    <h3>Cosmic helpers - {_e(mo.get('house_zone', ''))} ({_ord(mo.get('house_from_asc', ''))} House)</h3>"""
         if mo.get("house_oil"):
             cosmic_block += (
                 f'<p class="body"><strong>Essential oil:</strong> {_e(mo["house_oil"])} - '
@@ -532,7 +541,7 @@ def _moonology_section(mo: dict) -> str:
     </div>
   </div>
   <div class="card">
-    <h3>Your {_e(mo.get('house_from_asc', ''))}th House today - {_e(mo.get('house_zone', ''))}</h3>
+    <h3>Your {_ord(mo.get('house_from_asc', ''))} House today - {_e(mo.get('house_zone', ''))}</h3>
     <p class="when">{_e(mo.get('natal_asc_sign', ''))} rising | {_e(mo.get('house_focus', ''))}</p>
     <p class="body">{_e(mo.get('house_summary', ''))}</p>
     <p class="body">{_e(mo.get('house_do', ''))}</p>
@@ -602,7 +611,7 @@ def generate_daily_prediction_html(data: dict[str, Any]) -> str:
   <div class="daily-grid">
     <div class="card">
       <h3>Moon - emotional weather</h3>
-      <p class="when">{_e(mt.get('sign', ''))} | {_e(mt.get('nakshatra', ''))} pada {_e(mt.get('pada', ''))} | {_e(mt.get('house_from_moon', ''))}th from birth Moon</p>
+      <p class="when">{_e(mt.get('sign', ''))} | {_e(mt.get('nakshatra', ''))} pada {_e(mt.get('pada', ''))} | {_ord(mt.get('house_from_moon', ''))} from birth Moon</p>
       <p class="body">Tarabala: <strong>{_e(tara.get('name', ''))}</strong> ({_e(tara.get('tone', ''))}). {_e(tara.get('note', ''))}</p>
       <p class="body">Chandrabal: <strong>{_e(chandra.get('name', ''))}</strong> ({_e(chandra.get('tone', ''))}).</p>
       <p class="fine">{_e(av.get('sav_line', ''))}</p>

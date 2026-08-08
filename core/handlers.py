@@ -202,7 +202,7 @@ def h_chart_summary(user: dict, p: dict) -> dict:
                          "ad": cur.get("ad_lord"), "from": cur.get("start"),
                          "to": cur.get("end")},
         "age": meta.get("age"), "ayanamsa": meta.get("ayanamsa"),
-        "personalNote": V.humanise(V.chart_opening(_voice_ctx(pc, chart))),
+        "personalNote": V.concise(V.humanise(V.chart_opening(_voice_ctx(pc, chart)))),
     }
 
 
@@ -502,7 +502,7 @@ def h_daily(user: dict, p: dict) -> dict:
                                     longitude=float(chart["lon"]),
                                     timezone=float(chart["tz_offset"]))
     if isinstance(data, dict):
-        data["personal_note"] = V.humanise(V.chart_opening(_voice_ctx(pc, chart))) \
+        data["personal_note"] = V.concise(V.humanise(V.chart_opening(_voice_ctx(pc, chart)))) \
             .replace("<p>", "").replace("</p>", "")
 
     free_html, paid_html, meta = RD.daily(

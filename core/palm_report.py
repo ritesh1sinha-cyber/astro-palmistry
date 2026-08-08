@@ -456,6 +456,7 @@ def _scrub_palm_html(html: str) -> str:
     try:
         import astro_voice as V
         out = V.strip_citations(V.strip_machinery(out), hide_system_names=True)
+        out = V.concise(out)
     except Exception:                                                 # noqa: BLE001
         pass
     for i, block in enumerate(keep):
@@ -467,7 +468,7 @@ def _scrub_palm_html(html: str) -> str:
     except Exception:                                                 # noqa: BLE001
         pass
     try:
-        import palm_voice as PV
+        from palm_api import palm_voice as PV
         out = PV.polish_html(out)
     except Exception:                                                 # noqa: BLE001
         pass
@@ -550,6 +551,7 @@ def build_palm_html_reading(raw: dict, p: dict, *,
     guidance = (dom.get("features") or {}).get("photo_guidance") or {}
 
     meta = {
+        "design": "cards-v2",
         "dominantHand": dom_key,
         "handType": ((dom.get("features") or {}).get("morphology") or {}).get("hand_type"),
         "photoQuality": quality.get("grade"),

@@ -14,6 +14,7 @@ classic confluence weighting (both hands agree = stable, dependable trait).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
@@ -288,6 +289,39 @@ def _strength(matched: int, reinforced: int) -> tuple[str, str]:
     return "none", ""
 
 
+_MAX_POINTS_PER_ASPECT = 2
+_ASTRO_LEAK = re.compile(
+    r"\b(?:ascendant|capricorn|aquarius|pisces|aries|taurus|gemini|cancer|"
+    r"leo|virgo|libra|scorpio|sagittarius|triplicity|weekday-born|paksha|"
+    r"chart-from-palm|phalange)\b",
+    re.I,
+)
+
+
+def _point_signature(text: str) -> frozenset[str]:
+    """A light, deterministic near-duplicate check for customer copy."""
+    words = re.findall(r"[a-z]{4,}", (text or "").lower())
+    return frozenset(words)
+
+
+def _is_distinct(text: str, accepted: list[dict[str, Any]]) -> bool:
+    candidate = _point_signature(text)
+    if not candidate:
+        return False
+    for point in accepted:
+        prior = _point_signature(str(point.get("text") or ""))
+        overlap = len(candidate & prior) / max(1, min(len(candidate), len(prior)))
+        if overlap >= 0.72:
+            return False
+    return True
+
+
+def _customer_safe_signal(signal: dict[str, Any]) -> bool:
+    """Keep palm evidence, never the astro-palm bridge's speculative jargon."""
+    text = str(signal.get("text") or "").strip()
+    return bool(text) and not _ASTRO_LEAK.search(text)
+
+
 def build_life_aspects(
     blocks: dict[str, Any],
     active_hand: str,
@@ -310,14 +344,21 @@ def build_life_aspects(
         matched: list[Rule] = [r for r in RULES if r.aspect == akey and _safe(r.cond, dv)]
         if not matched:
             continue
+        # Prefer both-hand agreement, then longer/more specific claims.
+        ranked = sorted(
+            matched,
+            key=lambda r: (
+                1 if (nv and _safe(r.cond, nv)) else 0,
+                len(r.text),
+            ),
+            reverse=True,
+        )
         reinforced = 0
         points: list[dict[str, Any]] = []
         sentences: list[str] = []
-        seen_text: set[str] = set()
-        for r in matched:
-            if r.text in seen_text:
+        for r in ranked:
+            if len(points) >= _MAX_POINTS_PER_ASPECT or not _is_distinct(r.text, points):
                 continue
-            seen_text.add(r.text)
             both = bool(nv and _safe(r.cond, nv))
             if both:
                 reinforced += 1
@@ -334,7 +375,7 @@ def build_life_aspects(
         out.append({
             "key": akey,
             "title": atitle,
-            "summary": " ".join(sentences),
+            "summary": sentences[0] if sentences else "",
             "strength": level,
             "strength_note": level_note,
             "reinforced_count": reinforced,
@@ -348,19 +389,16 @@ def build_life_aspects(
         if akey not in dict(ASPECTS):
             continue
         row = by_key.get(akey)
+        # A bridge signal may support an evidence-backed palm aspect, but it
+        # must never create a standalone verdict from a secondary system.
         if not row:
-            title = dict(ASPECTS).get(akey, akey.title())
-            row = {
-                "key": akey, "title": title, "summary": "",
-                "strength": "none", "strength_note": "",
-                "reinforced_count": 0, "points": [],
-            }
-            out.append(row)
-            by_key[akey] = row
+            continue
         added = 0
-        for sig in sigs[:4]:
+        for sig in sigs:
+            if len(row["points"]) >= _MAX_POINTS_PER_ASPECT:
+                break
             txt = (sig.get("text") or "").strip()
-            if not txt or any(p.get("text") == txt for p in row["points"]):
+            if not _customer_safe_signal(sig) or not _is_distinct(txt, row["points"]):
                 continue
             row["points"].append(sig)
             row["summary"] = (row["summary"] + " " + txt).strip()

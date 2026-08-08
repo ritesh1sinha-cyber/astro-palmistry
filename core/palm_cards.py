@@ -56,30 +56,53 @@ def _data_uri(overlay_path: Optional[str]) -> str:
     p = Path(overlay_path)
     if not p.is_file():
         return ""
+    # A pair of full-resolution overlays can make an iframe document several
+    # megabytes long. Some phone browsers then paint the first image and silently
+    # abandon the second. Embed a display-sized JPEG instead; the original stays
+    # in object storage for the archive.
+    data = p.read_bytes()
+    try:
+        from io import BytesIO
+        from PIL import Image
+
+        with Image.open(BytesIO(data)) as image:
+            image = image.convert("RGB")
+            image.thumbnail((900, 1200))
+            out = BytesIO()
+            image.save(out, format="JPEG", quality=82, optimize=True)
+            data = out.getvalue()
+    except Exception:  # Pillow is optional; a valid original still renders.
+        pass
     import base64
-    return "data:image/jpeg;base64," + base64.b64encode(p.read_bytes()).decode("ascii")
+    return "data:image/jpeg;base64," + base64.b64encode(data).decode("ascii")
 
 
 def _photos(raw: dict, dom_key: str) -> str:
     figs = ""
     for hand in ("left", "right"):
         src = _data_uri((raw.get(hand) or {}).get("overlay_path"))
-        if not src:
-            continue
         role = "dominant — what you have made of it" if hand == dom_key \
             else "innate — what you were handed"
-        figs += (f'<figure><img src="{src}" alt="{hand} palm with the '
-                 f'detected lines drawn on"/>'
+        if src:
+            visual = (f'<img src="{src}" alt="{hand} palm with the '
+                      f'detected lines drawn on"/>')
+        else:
+            # Do not make a missing overlay look like a missing upload. The
+            # reader needs a visible explanation and a retake path, not a
+            # mysteriously incomplete two-hand report.
+            visual = (f'<div class="palm-img-missing" role="img" aria-label="'
+                      f'{hand} palm overlay could not be prepared">Annotated '
+                      f'{hand} palm image unavailable. Please retake this hand '
+                      f'in bright, even light.</div>')
+        figs += (f'<figure>{visual}'
                  f'<figcaption>{hand.title()} hand · {role}</figcaption></figure>')
-    if not figs:
-        return ""
     return f"""
 <div class="palm-shots">
   <div class="ev-label">Your palms, as the engine read them</div>
   <div class="palm-imgs">{figs}</div>
   <p class="fine">These are your own photographs with the lines this reading is
-  built from drawn on top. If a line looks wrong to you, the reading of it will
-  be wrong too — retake the photo and run it again.</p>
+  built from drawn on top. If a hand is unavailable or a line looks wrong,
+  retake that photo in bright, even light and run the reading again.</p>
 </div>"""
 
 
@@ -165,7 +188,9 @@ def _aspect_card(a: dict, *, paid: bool) -> str:
 def _hands_compare(conf: dict) -> str:
     rows = ""
     for li in conf.get("lines") or []:
-        if not li.get("statement"):
+        # The life-area cards already state the stable traits. This comparison
+        # earns its place only where the innate and developed hands differ.
+        if not li.get("statement") or li.get("agreement") == "reinforced":
             continue
         rows += (f'<li><b>{_e(li.get("title"))}</b>'
                  f'<p>{_e(li.get("statement"))}</p></li>')
@@ -235,7 +260,7 @@ def _read_to_today(items: List[dict], *, first: str, age: int) -> str:
 
 def _mark_zone_plain(zone: str) -> str:
     try:
-        import palm_voice as PV
+        from palm_api import palm_voice as PV
         return PV._mount_name((zone or "palm").lower())
     except Exception:  # noqa: BLE001
         return "your palm"
@@ -303,18 +328,31 @@ calendar. Treat the age as a window, not a day.</p>
 
 def _mounts(conf: dict, items: List[dict]) -> str:
     rows = ""
+    seen: set[str] = set()
+
+    def add(text: str) -> bool:
+        key = re.sub(r"\W+", " ", text.lower()).strip()
+        if not key or key in seen:
+            return False
+        seen.add(key)
+        return True
+
     for i in items:
         if i.get("kind") != "mount" or not _verdict(i):
             continue
         verdict = _verdict(i)
+        if not add(verdict):
+            continue
         if "Why:" in verdict:
             rows += f'<li>{_e(verdict).replace(chr(10), "<br/>")}</li>'
         else:
             rows += (f'<li><p class="pred-scenario"><b>{_e(i.get("title"))}</b> — '
                      f'{_e(verdict)}</p>'
                      f'<p class="pred-why"><b>Why:</b> {_e(i.get("title", "mount"))} area</p></li>')
-    rows += "".join(f'<li><p>{_e(m.get("statement"))}</p></li>'
-                    for m in (conf.get("mounts") or []) if m.get("statement"))
+    for mount in conf.get("mounts") or []:
+        statement = str(mount.get("statement") or "")
+        if add(statement):
+            rows += f'<li><p>{_e(statement)}</p></li>'
     if not rows:
         return ""
     return f"""
@@ -403,9 +441,9 @@ def _locked_preview(*, price: int, n_areas: int, n_ahead: int, n_marks: int,
   <h3 class="sec">What the full reading adds</h3>
   <div class="card">{items}</div>
   <div class="buy">
-    <h3>The working and the dates</h3>
-    <p>You have the verdict on every area of your life. Unlock why your hands
-    say it, and when it happens.</p>
+    <h3>See the pattern beneath the first reading</h3>
+    <p>You have the part you can check against your own hands. Unlock the
+    supporting signs, forward age windows, marks and hand-specific guidance.</p>
     <a class="cta" href="#unlock" data-unlock="1">Unlock &mdash; &#8377;{price}</a>
   </div>
 </section>"""

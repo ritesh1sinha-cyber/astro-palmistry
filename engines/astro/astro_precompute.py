@@ -66,6 +66,15 @@ NAK_ALIASES = {
 }
 
 
+def _ord(n) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return str(n)
+    return f"{n}" + ("th" if 10 <= n % 100 <= 20
+                     else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
+
+
 def normalize_nakshatra(raw: str) -> str:
     """Map PDF/OCR nakshatra labels to canonical NAKSHATRAS entries."""
     if not raw:
@@ -1318,7 +1327,7 @@ def compute_pillar(planets: dict, lagna: dict, lagna_sign: str) -> dict:
             ph = house_from_lagna(ps, lagna_sign)
             if ph in [3,6,11]:
                 yogas.append(
-                    f"{p} in the {ph}th house — a growth placement that builds "
+                    f"{p} in the {_ord(ph)} house — a growth placement that builds "
                     f"competitive strength over time"
                 )
     # Exalted planet in kendra

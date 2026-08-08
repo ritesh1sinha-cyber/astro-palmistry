@@ -278,6 +278,49 @@ def _curvature(poly: list[tuple[float, float]]) -> float:
     return float(maxd / clen)
 
 
+def _waviness(poly: list[tuple[float, float]]) -> tuple[int, float]:
+    """Oscillation of a line ABOUT its own smooth trend (distinct from overall bow).
+
+    We take the signed perpendicular offset from the chord, remove the single big
+    bow with a light moving average, and measure the residual: how many times it
+    crosses zero (undulations) and its RMS amplitude. A simple arc has ~0 residual
+    crossings; a WAVY / chained line snakes back and forth -> several crossings.
+    Returns (zero_crossings, rms_amplitude_normalized_by_chord).
+    """
+    if len(poly) < 6:
+        return 0, 0.0
+    a = np.asarray(poly[0], float)
+    b = np.asarray(poly[-1], float)
+    chord = b - a
+    clen = np.linalg.norm(chord)
+    if clen < 1e-6:
+        return 0, 0.0
+    chord_u = chord / clen
+    offs = np.asarray([
+        ((np.asarray([px, py], float) - a)[0] * chord_u[1]
+         - (np.asarray([px, py], float) - a)[1] * chord_u[0]) / clen
+        for px, py in poly
+    ])
+    k = max(3, len(offs) // 3)
+    pad = np.pad(offs, (k // 2, k - 1 - k // 2), mode="edge")
+    trend = np.convolve(pad, np.ones(k) / k, mode="valid")[: len(offs)]
+    resid = offs - trend
+    signs = np.sign(resid)
+    signs[signs == 0] = 1
+    crossings = int(np.sum(signs[1:] != signs[:-1]))
+    amp = float(np.sqrt(np.mean(resid ** 2)))
+    return crossings, amp
+
+
+def _line_shape(curv: float, crossings: int, amp: float) -> str:
+    """Classify a line's overall form for book matching."""
+    if crossings >= 3 and amp > 0.012:
+        return "wavy"
+    if curv > 0.10:
+        return "curved"
+    return "straight"
+
+
 def _ridge_coverage(
     poly: list[tuple[float, float]], ridge_bin: np.ndarray, size: int
 ) -> float:
@@ -309,6 +352,7 @@ def line_props_from_polyline(
     length_ratio = length / float(size)
     coverage = _ridge_coverage(poly, ridge_bin, size)
     curv = _curvature(poly)
+    wav_c, wav_a = _waviness(poly)
 
     if coverage > 0.6:
         depth = "deep"
@@ -322,6 +366,8 @@ def line_props_from_polyline(
         "depth": depth,
         "length_ratio": round(length_ratio, 3),
         "curvature": round(curv, 3),
+        "waviness": round(wav_a, 3),
+        "shape": _line_shape(curv, wav_c, wav_a),
         "ridge_coverage": round(coverage, 3),
         "segment_count": max(1, int(round(coverage * 6))),
         "quality": "clear" if coverage > 0.45 else "faint",
@@ -336,8 +382,11 @@ def line_props_from_polyline(
         out["reach"] = "wrist" if ys[-1] > 0.80 else "partial"
         out["sweep"] = "wide" if curv > 0.12 else "close_to_thumb"
     elif key == "head":
+        # "Moon" direction = clear slope into Luna (lower percussion), not a
+        # slight vertical drift of an otherwise straight head line.
         slope = ys[-1] - ys[0]
-        out["direction"] = "moon" if slope > 0.06 else "straight"
+        end_x = xs[-1]
+        out["direction"] = "moon" if (slope > 0.12 and end_x < 0.42) else "straight"
         out["length"] = "long" if length_ratio > 0.62 else "short"
     elif key == "heart":
         out["height"] = "high" if min(ys) < 0.34 else "normal"
@@ -382,6 +431,9 @@ def detect_major_lines(
         )
         props = line_props_from_polyline(key, poly, ridge_bin, size)
         out[key] = {"points": poly, "props": props}
+    # NOTE: the head/life START relationship (joined vs separated) is computed once,
+    # canonically, in analyzer._head_life_relation on the un-flipped polylines and
+    # written to lines["head"]["start_relation"]. Do not duplicate it here.
     return out
 
 

@@ -46,6 +46,9 @@ BANNED_PHRASES = (
     "triplicity",
     "weekday-born",
     "lunar half",
+    "triplicity",
+    "ascendant",
+    "chart-from-palm",
 )
 
 
@@ -106,8 +109,6 @@ def polish_html(html: str) -> str:
         out = out.replace(phrase, "")
     for pat in BANNED_PREFIXES:
         out = re.sub(pat, "", out, flags=re.I)
-    out = out.replace(" on your ", " on the ")
-    out = out.replace(" mount", " area")
     return out
 
 

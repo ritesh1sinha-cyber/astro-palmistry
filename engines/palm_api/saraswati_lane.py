@@ -221,8 +221,10 @@ def signals(
         right = paths[0]
 
     merged: dict[str, list] = {}
-    for block in (_phalange_signals(paths),
-                  _morphology_signals(left, right),
+    # Phalange-derived astrology emits sign, weekday and triplicity claims.
+    # Those are not evidence-based palm findings for this product, so they are
+    # intentionally not part of the customer report.
+    for block in (_morphology_signals(left, right),
                   _longevity_signal(dom_feats or {}),
                   _zone_signals(paths)):
         for key, rows in block.items():

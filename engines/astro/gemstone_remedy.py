@@ -27,6 +27,16 @@ except ImportError:
     client_css = lambda: ""  # noqa: E731
     finalize_report_html = lambda h, client_name="": h  # noqa: E731
 
+
+def _ord(n: Any) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return str(n)
+    return f"{n}" + ("th" if 10 <= n % 100 <= 20
+                     else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
+
+
 # rules41 gemstone table (authoritative)
 GEM_DATA: dict[str, dict[str, str]] = {
     "Sun": {
@@ -170,7 +180,7 @@ def _gem_safety(
     if ph in DUSTHANA and role not in ("Lagna lord", "H1 lord"):
         verdict = "avoid"
         reasons.append(
-            f"{planet} rules or sits in your {ph}th house — a pressure house; gem not advised")
+            f"{planet} rules or sits in your {_ord(ph)} house — a pressure house; gem not advised")
     if dig in DEBIL:
         if role in ("Lagna lord (H1)", "Lagna lord", "H1 lord") and planet == "Mercury":
             verdict = "mantra_only"
@@ -218,7 +228,7 @@ def _gem_safety(
             "moolatrikona": "on its best ground",
         }.get(dig, dig.replace("_", " "))
         reasons.append(
-            f"{planet} well placed ({dig_plain}, {ph}th house) — gem favourable if verdict allows")
+                f"{planet} well placed ({dig_plain}, {_ord(ph)} house) — gem favourable if verdict allows")
 
     wear_mode = "primary_ok"
     if verdict == "avoid":

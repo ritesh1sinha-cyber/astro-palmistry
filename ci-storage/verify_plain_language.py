@@ -158,8 +158,8 @@ def check_user_question() -> bool:
 
 def check_palm_html() -> bool:
     try:
-        sys.path.insert(0, str(ROOT / "engines" / "palm_api"))
-        import palm_voice as PV
+        sys.path.insert(0, str(ROOT / "engines"))
+        from palm_api import palm_voice as PV
         sample = (
             "As per your Mount of Jupiter, it is full — leadership."
             " Reading for you: you will lead."
@@ -194,8 +194,8 @@ def check_predict_voice_module() -> bool:
 
 def check_palm_voice_module() -> bool:
     try:
-        sys.path.insert(0, str(ROOT / "engines" / "palm_api"))
-        import palm_voice as PV
+        sys.path.insert(0, str(ROOT / "engines"))
+        from palm_api import palm_voice as PV
         p = PV.format_line_verdict("life", 34, {"depth": "deep"})
         if "As per" in p.text_block() or "Reading for you" in p.text_block():
             print("FAIL palm_voice banned prefix")

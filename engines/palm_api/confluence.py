@@ -62,7 +62,7 @@ def _line_confluence(
     if dom_det != non_det:
         present = dom_label if dom_det else non_label
         try:
-            import palm_voice as PV
+            from palm_api import palm_voice as PV
             pred = PV.compose(
                 scenario=(
                     f"Your {theme} reads clearly on your {present} hand only — "
@@ -80,7 +80,7 @@ def _line_confluence(
 
     ds, ns = _line_strength(dom), _line_strength(non)
     try:
-        import palm_voice as PV
+        from palm_api import palm_voice as PV
         if ds > ns + 1:
             agreement = "developed"
             pred = PV.line_confluence_statement(key, dom_label, theme, "developed")
@@ -119,24 +119,28 @@ def _mount_confluence(
         if d == 0 and n == 0:
             continue
         if abs(d - n) >= 1:
+            # `label` is "Planet (trait)" — the trait word is what belongs in a
+            # jargon-free sentence; the planet name itself is astrology jargon
+            # that has no place in a palmistry reading.
+            trait = label.split("(", 1)[1].rstrip(")").strip().lower() if "(" in label else label.lower()
             try:
-                import palm_voice as PV
+                from palm_api import palm_voice as PV
                 plain = PV._mount_name(m)
                 if d > n:
                     pred = PV.compose(
-                        scenario=f"You have grown into more {label.split('(')[0].strip().lower()} — "
+                        scenario=f"You have grown into more {trait} — "
                                  f"it shows more on your {dom_label} hand than you were born with.",
                         backing=f"{plain} stronger on {dom_label} hand",
                     )
                 else:
                     pred = PV.compose(
-                        scenario=f"Natural {label.split('(')[0].strip().lower()} is there — "
+                        scenario=f"Natural {trait} is there — "
                                  f"express it more; your {non_label} hand shows the fuller pattern.",
                         backing=f"{plain} stronger on {non_label} hand",
                     )
                 txt = pred.text_block()
             except Exception:  # noqa: BLE001
-                txt = f"Your {label} reads differently between hands."
+                txt = f"Your {trait} reads differently between hands."
             out.append({"mount": m, "statement": txt})
     return out
 
@@ -159,7 +163,7 @@ def _marks_confluence(
         title = m.get("title", "A mark")
         zone = str(m.get("zone", "palm")).lower()
         try:
-            import palm_voice as PV
+            from palm_api import palm_voice as PV
             loc = PV._mount_name(zone)
             return f"{title} on {loc}."
         except Exception:  # noqa: BLE001
@@ -169,7 +173,7 @@ def _marks_confluence(
     for kz, m in dom_marks.items():
         base = _base(m)
         try:
-            import palm_voice as PV
+            from palm_api import palm_voice as PV
             if kz in non_marks:
                 pred = PV.compose(
                     scenario=f"{base} It shows on both hands — give it real weight.",

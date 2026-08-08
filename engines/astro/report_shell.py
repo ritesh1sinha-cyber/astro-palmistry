@@ -282,6 +282,9 @@ align-items:baseline;padding:9px 0;border-top:1px solid var(--line);font-size:.8
 @media(max-width:480px){.palm-imgs{grid-template-columns:1fr}}
 .palm-imgs figure{margin:0}
 .palm-imgs img{width:100%;display:block;border:1px solid var(--line);border-radius:12px}
+.palm-img-missing{display:flex;align-items:center;justify-content:center;min-height:12rem;
+padding:16px;border:1px dashed var(--line);border-radius:12px;text-align:center;
+font-size:.82rem;line-height:1.45;color:var(--muted);background:#f6f4ef}
 .palm-imgs figcaption{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
 font-weight:600;color:var(--muted);margin-top:6px;text-align:center}
 .palm-scores{list-style:none;margin:10px 0 0;padding:0}

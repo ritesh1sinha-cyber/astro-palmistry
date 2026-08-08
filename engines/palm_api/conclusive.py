@@ -417,7 +417,7 @@ def _make_verdict(
 ) -> str:
     """One prediction + Why line in second person."""
     try:
-        import palm_voice as PV
+        from palm_api import palm_voice as PV
         if kind == "line":
             return PV.format_line_verdict(key, age, props).text_block()
         if kind == "mount":

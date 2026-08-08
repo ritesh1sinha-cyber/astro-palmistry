@@ -62,7 +62,7 @@ def _get_landmarker():
     if _landmarker is not None:
         return _landmarker
     _ensure_hand_model()
-    import mediapipe as mp
+    mp = _import_mediapipe()
 
     from palm_api.paths import HAND_MODEL
 
@@ -77,7 +77,7 @@ def _get_landmarker():
 
 
 def _detect_legacy(rgb: np.ndarray, w: int, h: int) -> np.ndarray | None:
-    import mediapipe as mp
+    mp = _import_mediapipe()
 
     if not hasattr(mp, "solutions"):
         return None
@@ -102,10 +102,38 @@ def _detect_legacy(rgb: np.ndarray, w: int, h: int) -> np.ndarray | None:
     return best_pts
 
 
+def _import_mediapipe():
+    """Import MediaPipe without letting `core/queue.py` shadow stdlib `queue`.
+
+    Several launchers put the project `core/` directory on PYTHONPATH. That makes
+    `import queue` resolve to our Redis job queue module, which then crashes
+    MediaPipe's own imports and silently kills landmark detection.
+    """
+    shadowed = [p for p in list(sys.path)
+                if Path(p).resolve().name == "core"
+                and (Path(p) / "queue.py").is_file()]
+    for p in shadowed:
+        sys.path.remove(p)
+    try:
+        # Drop a poisoned partial import if a previous attempt failed mid-way.
+        for name in list(sys.modules):
+            if name == "queue" or name.startswith("queue."):
+                mod = sys.modules.get(name)
+                origin = getattr(mod, "__file__", "") or ""
+                if origin.replace("\\", "/").endswith("/core/queue.py"):
+                    sys.modules.pop(name, None)
+        import mediapipe as mp
+        return mp
+    finally:
+        for p in reversed(shadowed):
+            if p not in sys.path:
+                sys.path.insert(0, p)
+
+
 def detect_hand_landmarks(bgr: np.ndarray) -> tuple[np.ndarray | None, str]:
     """Returns (21,2) pixel coords or None."""
     try:
-        import mediapipe as mp
+        mp = _import_mediapipe()
     except ImportError:
         return None, "mediapipe_not_installed"
 
@@ -746,14 +774,18 @@ def _classify_segments(
 # ---------------------------------------------------------------------------
 
 
+# Plain, jargon-free labels — the customer-facing report's finalize pass
+# (see `palm_voice.polish_html`) strips literal "Mount of X" phrasing anywhere
+# it appears, so these titles must already read in plain language rather than
+# the formal palmistry name, or the heading is silently blanked out.
 MOUNT_TITLES: dict[str, str] = {
-    "jupiter": "Mount of Jupiter",
-    "saturn": "Mount of Saturn",
-    "apollo": "Mount of Sun (Apollo)",
-    "mercury": "Mount of Mercury",
-    "mars": "Mount of Mars",
-    "venus": "Mount of Venus",
-    "moon": "Mount of Moon",
+    "jupiter": "The pad below your index finger",
+    "saturn": "The pad below your middle finger",
+    "apollo": "The pad below your ring finger",
+    "mercury": "The pad below your little finger",
+    "mars": "The pads at the base of your thumb",
+    "venus": "The fleshy base of your thumb",
+    "moon": "The lower outer edge of your palm",
 }
 
 # Order shown in numbered checklist and on overlay
@@ -789,7 +821,19 @@ def _mount_zones(wpts: np.ndarray, size: int) -> dict[str, tuple[int, int, int, 
 
 
 def _score_mounts(gray: np.ndarray, mask: np.ndarray, wpts: np.ndarray, size: int) -> dict[str, str]:
+    """Score mount fullness (prominent / moderate / flat).
+
+    Older std-only scoring marked lined Venus as prominent but smooth fleshy
+    Moon as flat. Combine (a) brightness vs palm mean (fuller pad is lighter
+    on typical photos) with (b) mild texture, so a full Moon is not demoted
+    just because Venus is busier with influence lines.
+    """
     zones = _mount_zones(wpts, size)
+    palm_vals = gray[mask > 0] if np.any(mask > 0) else gray.reshape(-1)
+    palm_mean = float(np.mean(palm_vals)) if palm_vals.size else 128.0
+    palm_std = float(np.std(palm_vals)) if palm_vals.size else 1.0
+    palm_std = max(palm_std, 1.0)
+
     scores: dict[str, float] = {}
     for name, (x0, y0, x1, y1) in zones.items():
         roi = gray[y0:y1, x0:x1]
@@ -798,19 +842,29 @@ def _score_mounts(gray: np.ndarray, mask: np.ndarray, wpts: np.ndarray, size: in
             scores[name] = 0.0
             continue
         vals = roi[mroi > 0] if np.any(mroi > 0) else roi.reshape(-1)
-        # Higher local std ≈ more raised / lined mount (very rough)
-        scores[name] = float(np.std(vals))
+        mean_v = float(np.mean(vals))
+        std_v = float(np.std(vals))
+        # Fullness: brighter / softer pad relative to palm; texture secondary.
+        fullness = (mean_v - palm_mean) / palm_std
+        texture = std_v / palm_std
+        score = 0.72 * fullness + 0.28 * texture
+        # Venus grille / influence lines are a classical "full Venus" signal.
+        if name == "venus" and texture > 1.05:
+            score += 0.40
+        scores[name] = score
     if not scores:
         return {k: "unknown" for k in zones}
 
     vals = list(scores.values())
     med = float(np.median(vals))
+    # Absolute floors so a clearly full pad is never "flat" just because
+    # another mount (e.g. heavily lined Venus) dominates the relative scale.
     out = {}
     for k, v in scores.items():
-        if v < med * 0.85:
-            out[k] = "flat"
-        elif v > med * 1.15:
+        if v >= med + 0.35 or v >= 0.55:
             out[k] = "prominent"
+        elif v <= med - 0.45 and v < -0.15:
+            out[k] = "flat"
         else:
             out[k] = "moderate"
     return out
@@ -975,21 +1029,49 @@ def _head_life_relation(
 ) -> str | None:
     """Classify how the head line begins relative to the life line.
 
-    Both lines start near the index/thumb-web (top of the canonical palm).
-    Returns 'merged' (rise together), 'separated' (normal gap) or
-    'separated_wide' (large gap -> independent/reckless).
+    Book basis (All the Secrets of Palmistry, Fig. 18-E/F): lines that
+    *originate as one* and separate after a short travel = joined/merged
+    (cautious / low childhood confidence). A true gap at the start =
+    separated; a wide gap = independent / reckless.
+
+    Template tracers often place the very first head sample a little off the
+    life crease even when the next stretch rides with life — so we classify
+    from the **early path**, not a single endpoint distance.
     """
     if not head_poly or not life_poly or size <= 0:
         return None
-    hs = head_poly[0]
-    # Nearest point on the life line to the head's start (life start is its
-    # upper end; compare against the upper portion of the life polyline).
-    upper_life = [p for p in life_poly if p[1] <= life_poly[0][1] + 0.18 * size] or life_poly
-    d = min(((hs[0] - p[0]) ** 2 + (hs[1] - p[1]) ** 2) ** 0.5 for p in upper_life)
-    frac = d / float(size)
-    if frac < 0.045:
+
+    def _d2(a: tuple[float, float], b: tuple[float, float]) -> float:
+        return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+
+    def _min_dist(pt: tuple[float, float], poly: list[tuple[float, float]]) -> float:
+        return min((_d2(pt, p) ** 0.5) for p in poly)
+
+    # Orient head so index 0 is the radial origin (near life start / thumb-web).
+    life_start = life_poly[0]
+    head = list(head_poly)
+    if _d2(head[-1], life_start) < _d2(head[0], life_start):
+        head.reverse()
+
+    # Life upper portion (origin side) — prefer matching against this.
+    y0 = life_poly[0][1]
+    upper_life = [p for p in life_poly if p[1] <= y0 + 0.28 * size] or life_poly
+
+    early_n = max(8, min(len(head), max(len(head) // 5, 12)))
+    early = head[:early_n]
+    dists = [_min_dist(p, upper_life) / float(size) for p in early]
+    d_min = float(min(dists))
+    d_mean = float(sum(dists) / len(dists))
+    # Share of early samples that still hug the life crease.
+    close = sum(1 for d in dists if d < 0.055) / float(len(dists))
+    # How soon they stay close: first half of early window.
+    half = dists[: max(4, len(dists) // 2)]
+    half_mean = float(sum(half) / len(half))
+
+    # Joined / merged: early travel with life (book "rise as one then separate").
+    if d_mean < 0.065 or half_mean < 0.055 or (d_min < 0.035 and close >= 0.30):
         return "merged"
-    if frac < 0.11:
+    if d_mean < 0.105 or d_min < 0.07:
         return "separated"
     return "separated_wide"
 

@@ -52,6 +52,16 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
+
+def _ord(n: Any) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return str(n)
+    return f"{n}" + ("th" if 10 <= n % 100 <= 20
+                     else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
+
+
 # Which divisional chart owns which life area, classically.
 AREA_VARGA = {
     "career": ("D10", "the career chart"),
@@ -410,7 +420,7 @@ def area_votes(pc: dict, area_key: str, house: int) -> list:
         "the classical method",
         base,
         f"{lord} rules it, {dignity.replace('_', ' ')}"
-        + (f", placed in your {lord_house}th" if lord_house else "")))
+        + (f", placed in your {_ord(lord_house)}" if lord_house else "")))
 
     # 2. Ashtakavarga
     sav = (pc.get("ashtakavarga", {}) or {}).get("sav") or []

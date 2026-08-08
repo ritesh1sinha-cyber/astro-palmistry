@@ -27,6 +27,16 @@ from __future__ import annotations
 import html as _html
 from typing import Any, Optional
 
+
+def _ord(n: Any) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return str(n)
+    return f"{n}" + ("th" if 10 <= n % 100 <= 20
+                     else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
+
+
 PRACTICAL = {
     "Sun": "Take it to the person who can actually decide. This stalls one level below the authority.",
     "Moon": "Protect your sleep and the routine at home first — your judgement is downstream of both.",
@@ -108,7 +118,7 @@ def _stone_row(item: dict) -> str:
       <span class="stone-verdict">{_e(label)}</span>
     </div>
     <div class="stone-role">{_e(item.get('role', ''))}
-      {f". {_e(snap.get('planet'))} in your {_e(snap.get('house'))}th, {_e(_dig_plain(snap.get('dignity','')))}" if snap else ""}</div>
+      {f". {_e(snap.get('planet'))} in your {_e(_ord(snap.get('house')))} house, {_e(_dig_plain(snap.get('dignity','')))}" if snap else ""}</div>
     {f'<div class="stone-detail">{detail}</div>' if detail else ''}
     {f'<div class="stone-why">{_e(reasons[0])}</div>' if reasons else ''}
     <div class="stone-alt"><b>Instead / alongside:</b>

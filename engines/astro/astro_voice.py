@@ -517,6 +517,165 @@ def humanise(html: str) -> str:
     return out
 
 
+# ---------------------------------------------------------------------------
+# 1d. Direct and concise — the reading says it once, in the shortest form
+# ---------------------------------------------------------------------------
+# The reports earn their length from facts, not from connective tissue. These
+# substitutions cut the filler that makes generated prose feel padded — throat-
+# clearing openers, wordy phrases, doubled hedging — without touching a number,
+# date or verdict. Facts are never rewritten; only the language around them.
+# Deterministic, idempotent, and off when CONCISE_REPORTS=0.
+
+# Sentence-leading filler ("It is important to note that…"). Removing it must
+# also repair the capital of the word that follows, so it is one pass that
+# keeps the sentence-start (or nothing) and uppercases the next letter.
+_LEADERS = (
+    r"it is important to note that",
+    r"it is worth noting that",
+    r"it is worth mentioning that",
+    r"it should be noted that",
+    r"please note that",
+    r"it is interesting to note that",
+    r"it must be remembered that",
+    r"needless to say",
+    r"it goes without saying that",
+    r"as we all know",
+    r"first and foremost",
+    r"last but not least",
+    r"in conclusion",
+    r"to summarize",
+)
+_LEADER = re.compile(
+    r"(^|[.!?]\s+)(?:" + "|".join(_LEADERS) + r")[\s,]*([A-Za-z])", re.I)
+
+
+def _drop_leader(m: "re.Match[str]") -> str:
+    return m.group(1) + m.group(2).upper()
+
+
+# The palm corpus leans on "there is a possibility of the person undergoing
+# surgery". Once personalisation has turned "the person" into "you", the
+# phrase can become a direct "you may …" instead of a construction site.
+_PALM_GERUNDS = {
+    "undergoing": "undergo", "having": "have", "being": "be",
+    "getting": "get", "facing": "face", "suffering": "suffer",
+    "developing": "develop", "meeting": "meet", "taking": "take",
+    "making": "make", "going": "go", "losing": "lose",
+    "experiencing": "experience", "falling": "fall",
+}
+_POSSIBILITY_OF = re.compile(
+    r"\bthere is a (?:strong )?possibility of "
+    r"(?:you|the person|the native|the subject|one)\s+(\w+)", re.I)
+
+_CONCISE_SUBS: list[tuple["re.Pattern[str]", str]] = [
+    # wordy phrases → the short form
+    (re.compile(r"\bin order to\b", re.I), "to"),
+    (re.compile(r"\bdue to the fact that\b", re.I), "because"),
+    (re.compile(r"\bowing to the fact that\b", re.I), "because"),
+    (re.compile(r"\bthe reason being that\b", re.I), "because"),
+    (re.compile(r"\bin the event that\b", re.I), "if"),
+    (re.compile(r"\bwith regard to\b", re.I), "about"),
+    (re.compile(r"\bwith respect to\b", re.I), "about"),
+    (re.compile(r"\bin relation to\b", re.I), "about"),
+    (re.compile(r"\bat this point in time\b", re.I), "now"),
+    (re.compile(r"\bat the present time\b", re.I), "now"),
+    (re.compile(r"\bat this juncture\b", re.I), "now"),
+    (re.compile(r"\bat the current moment\b", re.I), "now"),
+    (re.compile(r"\bin the near future\b", re.I), "soon"),
+    (re.compile(r"\bin the foreseeable future\b", re.I), "soon"),
+    (re.compile(r"\bon a daily basis\b", re.I), "daily"),
+    (re.compile(r"\bon a regular basis\b", re.I), "regularly"),
+    (re.compile(r"\bon an ongoing basis\b", re.I), "ongoing"),
+    (re.compile(r"\bin a timely manner\b", re.I), "on time"),
+    (re.compile(r"\ba number of\b", re.I), "several"),
+    (re.compile(r"\bfor the purpose of\b", re.I), "for"),
+    (re.compile(r"\bas well as\b", re.I), "and"),
+    # doubled hedging — one qualifier says it; two say nothing
+    (re.compile(r"\bcould potentially\b", re.I), "could"),
+    (re.compile(r"\bpotentially could\b", re.I), "could"),
+    (re.compile(r"\bmay potentially\b", re.I), "may"),
+    (re.compile(r"\bpossibly may\b", re.I), "may"),
+    (re.compile(r"\bmight possibly\b", re.I), "might"),
+    # Hedged verbs stay hedged: "indicates that" can be the assertive "shows",
+    # but "suggests that" is a weaker claim and must not be upgraded to a
+    # certainty. We cut the words, never the confidence — the corpus leans on
+    # these ("This combination suggests that the native may have had...").
+    (re.compile(r"\bpoints to the possibility that\b", re.I), "suggests that"),
+    (re.compile(r"\bindicates that\b", re.I), "shows"),
+    (re.compile(r"\bsuggests that\b", re.I), "suggests"),
+    (re.compile(r"\bseems to indicate\b", re.I), "suggests"),
+    (re.compile(r"\bappears to suggest\b", re.I), "suggests"),
+    # long words when a short one means the same
+    (re.compile(r"\butilize\b", re.I), "use"),
+    (re.compile(r"\butilized\b", re.I), "used"),
+    (re.compile(r"\butilizing\b", re.I), "using"),
+    (re.compile(r"\butilises?\b", re.I), "uses"),
+    (re.compile(r"\butili[sz]ation\b", re.I), "use"),
+    # "approximately" is only the plain "about" when it quantifies a value
+    # ("approximately 2 km"). "families remember approximately" must survive:
+    # the word carries the meaning there, and "remember about" is not English.
+    (re.compile(r"\bapproximately(?=\s+(?:\d|an? |the |[A-Z]\w*))", re.I), "about"),
+    (re.compile(r"\bsubsequently\b", re.I), "then"),
+    (re.compile(r"\badditionally\b", re.I), "also"),
+    (re.compile(r"\bfurthermore\b", re.I), "also"),
+    (re.compile(r"\bmoreover\b", re.I), "also"),
+]
+
+
+def _concise_text(text: str) -> str:
+    text = _LEADER.sub(_drop_leader, text)
+
+    def poss(m: "re.Match[str]") -> str:
+        base = m.group(1).lower()
+        inf = _PALM_GERUNDS.get(base)
+        if inf is None:
+            # unknown gerund — keep the original wording rather than emit
+            # "may traveling". The corpus only emits a handful of gerunds;
+            # a miss here must degrade to the safe original, not bad grammar.
+            return m.group(0)
+        before = text[: m.start()].rstrip()
+        out = f"you may {inf}"
+        if (not before) or before[-1] in ".!?:>":
+            out = out[:1].upper() + out[1:]
+        return out
+
+    text = _POSSIBILITY_OF.sub(poss, text)
+
+    for pat, rep in _CONCISE_SUBS:
+        def sub(m: "re.Match[str]", r=rep) -> str:
+            before = text[: m.start()].rstrip()
+            if not r:
+                return ""
+            out = r
+            if out and out[0].isalnum() and out[0].islower():
+                if (not before) or before[-1] in ".!?:>":
+                    out = out[0].upper() + out[1:]
+            return out
+        text = pat.sub(sub, text)
+
+    # tidy what the deletions left behind. Deliberately no .strip(): text nodes
+    # sit between tags, and stripping would eat the space around an inline
+    # <b>/<em> and print "that<b>Venus</b>is".
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\s+([,.;:!?])", r"\1", text)
+    text = re.sub(r",\s*,", ",", text)
+    text = re.sub(r"\.\s*\.", ".", text)
+    return text
+
+
+def concise(html: str, *, enabled: Optional[bool] = None) -> str:
+    """Cut filler and wordiness from the visible prose. Facts untouched.
+
+    Runs over text nodes only — never inside a tag, or <script>/<style>/<code>
+    (the jargon tooltips stay intact). The deterministic text is the floor:
+    set CONCISE_REPORTS=0 to go back to it without a code change.
+    """
+    if enabled is None:
+        enabled = os.getenv("CONCISE_REPORTS", "1") == "1"
+    if not enabled:
+        return html
+    return _map_text_nodes(html or "", _concise_text)
+
 
 # ---------------------------------------------------------------------------
 # 1b. Citations — the reading must stand on its own
@@ -667,7 +826,12 @@ def tidy(out: str) -> str:
     out = re.sub(r"(>|^|\.\s)\s*\.\s+", r"\1 ", out)
     out = re.sub(r"([.!?])\s*\.(\s)", r"\1\2", out)
     out = re.sub(r",\s*\.", ".", out)                     # ",." → "."
-    out = re.sub(r"\b(and|or|but|per|from|in|of|with|by)\s*[,.]",
+    # Only a *dangling* connector counts — one left behind by a removed name or
+    # citation, which always leaves a space before the stray punctuation
+    # ("cited by ."). Without the `\s+` this also matched ordinary sentences
+    # that legitimately end on one of these words ("...than you were born
+    # with."), deleting the word and swallowing the full stop.
+    out = re.sub(r"\b(and|or|but|per|from|in|of|with|by)\s+[,.]",
                  "", out, flags=re.I)                     # dangling "and ,"
     # a word repeated by a rename ("timing timing", "the the")
     out = re.sub(r"\b(\w+)(\s+\1\b)+", r"\1", out, flags=re.I)
@@ -954,8 +1118,11 @@ def personalise(html: str, ctx: dict, kind: str = "full_report") -> str:
     # insert after <body ...> so it leads the document
     m = re.search(r"<body[^>]*>", out, re.I)
     if m:
-        return out[:m.end()] + block + out[m.end():]
-    return block + out
+        out = out[:m.end()] + block + out[m.end():]
+    else:
+        out = block + out
+    # Concise is the last pass so it also cleans the opening it just inserted.
+    return concise(out)
 
 
 def context_from_pc(pc: dict, *, name: str = "", place: str = "",

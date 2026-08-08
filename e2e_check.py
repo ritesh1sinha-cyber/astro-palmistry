@@ -221,11 +221,19 @@ def main() -> int:
         r = j.get("result") or {}
         say("palm reading", j.get("status") == "done", j.get("error") or "")
         if j.get("status") == "done":
-            say("palm free sections", len(r.get("past") or []) > 0,
-                f"{len(r.get('past') or [])} sections")
-            say("palm paid text truncated",
-                all(x.get("body", "").endswith("…") or len(x.get("body", "").split()) <= 18
-                    for x in (r.get("future") or [])))
+            meta = r.get("meta") or {}
+            links = r.get("links") or {}
+            free_html = api(links["free"], raw=True) if links.get("free") else b""
+            if isinstance(free_html, bytes):
+                free_html = free_html.decode("utf-8", errors="replace")
+            say("palm cards-v2", meta.get("design") == "cards-v2")
+            say("palm free report has both hands",
+                "Left hand" in free_html and "Right hand" in free_html)
+            say("palm free evidence stays locked",
+                "evidence locked-inline" in free_html and '<ul class="palm-points">' not in free_html)
+            say("palm report excludes astro-palm jargon",
+                not any(term in free_html.lower() for term in
+                        ("triplicity", "chart-from-palm", "weekday-born", "phalange count")))
             say("palm overlays stored", bool(r.get("overlays")))
     else:
         say("palm reading", None, "pass --left and --right")

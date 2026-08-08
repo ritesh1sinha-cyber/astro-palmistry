@@ -47,6 +47,10 @@ SUITES: list[tuple[str, list[str], str]] = [
      [sys.executable, "engines/astro/lane_sweep_test.py"], "jhora"),
     ("card design renders per kind",
      [sys.executable, "engines/astro/report_render_test.py"], ""),
+    ("palm cards keep both hands and clean copy",
+     [sys.executable, "core/palm_cards_test.py"], ""),
+    ("palm head/life join classifier",
+     [sys.executable, "engines/palm_api/test_head_life_relation.py"], ""),
     # `import X if cond else None` is not valid Python — an import is a
     # statement, not an expression. Real newlines, so the 3.9 shim can load
     # conditionally before the engine import.

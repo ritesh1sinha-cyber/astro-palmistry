@@ -47,6 +47,16 @@ from typing import Any
 from astro_palmistry_zone_cv import DOMAIN_ZONES as _CV_DOMAIN_ZONES
 from astro_palmistry_zone_cv import cv_finding_sentence
 
+
+def _ord(n: Any) -> str:
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return str(n)
+    return f"{n}" + ("th" if 10 <= n % 100 <= 20
+                     else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th"))
+
+
 # The CV module keeps a "longevity" domain whose zones (h8, life line) are the
 # right places to LOOK for 8th-house material. We still inspect them — we just
 # report them as health and upheaval. Folding them into health here means the
@@ -515,20 +525,20 @@ def _chart_lines_for_domain(anchors: list[dict], domain: str) -> list[str]:
                     k = (s["planet"], s["house"])
                     if k not in seen:
                         seen.add(k)
-                        lines.append(f"{s['planet']} in the {s['house']}th ({s['sign']}) - {s['life']}")
+                        lines.append(f"{s['planet']} in the {_ord(s['house'])} ({s['sign']}) - {s['life']}")
             continue
         k = (a["planet"], a["house"])
         if k not in seen:
             seen.add(k)
-            lines.append(f"{a['planet']} in the {a['house']}th ({a['sign']}) - {a['life']}")
+            lines.append(f"{a['planet']} in the {_ord(a['house'])} ({a['sign']}) - {a['life']}")
         for s in a.get("sub_planets", []):
             if s.get("domain") == domain:
                 sk = (s["planet"], s["house"])
                 if sk not in seen:
                     seen.add(sk)
                     rel = s.get("relative_to_anchor") or ""
-                    extra = f" This links to {a['planet']} in the {a['house']}th house: {rel}" if rel else ""
-                    lines.append(f"{s['planet']} in the {s['house']}th ({s['sign']}) - {s['life']}{extra}")
+                    extra = f" This links to {a['planet']} in the {_ord(a['house'])} house: {rel}" if rel else ""
+                    lines.append(f"{s['planet']} in the {_ord(s['house'])} ({s['sign']}) - {s['life']}{extra}")
     return lines[:4]
 
 
