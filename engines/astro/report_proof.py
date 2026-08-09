@@ -172,7 +172,7 @@ def render_ask(*, price: int = 999) -> str:
   </form>
   <p class="fine">Your dates also sharpen the reading itself: they let us
   correct your birth time to the minute, which every prediction downstream
-  depends on. That correction is part of the full reading (₹{price}).</p>
+  depends on. That correction is part of the full reading.</p>
 </section>"""
 
 
@@ -219,7 +219,7 @@ def render_result(result: dict, *, price: int = 999, paid: bool = False) -> str:
   <div class="proof-cta">
     <p>The full birth-time correction tests hundreds of candidate minutes
     against these same events and returns the one that fits best — then
-    rebuilds your chart on it. ₹{price}.</p>
+    rebuilds your chart on it.</p>
   </div>"""
 
     return f"""

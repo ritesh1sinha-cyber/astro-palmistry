@@ -80,6 +80,11 @@ def _save_report(user_id: str, chart_id: Optional[str], kind: str,
             {"i": rid, "u": user_id, "c": chart_id, "k": kind, "paid": bool(paid),
              "f": fk, "p": pk, "m": jdump(meta), "v": S.engine_version,
              "t": now(), "e": now() + timedelta(days=S.report_retention_days)})
+    try:
+        from .stats import increment_report_generation
+        increment_report_generation(kind)
+    except Exception:  # noqa: BLE001
+        pass
     return {"reportId": rid, "paid": bool(paid), "meta": meta}
 
 
@@ -107,6 +112,11 @@ def _save_json_report(user_id: str, kind: str, *, free_payload: dict,
             {"i": rid, "u": user_id, "k": kind, "paid": bool(paid), "f": fk, "p": pk,
              "m": jdump(meta), "v": S.engine_version, "t": now(),
              "e": now() + timedelta(days=S.report_retention_days)})
+    try:
+        from .stats import increment_report_generation
+        increment_report_generation(kind)
+    except Exception:  # noqa: BLE001
+        pass
     return {"reportId": rid, "paid": bool(paid), "meta": meta}
 
 
@@ -537,6 +547,8 @@ def h_daily(user: dict, p: dict) -> dict:
         pc=pc)
     saved = _save_report(user["id"], chart["id"], "daily",
                          free_html, paid_html, meta, paid=subscribed)
+    if subscribed:
+        pin_subscribed_daily_reports(user["id"])
     saved.update({
         "locked": False,
         "date": target.isoformat(),

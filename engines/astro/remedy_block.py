@@ -126,6 +126,16 @@ def _stone_row(item: dict) -> str:
   </li>"""
 
 
+def _stones_group(items: list, *, tone: str, label: str) -> str:
+    if not items:
+        return ""
+    return f"""
+  <div class="stones-group {tone}">
+    <div class="stones-group-label">{_e(label)}</div>
+    <ul class="stones">{''.join(_stone_row(st) for st in items)}</ul>
+  </div>"""
+
+
 def render(block: dict, *, paid: bool = False, price: int = 0,
            heading: str = "What you can actually do about it",
            lede: str = "") -> str:
@@ -140,6 +150,9 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
     So the free view shows only the avoid list. The stones that would help, the
     metal, the finger, the day to begin, and the practical action all sit behind
     the paywall.
+
+    Wear / do items are always in a green block; avoid / do-not-wear items in a
+    red block — never interleaved in one list.
     """
     if not block:
         return ""
@@ -149,16 +162,26 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
     practical = block.get("practical")
 
     if paid:
-        stones = wear + mantra_only + avoid
+        do_block = ""
+        if practical:
+            do_block = f"""
+  <div class="remedy-do">
+    <div class="remedy-do-label">Do this first · no belief required</div>
+    <p>{_e(practical)}</p>
+  </div>"""
+        wear_group = _stones_group(
+            wear, tone="up",
+            label="Gemstones · safe to wear")
+        avoid_group = _stones_group(
+            list(mantra_only) + list(avoid), tone="down",
+            label="Do not wear · mantra and charity instead")
         return f"""
 <section class="remedy-card">
   <div class="ev-label">{_e(heading)}</div>
   {f'<p class="remedy-lede">{_e(lede)}</p>' if lede else ''}
-  {f'''<div class="remedy-do">
-    <div class="remedy-do-label">Start here. No belief required</div>
-    <p>{_e(practical)}</p>
-  </div>''' if practical else ''}
-  <ul class="stones">{''.join(_stone_row(st) for st in stones)}</ul>
+  {do_block}
+  {wear_group}
+  {avoid_group}
   <p class="fine">A remedy is not a lever that overrides the chart. It works the
   way preparation works — it changes what you are ready for when the timing
   turns.</p>
@@ -177,21 +200,20 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
     <b>{helpful_count} stone{'s' if helpful_count != 1 else ''} assessed as
     suitable for you</b>, with metal, finger and the day to begin, plus the
     practical steps that matter more than any of them.
-    {f'₹{price}' if price else ''}
   </div>"""
     else:
         body = f"""
   <p class="remedy-lede">Before anything we would sell you, here is what you
   should <b>not</b> wear. This is free because it is the part most people are
   never told.</p>
-  <ul class="stones">{''.join(_stone_row(st) for st in refused)}</ul>
+  {_stones_group(refused, tone="down",
+                 label="Do not wear · already clear from your chart")}
   <div class="remedy-locked">
     <b>What you should wear is the other half.</b>
     {helpful_count} stone{'s' if helpful_count != 1 else ''} came back suitable
     for your chart — with the metal, the finger, the day to begin and the trial
     period — alongside the mantras, the charity, and the practical action that
     matters more than any stone.
-    {f'₹{price}' if price else ''}
   </div>"""
 
     return f"""

@@ -440,12 +440,15 @@ after it is worth your money.</p>
 <p class="sec-note">Your own timing sequence, with real dates.</p>
 <ol class="timeline">{tl}</ol>"""
 
-    buy_blurb = (
-        "Every life area above, the dated windows for each, and the remedies "
-        "matched to your chart."
-        if paid else
-        "Why every headline above reads the way it does, the dated window for "
-        "each, the five-year windows, the period sequence and your gemstones.")
+    buy_block = ""
+    if not paid:
+        buy_block = f"""
+<div class="buy">
+  <h3>Unlock the full reading</h3>
+  <p>Why every headline above reads the way it does, the dated window for
+  each, the five-year windows, the period sequence and your gemstones.</p>
+  <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
+</div>"""
 
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -480,11 +483,7 @@ after it is worth your money.</p>
 
 {question_html}
 
-<div class="buy">
-  <h3>Unlock the full reading</h3>
-  <p>{buy_blurb}</p>
-  <a class="cta" href="#unlock" data-unlock="1">Unlock — ₹{price}</a>
-</div>
+{buy_block}
 <footer>Calculated from your birth details alone · guidance, not a substitute
 for professional advice</footer>
 </div>{_INTERACT}</body></html>"""

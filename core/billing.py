@@ -124,6 +124,48 @@ def is_subscribed(user_id: str, conn=None) -> bool:
         return c.execute(q, {"u": user_id, "now": now()}).fetchone() is not None
 
 
+def pin_subscribed_daily_reports(user_id: str) -> int:
+    """Permanently unlock daily reports generated during a subscription period.
+
+    Without this, reports saved with paid=false before we pinned them would
+    re-lock when the subscription entitlement expires even though the reader
+    generated them while subscribed.
+    """
+    with tx() as c:
+        if S.is_postgres:
+            r = c.execute(text(
+                "UPDATE reports r SET paid = true "
+                "FROM subscriptions s "
+                "WHERE r.user_id = :u AND r.kind = 'daily' AND r.paid = false "
+                "  AND r.user_id = s.user_id "
+                "  AND r.created_at >= s.created_at "
+                "  AND r.created_at <= s.current_period_end"
+            ), {"u": user_id})
+        else:
+            r = c.execute(text(
+                "UPDATE reports SET paid = 1 "
+                "WHERE user_id = :u AND kind = 'daily' AND paid = 0 "
+                "  AND EXISTS ("
+                "    SELECT 1 FROM subscriptions s "
+                "    WHERE s.user_id = reports.user_id "
+                "      AND reports.created_at >= s.created_at "
+                "      AND reports.created_at <= s.current_period_end"
+                "  )"
+            ), {"u": user_id})
+        return int(r.rowcount or 0)
+
+
+def pin_all_subscribed_daily_reports() -> int:
+    """One-time / startup backfill across every account with subscription history."""
+    with engine().connect() as c:
+        rows = c.execute(text("SELECT DISTINCT user_id FROM subscriptions")).fetchall()
+    total = 0
+    for row in rows:
+        uid = row[0] if not hasattr(row, "_mapping") else row._mapping["user_id"]
+        total += pin_subscribed_daily_reports(uid)
+    return total
+
+
 def subscription_of(user_id: str) -> Optional[dict]:
     with engine().connect() as c:
         row = c.execute(text("SELECT * FROM subscriptions WHERE user_id=:u"
@@ -348,6 +390,7 @@ def mark_paid(public_id: str, *, gateway_payment_id: str = "") -> dict:
         _extend_subscription(uid)
         grant(uid, "daily", source="subscription", order_id=o["id"], days=30)
         grant(uid, "muhurat", source="subscription", order_id=o["id"], days=30)
+        pin_subscribed_daily_reports(uid)
     elif item == "bundle_all":
         # Account-wide (ref_id stays NULL) — the bundle covers every chart the
         # buyer has, not just the one they happened to be looking at. entitled()

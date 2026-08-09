@@ -273,7 +273,7 @@ def _locked_preview(*, price: int, n_areas: int, n_windows: int,
   <div class="buy">
     <h3>The working and the dates</h3>
     <p>You have the verdict on each life area. Unlock why, when, and what to do.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock — ₹{price}</a>
+    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>"""
 

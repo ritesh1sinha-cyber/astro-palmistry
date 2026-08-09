@@ -29,6 +29,7 @@ from core.config import S
 from core.db import (engine, extend_partitions, init_schema, job_get,
                      job_insert, job_update, jdump, new_id, now,
                      report_get, reports_for_user, tx)
+from core.pdf_export import entitlement_item_for_kind, html_to_pdf, report_title
 from core.store import store
 
 app = FastAPI(title="GrahaRekha API", version="3.0")
@@ -42,6 +43,11 @@ app.add_middleware(CORSMiddleware, allow_origins=S.allowed_origins,
 def _startup() -> None:
     init_schema()
     extend_partitions()
+    try:
+        from core.billing import pin_all_subscribed_daily_reports
+        pin_all_subscribed_daily_reports()
+    except Exception:                                            # noqa: BLE001
+        pass
 
     # The launch offer, seeded from config so the cap is an env var and not a
     # deploy. create_code is idempotent by code, so a restart never resets a
@@ -186,6 +192,38 @@ def me(user: dict = Depends(current_user)):
     return _me(user)
 
 
+@app.get("/api/admin/report-stats")
+def admin_report_stats(user: dict = Depends(current_user)):
+    """Global free-report counts per section — admin only."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    from core.stats import get_report_generation_counts
+    return {"counts": get_report_generation_counts()}
+
+
+@app.get("/api/admin/analysis")
+def admin_analysis(user: dict = Depends(current_user)):
+    """Free reports, paid orders, and page views — admin only."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    from core.stats import admin_analysis_summary
+    return admin_analysis_summary()
+
+
+class PageViewIn(BaseModel):
+    path: str = ""
+
+
+@app.post("/api/analytics/pageview")
+def record_pageview(body: PageViewIn):
+    """Public, fire-and-forget SPA view counter (whitelist only)."""
+    from core.stats import increment_page_view
+    ok = increment_page_view(body.path or "")
+    if not ok:
+        raise HTTPException(400, "unknown path")
+    return {"ok": True}
+
+
 # ===========================================================================
 # jobs
 # ===========================================================================
@@ -275,10 +313,13 @@ def _report_unlocked(rep: dict, uid: str) -> bool:
     # Order may have granted the item even if reports.paid lagged.
     try:
         kind = rep.get("kind") or ""
-        item = "numerology_full" if kind == "numerology" else kind
+        item = entitlement_item_for_kind(kind)
         if item and billing.entitled(uid, item, rep.get("id")):
             return True
         if item and billing.entitled(uid, item, None):
+            return True
+        # Subscription covers daily / muhurat / horary even without a row flag.
+        if kind in ("daily", "muhurat", "horary") and billing.is_subscribed(uid):
             return True
     except Exception:                                                 # noqa: BLE001
         pass
@@ -370,14 +411,19 @@ def _decorate(result: Any, uid: str, kind: str = "") -> Any:
 
 
 @app.get("/api/reports")
-def my_reports(user: dict = Depends(current_user)):
+def my_reports(paid: Optional[int] = None, user: dict = Depends(current_user)):
+    """List the caller's reports. Pass paid=1 for unlocked/purchased only."""
     out = []
     for r in reports_for_user(user["id"]):
         unlocked = _report_unlocked(r, user["id"])
+        if paid and not unlocked:
+            continue
+        meta = _gate_meta(r["kind"], r["meta"], unlocked)
         out.append({"reportId": r["id"], "kind": r["kind"],
                     "paid": unlocked,
+                    "title": report_title(r["kind"], r.get("meta") or {}),
                     "createdAt": r["created_at"],
-                    "meta": _gate_meta(r["kind"], r["meta"], unlocked),
+                    "meta": meta,
                     "links": _links(r["id"], user["id"], unlocked)})
     return out
 
@@ -389,8 +435,46 @@ def one_report(rid: str, user: dict = Depends(current_user)):
         raise HTTPException(404, "no such report")
     unlocked = _report_unlocked(rep, user["id"])
     return {"reportId": rep["id"], "kind": rep["kind"], "paid": unlocked,
+            "title": report_title(rep["kind"], rep.get("meta") or {}),
             "meta": _gate_meta(rep["kind"], rep["meta"], unlocked),
             "links": _links(rid, user["id"], unlocked)}
+
+
+@app.get("/api/reports/{rid}/pdf")
+def report_pdf(rid: str, user: dict = Depends(current_user)):
+    """Download the paid HTML half as a PDF. Locked reports → 402."""
+    rep = report_get(rid, user["id"])
+    if not rep:
+        raise HTTPException(404, "no such report")
+    if not _report_unlocked(rep, user["id"]):
+        raise HTTPException(402, "payment required")
+    key = rep.get("paid_key") or ""
+    if not key:
+        raise HTTPException(404, "nothing stored for that half")
+    try:
+        data = store().get(key)
+    except Exception:                                                 # noqa: BLE001
+        raise HTTPException(404, "the stored report is missing")
+    if key.endswith(".json"):
+        raise HTTPException(415, "this older report cannot be exported as PDF")
+    try:
+        html = data.decode("utf-8", errors="replace")
+        pdf = html_to_pdf(html)
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception:                                                 # noqa: BLE001
+        raise HTTPException(500, "could not build the PDF")
+    kind = (rep.get("kind") or "report").replace("_", "-")
+    created = str(rep.get("created_at") or "")[:10] or "report"
+    fname = f"graharekha-{kind}-{created}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{fname}"',
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @app.get("/api/reading/{rid}/full")

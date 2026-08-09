@@ -554,7 +554,7 @@ def _locked_block(*, price: int, n_windows: int, has_remedy: bool) -> str:
   <div class="buy">
     <h3>The answer itself</h3>
     <p>Three methods have read your question. Unlock what they add up to.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock — ₹{price}</a>
+    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>"""
 

@@ -675,7 +675,7 @@ def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
     XXXXXXX XXXX, with a nearer partial window before it.</p>
     <p><b>{n} windows were found and scored across the next {horizon}
     years.</b> Unlock for every date, which of them your chart actually backs,
-    and the remedy that tips each one your way — ₹{price}.</p>
+    and the remedy that tips each one your way.</p>
   </div>
 
   <div class="qa-window locked">
@@ -818,7 +818,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   <div class="qa-cta">
     <p>The full reading dates every window across the next
     {result['horizon']} years for this and the other eight areas of your life,
-    with what to do in each — ₹{price}.</p>
+    with what to do in each. Use the unlock button below the report.</p>
   </div>"""
 
     try:

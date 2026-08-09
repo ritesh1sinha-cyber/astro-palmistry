@@ -93,10 +93,40 @@ font-weight:600;color:var(--muted)}
 .daily h3{font-family:Fraunces,serif;font-size:1.16rem;margin:8px 0 10px;font-weight:600}
 .dodont{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
 @media(max-width:520px){.dodont{grid-template-columns:1fr}}
-.dodont div{background:#fff;border-radius:10px;padding:10px 12px;font-size:.84rem}
+.dodont>div{border-radius:10px;padding:12px 14px;font-size:.84rem}
+.dodont .do{background:#e4f2ea;border:1px solid #b7dcc8;color:#174a32}
+.dodont .dont{background:#fbeae6;border:1px solid #e8b6aa;color:#7a2416}
 .dodont .t{font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;
-font-weight:600;margin-bottom:5px}
+font-weight:700;margin-bottom:6px}
 .do .t{color:var(--up)} .dont .t{color:var(--down)}
+/* Remedies & gemstones — keep wear/do and avoid visually separate */
+.remedy-card{margin:22px 0 28px}
+.remedy-lede{font-size:.9rem;color:#3d4250;margin:8px 0 14px}
+.remedy-do,.remedy-dont,.stones-group{border-radius:12px;padding:14px 16px;margin:0 0 12px}
+.remedy-do,.stones-group.up{background:#e4f2ea;border:1px solid #b7dcc8}
+.remedy-dont,.stones-group.down{background:#fbeae6;border:1px solid #e8b6aa}
+.remedy-do-label,.stones-group-label{font-size:.66rem;letter-spacing:.12em;
+text-transform:uppercase;font-weight:700;margin:0 0 8px}
+.remedy-do-label,.stones-group.up .stones-group-label{color:var(--up)}
+.remedy-dont-label,.stones-group.down .stones-group-label{color:var(--down)}
+.remedy-do p,.remedy-dont p{margin:0;font-size:.9rem;line-height:1.5}
+ul.stones{list-style:none;margin:0;padding:0}
+li.stone{background:#fff;border:1px solid var(--line);border-left-width:4px;
+border-radius:10px;padding:12px 14px;margin:0 0 10px}
+li.stone:last-child{margin-bottom:0}
+li.stone.up{border-left-color:var(--up);background:#f3faf6}
+li.stone.down{border-left-color:var(--down);background:#fff6f4}
+li.stone.mixed{border-left-color:var(--down);background:#fff6f4}
+.stone-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+flex-wrap:wrap}
+.stone-verdict{font-size:.68rem;font-weight:700;letter-spacing:.04em;
+text-transform:uppercase}
+li.stone.up .stone-verdict{color:var(--up)}
+li.stone.down .stone-verdict,li.stone.mixed .stone-verdict{color:var(--down)}
+.stone-role,.stone-detail,.stone-why,.stone-alt{font-size:.82rem;color:#3d4250;
+margin-top:6px;line-height:1.45}
+.remedy-locked{background:#f6f4ef;border-radius:10px;padding:12px 14px;
+font-size:.88rem;margin-top:10px}
 .windows{list-style:none;margin:10px 0 0;padding:0;font-size:.85rem}
 .windows li{display:flex;gap:10px;padding:6px 0;border-top:1px solid #e0dcd4}
 .windows b{min-width:96px;font-variant-numeric:tabular-nums}
@@ -143,11 +173,19 @@ margin-top:32px;text-align:center}
 .buy .cta{display:inline-block;background:#f7f5f1;color:var(--ink);
 padding:12px 26px;border-radius:99px;font-weight:600;font-size:.9rem;
 text-decoration:none}
+@media print{
+  .buy,.mm-overlay,.present-ask,.recog-ask,.pillbtn{display:none!important}
+}
+@page{size:A4;margin:14mm 12mm}
 footer{margin-top:40px;font-size:.74rem;color:var(--muted);text-align:center}
 .prediction{margin:14px 0;padding:14px 16px;background:#fff;border:1px solid var(--line);
 border-radius:12px}
 .pred-scenario{margin:0 0 10px;font-size:.92rem;line-height:1.55}
-.pred-why{margin:0;font-size:.82rem;color:#3d4250;line-height:1.45}
+.pred-why{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#e3eef9;
+border:1px solid #b7cfe6;border-left:4px solid #1a5f9e;font-size:.84rem;
+color:#163a5c;line-height:1.5}
+.pred-why b{display:inline-block;margin-right:4px;color:#0b4f8a;font-size:.72rem;
+font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .pred-list .prediction{list-style:none}
 .present-list.pred-list{list-style:none;padding:0;margin:0}
 .present-list.pred-list>li{margin-bottom:12px}

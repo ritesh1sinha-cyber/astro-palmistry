@@ -674,7 +674,7 @@ def _locked_preview(*, price: int, n_lanes: int, md: str, ad: str, pd: str) -> s
     <h3>Clearer guidance for today</h3>
     <p>The verdict, your Moon, and your number and colour stay free every day.
     Subscribe for more practical actions and the best times to use them.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Subscribe &mdash; &#8377;{price}/month</a>
+    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>"""
 

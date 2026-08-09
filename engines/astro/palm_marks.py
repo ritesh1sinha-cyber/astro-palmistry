@@ -187,7 +187,7 @@ def render(block: dict, *, paid: bool = False, price: int = 499) -> str:
     <ul class="marks">{rows}</ul>
     {'' if paid else f'''<div class="remedy-locked">
       <b>Full interpretation of all {len(marks)} marks</b> — placement, which
-      line each one touches, and what it has already done in your life. ₹{price}
+      line each one touches, and what it has already done in your life.
     </div>'''}
   </div>"""
     else:

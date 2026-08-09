@@ -187,6 +187,23 @@ main{position:relative;z-index:1;padding-bottom:120px}
   overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin
 }
 .subnav button{flex:0 0 auto;white-space:nowrap}
+.apane .card{position:relative}
+.admin-gen-stat{
+  display:none;font-size:11px;color:var(--muted-2);line-height:1.35;
+  white-space:nowrap;text-align:right;max-width:min(220px,46vw)
+}
+.admin-gen-stat.on{display:block}
+.apane .admin-gen-stat{
+  position:absolute;top:clamp(20px,4vw,32px);right:clamp(20px,4vw,32px);z-index:1
+}
+.sec-head-with-stat{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.sec-head-with-stat .admin-gen-stat{align-self:flex-start;padding-top:4px}
+.daily-sub-banner{margin:0 0 14px}
+.sub-badge{
+  display:inline-block;font-size:12px;font-weight:600;line-height:1.35;
+  padding:6px 12px;border-radius:999px
+}
+.sub-badge.sub-on{background:rgba(28,107,69,.10);color:var(--ok);border:1px solid rgba(28,107,69,.22)}
 .coords-adv{display:none;margin-top:8px}
 .coords-adv.open{display:block}
 .admin-modal .modal-box{max-width:400px}
@@ -439,6 +456,33 @@ input[type=file]{display:none}
   font-size:14px;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center;
   box-shadow:var(--shadow);color:var(--ink)
 }
+.pay-success-banner{
+  background:rgba(28,107,69,.10);border:1px solid rgba(28,107,69,.28);
+  color:var(--ok);border-radius:12px;padding:12px 16px;margin:0 0 16px;
+  font-size:14px;font-weight:600;text-align:center
+}
+.report-toolbar{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.reports-list{display:grid;gap:12px;margin-top:8px}
+.analysis-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 26px}
+@media(max-width:720px){.analysis-kpis{grid-template-columns:1fr}}
+.analysis-kpi{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--paper)}
+.analysis-kpi span{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
+.analysis-kpi b{display:block;font-family:var(--serif);font-size:clamp(28px,5vw,36px);margin-top:6px;color:var(--ink);line-height:1.1}
+.analysis-kpi small{display:block;margin-top:6px;color:var(--muted);font-size:12.5px}
+.analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:860px){.analysis-grid{grid-template-columns:1fr}}
+.analysis-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.analysis-table th,.analysis-table td{padding:9px 8px;border-top:1px solid var(--line);text-align:left}
+.analysis-table th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);border-top:0}
+.analysis-table td.num,.analysis-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+.analysis-table tr:first-child td{border-top:0}
+.report-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:16px 18px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper)
+}
+.report-row h3{font-size:17px;margin:0 0 4px;font-family:var(--serif)}
+.report-row .meta{font-size:12.5px;color:var(--muted)}
+.report-row .acts{display:flex;gap:8px;flex-wrap:wrap}
 .mobnav{
   position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;
   background:rgba(251,250,248,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);
@@ -560,6 +604,8 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
    <button onclick="go('astro')" data-v="astro">Astrology</button>
    <button onclick="go('soon')" data-v="soon">Roadmap</button>
    <button onclick="go('contact')" data-v="contact">Contact</button>
+   <button onclick="go('reports')" data-v="reports" id="navReports" style="display:none">My reports</button>
+   <button onclick="go('analysis')" data-v="analysis" id="navAnalysis" style="display:none">Analysis</button>
   </nav>
   <div class="hauth" id="hauth"></div>
  </div>
@@ -654,8 +700,10 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 <!-- ================= READING ================= -->
 <section class="view" id="v-read">
  <div class="wrap sec">
-  <div class="sec-head"><div class="eyebrow">Palm reading</div><h2>Let's look at your hands.</h2>
+  <div class="sec-head sec-head-with-stat"><div>
+  <div class="eyebrow">Palm reading</div><h2>Let's look at your hands.</h2>
    <p>Both palms matter: the non-dominant hand carries what you were born with, the dominant hand what you have made of it.</p></div>
+  <span class="admin-gen-stat" data-stat-kind="palm"></span></div>
 
   <div class="stepper" id="stepper">
    <i data-s="1"><u>1</u> Sign in</i><s>——</s>
@@ -669,9 +717,9 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
    <h3 style="font-size:24px">Sign in to begin</h3>
    <p style="color:var(--muted);font-size:14.5px;margin:8px 0 20px">Your palm images and reading are tied to your account so you can come back to them any time.</p>
    <div id="gbtn" style="margin-bottom:12px"></div>
-   <button class="btn btn-gold" id="demoAuth" onclick="openGuestModal()">Continue as guest</button>
+   <button class="btn btn-gold" id="demoAuth" onclick="openGuestModal()">Login via promocode</button>
    <button class="btn btn-ghost btn-sm" id="adminAuth" onclick="openAdminModal()" style="margin-top:10px">Admin login</button>
-   <p class="hint" id="authNote">Google for a normal account · guest with passcode · admin for full access</p>
+   <p class="hint" id="authNote">Google for a normal account · promocode login · admin for full access</p>
   </div>
 
   <!-- step 2: details -->
@@ -754,7 +802,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
    <h3 style="font-size:24px">Sign in to continue</h3>
    <p style="color:var(--muted);font-size:14.5px;margin:8px 0 20px">Chart readings are tied to your account so you can come back to them any time.</p>
    <div id="gbtnAstro" style="margin-bottom:12px"></div>
-   <button class="btn btn-gold" onclick="openGuestModal()">Continue as guest</button>
+   <button class="btn btn-gold" onclick="openGuestModal()">Login via promocode</button>
    <button class="btn btn-ghost btn-sm" onclick="openAdminModal()" style="margin-top:10px">Admin login</button>
    <p class="hint" style="margin-top:12px">Free half of every reading · no payment needed to try</p>
   </div>
@@ -811,6 +859,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- pane: full report -->
   <div class="apane" id="ap-report">
    <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="full_report"></span>
     <div class="eyebrow">The confluence report</div>
     <h3 style="font-size:24px;margin:8px 0 10px">Half of it is free.</h3>
     <div class="grid g2">
@@ -839,6 +888,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- pane: horary -->
   <div class="apane" id="ap-horary" style="display:none">
    <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="horary"></span>
     <div class="eyebrow">Prashna · horary</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Ask one question. Get one clear answer.</h3>
     <p style="color:var(--muted);font-size:14.5px">No birth chart needed — horary reads the moment you ask.
@@ -886,6 +936,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- pane: user question (natal chart) -->
   <div class="apane" id="ap-question" style="display:none">
    <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="user_question"></span>
     <div class="eyebrow">Your chart · one question</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Ask your birth chart anything.</h3>
     <p style="color:var(--muted);font-size:14.5px">Pick the area of life, ask in your own words, and we cross-check the
@@ -921,11 +972,13 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- pane: daily -->
   <div class="apane" id="ap-daily" style="display:none">
    <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="daily"></span>
     <div class="eyebrow">Daily reading · ₹298/month</div>
     <h3 style="font-size:24px;margin:8px 0 6px">A reading built from your own chart, every morning.</h3>
     <p style="color:var(--muted);font-size:14.5px">Not sun-sign filler. Written from your running dasha and antardasha, today's transits against your natal
        Moon, your Tarabala, Ashtakavarga on the signs your dasha lords are crossing, and the day's panchang — Rahu Kaal, choghadiya,
        Abhijit. Your verdict, your Moon and your lucky number are free every morning; the working behind them is the subscription.</p>
+    <p id="dailySubBanner" class="daily-sub-banner" style="display:none"></p>
     <button class="btn btn-gold btn-block" style="margin-top:14px" onclick="astroJob('daily')">Show today's reading</button>
     <p class="hint" style="text-align:center">Subscription also includes 3 horary questions a month and unlimited muhurat checks.</p>
    </div>
@@ -934,6 +987,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- pane: numerology -->
   <div class="apane" id="ap-numero" style="display:none">
    <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="numerology"></span>
     <div class="eyebrow">Numerology · every number free</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Every number you have, and what each one says.</h3>
     <p style="color:var(--muted);font-size:14.5px">Free: life path, birth day, Expression, Soul urge, Outer
@@ -950,6 +1004,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- pane: kundali matching -->
   <div class="apane" id="ap-match" style="display:none">
    <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="kundali_match"></span>
     <div class="eyebrow">Kundali Matching · ₹298</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Two charts, laid side by side.</h3>
     <p style="color:var(--muted);font-size:14.5px">The full 36-guna Ashtakoot, then the part most reports skip —
@@ -998,6 +1053,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- pane: muhurat -->
   <div class="apane" id="ap-muhurat" style="display:none">
    <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="muhurat"></span>
     <div class="eyebrow">Muhurat · ₹298 a check</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Is this a good day for it?</h3>
     <p style="color:var(--muted);font-size:14.5px">Sixteen occasions, from a wedding or grih pravesh to surgery,
@@ -1016,6 +1072,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <!-- pane: birth-time rectification -->
   <div class="apane" id="ap-btr" style="display:none">
    <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="btr"></span>
     <div class="eyebrow">Birth time rectification · ₹298</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Not sure your birth time is right?</h3>
     <p style="color:var(--muted);font-size:14.5px">Most people's recorded time is off by a few minutes, and a few
@@ -1122,7 +1179,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 
    <h3>What we collect</h3>
    <ul>
-    <li><b>Account:</b> name and email when you sign in with Google or a guest session.</li>
+    <li><b>Account:</b> name and email when you sign in with Google or a promocode session.</li>
     <li><b>Reading inputs:</b> birth details you enter, place names, and palm photos you upload for a reading.</li>
     <li><b>Payments:</b> order id, amount, and status. Card/UPI details are handled by Razorpay — we do not store your full payment credentials.</li>
     <li><b>Technical:</b> session cookies and basic server logs needed to run the service securely.</li>
@@ -1248,6 +1305,25 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
  </div>
 </section>
 
+<!-- ================= MY REPORTS (paid / unlocked only) ================= -->
+<section class="view" id="v-reports">
+ <div class="wrap sec">
+  <div class="sec-head"><div class="eyebrow">Your library</div><h2>Unlocked reports</h2>
+   <p>Every reading you have paid for — reopen it any time, or download a PDF.</p></div>
+  <div id="reportsList"><div class="card hint">Sign in to see your unlocked reports.</div></div>
+  <div id="reportsViewer" style="display:none;margin-top:22px"></div>
+ </div>
+</section>
+
+<!-- ================= ADMIN ANALYSIS ================= -->
+<section class="view" id="v-analysis">
+ <div class="wrap sec">
+  <div class="sec-head"><div class="eyebrow">Admin</div><h2>Analysis</h2>
+   <p>Site-wide free generations, paid unlocks, and page views for capacity planning.</p></div>
+  <div id="analysisBody"><div class="card hint">Admin only.</div></div>
+ </div>
+</section>
+
 </main>
 
 <footer><div class="wrap">
@@ -1269,16 +1345,18 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
  <button onclick="go('astro')" data-v="astro"><svg><use href="#i-moon"/></svg>Astro</button>
  <button onclick="go('soon')" data-v="soon"><svg><use href="#i-lock"/></svg>Roadmap</button>
  <button onclick="go('contact')" data-v="contact"><svg><use href="#i-chat"/></svg>Contact</button>
+ <button onclick="go('reports')" data-v="reports" id="mobReports" style="display:none"><svg><use href="#i-lock"/></svg>Reports</button>
+ <button onclick="go('analysis')" data-v="analysis" id="mobAnalysis" style="display:none"><svg><use href="#i-star"/></svg>Analysis</button>
 </div></nav>
 
 <div class="modal admin-modal" id="guestModal" role="dialog" aria-modal="true" aria-labelledby="guestTitle">
  <div class="modal-box">
-  <h3 id="guestTitle">Guest access</h3>
-  <p class="hint" style="margin-bottom:14px">Enter the guest passcode to try the free half of every reading.</p>
-  <div class="field"><label for="guestPass">Passcode</label><input class="inp" id="guestPass" type="password" autocomplete="current-password" placeholder="Guest passcode"></div>
+  <h3 id="guestTitle">Login via promocode</h3>
+  <p class="hint" style="margin-bottom:14px">Enter your promocode to try the free half of every reading.</p>
+  <div class="field"><label for="guestPass">Promocode</label><input class="inp" id="guestPass" type="password" autocomplete="current-password" placeholder="Promocode"></div>
   <p class="err" id="guestErr" style="display:none;margin-bottom:10px"></p>
   <div style="display:flex;gap:10px;flex-wrap:wrap">
-   <button class="btn btn-gold" id="guestSubmitBtn" onclick="submitGuestLogin()">Continue as guest</button>
+   <button class="btn btn-gold" id="guestSubmitBtn" onclick="submitGuestLogin()">Login via promocode</button>
    <button class="btn btn-ghost btn-sm" onclick="closeGuestModal()">Cancel</button>
   </div>
  </div>
@@ -1323,7 +1401,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 const CONFIG = {
   brand:        'GrahaRekha',
   apiBase:      '',                      // '' = same origin; auto-set for local split ports below
-  googleClientId:'',                     // Google Cloud OAuth 2.0 Web Client ID ('' = guest login)
+  googleClientId:'',                     // Google Cloud OAuth 2.0 Web Client ID ('' = promocode login)
   contactEmail: 'admin@graharekha.co.in',
   contactPhone: '+91-7095734613',
   whatsapp:     '917095734613',          // digits only, with country code
@@ -1411,12 +1489,233 @@ function go(v){
   scrollTo({top:0,behavior:'smooth'});
   if(v==='read') syncFlow();
   if(v==='astro') syncAstroGate();
+  if(v==='reports') loadMyReports();
+  if(v==='analysis') loadAdminAnalysis();
+  trackPageView(v);
 }
 function syncAstroGate(){
   const on = !!S.user;
   const gate = $('#astroAuthGate'), main = $('#astroMain');
   if(gate) gate.style.display = on ? 'none' : '';
   if(main) main.style.display = on ? '' : 'none';
+}
+
+const ASTRO_PANE = {
+  full_report:'report', horary:'horary', user_question:'question', daily:'daily',
+  numerology:'numero', kundali_match:'match', muhurat:'muhurat', btr:'btr'
+};
+const KIND_UI = {
+  palm:{label:'Palm reading', view:'read'},
+  full_report:{label:'Full report', view:'astro', pane:'report'},
+  horary:{label:'Horary', view:'astro', pane:'horary'},
+  user_question:{label:'Ask your chart', view:'astro', pane:'question'},
+  daily:{label:'Daily reading', view:'astro', pane:'daily'},
+  numerology:{label:'Numerology', view:'astro', pane:'numero'},
+  kundali_match:{label:'Kundali matching', view:'astro', pane:'match'},
+  muhurat:{label:'Muhurat', view:'astro', pane:'muhurat'},
+  btr:{label:'Birth time rectification', view:'astro', pane:'btr'}
+};
+let _paySuccessMsg = '';
+
+function reportIsUnlocked(r){
+  return !!(r && (r.paid || isAdmin()) && r.links && r.links.paid);
+}
+function paySuccessBanner(msg){
+  return `<div class="pay-success-banner">${esc(msg||'Payment successful — your full report is below.')}</div>`;
+}
+function takePaySuccessBanner(){
+  if(!_paySuccessMsg) return '';
+  const b = paySuccessBanner(_paySuccessMsg);
+  _paySuccessMsg = '';
+  return b;
+}
+async function waitForUnlockedReport(reportId, maxMs){
+  if(!reportId || MOCK) return null;
+  const deadline = Date.now() + (maxMs || 15000);
+  while(Date.now() < deadline){
+    try{
+      const rep = await api('/api/reports/'+reportId);
+      if(reportIsUnlocked(rep)) return rep;
+    }catch(e){}
+    await new Promise(r=>setTimeout(r, 800));
+  }
+  return null;
+}
+async function downloadReportPdf(reportId){
+  if(!reportId){ toast('No report selected'); return; }
+  const token = ASTRO.token || apSessionToken;
+  if(!token){ toast('Please sign in first'); return; }
+  try{
+    const r = await fetch(CONFIG.apiBase+'/api/reports/'+reportId+'/pdf', {
+      headers:{ Authorization:'Bearer '+token }
+    });
+    if(!r.ok){
+      let msg = 'Could not download PDF';
+      try{ msg = (await r.json()).detail || msg; }catch(e){}
+      throw new Error(msg);
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition')||'';
+    const m = cd.match(/filename="([^"]+)"/);
+    const fname = m ? m[1] : ('graharekha-'+String(reportId).slice(0,8)+'.pdf');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+    toast('PDF downloaded');
+  }catch(e){ toast(e.message||'PDF download failed'); }
+}
+function reportToolbar(reportId, link){
+  const rid = esc(reportId||'');
+  const href = esc(absUrl(link));
+  return `<div class="report-toolbar">
+    <button class="btn btn-ghost btn-sm" type="button" onclick="downloadReportPdf('${rid}')">Download PDF</button>
+    <a class="btn btn-ghost btn-sm" href="${href}" target="_blank" rel="noopener noreferrer">Open full screen</a>
+  </div>`;
+}
+function frameFor(link, reportId){
+  const id = 'rf-' + Math.random().toString(36).slice(2, 9);
+  setTimeout(()=>wireReportFrame(document.getElementById(id)), 0);
+  const src = esc(absUrl(link));
+  const toolbar = reportId ? reportToolbar(reportId, link) :
+    `<div class="report-toolbar"><a class="btn btn-ghost btn-sm" href="${src}" target="_blank" rel="noopener noreferrer">Open full screen</a></div>`;
+  return `<div class="readingmount"><iframe id="${id}" class="reportframe" src="${src}"
+      title="Your reading" loading="lazy"></iframe></div>${toolbar}`;
+}
+function astroReportFrame(r, dailyOpen){
+  const open = dailyOpen || reportIsUnlocked(r);
+  const link = open ? r.links.paid : r.links.free;
+  return frameFor(link, open ? (r.reportId||ASTRO.lastReportId) : null);
+}
+function paintReportsNav(){
+  const show = !!S.user;
+  ['navReports','mobReports'].forEach(id=>{ const el=$('#'+id); if(el) el.style.display = show ? '' : 'none'; });
+  paintAnalysisNav();
+}
+function paintAnalysisNav(){
+  const show = isAdmin();
+  ['navAnalysis','mobAnalysis'].forEach(id=>{ const el=$('#'+id); if(el) el.style.display = show ? '' : 'none'; });
+}
+function trackPageView(path){
+  if(!path || !CONFIG.liveApi && !CONFIG.apiBase) return;
+  try{
+    fetch(CONFIG.apiBase+'/api/analytics/pageview', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ path:String(path) }),
+      keepalive:true
+    }).catch(()=>{});
+  }catch(e){}
+}
+function inrFromPaise(p){
+  const n = Number(p||0)/100;
+  try{ return '₹'+n.toLocaleString('en-IN',{maximumFractionDigits:0}); }
+  catch(e){ return '₹'+Math.round(n); }
+}
+async function loadAdminAnalysis(){
+  const el = $('#analysisBody');
+  if(!el) return;
+  if(!isAdmin()){
+    el.innerHTML = '<div class="card hint">Admin login required to view analysis.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="card hint"><span class="spin"></span> Loading analysis…</div>';
+  try{
+    const d = await api('/api/admin/analysis');
+    const free = d.freeReports || {};
+    const paid = d.paidOrders || {};
+    const views = d.pageViews || {};
+    const freeRows = (free.bySection||[]).map(r=>
+      `<tr><td>${esc(r.label)}</td><td class="num">${esc(r.count)}</td></tr>`).join('')
+      || '<tr><td colspan="2" class="hint">No free reports yet</td></tr>';
+    const paidRows = (paid.bySection||[]).map(r=>
+      `<tr><td>${esc(r.label)}</td><td class="num">${esc(r.count)}</td><td class="num">${esc(inrFromPaise(r.revenuePaise))}</td></tr>`).join('')
+      || '<tr><td colspan="3" class="hint">No paid orders yet</td></tr>';
+    const viewRows = (views.byPath||[]).map(r=>
+      `<tr><td>${esc(r.label)}</td><td class="num">${esc(r.count)}</td></tr>`).join('')
+      || '<tr><td colspan="2" class="hint">No page views yet</td></tr>';
+    el.innerHTML = `
+      <div class="analysis-kpis">
+        <div class="analysis-kpi"><span>Free reports</span><b>${esc(free.total||0)}</b><small>Generations till date</small></div>
+        <div class="analysis-kpi"><span>Paid orders</span><b>${esc(paid.totalOrders||0)}</b><small>${esc(inrFromPaise(paid.totalPaise))} collected</small></div>
+        <div class="analysis-kpi"><span>Page views</span><b>${esc(views.total||0)}</b><small>SPA views till date</small></div>
+      </div>
+      <div class="analysis-grid">
+        <div class="card">
+          <div class="eyebrow">Free reports by section</div>
+          <table class="analysis-table"><thead><tr><th>Section</th><th class="num">Count</th></tr></thead>
+          <tbody>${freeRows}</tbody></table>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Paid unlocks by section</div>
+          <table class="analysis-table"><thead><tr><th>Section</th><th class="num">Orders</th><th class="num">Revenue</th></tr></thead>
+          <tbody>${paidRows}</tbody></table>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="eyebrow">Page views by route</div>
+        <p class="hint" style="margin:8px 0 12px">Approximate SPA traffic — useful for scaling, not unique visitors.</p>
+        <table class="analysis-table"><thead><tr><th>Page</th><th class="num">Views</th></tr></thead>
+        <tbody>${viewRows}</tbody></table>
+      </div>
+      <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" type="button" onclick="loadAdminAnalysis()">Refresh</button></div>`;
+  }catch(e){
+    el.innerHTML = '<div class="card hint">Could not load analysis. Try again.</div>';
+  }
+}
+async function loadMyReports(){
+  const listEl = $('#reportsList'), viewer = $('#reportsViewer');
+  if(!listEl) return;
+  if(viewer){ viewer.style.display='none'; viewer.innerHTML=''; }
+  if(!S.user || !apSessionToken){
+    listEl.innerHTML = '<div class="card hint">Sign in to see your unlocked reports.</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="card hint"><span class="spin"></span> Loading your reports…</div>';
+  try{
+    const rows = await api('/api/reports?paid=1');
+    if(!rows.length){
+      listEl.innerHTML = '<div class="card hint">Unlocked reports will appear here after you pay.</div>';
+      return;
+    }
+    listEl.innerHTML = '<div class="reports-list">'+rows.map(r=>{
+      const d = r.createdAt ? new Date(r.createdAt).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}) : '';
+      const kind = esc((KIND_UI[r.kind]||{}).label || r.kind || 'Report');
+      const rid = esc(r.reportId);
+      return `<div class="report-row"><div>
+        <h3>${esc(r.title||kind)}</h3>
+        <div class="meta">${kind}${d?' · '+esc(d):''}</div></div>
+        <div class="acts">
+          <button class="btn btn-gold btn-sm" onclick="openSavedReport('${rid}','${esc(r.kind)}')">View</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadReportPdf('${rid}')">Download PDF</button>
+        </div></div>`;
+    }).join('')+'</div>';
+  }catch(e){
+    listEl.innerHTML = '<div class="card hint">Could not load reports. Try again in a moment.</div>';
+  }
+}
+async function openSavedReport(reportId, kind){
+  if(!reportId) return;
+  try{
+    const r = await api('/api/reports/'+reportId);
+    if(kind === 'palm'){
+      S.readingId = reportId;
+      S.reading = Object.assign({}, S.reading||{}, {reportId, links:r.links, paid:r.paid, meta:r.meta||{}});
+      S.unlocked = reportIsUnlocked(r);
+      save(); go('read'); syncFlow(); renderReading();
+      setTimeout(()=>$('#s-result')?.scrollIntoView({behavior:'smooth', block:'start'}), 120);
+      return;
+    }
+    const pane = ASTRO_PANE[kind] || 'report';
+    go('astro');
+    setAstroPane(pane, {clear:false});
+    ASTRO.lastReportId = reportId;
+    ASTRO.lastKind = kind;
+    rememberLastAstro(kind, reportId);
+    renderAstroResult(kind, enrichReport(r, kind));
+    $('#astroOut')?.scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(e){ toast(e.message||'Could not open that report'); }
 }
 
 /* ---------- date fields ----------
@@ -1613,6 +1912,60 @@ async function redeemPromo(){
 
 /* ---------- auth ---------- */
 function isAdmin(){ return !!(S.user&&S.user.admin) || !!(ASTRO.user&&ASTRO.user.admin); }
+let adminReportStats = {};
+function paintAdminReportStats(){
+  const show = isAdmin();
+  $$('.admin-gen-stat').forEach(el=>{
+    const kind = el.dataset.statKind;
+    const n = adminReportStats[kind] ?? 0;
+    el.textContent = show ? `${n} free report${n===1?'':'s'} till now` : '';
+    el.classList.toggle('on', show);
+  });
+}
+async function refreshAdminReportStats(){
+  if(!isAdmin()){ adminReportStats = {}; paintAdminReportStats(); return; }
+  try{
+    const data = await api('/api/admin/report-stats');
+    adminReportStats = data.counts || {};
+    paintAdminReportStats();
+  }catch(e){ paintAdminReportStats(); }
+}
+function fmtSubUntil(iso){
+  if(!iso) return '';
+  try{
+    const d = new Date(iso);
+    if(isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' });
+  }catch(e){ return ''; }
+}
+function paintDailySub(){
+  const el = $('#dailySubBanner');
+  if(!el) return;
+  const u = S.user;
+  if(!u || !u.subscribed){
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  if(isAdmin()){
+    el.style.display = '';
+    el.innerHTML = '<span class="sub-badge sub-on">Admin — full daily access</span>';
+    return;
+  }
+  const until = fmtSubUntil(u.subUntil);
+  el.style.display = '';
+  el.innerHTML = until
+    ? `<span class="sub-badge sub-on">Subscription active until ${esc(until)}</span>`
+    : '<span class="sub-badge sub-on">Subscription active</span>';
+}
+async function refreshUserProfile(){
+  if(!S.user || !apSessionToken) return;
+  try{
+    const u = await api('/api/me');
+    S.user = Object.assign({}, S.user, u);
+    save(); paintDailySub();
+  }catch(e){ paintDailySub(); }
+}
 function paintAuth(){
   const h=$('#hauth');
   if(S.user){
@@ -1623,11 +1976,15 @@ function paintAuth(){
   } else {
     h.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="go('read')">Sign in</button>`;
   }
+  refreshAdminReportStats();
+  paintDailySub();
+  paintReportsNav();
 }
 function setUser(u){
   S.user=u;
   if(u&&u.admin) S.unlocked=true;
   save(); paintAuth(); syncFlow(); syncAstroGate();
+  paintDailySub();
   toast('Welcome, '+u.name.split(' ')[0]+(u.admin?' (admin — full access)':''));
 }
 function setSessionToken(t){
@@ -1651,28 +2008,28 @@ async function submitGuestLogin(){
   const err = $('#guestErr');
   const btn = $('#guestSubmitBtn');
   if(!passcode){
-    if(err){ err.style.display=''; err.textContent='Passcode required'; }
+    if(err){ err.style.display=''; err.textContent='Promocode required'; }
     return;
   }
   if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin"></span> Signing in…'; }
   try{
-    const turnstileToken = await getTurnstileToken('Quick check before guest sign-in.');
+    const turnstileToken = await getTurnstileToken('Quick check before promocode sign-in.');
     const r = await fetch(CONFIG.apiBase + '/api/auth/dev', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ email:'guest@graharekha.co.in', name:'Guest Seeker', passcode, turnstileToken })
     });
     let data = null, detail = '';
     try{ data = await r.json(); detail = data.detail || ''; }catch(e){}
-    if(!r.ok) throw new Error(detail || ('Guest sign-in failed (HTTP '+r.status+').'));
+    if(!r.ok) throw new Error(detail || ('Promocode login failed (HTTP '+r.status+').'));
     setSessionToken(data.token);
     S._guestPasscode = passcode;
     closeGuestModal();
     setUser(Object.assign({ picture:GUEST_PIC }, data.user));
   }catch(e){
-    if(err){ err.style.display=''; err.textContent=e.message || 'Guest sign-in failed'; }
-    else toast(e.message || 'Guest sign-in failed');
+    if(err){ err.style.display=''; err.textContent=e.message || 'Promocode login failed'; }
+    else toast(e.message || 'Promocode login failed');
   }finally{
-    if(btn){ btn.disabled=false; btn.textContent='Continue as guest'; }
+    if(btn){ btn.disabled=false; btn.textContent='Login via promocode'; }
   }
 }
 // Back-compat for any leftover onclick="demoLogin()"
@@ -1753,8 +2110,8 @@ function initGoogle(){
     const note=$('#authNote');
     if(note){
       note.textContent = CONFIG.liveApi
-        ? 'Sign in with guest passcode or admin while Google Sign-In is being enabled.'
-        : 'Guest passcode or admin login. Add google_client_id in `.config` to enable Google Sign-In.';
+        ? 'Sign in with promocode or admin while Google Sign-In is being enabled.'
+        : 'Promocode or admin login. Add google_client_id in `.config` to enable Google Sign-In.';
     }
     return;
   }
@@ -1765,7 +2122,7 @@ function initGoogle(){
       if($('#gbtn')) google.accounts.id.renderButton($('#gbtn'), opt);
       if($('#gbtnAstro')) google.accounts.id.renderButton($('#gbtnAstro'), opt);
       const note=$('#authNote');
-      if(note) note.textContent='Sign in with Google for a normal account · guest with passcode · admin for full access.';
+      if(note) note.textContent='Sign in with Google for a normal account · promocode login · admin for full access.';
     }catch(e){ console.warn('GIS failed',e); } };
   document.head.appendChild(s);
 }
@@ -2141,6 +2498,7 @@ function watchJob(jobId){
       S.unlocked=!!(data.paid || data.unlocked || isAdmin());
       S.busy=false; S.job=null;
       save(); renderReading(); syncFlow();
+      refreshAdminReportStats();
       toast('Your reading is ready');
     }
     if(j.status==='failed'){
@@ -2306,15 +2664,18 @@ function mockReading(){
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function renderReading(){
   const R=S.reading, d=S.details || {};
+  const unlocked = reportIsUnlocked(R) || (MOCK && S.unlocked) || isAdmin();
+  const banner = takePaySuccessBanner();
   // HTML path (same as astrology): free/paid documents via signed /api/file links.
   if(R && R.links && R.links.free){
     const m = R.meta || {};
     const today=new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
     const freeBits = (m.freeSections||[]).map(esc).join(' · ');
-    $('#s-result').innerHTML = `
+    const rid = R.reportId || S.readingId;
+    $('#s-result').innerHTML = banner + `
      <div class="card">
       <div class="reading-head">
-       <div><div class="eyebrow">${(R.paid || S.unlocked || isAdmin()) ? 'Palmistry · unlocked' : 'Free — your hands, and what each area says'}</div>
+       <div><div class="eyebrow">${unlocked ? 'Palmistry · unlocked' : 'Free — your hands, and what each area says'}</div>
         <h2 style="font-size:clamp(26px,4.4vw,36px);margin-top:8px">${esc(d.name||'Your')} palm, read to ${today}</h2>
         <p style="color:var(--muted);font-size:14px;margin:6px 0 0">${d.age?d.age+' years · ':''}${esc(d.gender||'')} · ${esc(d.dominant||m.dominantHand||'')}-dominant · both palms analysed</p>
         ${freeBits?`<p class="hint" style="margin-top:8px">${freeBits}</p>`:''}</div>
@@ -2322,14 +2683,12 @@ function renderReading(){
       </div>
       ${metaBar(m)}
       ${photoWarning(m)}
-      ${(R.paid || S.unlocked || isAdmin()) && R.links && R.links.paid
-        ? frameFor(R.links.paid)
+      ${unlocked && R.links.paid
+        ? frameFor(R.links.paid, rid)
         : frameFor(R.links.free)}
       ${overlayGallery(R.overlays || m.overlays)}
      </div>` +
-      ((R.paid || S.unlocked || isAdmin())
-        ? ''
-        : palmPayCard(R)) +
+      (unlocked ? '' : palmPayCard(R)) +
      `<div class="card" style="text-align:center">
       <h3 style="font-size:22px">Want a person to walk you through this?</h3>
       <p style="color:var(--muted);font-size:14.5px;margin:8px auto 18px;max-width:52ch">A one-to-one consultation goes deeper than any generated report — bring your own questions.</p>
@@ -2384,7 +2743,7 @@ function palmPayCard(R){
     <p style="color:var(--muted);font-size:14.5px;margin:0 0 14px">${esc(m.teaser || R.teaser || 'Unlock the supporting signs, forward age windows, marks and hand-specific guidance.')}</p>
     <div class="price">${money(price)}</div>
     <ul class="bullets" style="max-width:460px;margin:16px auto 20px;text-align:left">${lockBullets(R)}</ul>
-    <button class="btn btn-gold" onclick="startPay()">Pay securely · ${money(price)}</button>
+    <button class="btn btn-gold" onclick="startPay()">Pay ${money(price)} · Unlock full report</button>
     <p class="hint">GPay · PhonePe · cards · UPI · secured by Razorpay</p></div>`;
 }
 /* ---------- pieces that render the engine's own evidence ---------- */
@@ -2536,7 +2895,7 @@ async function showPayModal(order, opts){
     <div class="price" style="margin:10px 0">${money(order.amount)}</div>
     <p class="hint">Order ${esc(order.orderId)}</p>
     <div id="rpPayMount" style="margin:14px 0;min-height:48px"></div>
-    <div class="pay-status" id="payStatus"><span class="spin"></span> Complete payment below — we confirm automatically…</div>
+    <div class="pay-status" id="payStatus"><span class="spin"></span> Stay on this page — your report opens here when payment clears.</div>
     <hr class="hr">
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" type="button" id="payRefreshBtn">I already paid — check again</button>
@@ -2562,7 +2921,10 @@ async function showPayModal(order, opts){
   pollOrderPaid(order.orderId, finish, statusEl, fetchFn);
   const mount = m.querySelector('#rpPayMount');
   if(order.keyId && order.gatewayOrderId){
-    try{ await openRazorpayCheckout(order); }
+    try{
+      await openRazorpayCheckout(order);
+      await checkOnce();
+    }
     catch(e){ if(e.message !== 'Payment cancelled') toast(e.message || 'Payment failed'); }
   } else if(!mountRazorpayButton(mount)){
     if(statusEl) statusEl.textContent = 'Payment is not configured on this server.';
@@ -2609,25 +2971,43 @@ function drawQR(intent,serverImg,boxId){
 }
 async function unlock(){
   stopPayPoll();
+  if(!S.readingId){ toast('No reading to unlock'); return; }
+  go('read');
+  syncFlow();
+  closePay();
+  $('#s-result').innerHTML = '<div class="card hint"><span class="spin"></span> Confirming your payment…</div>';
+  $('#s-result').style.display = '';
+  if(MOCK){
+    S.reading = S.reading || {};
+    S.reading.paid = true;
+    S.reading.links = S.reading.links || {free:'#', paid:'#'};
+    S.unlocked = true;
+    _paySuccessMsg = 'Payment successful — your full report is below.';
+    save(); renderReading();
+    toast('Your full report is ready');
+    setTimeout(()=>$('#s-result')?.scrollIntoView({behavior:'smooth', block:'start'}), 120);
+    return;
+  }
+  const rep = await waitForUnlockedReport(S.readingId);
+  if(!rep || !reportIsUnlocked(rep)){
+    toast('Payment received — still unlocking. Wait a moment, then tap “I already paid — check again”.');
+    renderReading();
+    return;
+  }
+  S.reading = Object.assign({}, S.reading||{}, {
+    reportId: S.readingId, links: rep.links, paid: true, meta: rep.meta||{}
+  });
   try{
-    if(!MOCK){
-      // Prefer the report row (HTML links). Fall back to legacy JSON paid half.
-      try{
-        const rep = await api('/api/reports/'+S.readingId);
-        if(rep.links){ S.reading.links = rep.links; S.reading.paid = !!rep.paid; }
-      }catch(e){}
-      const full = await api('/api/reading/'+S.readingId+'/full');
-      if(full.future) S.reading.future = full.future;
-      if(full.links){ S.reading.links = full.links; S.reading.paid = true; }
-    }
+    const full = await api('/api/reading/'+S.readingId+'/full');
+    if(full.future) S.reading.future = full.future;
+    if(full.links) S.reading.links = full.links;
   }catch(e){}
-  S.unlocked=true; S.reading.paid=true; save(); closePay();
-  renderReading();
-  toast('Unlocked — your full report is ready');
-  setTimeout(()=>{
-    const el = document.querySelector('#s-result .card:nth-child(2)') || $('#futureZone');
-    el?.scrollIntoView({behavior:'smooth',block:'start'});
-  },200);
+  S.unlocked = true;
+  S.reading.paid = true;
+  _paySuccessMsg = 'Payment successful — your full report is below.';
+  save(); renderReading();
+  toast('Your full report is ready');
+  setTimeout(()=>$('#s-result')?.scrollIntoView({behavior:'smooth', block:'start'}), 120);
 }
 
 /* ---------- enquiry / notify ---------- */
@@ -2708,7 +3088,7 @@ async function astroAuth(){
                                                  passcode: (S._guestPasscode||'') });
     setSessionToken(r.token); ASTRO.user = r.user; return r.token;
   }catch(e){
-    throw new Error('Sign-in failed — please try guest login again.');
+    throw new Error('Sign-in failed — please try promocode login again.');
   }
 }
 
@@ -2749,6 +3129,7 @@ function setAstroPane(pane, {clear=true}={}){
   const birth = $('#astroBirth');
   if(birth) birth.style.display = ['horary','match'].includes(pane) ? 'none' : '';
   if(clear){ const out=$('#astroOut'); if(out) out.innerHTML=''; clearAstroQueue(); }
+  trackPageView('astro:'+pane);
 }
 
 /* ---------- browser cache: forms + last reading pointer ----------
@@ -3055,6 +3436,7 @@ async function astroJob(kind){
     ASTRO.lastReportId = j.result && j.result.reportId;
     rememberLastAstro(kind, ASTRO.lastReportId);
     renderAstroResult(kind, j.result);
+    refreshAdminReportStats();
   }catch(e){
     clearAstroQueue();
     out.innerHTML = jobFailCard(
@@ -3103,19 +3485,6 @@ function renderAstroQueue(j, kind){
   clearInterval(ASTRO.tick);
   let t = left;
   ASTRO.tick = setInterval(()=>{ t=Math.max(0,t-1); const el=$('#aEta'); if(el) el.textContent=mmss(t); }, 1000);
-}
-
-function frameFor(link){
-  // Light editorial host + cards-v2 report — the mount animates the iframe in
-  // so the page does not jump when a long reading lands.
-  const id = 'rf-' + Math.random().toString(36).slice(2, 9);
-  // Defer wiring until after this HTML is in the DOM.
-  setTimeout(()=>wireReportFrame(document.getElementById(id)), 0);
-  return `<div class="readingmount"><iframe id="${id}" class="reportframe" src="${ASTRO.base + link}"
-      title="Your reading" loading="lazy"></iframe></div>
-    <div style="text-align:center;margin-top:10px">
-      <a class="btn btn-ghost btn-sm" href="${ASTRO.base + link}" target="_blank"
-         rel="noopener noreferrer">Open full screen</a></div>`;
 }
 
 /* Same-origin report iframes: inject a working click bridge. Stored reports
@@ -3206,7 +3575,7 @@ function astroPayCard(item, price, refId, sections, teasers, opts){
     ${o.teaser?`<p class="hint" style="max-width:460px;margin:0 auto">${esc(o.teaser)}</p>`:''}
     <div class="price">${money(pay)}${sub?'<span style="font-size:.5em">/month</span>':''}</div>
     <ul class="bullets" style="max-width:460px;margin:16px auto 20px;text-align:left">${list}${more}</ul>
-    <button class="btn btn-gold" onclick="astroPay('${item}','${refId}')">${sub?'Subscribe':'Unlock'} · ${money(pay)}</button>
+    <button class="btn btn-gold" onclick="astroPay('${item}','${refId}')">${sub?`Subscribe · ${money(pay)}/month`:`Pay ${money(pay)} · Unlock full report`}</button>
     <p class="hint">GPay · PhonePe · cards · UPI · secured by Razorpay</p></div>`;
 }
 
@@ -3215,9 +3584,13 @@ async function astroPay(item, refId){
     const turnstileToken = await getTurnstileToken('Confirm you\'re human before checkout.');
     const o = await astroApi('/api/order', { item, refId: refId || null, turnstileToken });
     if(o.status === 'paid'){
-      toast('Unlocked');
-      if(item === 'subscription') astroJob('daily');
-      else astroRefreshReports(refId || ASTRO.lastReportId, item);
+      if(item === 'subscription'){
+        _paySuccessMsg = 'Subscription active — today\'s full reading is below.';
+        refreshUserProfile().then(()=> astroJob('daily'));
+        return;
+      }
+      _paySuccessMsg = 'Payment successful — your full report is below.';
+      await astroRefreshReports(refId || ASTRO.lastReportId, item);
       return;
     }
     const title = item === 'subscription'
@@ -3226,10 +3599,14 @@ async function astroPay(item, refId){
     showPayModal(o, {
       title,
       modalId: 'aPayModal',
-      onPaid: ()=>{
-        toast('Unlocked');
-        if(item === 'subscription') astroJob('daily');
-        else astroRefreshReports(refId || ASTRO.lastReportId, item);
+      onPaid: async ()=>{
+        if(item === 'subscription'){
+          _paySuccessMsg = 'Subscription active — today\'s full reading is below.';
+          refreshUserProfile().then(()=> astroJob('daily'));
+          return;
+        }
+        _paySuccessMsg = 'Payment successful — your full report is below.';
+        await astroRefreshReports(refId || ASTRO.lastReportId, item);
       }
     });
   }catch(e){ toast(astroErr(e)); }
@@ -3255,7 +3632,7 @@ async function astroRefreshReports(refId, item){
     let r = null;
     const rid = refId || ASTRO.lastReportId;
     if(rid){
-      try{ r = await astroApi('/api/reports/'+rid); }catch(e){}
+      r = await waitForUnlockedReport(rid) || await astroApi('/api/reports/'+rid).catch(()=>null);
     }
     if(!r){
       const list = await astroApi('/api/reports');
@@ -3269,7 +3646,11 @@ async function astroRefreshReports(refId, item){
     const kind = kindMap[item] || item || ASTRO.lastKind || r.kind;
     if(r.reportId) ASTRO.lastReportId = r.reportId;
     rememberLastAstro(kind, r.reportId);
+    go('astro');
+    const pane = ASTRO_PANE[kind];
+    if(pane) setAstroPane(pane, {clear:false});
     renderAstroResult(kind, enrichReport(r, kind));
+    toast('Your full report is ready');
     $('#astroOut')?.scrollIntoView({behavior:'smooth', block:'start'});
   }catch(e){ toast(astroErr(e)); }
 }
@@ -3331,33 +3712,33 @@ function renderMatch(r){
   if(!(r.links&&r.links.free)){
     return `<div class="card"><p style="margin:0;color:var(--warn)">Kundali Matching report unavailable.</p></div>`;
   }
-  if(r.paid && r.links.paid){
+  if(reportIsUnlocked(r) && r.links.paid){
     return `<div class="card">
       <div class="eyebrow">Kundali milan · unlocked</div>
       <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">${esc(couple.trim()==='&'?'Compatibility':couple)}</h3>
-      ${frameFor(r.links.paid)}</div>`;
+      ${astroReportFrame(r)}</div>`;
   }
   return `<div class="card">
     <div class="eyebrow">Kundali milan · free half</div>
     <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">${esc(couple.trim()==='&'?'Compatibility':couple)}</h3>
     ${m.total!=null?`<p class="hint">${esc(m.total)}/${esc(m.maxGuna||36)} guna · ${esc(m.bandPlain||m.band||'')}</p>`:''}
-    ${frameFor(r.links.free)}</div>` +
+    ${astroReportFrame(r)}</div>` +
    astroPayCard('kundali_match', r.price, r.reportId, m.paidSections, m.teasers);
 }
 
 function renderMuhurat(r){
   const m=r.meta||{};
   if(r.links&&r.links.free){
-    if(r.paid && r.links.paid){
+    if(reportIsUnlocked(r)){
       return `<div class="card">
         <div class="eyebrow">Muhurat · unlocked · ${esc(r.eventId||m.eventId||'day')} · ${esc(r.date||m.date||'')}</div>
         <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Is this day right?</h3>
-        ${frameFor(r.links.paid)}</div>`;
+        ${astroReportFrame(r)}</div>`;
     }
     return `<div class="card">
       <div class="eyebrow">Muhurat · ${esc(r.eventId||m.eventId||'day')} · ${esc(r.date||m.date||'')}</div>
       <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Is this day right?</h3>
-      ${frameFor(r.links.free)}</div>` +
+      ${astroReportFrame(r)}</div>` +
       astroPayCard('muhurat', r.price, r.reportId, m.paidSections, m.teasers);
   }
   // Legacy JSON fallback
@@ -3378,16 +3759,16 @@ function renderBtr(r){
   if(r.skipped) return `<div class="card"><p style="margin:0;color:var(--warn)">${esc(r.reason||'Give us a couple of dated life events to work from.')}</p></div>`;
   const m=r.meta||{};
   if(r.links&&r.links.free){
-    if(r.paid && r.links.paid){
+    if(reportIsUnlocked(r)){
       return `<div class="card">
         <div class="eyebrow">Birth time rectification · unlocked</div>
         <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Does your recorded time hold up?</h3>
-        ${frameFor(r.links.paid)}</div>`;
+        ${astroReportFrame(r)}</div>`;
     }
     return `<div class="card">
       <div class="eyebrow">Birth time rectification · free half</div>
       <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Does your recorded time hold up?</h3>
-      ${frameFor(r.links.free)}</div>` +
+      ${astroReportFrame(r)}</div>` +
       astroPayCard('btr', r.price, r.reportId, m.paidSections, m.teasers);
   }
   return `<div class="card"><p style="margin:0;color:var(--warn)">Birth time rectification report unavailable.</p></div>`;
@@ -3395,24 +3776,23 @@ function renderBtr(r){
 
 function renderAstroResult(kind, r){
   const out = $('#astroOut');
+  const banner = takePaySuccessBanner();
   if(r && r.reportId) ASTRO.lastReportId = r.reportId;
   if(kind) ASTRO.lastKind = kind;
   if(kind === 'numerology'){
     const m = r.meta || {};
     const price = r.price ?? m.price ?? CONFIG.astroPrices.numerology_full;
-    if(r.paid && r.links && r.links.paid){
-      out.innerHTML = `<div class="card"><div class="eyebrow">Numerology · unlocked</div>
+    if(reportIsUnlocked(r)){
+      out.innerHTML = banner + `<div class="card"><div class="eyebrow">Numerology · unlocked</div>
         <h3 style="font-size:24px;margin:8px 0 6px">Your numbers</h3>
         <p class="hint">The working, the dates and the name corrections are open.</p>
-        ${frameFor(r.links.paid)}
-        <div style="text-align:center;margin-top:14px"><a class="btn btn-ghost btn-sm" href="${ASTRO.base+r.links.paid}" target="_blank" rel="noopener noreferrer">Open in a new tab</a></div></div>`;
+        ${astroReportFrame(r)}</div>`;
       return;
     }
-    out.innerHTML = `<div class="card"><div class="eyebrow">Free — every number, and what each one says</div>
+    out.innerHTML = banner + `<div class="card"><div class="eyebrow">Free — every number, and what each one says</div>
       <h3 style="font-size:24px;margin:8px 0 6px">Your numbers</h3>
       <p class="hint">${(m.freeSections||[]).map(esc).join(' · ')}</p>
-      ${frameFor(r.links.free)}
-      <div style="text-align:center;margin-top:14px"><a class="btn btn-ghost btn-sm" href="${ASTRO.base+r.links.free}" target="_blank" rel="noopener noreferrer">Open in a new tab</a></div></div>` +
+      ${astroReportFrame(r)}</div>` +
       astroPayCard('numerology_full', price, r.reportId,
         m.paidSections || ['The working — every number derived letter by letter',
          'Your chapters, dated, and this year cut into nine slices',
@@ -3424,20 +3804,17 @@ function renderAstroResult(kind, r){
   }
   if(kind === 'full_report'){
     const m = r.meta || {};
-    // Paid → show only the clear full document. Keeping the free iframe above
-    // it left "What helps" blurred on screen after a successful unlock.
-    if(r.paid && r.links && r.links.paid){
-      out.innerHTML = `<div class="card"><div class="eyebrow">Full reading · unlocked</div>
+    if(reportIsUnlocked(r)){
+      out.innerHTML = banner + `<div class="card"><div class="eyebrow">Full reading · unlocked</div>
         <h3 style="font-size:24px;margin:8px 0 6px">Your confluence reading</h3>
         <p class="hint">Dates, what helps, and remedies are open.</p>
-        ${frameFor(r.links.paid)}
-        <div style="text-align:center;margin-top:14px"><a class="btn btn-ghost btn-sm" href="${ASTRO.base+r.links.paid}" target="_blank" rel="noopener noreferrer">Open in a new tab</a></div></div>`;
+        ${astroReportFrame(r)}</div>`;
       return;
     }
-    out.innerHTML = `<div class="card"><div class="eyebrow">Free — your chart, and which way each area leans</div>
+    out.innerHTML = banner + `<div class="card"><div class="eyebrow">Free — your chart, and which way each area leans</div>
         <h3 style="font-size:24px;margin:8px 0 6px">Your confluence reading</h3>
         <p class="hint">${(m.freeSections||[]).map(esc).join(' · ')}</p>
-        ${frameFor(r.links.free)}</div>` +
+        ${astroReportFrame(r)}</div>` +
       astroPayCard('full_report', r.price, r.reportId, m.paidSections, m.teasers);
     return;
   }
@@ -3446,7 +3823,7 @@ function renderAstroResult(kind, r){
     const ans = m.answer || {};
     const conf = String(ans.confidence||'').toLowerCase();
     const cls = conf.startsWith('high') ? 'ok' : (conf.startsWith('low') ? 'warn' : '');
-    out.innerHTML = `<div class="card">
+    out.innerHTML = banner + `<div class="card">
         <div class="eyebrow">Ask your chart</div>
         <h3 style="font-size:22px;margin:8px 0 4px">“${esc((m.question||''))}”</h3>
         ${(r.paid && ans.label)?`<div class="vcard ${cls}" style="margin:14px 0">
@@ -3455,8 +3832,8 @@ function renderAstroResult(kind, r){
             <div class="vconf">confidence ${esc(String(ans.confidence||'moderate'))}${
               ans.best_from?` · strongest window ${esc(ans.best_from)}–${esc(ans.best_to||'')}`:''}</div>
           </div>`:''}
-        ${frameFor((r.paid && r.links.paid) ? r.links.paid : r.links.free)}</div>` +
-      (r.paid ? ''
+        ${astroReportFrame(r)}</div>` +
+      (reportIsUnlocked(r) ? ''
               : astroPayCard('user_question', r.price, r.reportId, (m.paidSections||[]), (m.teasers||{})));
     return;
   }
@@ -3483,7 +3860,7 @@ function renderAstroResult(kind, r){
     const ans = (r.meta||{}).answer || {};
     const conf = String(ans.confidence||'').toLowerCase();
     const cls = conf.startsWith('high') ? 'ok' : (conf.startsWith('low') ? 'warn' : '');
-    out.innerHTML = `<div class="card">
+    out.innerHTML = banner + `<div class="card">
         <div class="eyebrow">Horary · Prashna</div>
         <h3 style="font-size:22px;margin:8px 0 4px">“${esc((r.meta||{}).question||'')}”</h3>
         <p class="hint">asked ${esc((r.meta||{}).asked||'')}</p>
@@ -3493,27 +3870,26 @@ function renderAstroResult(kind, r){
             <div class="vconf">confidence ${esc(String(ans.confidence||'moderate'))}${
               ans.contradicted?' · the methods disagreed, so this is deliberately cautious':''}</div>
           </div>`:''}
-        ${frameFor((r.paid && r.links.paid) ? r.links.paid : r.links.free)}</div>` +
-      (r.paid ? ''
+        ${astroReportFrame(r)}</div>` +
+      (reportIsUnlocked(r) ? ''
               : astroPayCard('horary', r.price, r.reportId, (r.meta||{}).paidSections, (r.meta||{}).teasers));
     return;
   }
-  if(kind === 'kundali_match'){ out.innerHTML = renderMatch(r); return; }
-  if(kind === 'muhurat'){ out.innerHTML = renderMuhurat(r); return; }
-  if(kind === 'btr'){ out.innerHTML = renderBtr(r); return; }
+  if(kind === 'kundali_match'){ out.innerHTML = banner + renderMatch(r); return; }
+  if(kind === 'muhurat'){ out.innerHTML = banner + renderMuhurat(r); return; }
+  if(kind === 'btr'){ out.innerHTML = banner + renderBtr(r); return; }
   if(kind === 'daily'){
     if(r.links&&r.links.free){
       const m = r.meta || {};
       // Free every morning, forever — the verdict, the Moon proof and the
       // lucky number/colour. The subscription opens the working behind them.
-      const open = r.subscribed && r.links.paid;
-      out.innerHTML = `<div class="card">
+      const open = !!(r.subscribed && r.links.paid);
+      out.innerHTML = banner + `<div class="card">
         <div class="eyebrow">Daily reading · ${esc(r.date||m.date||'')}</div>
         <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Today from your chart</h3>
         <p class="hint">${open?'Subscription active — the full working is open.'
           :'Your verdict, your Moon and your number are free every morning.'}</p>
-        ${frameFor(open ? r.links.paid : r.links.free)}
-        <div style="text-align:center;margin-top:14px"><a class="btn btn-ghost btn-sm" href="${ASTRO.base+(open?r.links.paid:r.links.free)}" target="_blank" rel="noopener noreferrer">Open in a new tab</a></div>
+        ${astroReportFrame(r, open)}
         </div>` +
         (open ? '' : astroPayCard('subscription', r.price ?? m.price ?? 298, '',
           m.paidSections || ['Every lane that voted on today',
@@ -3562,6 +3938,7 @@ function renderAstroResult(kind, r){
   }
   const afterAuth = async (u)=>{
     if(u) setUser(Object.assign({}, S.user, u));
+    paintDailySub();
     // Server is truth for unlocks — reopen last reading if the account still owns it.
     if(apSessionToken && S.lastAstro && S.lastAstro.reportId){
       await resumeLastAstro();
@@ -3571,7 +3948,7 @@ function renderAstroResult(kind, r){
       try{
         const rep = await api('/api/reports/'+S.readingId);
         S.reading = { reportId:rep.reportId, links:rep.links, paid:rep.paid, meta:rep.meta||{} };
-        S.unlocked = !!(rep.paid || isAdmin());
+        S.unlocked = reportIsUnlocked(rep) || isAdmin();
         save(); renderReading(); syncFlow();
       }catch(e){ /* stale id — leave flow alone */ }
     }

@@ -179,6 +179,20 @@ CREATE TABLE IF NOT EXISTS usage_counters (
     PRIMARY KEY (user_id, kind, period)
 );
 
+-- Site-wide free-report generation counts (admin analytics).
+CREATE TABLE IF NOT EXISTS report_generation_stats (
+    kind       TEXT PRIMARY KEY,
+    count      INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Coarse SPA page-view counters for traffic / capacity planning.
+CREATE TABLE IF NOT EXISTS page_view_stats (
+    path       TEXT PRIMARY KEY,
+    count      INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ----------------------------------------------------------------- reports ---
 CREATE TABLE IF NOT EXISTS reports (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),

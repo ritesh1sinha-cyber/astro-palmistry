@@ -395,7 +395,7 @@ def _locked_preview(*, price: int, n_missing: int, maha: str,
     <h3>Put your numbers to work</h3>
     <p>Unlock your strongest name spellings, your next three years, and simple
     actions for the gaps in your grid.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock &mdash; &#8377;{price}</a>
+    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>"""
 

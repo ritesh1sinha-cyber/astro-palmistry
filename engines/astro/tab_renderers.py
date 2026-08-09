@@ -96,7 +96,7 @@ def render_match(meta: dict, *, groom: str = "", bride: str = "",
     <div class="ev-label">What needs handling first</div>
     <p><b>{_e(', '.join(doshas))}</b>{' — classically treated as blocking until remedied.' if blocking else '.'}</p>
     <p>{'Bhakoot scoring zero is about money and health over decades, not about whether you get along now. It is the one failure classical texts insist on treating before the wedding rather than after.' if any('bhakoot' in d.lower() for d in doshas) else 'Remedies for this are named in the full reading.'}</p>
-    {'' if paid else f'<p class="locked-inline"><b>The remedies, the exemptions that may already apply to you, and the D9 cross-check are in the full report — ₹{price}.</b></p>'}
+    {'' if paid else '<p class="locked-inline"><b>The remedies, the exemptions that may already apply to you, and the D9 cross-check are in the full report.</b></p>'}
   </div>"""
 
     return f"""
@@ -175,7 +175,7 @@ def render_btr(res: dict, *, paid: bool = False, price: int = 999) -> str:
         paid_block = f"""
   <div class="tab-cta">
     <p><b>The corrected time itself is the paid part</b> — along with your
-    rebuilt chart, and every event re-scored against it. ₹{price}.</p>
+    rebuilt chart, and every event re-scored against it.</p>
     <p class="fine">We show you the gap for free because you should be able to
     see there is a problem before paying anyone to fix it.</p>
   </div>"""
@@ -279,7 +279,7 @@ def render_muhurat(summary: dict, detail: Optional[dict] = None, *,
     <p><b>{n} checks</b> were run against this day, and
     <b>{a} better date{"s" if a != 1 else ""}</b> sit nearby.
     The pass/fail list, the strong hours, and those alternatives are in the
-    full reading — ₹{price}.</p>
+    full reading.</p>
   </div>"""
 
     alt_block = ""
@@ -488,7 +488,7 @@ def render_palm(public: dict, *, paid: bool = False, price: int = 499,
   <ul class="palm-list">{future_rows}</ul>
   {'' if paid else f'''
   <div class="tab-cta">
-    <p>{len(future)} dated sections ahead are in the full reading — ₹{price}.</p>
+    <p>{len(future)} dated sections ahead are in the full reading.</p>
   </div>'''}
 </section>"""
 
@@ -579,7 +579,6 @@ def render_palm_astro(pc: dict, *, palm_features: Any = None,
   <div class="remedy-locked">
     <b>{hidden} more chart-to-hand readings</b> — every mount, the sub-planets
     sitting in each zone, and the marks your chart predicts you will find.
-    ₹{price}
   </div>"""
 
     return f"""

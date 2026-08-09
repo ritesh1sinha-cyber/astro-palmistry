@@ -8,3 +8,5 @@ fakeredis>=2.26        # embedded queue when REDIS_URL is unset
 pydantic==2.9.*
 google-auth==2.35.*
 boto3==1.35.*
+weasyprint==62.*
+pydyf==0.11.0

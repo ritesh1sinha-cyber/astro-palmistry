@@ -11,7 +11,8 @@ So this module renders the same analysis twice, branching on `paid`, in the
 shared dialect from `report_shell`. Free carries the photographs, the four
 scores, the eight life-area verdicts and every dated marking the reader has
 already lived through; paid adds the working behind each verdict, the markings
-still ahead, the mounts, what the marks mean, and the numbered points.
+still ahead, the mounts, what the marks mean, hand-specific remedies (do/don't),
+and the numbered points.
 """
 
 from __future__ import annotations
@@ -362,6 +363,158 @@ actually goes, independently of the lines crossing them.</p>
 <div class="card"><ul class="palm-list">{rows}</ul></div>"""
 
 
+# Classical palm upaya keyed to detected mounts / marks (no birth chart needed).
+_MOUNT_LABEL = {
+    "jupiter": "ambition / authority (Jupiter mount)",
+    "saturn": "discipline / solitude (Saturn mount)",
+    "apollo": "recognition / creative work (Sun mount)",
+    "sun": "recognition / creative work (Sun mount)",
+    "mercury": "communication / business (Mercury mount)",
+    "mars": "courage / temper (Mars mount)",
+    "venus": "affection / vitality (Venus mount)",
+    "moon": "imagination / travel (Moon mount)",
+    "luna": "imagination / travel (Moon mount)",
+}
+
+_STRENGTHEN = {
+    "jupiter": ("Topaz (or yellow sapphire) on the index finger, first worn on a Thursday",
+                "Speak one ambition out loud this week instead of waiting to be invited."),
+    "saturn": ("A simple iron ring on the middle finger, Saturdays",
+               "Finish one dull, deferred duty before noon for seven days."),
+    "apollo": ("Ruby or citrine on the ring finger, Sundays",
+               "Show one piece of unfinished creative work to someone who will tell you the truth."),
+    "sun": ("Ruby or citrine on the ring finger, Sundays",
+            "Show one piece of unfinished creative work to someone who will tell you the truth."),
+    "mercury": ("Emerald (or green glass trial) on the little finger, Wednesdays",
+                "Put the next important deal in writing before you discuss it again."),
+    "mars": ("Red coral on the ring finger, Tuesdays — trial for three days",
+             "Move hard physical energy before hard words; let the other side speak first once."),
+    "venus": ("Diamond or clear zircon on the middle finger, Fridays",
+              "Initiate one warm gesture you have been postponing."),
+    "moon": ("Pearl (or moonstone) on Monday mornings",
+             "Protect sleep and water the week before any travel decision."),
+    "luna": ("Pearl (or moonstone) on Monday mornings",
+             "Protect sleep and water the week before any travel decision."),
+}
+
+_TEMPER = {
+    "jupiter": "Do not run every room this month — ask before you direct.",
+    "saturn": "Do not take on another solitary burden; hand one duty off.",
+    "apollo": "Do not chase praise at the cost of finishing the work.",
+    "sun": "Do not chase praise at the cost of finishing the work.",
+    "mercury": "Do not talk your way into a commitment you have not written down.",
+    "mars": "Do not start the fight. Wear iron if temper keeps rising — use it to cool, not to win.",
+    "venus": "Do not overspend on comfort or romance while other lines are under strain.",
+    "moon": "Do not relocate or travel on impulse for the next fortnight.",
+    "luna": "Do not relocate or travel on impulse for the next fortnight.",
+}
+
+_AUSPICIOUS_MARKS = frozenset({"fish", "trident", "triangle", "square", "temple"})
+_HARD_MARKS = frozenset({"cross", "island", "grille"})
+
+
+def _remedies(dom: dict, conf: dict, *, paid: bool = False) -> str:
+    """Do / don't remedies from mounts + special marks — paid detail, free tease."""
+    feats = dom.get("features") or {}
+    mounts = feats.get("mounts") or {}
+    raw_marks = feats.get("special_marks") or []
+    if not raw_marks and conf.get("marks"):
+        # conf marks are statements; keep titles for free teaser count only
+        pass
+
+    dos: List[str] = []
+    donts: List[str] = []
+    seen: set[str] = set()
+
+    def _push(bucket: List[str], line: str) -> None:
+        key = re.sub(r"\W+", " ", line.lower()).strip()
+        if not key or key in seen:
+            return
+        seen.add(key)
+        bucket.append(line)
+
+    for mount, level in mounts.items():
+        m = str(mount).lower()
+        lv = str(level or "").lower()
+        label = _MOUNT_LABEL.get(m, m)
+        if lv == "flat" and m in _STRENGTHEN:
+            gem, act = _STRENGTHEN[m]
+            _push(dos, f"Strengthen {label}: {gem}. Practical: {act}")
+        elif lv == "prominent" and m in _TEMPER:
+            _push(donts, f"{_TEMPER[m]} (your {label} already runs high.)")
+            if m in ("mars",):
+                gem, _ = _STRENGTHEN.get(m, ("", ""))
+                if gem:
+                    _push(dos, f"If temper keeps rising: {gem} — to cool the mount, not to sharpen it.")
+
+    for mark in raw_marks:
+        kind = str(mark.get("type") or mark.get("kind") or "").lower()
+        zone = str(mark.get("zone") or mark.get("mount") or "palm").lower()
+        title = mark.get("title") or kind.title() or "Mark"
+        area = _MOUNT_LABEL.get(zone, _mark_zone_plain(zone))
+        if kind in _AUSPICIOUS_MARKS:
+            _push(dos,
+                  f"Protect the {title} on {area}: keep that part of life steady — "
+                  f"do not disrupt it for a short-term gain.")
+            if zone in _STRENGTHEN:
+                gem, _ = _STRENGTHEN[zone]
+                _push(dos, f"Optional support for that mount: {gem}.")
+        elif kind in _HARD_MARKS:
+            _push(donts,
+                  f"Do not force the area of the {title} on {area} — reduce load there "
+                  f"for a season rather than pushing through.")
+        elif kind == "star":
+            _push(dos, f"A star on {area} can open suddenly — accept clean offers you can verify.")
+            _push(donts, f"Do not rush the first glittering offer near the star on {area}; verify before you commit.")
+        elif kind == "circle":
+            _push(dos, f"Honour a quiet daily practice — the circle on {area} prefers consistency over display.")
+            _push(donts, "Do not turn the spiritual thread into a public performance.")
+
+    # Cap so the section stays readable
+    dos, donts = dos[:6], donts[:6]
+    n = len(dos) + len(donts)
+    if n == 0:
+        if paid:
+            return ""
+        return """
+<h3 class="sec">Remedies for your hand</h3>
+<p class="sec-note">Matched to mounts and marks — not to a generic sign.</p>
+<div class="card"><div class="when locked-inline"><span class="lockicon">&bull;</span>
+What to strengthen, what to temper, and any gem or metal tied to your own mounts
+are in the full reading.</div></div>"""
+
+    if not paid:
+        return f"""
+<h3 class="sec">Remedies for your hand</h3>
+<p class="sec-note">Matched to mounts and marks — not to a generic sign.</p>
+<div class="card"><div class="when locked-inline"><span class="lockicon">&bull;</span>
+{n} hand-specific step{'s' if n != 1 else ''} (what to do, what to avoid, and any
+stone or metal keyed to your mounts) sit in the full reading.</div></div>"""
+
+    do_html = "".join(f"<li class=\"stone up\"><div class=\"stone-top\"><b>Do</b>"
+                      f"<span class=\"stone-verdict\">Wear / practise</span></div>"
+                      f"<div class=\"stone-detail\">{_e(x)}</div></li>" for x in dos)
+    dont_html = "".join(f"<li class=\"stone down\"><div class=\"stone-top\"><b>Don't</b>"
+                        f"<span class=\"stone-verdict\">Avoid</span></div>"
+                        f"<div class=\"stone-detail\">{_e(x)}</div></li>" for x in donts)
+    return f"""
+<section class="remedy-card">
+  <h3 class="sec">Remedies for your hand</h3>
+  <p class="sec-note">Built from what your mounts and marks actually show — green to
+  strengthen, red to hold back.</p>
+  {f'''<div class="stones-group up">
+    <div class="stones-group-label">Do · strengthen and wear</div>
+    <ul class="stones">{do_html}</ul>
+  </div>''' if do_html else ''}
+  {f'''<div class="stones-group down">
+    <div class="stones-group-label">Don't · temper and avoid</div>
+    <ul class="stones">{dont_html}</ul>
+  </div>''' if dont_html else ''}
+  <p class="fine">Educational palmistry only. Stones and metals are traditional
+  suggestions — trial any gem for a few days and remove it if you feel off.</p>
+</section>"""
+
+
 def _workings(raw: dict) -> str:
     """Every numbered point on both hands — the working the dots refer to."""
     blocks = ""
@@ -444,7 +597,7 @@ def _locked_preview(*, price: int, n_areas: int, n_ahead: int, n_marks: int,
     <h3>See the pattern beneath the first reading</h3>
     <p>You have the part you can check against your own hands. Unlock the
     supporting signs, forward age windows, marks and hand-specific guidance.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock &mdash; &#8377;{price}</a>
+    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>"""
 
@@ -488,6 +641,7 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
     if paid:
         tail = (_timeline_ahead(ahead) + _mounts(conf, dom_items)
                 + _marks(dom, conf, paid=True)
+                + _remedies(dom, conf, paid=True)
                 + _workings(raw))
     else:
         locked_ahead = ""
@@ -498,6 +652,7 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
                 f'marking{"s" if len(ahead) != 1 else ""} sit ahead of age {age} on '
                 f'your lines. They are in the full reading.</div></div>')
         tail = (locked_ahead + _marks(dom, conf, paid=False)
+                + _remedies(dom, conf, paid=False)
                 + _locked_preview(price=price, n_areas=len(aspects),
                                   n_ahead=len(ahead), n_marks=n_marks,
                                   n_points=n_points))

@@ -107,6 +107,10 @@ CREATE TABLE IF NOT EXISTS credit_ledger (
 CREATE TABLE IF NOT EXISTS usage_counters (
   user_id TEXT NOT NULL, kind TEXT NOT NULL, period TEXT NOT NULL,
   used INTEGER DEFAULT 0, updated_at TEXT, PRIMARY KEY (user_id, kind, period));
+CREATE TABLE IF NOT EXISTS report_generation_stats (
+  kind TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS page_view_stats (
+  path TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS reports (
   id TEXT PRIMARY KEY, user_id TEXT NOT NULL, chart_id TEXT, kind TEXT NOT NULL,
   paid INTEGER DEFAULT 0, free_key TEXT, paid_key TEXT, meta TEXT DEFAULT '{}',
