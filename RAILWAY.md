@@ -24,7 +24,8 @@ Vercel (frontend, static)  ──/api/*──▶  Railway service (api + inline 
 ## 2. Variables
 
 On the app service, set these. The two `${{...}}` values are Railway references —
-paste them exactly; Railway substitutes the real credentials.
+paste them exactly; Railway substitutes the real credentials. A copy-paste
+template with concurrency caps is in [`deploy/railway.env.example`](deploy/railway.env.example).
 
 ```bash
 ENV=prod
@@ -33,7 +34,13 @@ REDIS_URL=${{Redis.REDIS_URL}}
 
 APP_SECRET=            # openssl rand -hex 32
 INLINE_WORKER=1        # one service answers HTTP and runs readings
-INLINE_WORKER_THREADS=2
+INLINE_WORKER_THREADS=1   # see "Memory and cost" — use 1 on single-box deploys
+
+# Concurrency caps — keep low on one Railway service (see deploy/.env.example)
+CAP_FULL_REPORT=1
+CAP_BTR=1
+CAP_PALM=1
+CAP_DEFAULT=1   # one job at a time; extra requests stay queued in Redis
 
 ALLOWED_ORIGINS=https://your-app.vercel.app
 LOCAL_STORE=/data/storage
@@ -103,6 +110,58 @@ For anything beyond testing, use object storage instead — set `S3_BUCKET`,
 `S3_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (Cloudflare R2 is
 cheapest for this) and the volume stops mattering.
 
+## Memory and cost (read this before raising the Scale slider)
+
+Railway bills **memory × minutes** against the **Scale → Memory limit** on
+`astro-api`, not against the average line on the Metrics chart. If Scale is
+**8 GB** but Metrics shows **3.5–4 GB used**, you still pay for **8 GB** while
+the service is running. CPU, egress, and volume are usually negligible compared
+to memory.
+
+### What uses RAM in this stack
+
+| Source | RAM effect | Notes |
+|--------|------------|--------|
+| Torch + MiniLM (`WITH_CONFLUENCE=1`) | ~1–1.5+ GB baseline after first use | Loaded lazily via `engines/astro/local_models.py`; kept once per process |
+| Palm (mediapipe) | ~+1 GB spike | During palm jobs only |
+| Full confluence report | spike while embedding | Overlaps badly if two heavy jobs run at once |
+| Saved free/paid reports | **Disk on volume**, not process RAM | HTML goes to `LOCAL_STORE`; Postgres stores keys only |
+
+**Lots of free reports on the volume does not inflate your memory bill.** They
+add cheap volume storage (~$0.002-level on typical usage), not RSS. Transient
+RAM during generation can be large (especially palm with embedded photos), then
+drops after the job finishes.
+
+**Keep `REDIS_URL` linked.** Without it, the app falls back to in-process
+fakeredis and job metadata lives in RAM.
+
+### Recommended single-service sizing (keep MiniLM quality)
+
+1. **Settings → Scale → Memory:** **6 GB** (not 4 GB while palm + MiniLM share
+   one box; 8 GB is safe but ~25% more expensive than 6 GB for the same uptime).
+2. **Variables** (already shown above): `INLINE_WORKER_THREADS=1`,
+   `CAP_FULL_REPORT=1`, `CAP_PALM=1`, `CAP_BTR=1`, `CAP_DEFAULT=1`.
+   With one inline worker thread, **only one report runs at a time**; the rest
+   wait in the Redis queue (no palm + full report in parallel).
+3. **CPU:** 2–4 vCPU is enough; 8 vCPU barely affects the bill.
+
+After deploy, run one palm and one full report separately; Metrics idle should
+stay ~3–4 GB with headroom for spikes. `/health` should still show
+`semantic.mode: "minilm"`.
+
+### If you turn MiniLM off (`WITH_CONFLUENCE=0` rebuild)
+
+Reports still generate in **degraded_lexical** mode — thinner confluence
+grouping, weaker horary/question routing. You may run on **4–5 GB** memory.
+See **MODELS.md**. Default recommendation: **keep MiniLM on** and right-size
+Scale + concurrency instead.
+
+### Split API vs worker (later)
+
+For high traffic, run a small API (`INLINE_WORKER=0`) and a separate heavy
+worker service (6 GB). That way you are not paying for torch/MiniLM on every
+idle HTTP request. Not required for the current single-box Railway setup.
+
 ## 4. Verify
 
 ```bash
@@ -143,8 +202,12 @@ the variable, that is the value it needs.
 run them once from the database's Query tab as a superuser, then redeploy.
 
 **A palm reading dies with no error in the log** — that is an out-of-memory kill.
-mediapipe holds ~1 GB while it runs. Raise the service memory, or test the
-astrology features first: they are far lighter.
+mediapipe holds ~1 GB while it runs. Lower concurrent jobs (`INLINE_WORKER_THREADS=1`,
+low `CAP_*`), raise Scale to **6–8 GB**, or test astrology-only first.
+
+**Metrics shows ~4 GB but Scale is 8 GB** — you pay for the **Scale limit**, not
+the chart peak. Lower Scale to **6 GB** if idle usage stays under ~4 GB and you
+have concurrency caps set (see **Memory and cost** above).
 
 **Healthcheck fails but logs look fine** — the first boot creates the schema and
 partitions. `healthcheckTimeout` is already 300 s in `railway.json`; don't lower it.
@@ -159,12 +222,11 @@ or redeploy after pulling the fix that bundles fakeredis for single-service
 
 - **Build time** ~10–15 min with MiniLM enabled (torch wheels + `git lfs pull`).
   Image ~3 GB. Model weights come from the GitHub repo (LFS), not Hugging Face.
-- **Memory:** plan **≥ 4 GB RAM** on the service. mediapipe needs ~1 GB for palm;
-  torch + MiniLM adds ~1.5 GB during a full confluence report.
+- **Memory:** plan **6 GB RAM** on the single-service deploy (8 GB if you see OOM
+  under load). Idle RSS is often ~3–4 GB with MiniLM warm; palm adds ~1 GB spike.
 - **Cold start** after idle is ~20–30 s on the first request.
 - **MiniLM semantic grouping is ON by default** (`WITH_CONFLUENCE=1` in
   `railway.json`). Check `/health` → `semantic.mode` is `"minilm"`, not
   `"degraded_lexical"`. See **MODELS.md** to disable on tiny boxes.
-- **Cost:** roughly $5–15/month at test volumes. It sleeps less aggressively than
-  Render's free tier, which is why it is the better choice for a demo you want to
-  show someone.
+- **Cost:** memory dominates the bill (~$2/day-scale at 8 GB always-on). Use
+  **6 GB Scale + concurrency caps** to cut ~25% without turning MiniLM off.

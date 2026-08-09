@@ -8,10 +8,14 @@ Set HF_HUB_OFFLINE=1 when a complete local copy exists so runs never hit the Hub
 Preferred encoder (Phase 1): paraphrase-multilingual-MiniLM-L12-v2
   — better cross-language / paraphrase matching for question → house routing
     and multi-technique confluence. Falls back to all-MiniLM-L6-v2 if present.
+
+Models are loaded once per process and reused (confluence + question paths
+used to construct a new SentenceTransformer per job, doubling peak RAM).
 """
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
@@ -32,6 +36,13 @@ _WEIGHT_NAMES = (
     "pytorch_model.bin",
     "model.bin",
 )
+
+_ST_MODEL = None
+_ST_PATH: str | None = None
+_CROSS_MODEL = None
+_CROSS_PATH: str | None = None
+_ST_LOCK = threading.Lock()
+_CROSS_LOCK = threading.Lock()
 
 
 def is_model_ready(path: Path) -> bool:
@@ -76,12 +87,9 @@ def resolve_cross_encoder() -> str | None:
     return None
 
 
-def load_sentence_transformer():
-    """Load local MiniLM on CPU. Survives Windows paging-file / low-RAM errors."""
+def _load_st_from_path(path: str):
     from sentence_transformers import SentenceTransformer
 
-    path = resolve_minilm()
-    # Force CPU — GPU init on Windows often blows the page file for ~450 MB models.
     try:
         import torch
         torch.set_num_threads(max(1, min(4, (os.cpu_count() or 2))))
@@ -90,7 +98,6 @@ def load_sentence_transformer():
     try:
         return SentenceTransformer(path, local_files_only=True, device="cpu")
     except OSError as exc:
-        # "paging file is too small" / out of memory — try the smaller L6 if present
         if is_model_ready(MINILM_DIR) and Path(path).resolve() != MINILM_DIR.resolve():
             print(f"[local_models] {exc} — falling back to {MINILM_DIR.name}", flush=True)
             _enable_offline()
@@ -98,13 +105,35 @@ def load_sentence_transformer():
         raise
 
 
-def load_cross_encoder():
-    from sentence_transformers import CrossEncoder
+def load_sentence_transformer():
+    """Load local MiniLM on CPU once per process; reuse on later calls."""
+    global _ST_MODEL, _ST_PATH
+    if _ST_MODEL is not None:
+        return _ST_MODEL
+    with _ST_LOCK:
+        if _ST_MODEL is not None:
+            return _ST_MODEL
+        path = resolve_minilm()
+        _ST_MODEL = _load_st_from_path(path)
+        _ST_PATH = path
+        return _ST_MODEL
 
+
+def load_cross_encoder():
+    """Load cross-encoder once per process when weights exist."""
+    global _CROSS_MODEL, _CROSS_PATH
     path = resolve_cross_encoder()
     if not path:
         return None
-    return CrossEncoder(path, local_files_only=True)
+    if _CROSS_MODEL is not None and _CROSS_PATH == path:
+        return _CROSS_MODEL
+    with _CROSS_LOCK:
+        if _CROSS_MODEL is not None and _CROSS_PATH == path:
+            return _CROSS_MODEL
+        from sentence_transformers import CrossEncoder
+        _CROSS_MODEL = CrossEncoder(path, local_files_only=True)
+        _CROSS_PATH = path
+        return _CROSS_MODEL
 
 
 def active_minilm_name() -> str:
