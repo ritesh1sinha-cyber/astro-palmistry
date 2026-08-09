@@ -466,8 +466,10 @@ def report_pdf(rid: str, user: dict = Depends(current_user)):
         pdf = html_to_pdf(html)
     except RuntimeError as e:
         raise HTTPException(503, str(e))
-    except Exception:                                                 # noqa: BLE001
-        raise HTTPException(500, "could not build the PDF")
+    except Exception as e:                                            # noqa: BLE001
+        # Surface a short hint; full traceback is in Railway logs via pdf_export.
+        hint = (str(e) or type(e).__name__)[:160]
+        raise HTTPException(500, f"could not build the PDF ({hint})")
     kind = (rep.get("kind") or "report").replace("_", "-")
     created = str(rep.get("created_at") or "")[:10] or "report"
     fname = f"graharekha-{kind}-{created}.pdf"
