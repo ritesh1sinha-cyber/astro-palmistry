@@ -194,7 +194,7 @@ def _hands_compare(conf: dict) -> str:
         if not li.get("statement") or li.get("agreement") == "reinforced":
             continue
         rows += (f'<li><b>{_e(li.get("title"))}</b>'
-                 f'<p>{_e(li.get("statement"))}</p></li>')
+                 f'{_scenario_why_html(li.get("statement") or "")}</li>')
     if not rows:
         return ""
     return f"""
@@ -212,6 +212,33 @@ def _verdict(item: dict) -> str:
     # reads as a form field once the sentence sits under its own heading.
     txt = re.sub(r"^Reading for you:\s*", "", txt, flags=re.I)
     return txt[:1].upper() + txt[1:] if txt else ""
+
+
+def _scenario_why_html(text: str, *, title: str = "") -> str:
+    """Turn 'scenario\\nWhy: backing' (or '… Why: …') into styled HTML chips."""
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    # Split on Why even mid-paragraph ("…now. Why: mark on …") — common in
+    # palm confluence statements that were never HTML-formatted.
+    m = re.split(r"(?i)(?:\r?\n|\s+)Why:\s*", raw, maxsplit=1)
+    if len(m) == 2:
+        scenario, why = m[0].strip(), m[1].strip()
+    elif re.match(r"(?i)^Why:\s*", raw):
+        scenario, why = "", re.sub(r"(?i)^Why:\s*", "", raw).strip()
+    else:
+        scenario, why = raw, ""
+    # Drop a trailing period dangling before Why was chopped off.
+    scenario = scenario.rstrip()
+    head = ""
+    if title and scenario:
+        head = f'<p class="pred-scenario"><b>{_e(title)}</b> — {_e(scenario)}</p>'
+    elif title and not scenario:
+        head = f'<p class="pred-scenario"><b>{_e(title)}</b></p>'
+    elif scenario:
+        head = f'<p class="pred-scenario">{_e(scenario)}</p>'
+    why_html = (f'<p class="pred-why"><b>Why:</b> {_e(why)}</p>' if why else "")
+    return head + why_html
 
 
 def _est_age(item: dict) -> Optional[int]:
@@ -236,14 +263,15 @@ def _read_to_today(items: List[dict], *, first: str, age: int) -> str:
     if not shape and not behind:
         return ""
 
-    rows = "".join(f"""
-    <li><span class="tick">&#10003;</span>
-      <div><b>{_e(i.get('title'))}</b> — {_e(_verdict(i))}</div></li>"""
-                   for i in shape)
-    rows += "".join(f"""
-    <li><span class="tick">&#10003;</span>
-      <div><b>{_e(i.get('title'))}, around age {_e(_est_age(i))}</b>
-      — {_e(_verdict(i))}</div></li>""" for i in behind)
+    rows = "".join(
+        f'<li><span class="tick">&#10003;</span>'
+        f'<div><b>{_e(i.get("title"))}</b>{_scenario_why_html(_verdict(i))}</div></li>'
+        for i in shape)
+    rows += "".join(
+        f'<li><span class="tick">&#10003;</span>'
+        f'<div><b>{_e(i.get("title"))}, around age {_e(_est_age(i))}</b>'
+        f'{_scenario_why_html(_verdict(i))}</div></li>'
+        for i in behind)
 
     dated_note = (f" The last {len(behind)} sit at points on your lines that map "
                   f"to years you have already lived." if behind else "")
@@ -272,9 +300,12 @@ def _marks(dom: dict, conf: dict, *, paid: bool) -> str:
     if not raw_marks and not (conf.get("marks") or []):
         return ""
     if paid:
-        rows = "".join(f'<li>{_e(m.get("statement"))}</li>'
-                       for m in (conf.get("marks") or []) if m.get("statement"))
-        if not rows:
+        mark_rows = [m for m in (conf.get("marks") or []) if m.get("statement")]
+        if mark_rows:
+            rows = "".join(
+                f'<li>{_scenario_why_html(m.get("statement") or "")}</li>'
+                for m in mark_rows)
+        else:
             rows = "".join(
                 f'<li><p class="pred-scenario"><b>{_e(m.get("title"))}</b> — '
                 f'{_e(m.get("meaning"))}</p>'
@@ -285,7 +316,7 @@ def _marks(dom: dict, conf: dict, *, paid: bool) -> str:
 <h3 class="sec">Your special marks, and what each one means</h3>
 <p class="sec-note">Rarer than the lines, and read differently: a mark modifies
 whatever it sits on.</p>
-<div class="card"><ul class="palm-list plain">{rows}</ul></div>"""
+<div class="card"><ul class="palm-list">{rows}</ul></div>"""
 
     named = "".join(
         f'<li><b>{_e(m.get("title"))}</b> on '
@@ -318,7 +349,8 @@ def _timeline_ahead(ahead: List[dict]) -> str:
     rows = "".join(f"""
 <li>
   <div class="tl-when">Around age {_e(_est_age(i))}</div>
-  <div class="tl-body"><b>{_e(i.get('title'))}</b> — {_e(_verdict(i))}</div>
+  <div class="tl-body"><b>{_e(i.get('title'))}</b>
+  {_scenario_why_html(_verdict(i))}</div>
 </li>""" for i in ahead)
     return f"""
 <h3 class="sec">What is still ahead of you</h3>
@@ -344,16 +376,11 @@ def _mounts(conf: dict, items: List[dict]) -> str:
         verdict = _verdict(i)
         if not add(verdict):
             continue
-        if "Why:" in verdict:
-            rows += f'<li>{_e(verdict).replace(chr(10), "<br/>")}</li>'
-        else:
-            rows += (f'<li><p class="pred-scenario"><b>{_e(i.get("title"))}</b> — '
-                     f'{_e(verdict)}</p>'
-                     f'<p class="pred-why"><b>Why:</b> {_e(i.get("title", "mount"))} area</p></li>')
+        rows += f'<li>{_scenario_why_html(verdict)}</li>'
     for mount in conf.get("mounts") or []:
         statement = str(mount.get("statement") or "")
         if add(statement):
-            rows += f'<li><p>{_e(statement)}</p></li>'
+            rows += f'<li>{_scenario_why_html(statement)}</li>'
     if not rows:
         return ""
     return f"""
@@ -538,8 +565,11 @@ def _workings(raw: dict) -> str:
                         if len(rng) == 2 and rng[1] > rng[0] else
                         f'<span class="pt-when">around age {_e(age)}</span>')
             verdict = conc.get("verdict") or conc.get("conclusion") or it.get("finding", "")
+            body = _scenario_why_html(str(verdict))
+            if not body:
+                body = f'<p>{_e(verdict)}</p>'
             rows += (f'<li><b>Point {_e(num)} — {_e(it.get("title"))}</b>{when}'
-                     f'<p>{_e(verdict)}</p></li>')
+                     f'{body}</li>')
         missing = hd.get("not_detected") or []
         note = (f'<p class="fine">Not visible on this photo: {_e(", ".join(missing))}.</p>'
                 if missing else "")

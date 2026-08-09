@@ -186,6 +186,16 @@ border:1px solid #b7cfe6;border-left:4px solid #1a5f9e;font-size:.84rem;
 color:#163a5c;line-height:1.5}
 .pred-why b{display:inline-block;margin-right:4px;color:#0b4f8a;font-size:.72rem;
 font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+/* Keep Why chip above generic paragraph colour rules (evidence / lists / windows) */
+.evidence .pred-why,.win .pred-why,.hits .pred-why,.palm-list .pred-why,
+.palm-points .pred-why,.qa .pred-why,.card .pred-why{
+  margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#e3eef9;
+  border:1px solid #b7cfe6;border-left:4px solid #1a5f9e;font-size:.84rem;
+  color:#163a5c;line-height:1.5}
+.evidence .pred-why b,.win .pred-why b,.hits .pred-why b,.palm-list .pred-why b,
+.palm-points .pred-why b,.qa .pred-why b,.card .pred-why b{
+  display:inline-block;margin-right:4px;color:#0b4f8a;font-size:.72rem;
+  font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .pred-list .prediction{list-style:none}
 .present-list.pred-list{list-style:none;padding:0;margin:0}
 .present-list.pred-list>li{margin-bottom:12px}
@@ -333,6 +343,12 @@ align-items:center;padding:6px 0;font-size:.85rem}
 .palm-list li{padding:10px 0;border-top:1px solid var(--line);font-size:.9rem}
 .palm-list li:first-child{border-top:0}
 .palm-list p{margin:4px 0 0;font-size:.88rem;color:#3d4250}
+.palm-list .pred-why,.palm-points .pred-why{
+  margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#e3eef9;
+  border:1px solid #b7cfe6;border-left:4px solid #1a5f9e;font-size:.84rem;
+  color:#163a5c;line-height:1.5}
+.palm-list .pred-why b,.palm-points .pred-why b{display:inline-block;margin-right:4px;
+color:#0b4f8a;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .palm-list.plain li{font-size:.88rem;color:#3d4250}
 .palm-points{list-style:none;margin:8px 0 0;padding:0}
 .palm-points li{padding:8px 0;border-top:1px solid var(--line)}
