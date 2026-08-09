@@ -29,7 +29,7 @@ from core.auth import (COOKIE, current_user, has_full_access, has_full_access_id
 from core.config import S
 from core.db import (engine, extend_partitions, init_schema, job_get,
                      job_insert, job_update, jdump, new_id, now,
-                     report_get, reports_for_user, tx)
+                     report_delete, report_get, reports_for_user, tx)
 from core.pdf_export import entitlement_item_for_kind, html_to_pdf, report_title
 from core.store import store
 
@@ -479,6 +479,25 @@ def report_pdf(rid: str, user: dict = Depends(current_user)):
             "Cache-Control": "private, no-store",
         },
     )
+
+
+@app.delete("/api/reports/{rid}")
+def delete_one_report(rid: str, user: dict = Depends(current_user)):
+    """Remove a report from the caller's history (DB row + free/paid objects)."""
+    rep = report_get(rid, user["id"])
+    if not rep:
+        raise HTTPException(404, "no such report")
+    st = store()
+    for k in (rep.get("free_key"), rep.get("paid_key")):
+        if not k:
+            continue
+        try:
+            st.delete(k)
+        except Exception:                                             # noqa: BLE001
+            pass
+    if not report_delete(rid, user["id"]):
+        raise HTTPException(404, "no such report")
+    return {"ok": True, "reportId": rid}
 
 
 @app.get("/api/reading/{rid}/full")

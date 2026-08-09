@@ -391,3 +391,11 @@ def report_mark_paid(report_id: str) -> None:
     with tx() as c:
         c.execute(text("UPDATE reports SET paid = :p WHERE id = :i"),
                   {"p": True, "i": report_id})
+
+
+def report_delete(report_id: str, user_id: str) -> bool:
+    """Remove a report row owned by user_id. Returns True if a row was deleted."""
+    with tx() as c:
+        res = c.execute(text("DELETE FROM reports WHERE id = :i AND user_id = :u"),
+                        {"i": report_id, "u": user_id})
+    return (res.rowcount or 0) > 0

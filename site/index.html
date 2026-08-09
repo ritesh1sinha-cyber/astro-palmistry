@@ -483,6 +483,11 @@ input[type=file]{display:none}
 .report-row h3{font-size:17px;margin:0 0 4px;font-family:var(--serif)}
 .report-row .meta{font-size:12.5px;color:var(--muted)}
 .report-row .acts{display:flex;gap:8px;flex-wrap:wrap}
+.btn-danger{
+  border-color:rgba(163,52,31,.35);color:var(--err);background:var(--paper);
+  box-shadow:0 1px 0 rgba(22,24,29,.04)
+}
+.btn-danger:hover:not(:disabled){border-color:var(--err);background:#fbf4f2;color:var(--err)}
 .mobnav{
   position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;
   background:rgba(251,250,248,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);
@@ -1700,11 +1705,23 @@ async function loadMyReports(){
         <div class="acts">
           <button class="btn btn-gold btn-sm" onclick="openSavedReport('${rid}','${esc(r.kind)}')">View</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadReportPdf('${rid}')">Download PDF</button>
+          <button class="btn btn-danger btn-sm" type="button" onclick="deleteSavedReport('${rid}')">Delete</button>
         </div></div>`;
     }).join('')+'</div>';
   }catch(e){
     listEl.innerHTML = '<div class="card hint">Could not load reports. Try again in a moment.</div>';
   }
+}
+async function deleteSavedReport(reportId){
+  if(!reportId) return;
+  if(!confirm('Remove this report from your library? This cannot be undone.')) return;
+  try{
+    await api('/api/reports/'+reportId, {method:'DELETE'});
+    toast('Report removed');
+    const viewer = $('#reportsViewer');
+    if(viewer){ viewer.style.display='none'; viewer.innerHTML=''; }
+    await loadMyReports();
+  }catch(e){ toast(e.message||'Could not delete that report'); }
 }
 async function openSavedReport(reportId, kind){
   if(!reportId) return;
