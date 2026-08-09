@@ -605,7 +605,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
    <button onclick="go('soon')" data-v="soon">Roadmap</button>
    <button onclick="go('contact')" data-v="contact">Contact</button>
    <button onclick="go('reports')" data-v="reports" id="navReports" style="display:none">My reports</button>
-   <button onclick="go('analysis')" data-v="analysis" id="navAnalysis" style="display:none">Analysis</button>
+   <button onclick="go('analysis')" data-v="analysis" id="navAnalysis" hidden style="display:none">Analysis</button>
   </nav>
   <div class="hauth" id="hauth"></div>
  </div>
@@ -719,7 +719,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
    <div id="gbtn" style="margin-bottom:12px"></div>
    <button class="btn btn-gold" id="demoAuth" onclick="openGuestModal()">Login via promocode</button>
    <button class="btn btn-ghost btn-sm" id="adminAuth" onclick="openAdminModal()" style="margin-top:10px">Admin login</button>
-   <p class="hint" id="authNote">Google for a normal account · promocode login · admin for full access</p>
+   <p class="hint" id="authNote">Google for a normal account · promocode for full readings · admin for Analysis</p>
   </div>
 
   <!-- step 2: details -->
@@ -1346,13 +1346,13 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
  <button onclick="go('soon')" data-v="soon"><svg><use href="#i-lock"/></svg>Roadmap</button>
  <button onclick="go('contact')" data-v="contact"><svg><use href="#i-chat"/></svg>Contact</button>
  <button onclick="go('reports')" data-v="reports" id="mobReports" style="display:none"><svg><use href="#i-lock"/></svg>Reports</button>
- <button onclick="go('analysis')" data-v="analysis" id="mobAnalysis" style="display:none"><svg><use href="#i-star"/></svg>Analysis</button>
+ <button onclick="go('analysis')" data-v="analysis" id="mobAnalysis" hidden style="display:none"><svg><use href="#i-star"/></svg>Analysis</button>
 </div></nav>
 
 <div class="modal admin-modal" id="guestModal" role="dialog" aria-modal="true" aria-labelledby="guestTitle">
  <div class="modal-box">
   <h3 id="guestTitle">Login via promocode</h3>
-  <p class="hint" style="margin-bottom:14px">Enter your promocode to try the free half of every reading.</p>
+  <p class="hint" style="margin-bottom:14px">Enter your promocode for full access to every reading (unlocked). Analysis stays admin-only.</p>
   <div class="field"><label for="guestPass">Promocode</label><input class="inp" id="guestPass" type="password" autocomplete="current-password" placeholder="Promocode"></div>
   <p class="err" id="guestErr" style="display:none;margin-bottom:10px"></p>
   <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1484,6 +1484,10 @@ S.busy=false; S.job=null;   // never resume a stale job across reloads
 
 /* ---------- routing ---------- */
 function go(v){
+  if(v === 'analysis' && !isAdmin()){
+    toast('Analysis is admin only');
+    v = 'home';
+  }
   $$('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
   $$('nav.tabs button,.mobnav button').forEach(b=>b.setAttribute('aria-current', b.dataset.v===v));
   scrollTo({top:0,behavior:'smooth'});
@@ -1518,7 +1522,7 @@ const KIND_UI = {
 let _paySuccessMsg = '';
 
 function reportIsUnlocked(r){
-  return !!(r && (r.paid || isAdmin()) && r.links && r.links.paid);
+  return !!(r && (r.paid || hasFullAccess()) && r.links && r.links.paid);
 }
 function paySuccessBanner(msg){
   return `<div class="pay-success-banner">${esc(msg||'Payment successful — your full report is below.')}</div>`;
@@ -1594,8 +1598,15 @@ function paintReportsNav(){
   paintAnalysisNav();
 }
 function paintAnalysisNav(){
+  // Admin only — never show on home or for promocode / Google / signed-out.
   const show = isAdmin();
-  ['navAnalysis','mobAnalysis'].forEach(id=>{ const el=$('#'+id); if(el) el.style.display = show ? '' : 'none'; });
+  ['navAnalysis','mobAnalysis'].forEach(id=>{
+    const el=$('#'+id);
+    if(!el) return;
+    el.style.display = show ? '' : 'none';
+    if(!show) el.setAttribute('hidden','');
+    else el.removeAttribute('hidden');
+  });
 }
 function trackPageView(path){
   if(!path || !CONFIG.liveApi && !CONFIG.apiBase) return;
@@ -1912,6 +1923,11 @@ async function redeemPromo(){
 
 /* ---------- auth ---------- */
 function isAdmin(){ return !!(S.user&&S.user.admin) || !!(ASTRO.user&&ASTRO.user.admin); }
+function hasFullAccess(){
+  return isAdmin()
+    || !!(S.user&&S.user.fullAccess)
+    || !!(ASTRO.user&&ASTRO.user.fullAccess);
+}
 let adminReportStats = {};
 function paintAdminReportStats(){
   const show = isAdmin();
@@ -1969,7 +1985,9 @@ async function refreshUserProfile(){
 function paintAuth(){
   const h=$('#hauth');
   if(S.user){
-    const badge = isAdmin() ? ' · <small style="color:var(--gold-soft)">admin</small>' : '';
+    const badge = isAdmin()
+      ? ' · <small style="color:var(--gold-soft)">admin</small>'
+      : (hasFullAccess() ? ' · <small style="color:var(--gold-soft)">promocode</small>' : '');
     h.innerHTML = `<div class="who"><b>${esc(S.user.name)}${badge}</b><small>${esc(S.user.email)}</small></div>
       <img class="avatar" src="${S.user.picture}" alt="" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22%3E%3Crect width=%2240%22 height=%2240%22 fill=%22%23161235%22/%3E%3C/svg%3E'">
       <button class="btn-line" onclick="logout()">Sign out</button>`;
@@ -1979,13 +1997,19 @@ function paintAuth(){
   refreshAdminReportStats();
   paintDailySub();
   paintReportsNav();
+  paintAnalysisNav();
 }
 function setUser(u){
   S.user=u;
-  if(u&&u.admin) S.unlocked=true;
+  if(u && (u.admin || u.fullAccess)) S.unlocked=true;
   save(); paintAuth(); syncFlow(); syncAstroGate();
   paintDailySub();
-  toast('Welcome, '+u.name.split(' ')[0]+(u.admin?' (admin — full access)':''));
+  const who = u.name.split(' ')[0];
+  toast(u.admin
+    ? 'Welcome, '+who+' (admin — full access)'
+    : (u.fullAccess
+      ? 'Welcome, '+who+' (promocode — full readings)'
+      : 'Welcome, '+who));
 }
 function setSessionToken(t){
   apSessionToken = t || null;
@@ -2122,7 +2146,7 @@ function initGoogle(){
       if($('#gbtn')) google.accounts.id.renderButton($('#gbtn'), opt);
       if($('#gbtnAstro')) google.accounts.id.renderButton($('#gbtnAstro'), opt);
       const note=$('#authNote');
-      if(note) note.textContent='Sign in with Google for a normal account · promocode login · admin for full access.';
+      if(note) note.textContent='Sign in with Google for a normal account · promocode for full readings · admin for Analysis.';
     }catch(e){ console.warn('GIS failed',e); } };
   document.head.appendChild(s);
 }
@@ -2495,7 +2519,7 @@ function watchJob(jobId){
       const data=j.result;
       S.reading=data;
       S.readingId=data.reportId || data.readingId;
-      S.unlocked=!!(data.paid || data.unlocked || isAdmin());
+      S.unlocked=!!(data.paid || data.unlocked || hasFullAccess());
       S.busy=false; S.job=null;
       save(); renderReading(); syncFlow();
       refreshAdminReportStats();
@@ -2664,7 +2688,7 @@ function mockReading(){
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function renderReading(){
   const R=S.reading, d=S.details || {};
-  const unlocked = reportIsUnlocked(R) || (MOCK && S.unlocked) || isAdmin();
+  const unlocked = reportIsUnlocked(R) || (MOCK && S.unlocked) || hasFullAccess();
   const banner = takePaySuccessBanner();
   // HTML path (same as astrology): free/paid documents via signed /api/file links.
   if(R && R.links && R.links.free){
@@ -3948,7 +3972,7 @@ function renderAstroResult(kind, r){
       try{
         const rep = await api('/api/reports/'+S.readingId);
         S.reading = { reportId:rep.reportId, links:rep.links, paid:rep.paid, meta:rep.meta||{} };
-        S.unlocked = reportIsUnlocked(rep) || isAdmin();
+        S.unlocked = reportIsUnlocked(rep) || hasFullAccess();
         save(); renderReading(); syncFlow();
       }catch(e){ /* stale id — leave flow alone */ }
     }

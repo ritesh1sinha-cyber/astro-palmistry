@@ -20,10 +20,27 @@ def admin_emails() -> set[str]:
     return {e.strip().lower() for e in raw.split(",") if e.strip()}
 
 
+def promo_login_emails() -> set[str]:
+    """Passcode / “Login via promocode” accounts — full readings, not admin."""
+    raw = os.getenv("PROMO_LOGIN_EMAILS", "") or "guest@graharekha.co.in"
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
 def is_admin(user: Optional[dict]) -> bool:
     if not user:
         return False
     return (user.get("email") or "").strip().lower() in admin_emails()
+
+
+def is_promo_login(user: Optional[dict]) -> bool:
+    if not user:
+        return False
+    return (user.get("email") or "").strip().lower() in promo_login_emails()
+
+
+def has_full_access(user: Optional[dict]) -> bool:
+    """Unlock paid halves without payment. Admin or promocode login."""
+    return is_admin(user) or is_promo_login(user)
 
 
 def is_admin_id(user_id: str) -> bool:
@@ -34,6 +51,16 @@ def is_admin_id(user_id: str) -> bool:
         row = c.execute(text("SELECT email FROM users WHERE id = :u"),
                         {"u": user_id}).fetchone()
     return is_admin(jrow(row)) if row else False
+
+
+def has_full_access_id(user_id: str) -> bool:
+    from sqlalchemy import text
+
+    from .db import engine, jrow
+    with engine().connect() as c:
+        row = c.execute(text("SELECT email FROM users WHERE id = :u"),
+                        {"u": user_id}).fetchone()
+    return has_full_access(jrow(row)) if row else False
 
 
 def verify_google(id_token: str) -> dict:
@@ -69,13 +96,18 @@ def login_with_google(id_token: str, *, ip: str = "", ua: str = "") -> tuple[dic
 
 def login_dev(email: str, name: str, *, passcode: str = "",
               ip: str = "", ua: str = "") -> tuple[dict, str]:
-    """Guest / passcode login. Guarded by DEV_LOGIN; never enable in production."""
+    """Promocode / passcode login. Guarded by DEV_LOGIN; never enable in production.
+
+    Always maps to the configured promocode account (full readings, not admin).
+    """
     if not S.dev_login:
         raise HTTPException(404, "not enabled")
     expected = S.guest_passcode or ""
     if not expected or not secrets.compare_digest(passcode or "", expected):
         raise HTTPException(401, "invalid guest passcode")
-    user = upsert_user(email=email, name=name)
+    # Ignore client-supplied email — prevent passcode login from impersonating admin.
+    guest_em = next(iter(sorted(promo_login_emails())), "guest@graharekha.co.in")
+    user = upsert_user(email=guest_em, name=name or "Promocode guest")
     return user, create_session(user["id"], ip=ip, ua=ua)
 
 

@@ -24,7 +24,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from core import billing, promo, queue as Q, turnstile as TS
-from core.auth import COOKIE, current_user, is_admin, is_admin_id, login_admin, login_dev, login_with_google, logout
+from core.auth import (COOKIE, current_user, has_full_access, has_full_access_id,
+                       is_admin, login_admin, login_dev, login_with_google, logout)
 from core.config import S
 from core.db import (engine, extend_partitions, init_schema, job_get,
                      job_insert, job_update, jdump, new_id, now,
@@ -176,15 +177,18 @@ def _me(user: dict) -> dict:
     sub = billing.subscription_of(user["id"])
     subscribed = billing.is_subscribed(user["id"])
     admin = is_admin(user)
+    full = has_full_access(user)
     return {"id": user["id"], "email": user["email"], "name": user.get("name"),
             "picture": user.get("picture"), "credits": user.get("credits", 0),
             "admin": admin,
-            "subscribed": subscribed or admin,
+            "fullAccess": full,
+            "subscribed": subscribed or full,
             "subUntil": (sub or {}).get("current_period_end"),
-            "horaryLeft": (billing.quota_left(user["id"], "horary",
-                                              S.sub_horary_per_month,
-                                              billing.month_period())
-                           if subscribed else 999 if admin else 0)}
+            "horaryLeft": (999 if full else
+                           (billing.quota_left(user["id"], "horary",
+                                               S.sub_horary_per_month,
+                                               billing.month_period())
+                            if subscribed else 0))}
 
 
 @app.get("/api/me")
@@ -300,7 +304,7 @@ def file_token(report_id: str, half: str, user_id: str) -> str:
 
 
 def _links(rid: str, uid: str, paid: bool) -> dict:
-    unlocked = paid or is_admin_id(uid)
+    unlocked = paid or has_full_access_id(uid)
     out = {"free": f"/api/file/{file_token(rid, 'free', uid)}"}
     if unlocked:
         out["paid"] = f"/api/file/{file_token(rid, 'paid', uid)}"
@@ -308,7 +312,7 @@ def _links(rid: str, uid: str, paid: bool) -> dict:
 
 
 def _report_unlocked(rep: dict, uid: str) -> bool:
-    if bool(rep.get("paid")) or is_admin_id(uid):
+    if bool(rep.get("paid")) or has_full_access_id(uid):
         return True
     # Order may have granted the item even if reports.paid lagged.
     try:
@@ -402,7 +406,7 @@ def _decorate(result: Any, uid: str, kind: str = "") -> Any:
                               for k, v in result["overlays"].items()
                               if isinstance(v, str)}
     rid = result.get("reportId")
-    unlocked = bool(result.get("paid")) or is_admin_id(uid)
+    unlocked = bool(result.get("paid")) or has_full_access_id(uid)
     if rid and "links" not in result:
         result["links"] = _links(rid, uid, unlocked)
     if isinstance(result.get("meta"), dict):
