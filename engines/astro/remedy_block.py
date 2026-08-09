@@ -51,8 +51,8 @@ PRACTICAL = {
 
 WEAR_LABEL = {
     "recommended": ("Safe for you to wear", "up"),
-    "test_required": ("Wear on trial first", "mixed"),
-    "mantra_only": ("Do not wear the stone — mantra only", "mixed"),
+    "test_required": ("Wear on trial first", "trial"),
+    "mantra_only": ("Do not wear the stone — mantra only", "down"),
     "avoid": ("Do not wear this stone", "down"),
 }
 
@@ -90,8 +90,8 @@ def build(pc: dict, *, domain: str = "", question: str = "",
     mantra_only = list(rep.get("mantra_only") or [])
     avoid = list(rep.get("avoid") or [])
 
-    # The practical action follows the planet under most pressure, which is
-    # normally the running period lord.
+    # Chart-level "start here" tip follows the running period lord.
+    # Per-area cards must NOT reuse this — see area_report.classical_area_remedy.
     dasha = rep.get("dasha") or {}
     lord = dasha.get("ad_lord") or dasha.get("md_lord") or ""
     return {"wear": wear, "mantra_only": mantra_only, "avoid": avoid,
@@ -169,9 +169,17 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
     <div class="remedy-do-label">Do this first · no belief required</div>
     <p>{_e(practical)}</p>
   </div>"""
+        safe = [w for w in wear if str(w.get("verdict") or "") == "recommended"]
+        trial = [w for w in wear if str(w.get("verdict") or "") == "test_required"]
+        # Any other wear verdicts (defensive) stay with safe list styling.
+        other = [w for w in wear
+                 if str(w.get("verdict") or "") not in ("recommended", "test_required")]
         wear_group = _stones_group(
-            wear, tone="up",
+            safe + other, tone="up",
             label="Gemstones · safe to wear")
+        trial_group = _stones_group(
+            trial, tone="trial",
+            label="Gemstones · trial first (caution)")
         avoid_group = _stones_group(
             list(mantra_only) + list(avoid), tone="down",
             label="Do not wear · mantra and charity instead")
@@ -181,10 +189,12 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
   {f'<p class="remedy-lede">{_e(lede)}</p>' if lede else ''}
   {do_block}
   {wear_group}
+  {trial_group}
   {avoid_group}
   <p class="fine">A remedy is not a lever that overrides the chart. It works the
   way preparation works — it changes what you are ready for when the timing
-  turns.</p>
+  turns. A yellow trial stone is allowed for your chart — test three days before
+  keeping it on.</p>
 </section>"""
 
     # --- free view: refusals only ------------------------------------------

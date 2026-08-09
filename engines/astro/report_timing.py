@@ -86,6 +86,51 @@ def transit_segments(pc: dict, *, start: Optional[date] = None,
     return out
 
 
+def _div_note_from_promise(promise: dict, area_key: str) -> str:
+    """Surface the governing divisional vote used inside the area promise.
+
+    Divisionals already move `promise['score']` via area_verdict →
+    divisional_votes; this only makes that vote readable in the Why line.
+    """
+    try:
+        from report_confluence import AREA_VARGA, VARGA_PHRASE
+    except Exception:  # noqa: BLE001
+        return ""
+    primary, primary_name = AREA_VARGA.get(area_key, ("", ""))
+    votes = promise.get("votes") or []
+
+    def _match(method: str) -> bool:
+        m = (method or "").lower()
+        return bool(
+            method == primary_name
+            or method == "the confirmation chart"
+            or method == "the cross-check chart"
+            or m.endswith(" chart")
+            or m.endswith(" division")
+        )
+
+    pick = None
+    for v in votes:
+        if getattr(v, "method", "") == primary_name:
+            pick = v
+            break
+    if pick is None:
+        for v in votes:
+            if _match(getattr(v, "method", "")):
+                pick = v
+                break
+    if pick is not None:
+        because = str(getattr(pick, "because", "") or "").strip()
+        if because and primary and primary_name and primary_name in because and f"({primary})" not in because:
+            because = because.replace(primary_name, f"{primary_name} ({primary})", 1)
+        if because:
+            return because
+    if primary:
+        phrase = VARGA_PHRASE.get(primary) or primary_name or primary
+        return f"{phrase} ({primary}) weighed in the promise"
+    return ""
+
+
 def windows_for_area(pc: dict, area_key: str, house: int, *,
                      start: Optional[date] = None, years: int = 5,
                      segments: Optional[dict] = None) -> list:
@@ -97,6 +142,7 @@ def windows_for_area(pc: dict, area_key: str, house: int, *,
         return []
 
     promise = CF.area_verdict(pc, area_key, house)
+    div_note = _div_note_from_promise(promise, area_key)
     segments = segments if segments is not None else transit_segments(
         pc, start=start, years=years)
 
@@ -140,6 +186,7 @@ def windows_for_area(pc: dict, area_key: str, house: int, *,
                 "planet": planet, "sign": seg.get("sign", ""),
                 "bav": bav, "sav": seg.get("sav"),
                 "promise": promise["direction"], "promise_score": promise["score"],
+                "div_note": div_note,
                 "dasha": dasha["direction"],
                 "dasha_label": " · ".join(r["label"] for r in dasha["readings"]),
                 "period_owns_area": owns,
@@ -214,14 +261,19 @@ def _window_backing(row: dict) -> str:
         sup = (row.get("bav") or 0) >= 5
         parts = [
             f"chart reads {row.get('promise', 'mixed')} on this area",
-            f"{row.get('planet', '')} crossing your {PV._ord(row.get('house'))} house "
-            f"({'well supported' if sup else 'weakly supported'})",
         ]
+        div = (row.get("div_note") or "").strip()
+        if div:
+            parts.append(div)
+        parts.append(
+            f"{row.get('planet', '')} crossing your {PV._ord(row.get('house'))} house "
+            f"({'well supported' if sup else 'weakly supported'})"
+        )
         if row.get("period_owns_area"):
             parts.append("period activates this area")
         return "; ".join(parts)
     except Exception:  # noqa: BLE001
-        return "promise, period and transit line up here"
+        return "promise (incl. divisional chart), period and transit line up here"
 
 
 def render(pc: dict, rows: list, labels: dict) -> str:
@@ -242,6 +294,7 @@ def render(pc: dict, rows: list, labels: dict) -> str:
   </li>""")
     return f"""
 <h3 class="sec">When it actually happens</h3>
-<p class="sec-note">These are the windows where promise, period and a slow planet
-crossing the right house all line up on your chart.</p>
+<p class="sec-note">These are the windows where the birth promise
+(including each area’s divisional chart), the running period, and a slow planet
+crossing the right house all line up.</p>
 <ol class="windows-list">{''.join(items)}</ol>"""

@@ -25,9 +25,11 @@ demoralising prediction to a paying customer. Six methods voting catches it;
 one does not.
 
 Dasha works the same way. Vimshottari alone is a single opinion. Yogini carries
-its own tone, and Jaimini's sign-based periods move independently. Where all
-three agree, we say so and the confidence is high. Where they split, the reader
-is told it is a mixed window rather than being handed false certainty.
+its own tone, Jaimini's Chara (sign-based) periods move independently, and BNN
+casts a fourth vote on the current Vimshottari MD/AD lords via nadi dignity —
+not a separate dasha clock. Where those lenses agree, confidence is high.
+Where they split, the reader is told it is a mixed window rather than being
+handed false certainty.
 
 On top of those six, every **specialist lane** the codebase already runs now
 votes as well — the nadi lane, the sub-lord lane, the karaka lane, the
@@ -599,11 +601,21 @@ def vimshottari_at(pc: dict, when: date) -> dict:
             x, y = _d(ad.get("start")), _d(ad.get("end"))
             if x and y and x <= when <= y:
                 return {"md": lord, "ad": ad.get("ad_lord", "")}
+            if ad.get("status") == "current" and not (x and y):
+                return {"md": lord, "ad": ad.get("ad_lord", "")}
         years = md.get("md_years") or ((b - a).days / 365.2425)
         for ad in antardashas_for(lord, a, float(years)):
             if ad["start"] <= when <= ad["end"]:
                 return {"md": lord, "ad": ad["ad_lord"]}
         return {"md": lord, "ad": ""}
+    # Fall back to stamped current when the sequence lacks dated envelopes
+    if cur.get("md_lord"):
+        ad = ""
+        for row in vim.get("current_md_antardashas") or []:
+            if row.get("status") == "current":
+                ad = row.get("ad_lord") or ""
+                break
+        return {"md": cur.get("md_lord", ""), "ad": ad}
     return {"md": "", "ad": ""}
 
 
@@ -616,23 +628,134 @@ def yogini_at(pc: dict, when: date) -> dict:
 
 
 def jaimini_at(pc: dict, when: date) -> dict:
-    ch = pc.get("chara_dasha", {}) or {}
-    for m in (ch.get("maha") or []):
-        a, b = _d(m.get("start")), _d(m.get("end"))
-        if a and b and a <= when <= b:
-            return m
-    return ch.get("current_maha") or {}
+    """Current Chara major (maha) and minor (antar) signs with their lords.
+
+    Prefers `active_jaimini_chara` so top-level and nested `jaimini.chara_dasha`
+    both resolve — the older path missed nested data whenever a stub top-level
+    block existed. Extends short one-cycle tables past their last maha so
+    older charts still show a current sign major/minor.
+    """
+    try:
+        from jaimini_chara_dasha import ensure_chara_covers
+        ensure_chara_covers(pc, when)
+    except Exception:  # noqa: BLE001
+        pass
+
+    sign = antar = ""
+    maha_start = maha_end = antar_start = antar_end = ""
+    try:
+        from jaimini_chara_dasha import active_jaimini_chara, get_chara_dasha
+        act = active_jaimini_chara(pc, when) or {}
+        sign = act.get("maha") or ""
+        antar = act.get("antar") or ""
+        maha_start, maha_end = act.get("maha_start") or "", act.get("maha_end") or ""
+        antar_start, antar_end = act.get("antar_start") or "", act.get("antar_end") or ""
+        if not sign or not antar:
+            block = get_chara_dasha(pc) or {}
+            if not sign:
+                cm = block.get("current_maha") or {}
+                sign = cm.get("sign") or ""
+                maha_start = maha_start or str(cm.get("start") or "")[:10]
+                maha_end = maha_end or str(cm.get("end") or "")[:10]
+            if not antar:
+                ca = block.get("current_antar") or {}
+                antar = ca.get("sign") or ""
+                antar_start = antar_start or str(ca.get("start") or "")[:10]
+                antar_end = antar_end or str(ca.get("end") or "")[:10]
+                if not sign:
+                    sign = ca.get("maha_sign") or sign
+    except Exception:  # noqa: BLE001
+        # Last-resort walk of either top-level or nested maha list
+        try:
+            from jaimini_chara_dasha import get_chara_dasha
+            block = get_chara_dasha(pc) or {}
+        except Exception:  # noqa: BLE001
+            block = pc.get("chara_dasha") or (pc.get("jaimini") or {}).get("chara_dasha") or {}
+        for m in (block.get("maha") or []):
+            a, b = _d(m.get("start")), _d(m.get("end"))
+            if a and b and a <= when <= b:
+                sign = m.get("sign") or ""
+                maha_start, maha_end = str(a), str(b)
+                break
+        for an in (block.get("antar") or []):
+            a, b = _d(an.get("start")), _d(an.get("end"))
+            if a and b and a <= when <= b:
+                antar = an.get("sign") or ""
+                antar_start, antar_end = str(a), str(b)
+                if not sign:
+                    sign = an.get("maha_sign") or sign
+                break
+        if not sign:
+            cm = block.get("current_maha") or {}
+            sign = cm.get("sign") or ""
+
+    if not sign and not antar:
+        return {}
+    return {
+        "sign": sign,
+        "antar": antar,
+        "lord": SIGN_LORD.get(sign, ""),
+        "antar_lord": SIGN_LORD.get(antar, ""),
+        "maha_start": maha_start,
+        "maha_end": maha_end,
+        "antar_start": antar_start,
+        "antar_end": antar_end,
+        "stack": "-".join(x for x in (sign, antar) if x),
+    }
+
+
+def bnn_period_vote(pc: dict, md: str, ad: str) -> dict:
+    """BNN vote on the running Vimshottari lords (not a separate dasha clock).
+
+    Uses `lord_verdict` from the BNN chart lane — good / neutral / amber —
+    so a strong D1 lord that BNN rates amber surfaces as disagreement.
+    """
+    try:
+        from bnn_chart import load_bnn_chart, lord_verdict
+        meta = dict(pc.get("meta") or {})
+        if not meta.get("lagna_sign"):
+            meta["lagna_sign"] = ((pc.get("lagna") or {}).get("sign")
+                                  or meta.get("ascendant") or "")
+        if not meta.get("client"):
+            meta["client"] = meta.get("name") or "Client"
+        pc_bnn = dict(pc)
+        pc_bnn["meta"] = meta
+        if not meta.get("lagna_sign"):
+            return {"label": "", "tone": 0.0, "detail": {}}
+        ch, _bt = load_bnn_chart(pc=pc_bnn, client_name=str(meta["client"]))
+    except Exception:  # noqa: BLE001
+        return {"label": "", "tone": 0.0, "detail": {}}
+
+    parts: list[str] = []
+    tones: list[float] = []
+    detail: dict[str, str] = {}
+    for pl in (md, ad):
+        if not pl:
+            continue
+        try:
+            v = lord_verdict(ch, pl) or "neutral"
+        except Exception:  # noqa: BLE001
+            v = "neutral"
+        detail[pl] = v
+        tones.append({"good": 1.0, "neutral": 0.0, "amber": -1.0}.get(v, 0.0))
+        parts.append(f"{pl} {v}")
+    if not parts:
+        return {"label": "", "tone": 0.0, "detail": {}}
+    return {
+        "label": " · ".join(parts),
+        "tone": sum(tones) / len(tones),
+        "detail": detail,
+    }
 
 
 def dasha_confluence(pc: dict, when: Optional[date] = None) -> dict:
-    """What all three timing systems say about the same moment."""
+    """What Vimshottari, Yogini, Chara, and BNN say about the same moment."""
     when = when or date.today()
     vim = vimshottari_at(pc, when)
     yog = yogini_at(pc, when)
     jai = jaimini_at(pc, when)
 
     planets = pc.get("planets", {}) or {}
-    hl = pc.get("house_lords", {}) or {}
 
     def planet_tone(name: str) -> float:
         if not name:
@@ -654,6 +777,8 @@ def dasha_confluence(pc: dict, when: Optional[date] = None) -> dict:
         "system": "the main cycle",
         "label": f"{vim.get('md','')}–{vim.get('ad','')}".strip("–"),
         "tone": v_tone,
+        "kind": "vimshottari",
+        "planets": [p for p in (vim.get("md"), vim.get("ad")) if p],
     })
 
     y_tone = {"auspicious": 1.2, "inauspicious": -1.2}.get(
@@ -663,16 +788,43 @@ def dasha_confluence(pc: dict, when: Optional[date] = None) -> dict:
         "label": (f"{yog.get('yogini','')} ({yog.get('lord','')})"
                   if yog.get("yogini") and yog.get("lord")
                   else (yog.get("yogini") or "")),
-        "tone": y_tone,
+        "tone": y_tone if yog.get("tone") else planet_tone(yog.get("lord") or ""),
+        "kind": "yogini",
+        "planets": [yog.get("lord")] if yog.get("lord") else [],
     })
 
     sign = jai.get("sign", "")
-    j_lord = SIGN_LORD.get(sign, "")
+    antar = jai.get("antar", "")
+    j_lord = jai.get("lord") or SIGN_LORD.get(sign, "")
+    a_lord = jai.get("antar_lord") or SIGN_LORD.get(antar, "")
+    if sign and antar:
+        label = f"{sign}–{antar} ({j_lord}–{a_lord})" if j_lord or a_lord else f"{sign}–{antar}"
+    elif sign:
+        label = f"{sign} ({j_lord})" if j_lord else sign
+    else:
+        label = ""
+    j_tone_parts = [planet_tone(p) for p in (j_lord, a_lord) if p]
+    j_tone = sum(j_tone_parts) / len(j_tone_parts) if j_tone_parts else 0.0
     readings.append({
         "system": "the sign-based cycle",
-        "label": f"{sign} ({j_lord})" if sign and j_lord else (sign or ""),
-        "tone": planet_tone(j_lord),
+        "label": label,
+        "tone": j_tone,
+        "kind": "chara",
+        "planets": [p for p in (j_lord, a_lord) if p],
+        "maha": sign,
+        "antar": antar,
     })
+
+    bnn = bnn_period_vote(pc, vim.get("md") or "", vim.get("ad") or "")
+    if bnn.get("label"):
+        readings.append({
+            "system": "the nadi read",
+            "label": bnn["label"],
+            "tone": bnn["tone"],
+            "kind": "bnn",
+            "planets": list((bnn.get("detail") or {}).keys()),
+            "detail": bnn.get("detail") or {},
+        })
 
     live = [r for r in readings if r["label"]]
     score = sum(r["tone"] for r in live) / len(live) if live else 0.0
@@ -684,7 +836,8 @@ def dasha_confluence(pc: dict, when: Optional[date] = None) -> dict:
     return {"when": when, "readings": live, "direction": direction,
             "score": round(score, 2),
             "agreement": f"{same} of {len(live)} timing systems agree" if live else "",
-            "unanimous": same == len(live) and len(live) >= 3}
+            "unanimous": same == len(live) and len(live) >= 3,
+            "vim": vim, "yogini": yog, "chara": jai, "bnn": bnn}
 
 
 # ---------------------------------------------------------------------------

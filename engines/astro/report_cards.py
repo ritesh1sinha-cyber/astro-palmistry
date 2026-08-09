@@ -238,8 +238,11 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
         window = (verdict or {}).get("when") or ""
         remedy = (verdict or {}).get("remedy") or ""
         if not remedy and direction != "up":
-            lord = (pc.get("house_lords", {}).get(str(area.house)) or {}).get("lord", "")
-            remedy = ACTIONS.get(lord, "")
+            try:
+                import area_report as AR
+                remedy = AR.classical_area_remedy(pc, area.key, area.house, direction)
+            except Exception:  # noqa: BLE001
+                remedy = ""
         card = Card(
             area=area.key, label=area.label, direction=direction,
             headline=headline, backing=backing, window=window, evidence=[],
@@ -326,9 +329,9 @@ def render(pc: dict, *, name: str = "", question_html: str = "",
     moon = (pc.get("planets", {}).get("Moon") or {})
     first = (name or "").split()[0] if name else "You"
 
-    # Three timing systems, not one. Vimshottari alone is a single opinion;
-    # Yogini carries its own tone and Jaimini's sign periods move
-    # independently. Agreement between them is the honest confidence signal.
+    # Four timing lenses, not one. Vimshottari + Yogini + Chara (Jaimini)
+    # clocks, plus BNN as a nadi vote on the current Vim MD/AD lords.
+    # Agreement is the honest confidence signal.
     dasha_html = personality_html = ""
     try:
         import report_confluence as CF
@@ -336,24 +339,42 @@ def render(pc: dict, *, name: str = "", question_html: str = "",
         rows = "".join(
             f'<div class="dsys"><span>{_e(r["system"])}</span>'
             f'<b>{_e(r["label"])}</b></div>' for r in dc["readings"])
-        verdict = {"up": "All three are pointing the same way, and it is a "
-                         "supportive way.",
-                   "down": "The timing systems agree this is a demanding "
-                           "stretch rather than an easy one.",
-                   "mixed": "The systems do not fully agree here. "
-                            "This usually means a period that rewards patience "
-                            "over big moves."}[dc["direction"]]
+        n_read = len(dc.get("readings") or [])
+        n_word = {2: "two", 3: "three", 4: "four"}.get(n_read, str(n_read) or "these")
+        if dc["direction"] == "up":
+            verdict = (f"All {n_word} timing lenses point the same way, "
+                       "and it is a supportive way.")
+        elif dc["direction"] == "down":
+            verdict = ("The timing lenses agree this is a demanding "
+                       "stretch rather than an easy one.")
+        else:
+            verdict = ("Vimshottari, Yogini, Chara, and the nadi read do not "
+                       "fully agree here. This usually means a period that "
+                       "rewards patience over big moves.")
+        agree_line = dc.get("agreement") or ""
         try:
             import predict_voice as PV
-            n_read = len(dc.get("readings") or [])
-            n_same = sum(1 for r in dc.get("readings") or []
-                         if r.get("direction") == dc.get("direction"))
+
+            def _dir_of(r: dict) -> str:
+                t = float(r.get("tone") or 0)
+                if t > 0.2:
+                    return "up"
+                if t < -0.2:
+                    return "down"
+                return "mixed"
+
+            n_same = sum(1 for r in (dc.get("readings") or [])
+                         if _dir_of(r) == dc.get("direction"))
             conf = PV.confidence_word(n_same, n_read, dc.get("direction", "mixed"))
         except Exception:  # noqa: BLE001
             conf = "mixed read"
+        extra = ""
+        if not dc.get("unanimous") and agree_line:
+            extra = (f'<div class="dagree-mix">{_e(agree_line)} — '
+                     f'weigh the mixed window carefully.</div>')
         dasha_html = (f'<div class="dasha-conf">{rows}'
                       f'<div class="dagree">{_e(conf)} · '
-                      f'{_e(verdict)}</div></div>')
+                      f'{_e(verdict)}</div>{extra}</div>')
 
         pers = CF.personality(pc)
         traits = "".join(f"<li>{_e(t)}</li>" for t in pers["traits"])
@@ -450,6 +471,20 @@ after it is worth your money.</p>
   <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
 </div>"""
 
+    period_strip_html = ""
+    try:
+        from period_planet_status import render_period_strip
+        period_strip_html = render_period_strip(pc, paid=paid, today=today)
+    except Exception:  # noqa: BLE001
+        period_strip_html = ""
+
+    d1_chart_html = ""
+    try:
+        from north_indian_chart import svg_d1
+        d1_chart_html = svg_d1(pc)
+    except Exception:  # noqa: BLE001
+        d1_chart_html = ""
+
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{_e(first)} — your reading</title>
@@ -461,6 +496,9 @@ after it is worth your money.</p>
   <div class="chartline">{_e(lagna)} rising · Moon in {_e(moon.get('sign',''))}
   ({_e(moon.get('nakshatra',''))}) · read {today:%d %B %Y}</div>
 </header>
+
+{period_strip_html}
+{d1_chart_html}
 
 <div class="now-box">
   <div class="lbl">The chapter you are in</div>

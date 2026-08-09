@@ -826,7 +826,16 @@ def strip_citations(html: str, *, hide_system_names: bool = True) -> str:
 
 
 def tidy(out: str) -> str:
-    """Repair the punctuation and duplication that removals leave behind."""
+    """Repair the punctuation and duplication that removals leave behind.
+
+    Never touch <style>/<script> — `\\s+\\.` would collapse `.ni-chart .ev-label`
+    into `.ni-chart.ev-label`, and `,\\s*\\.` would turn `rgba(a,b,c,.35)` into
+    invalid `rgba(a,b,c.35)` and half-render SVGs.
+    """
+    return _outside_script_style(out or "", _tidy_body)
+
+
+def _tidy_body(out: str) -> str:
     out = re.sub(r"\(\s*[,;:]?\s*\)", "", out)          # ()  (,)
     # Author names stripped from "(Bonatus / Louis)" leave "( / )" — remove those.
     out = re.sub(r"\(\s*/\s*\)", "", out)
@@ -849,8 +858,9 @@ def tidy(out: str) -> str:
     # with."), deleting the word and swallowing the full stop.
     out = re.sub(r"\b(and|or|but|per|from|in|of|with|by)\s+[,.]",
                  "", out, flags=re.I)                     # dangling "and ,"
-    # a word repeated by a rename ("timing timing", "the the")
-    out = re.sub(r"\b(\w+)(\s+\1\b)+", r"\1", out, flags=re.I)
+    # a word repeated by a rename ("timing timing", "the the") —
+    # letters only so viewBox "0 0 340 340" is not collapsed to "0 340"
+    out = re.sub(r"\b([A-Za-z]+)(\s+\1\b)+", r"\1", out, flags=re.I)
     out = re.sub(r"\bthe classical texts(?:[,\s]*the classical texts)+\b",
                  "the classical texts", out)
     out = re.sub(r"\bthe (nadi|karaka|classical|sub-lord) method"
