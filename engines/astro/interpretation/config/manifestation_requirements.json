@@ -1,0 +1,133 @@
+{
+  "delayed_recognition": [
+    "10H_activation",
+    "Saturn_influence",
+    "delay_indicator"
+  ],
+  "delayed_reward": [
+    "money_house_activation",
+    "Saturn_influence",
+    "delay_indicator"
+  ],
+  "network_gain": [
+    "11H_activation"
+  ],
+  "gains": [
+    "11H_activation"
+  ],
+  "opportunity": [
+    "11H_activation"
+  ],
+  "support_from_contacts": [
+    "11H_activation",
+    "network_indicator"
+  ],
+  "visibility": [
+    "10H_activation"
+  ],
+  "recognition": [
+    "10H_activation"
+  ],
+  "responsibility": [
+    "10H_activation"
+  ],
+  "authority": [
+    "10H_activation"
+  ],
+  "leadership": [
+    "10H_activation"
+  ],
+  "routine": [
+    "health_house_activation"
+  ],
+  "rest": [
+    "health_house_activation"
+  ],
+  "stress_management": [
+    "health_house_activation"
+  ],
+  "energy_management": [
+    "health_house_activation"
+  ],
+  "preventive_attention": [
+    "health_house_activation"
+  ],
+  "follow_up": [
+    "health_house_activation"
+  ],
+  "wellbeing": [
+    "health_house_activation"
+  ],
+  "health_routines": [
+    "health_house_activation"
+  ],
+  "slow_recovery": [
+    "health_house_activation"
+  ],
+  "income": [
+    "money_house_activation"
+  ],
+  "cash_flow": [
+    "money_house_activation"
+  ],
+  "savings": [
+    "money_house_activation"
+  ],
+  "financial_stability": [
+    "money_house_activation"
+  ],
+  "family_finances": [
+    "money_house_activation"
+  ],
+  "resource_habits": [
+    "money_house_activation"
+  ],
+  "savings_habits": [
+    "money_house_activation"
+  ],
+  "allowance": [
+    "money_house_activation"
+  ],
+  "financial_retention": [
+    "money_house_activation"
+  ],
+  "resource_discipline": [
+    "money_house_activation"
+  ],
+  "communication": [
+    "relationship_house_activation"
+  ],
+  "commitment": [
+    "relationship_house_activation"
+  ],
+  "emotional_support": [
+    "relationship_house_activation"
+  ],
+  "reconnection": [
+    "relationship_house_activation"
+  ],
+  "distance": [
+    "relationship_house_activation"
+  ],
+  "expectation_management": [
+    "relationship_house_activation"
+  ],
+  "family_responsibility": [
+    "home_house_activation"
+  ],
+  "domestic_stability": [
+    "home_house_activation"
+  ],
+  "home": [
+    "home_house_activation"
+  ],
+  "property": [
+    "home_house_activation"
+  ],
+  "living_arrangement": [
+    "home_house_activation"
+  ],
+  "household_routine": [
+    "home_house_activation"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "10:Saturn": {"boost": ["responsibility", "authority", "delayed_reward", "discipline"], "caution": "delayed_recognition"},
+  "10:Sun": {"boost": ["visibility", "recognition", "leadership", "authority"], "caution": null},
+  "10:Jupiter": {"boost": ["mentor_support", "recognition", "growth", "opportunity"], "caution": null},
+  "10:Mars": {"boost": ["competition", "initiative", "responsibility", "drive"], "caution": "conflict"},
+  "10:Mercury": {"boost": ["communication", "skills", "visibility", "analysis"], "caution": null},
+  "11:Jupiter": {"boost": ["network_gain", "opportunity", "gains", "mentor_support"], "caution": null},
+  "11:Saturn": {"boost": ["gains", "delayed_reward", "network_gain", "persistence"], "caution": "delayed_results"},
+  "11:Venus": {"boost": ["social_connection", "gains", "opportunity", "network_gain"], "caution": null},
+  "7:Venus": {"boost": ["relationships", "harmony", "emotional_support", "communication"], "caution": "expectation_management"},
+  "7:Mars": {"boost": ["conflict", "assertiveness", "communication", "intensity"], "caution": "emotional_intensity"},
+  "7:Saturn": {"boost": ["commitment", "responsibility", "distance", "patience"], "caution": "distance"},
+  "2:Saturn": {"boost": ["savings", "discipline", "resource_habits", "financial_stability"], "caution": "delayed_results"},
+  "2:Jupiter": {"boost": ["growth", "family_values", "accumulated_resources", "opportunity"], "caution": null},
+  "5:Mercury": {"boost": ["learning", "communication", "study_progress", "skills"], "caution": null},
+  "5:Jupiter": {"boost": ["learning", "mentor_support", "recognition", "teacher_recognition"], "caution": null},
+  "6:Mars": {"boost": ["competition", "health_routines", "problem_solving", "discipline"], "caution": "stress_management"},
+  "6:Saturn": {"boost": ["routine", "discipline", "health_routines", "persistence"], "caution": "slow_recovery"},
+  "12:Ketu": {"boost": ["withdrawal", "spiritual_inner", "release", "inward_focus"], "caution": "distance"},
+  "12:Saturn": {"boost": ["rest", "discipline", "withdrawal", "solitude"], "caution": "isolation"},
+  "4:Moon": {"boost": ["home", "emotional_security", "family", "comfort"], "caution": null},
+  "9:Jupiter": {"boost": ["higher_learning", "mentors", "teachers", "fortune"], "caution": null}
+}

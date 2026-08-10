@@ -1,0 +1,66 @@
+{
+  "career": {
+    "child": {"mode": "education", "narrative_area": "education", "label_key": "studies"},
+    "teen": {"mode": "education", "narrative_area": "education", "label_key": "studies"},
+    "young_adult": {"mode": "early_career", "narrative_area": "early_career", "label_key": "early_career"},
+    "adult": {"mode": "career", "narrative_area": "career", "label_key": "career"},
+    "mature_adult": {"mode": "leadership", "narrative_area": "career", "label_key": "career"},
+    "senior": {"mode": "legacy", "narrative_area": "career", "label_key": "legacy"}
+  },
+  "money": {
+    "child": {"mode": "resource_habits", "narrative_area": "resources", "label_key": "resources"},
+    "teen": {"mode": "resource_habits", "narrative_area": "resources", "label_key": "resources"},
+    "young_adult": {"mode": "income_independence", "narrative_area": "money", "label_key": "money"},
+    "adult": {"mode": "money", "narrative_area": "money", "label_key": "money"},
+    "mature_adult": {"mode": "money", "narrative_area": "money", "label_key": "money"},
+    "senior": {"mode": "preservation", "narrative_area": "money", "label_key": "money"}
+  },
+  "love": {
+    "child": {"mode": "friendships", "narrative_area": "friendships", "label_key": "friendships"},
+    "teen": {"mode": "friendships", "narrative_area": "friendships", "label_key": "friendships"},
+    "young_adult": {"mode": "relationships", "narrative_area": "love", "label_key": "relationships"},
+    "adult": {"mode": "love", "narrative_area": "love", "label_key": "love"},
+    "mature_adult": {"mode": "love", "narrative_area": "love", "label_key": "love"},
+    "senior": {"mode": "companionship", "narrative_area": "love", "label_key": "companionship"}
+  },
+  "children": {
+    "child": {"mode": "creativity", "narrative_area": "creativity", "label_key": "creativity"},
+    "teen": {"mode": "creativity", "narrative_area": "creativity", "label_key": "creativity"},
+    "young_adult": {"mode": "future_family", "narrative_area": "children", "label_key": "creativity"},
+    "adult": {"mode": "children", "narrative_area": "children", "label_key": "children"},
+    "mature_adult": {"mode": "children", "narrative_area": "children", "label_key": "children"},
+    "senior": {"mode": "family_grandchildren", "narrative_area": "children", "label_key": "family"}
+  },
+  "home": {
+    "child": {"mode": "family_home", "narrative_area": "home", "label_key": "home"},
+    "teen": {"mode": "family_home", "narrative_area": "home", "label_key": "home"},
+    "young_adult": {"mode": "home", "narrative_area": "home", "label_key": "home"},
+    "adult": {"mode": "home", "narrative_area": "home", "label_key": "home"},
+    "mature_adult": {"mode": "home", "narrative_area": "home", "label_key": "home"},
+    "senior": {"mode": "home", "narrative_area": "home", "label_key": "home"}
+  },
+  "learning": {
+    "child": {"mode": "learning", "narrative_area": "learning", "label_key": "learning"},
+    "teen": {"mode": "learning", "narrative_area": "learning", "label_key": "learning"},
+    "young_adult": {"mode": "learning", "narrative_area": "learning", "label_key": "learning"},
+    "adult": {"mode": "skills", "narrative_area": "learning", "label_key": "learning"},
+    "mature_adult": {"mode": "skills", "narrative_area": "learning", "label_key": "learning"},
+    "senior": {"mode": "mental_engagement", "narrative_area": "learning", "label_key": "learning"}
+  },
+  "health": {
+    "child": {"mode": "routine_wellbeing", "narrative_area": "health", "label_key": "health"},
+    "teen": {"mode": "routine_wellbeing", "narrative_area": "health", "label_key": "health"},
+    "young_adult": {"mode": "routine_wellbeing", "narrative_area": "health", "label_key": "health"},
+    "adult": {"mode": "health", "narrative_area": "health", "label_key": "health"},
+    "mature_adult": {"mode": "health", "narrative_area": "health", "label_key": "health"},
+    "senior": {"mode": "wellbeing_followup", "narrative_area": "health", "label_key": "health"}
+  },
+  "inner": {
+    "child": {"mode": "confidence", "narrative_area": "inner", "label_key": "inner"},
+    "teen": {"mode": "identity", "narrative_area": "inner", "label_key": "inner"},
+    "young_adult": {"mode": "inner", "narrative_area": "inner", "label_key": "inner"},
+    "adult": {"mode": "inner", "narrative_area": "inner", "label_key": "inner"},
+    "mature_adult": {"mode": "inner", "narrative_area": "inner", "label_key": "inner"},
+    "senior": {"mode": "inner", "narrative_area": "inner", "label_key": "inner"}
+  }
+}

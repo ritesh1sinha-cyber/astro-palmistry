@@ -1,0 +1,11 @@
+{
+  "Sun": ["identity", "authority", "confidence", "leadership", "visibility", "recognition", "purpose"],
+  "Moon": ["emotions", "mind", "habits", "care", "family", "adaptability", "emotional_security"],
+  "Mars": ["action", "courage", "competition", "initiative", "drive", "problem_solving", "assertiveness", "conflict"],
+  "Mercury": ["communication", "analysis", "learning", "writing", "logic", "commerce", "negotiation", "skills", "technology"],
+  "Jupiter": ["growth", "knowledge", "teachers", "mentors", "guidance", "opportunity", "wisdom", "expansion", "mentor_support"],
+  "Venus": ["relationships", "harmony", "beauty", "creativity", "comfort", "social_connection", "agreement", "emotional_support"],
+  "Saturn": ["discipline", "responsibility", "delay", "persistence", "structure", "long_term_results", "authority", "maturity", "delayed_reward"],
+  "Rahu": ["ambition", "novelty", "unusual_paths", "technology", "foreign_influence", "intense_desire", "rapid_change", "visibility"],
+  "Ketu": ["detachment", "specialization", "research", "inward_focus", "unusual_insight", "letting_go", "spiritual_inner", "withdrawal"]
+}

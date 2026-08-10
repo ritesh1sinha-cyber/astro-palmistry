@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import html as _html
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 # The stylesheet moved to report_shell so horary, numerology, matching and the
@@ -103,7 +103,7 @@ except Exception:  # noqa: BLE001
 
 ACTIONS: dict[str, str] = {
     "Sun": "Deal directly with whoever actually decides. This stalls one level below the authority.",
-    "Moon": "Protect your sleep and your home routine — your focus is downstream of both.",
+    "Moon": "Protect your sleep and your home routine. Your focus is downstream of both.",
     "Mars": "Do not escalate this month. Let the other side move first.",
     "Mercury": "Put it in writing. The misunderstanding here is in the wording, not the intent.",
     "Jupiter": "Ask someone senior to speak for you. This opens through a sponsor.",
@@ -111,6 +111,17 @@ ACTIONS: dict[str, str] = {
     "Saturn": "Finish the boring, verifiable part first. Saturn only blocks what is half-done.",
     "Rahu": "Verify the thing that looks too convenient.",
     "Ketu": "Step back for a fortnight. This one loosens when you stop gripping it.",
+}
+
+SUPPORT_ACTIONS: dict[str, str] = {
+    "career": "Use this window to show your work, ask for the responsibility you want, and follow important conversations in writing.",
+    "money": "Use the easier phase to strengthen savings and reduce money that quietly leaks away.",
+    "love": "Use the warmer phase to have the conversation you have been postponing and make time for the relationship.",
+    "home": "Use the stable phase to settle recurring home matters and strengthen your family routine.",
+    "children": "Encourage progress without rushing it. Consistency will help more than pressure.",
+    "health": "Use the stronger phase to build the routines that keep your energy steady, rather than assuming you can always push harder.",
+    "learning": "Use the opening to learn something useful and apply it immediately instead of only collecting information.",
+    "inner": "Use the quieter phase for reflection, learning or spiritual practice instead of forcing every answer.",
 }
 
 MANTRA = {
@@ -121,6 +132,18 @@ MANTRA = {
     "Rahu": "Om Rahave Namah on Saturday evenings",
     "Ketu": "Om Ketave Namah on Tuesday evenings",
 }
+
+
+def _stage_action(area: str, band: str) -> str:
+    try:
+        from narration.stage_actions import action_for_stage
+        line = action_for_stage(area, band)
+        if line:
+            return line
+    except Exception:  # noqa: BLE001
+        pass
+    return SUPPORT_ACTIONS.get(
+        area, "Use the supportive phase deliberately rather than waiting for it to pass.")
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +160,8 @@ class Card:
     action: str = ""
     mantra: str = ""
     agreement: str = ""            # confidence chip, not method counts
+    planets: list = field(default_factory=list)
+    trajectory: list = field(default_factory=list)
     locked: bool = False           # kept for callers that still gate whole cards
 
 
@@ -149,6 +174,20 @@ def _d(value: Any) -> Optional[date]:
 
 def _pretty(d: Optional[date]) -> str:
     return f"{d:%b %Y}".replace(" 0", " ") if d else ""
+
+
+def _pretty_long(d: Optional[date]) -> str:
+    return f"{d:%B %Y}".replace(" 0", " ") if d else ""
+
+
+def free_confidence_label(agreement: str, direction: str) -> str:
+    """Customer-facing Free chip — no technical 'agreement' vocabulary."""
+    if direction == "down":
+        return "Needs care"
+    text = (agreement or "").lower()
+    if "strong" in text:
+        return "strong support"
+    return "mixed support"
 
 
 def _window(start: Any, end: Any, today: Optional[date] = None) -> str:
@@ -221,9 +260,17 @@ def _ord(n: Any) -> str:
 
 
 def build_cards(pc: dict, *, today: Optional[date] = None,
-                free_areas: int = 0) -> list:
+                free_areas: int = 0,
+                gate: Optional[Any] = None) -> list:
     """One card per life area, ordered so the sharpest reading leads."""
     today = today or date.today()
+    from interpretation.life_stage import age_band
+    from narration.area_labels import area_label as _age_area_label
+    from qa_checks.report_diversity import ReportDiversityGate
+
+    if gate is None:
+        gate = ReportDiversityGate()
+    band = age_band(pc, today=today)
     vim = pc.get("vimshottari", {}) or {}
     md = vim.get("current_md", {}) or {}
     ad = current_ad(pc)
@@ -233,23 +280,71 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
     for area in AREAS:
         direction, evidence, score, verdict = score_area(pc, area, today=today)
         live = _dasha_touches(pc, area.house, [md_lord, ad_lord])
-        headline = (verdict or {}).get("headline") or CLAIMS.get((area.key, direction), "")
+        headline = _manifest_card_headline(
+            pc, area, direction, today=today, gate=gate)
+        if not headline:
+            headline = (verdict or {}).get("headline") or CLAIMS.get(
+                (area.key, direction), "")
         backing = (verdict or {}).get("backing") or (evidence[0] if evidence else "")
         window = (verdict or {}).get("when") or ""
         remedy = (verdict or {}).get("remedy") or ""
-        if not remedy and direction != "up":
+        if not remedy:
             try:
                 import area_report as AR
                 remedy = AR.classical_area_remedy(pc, area.key, area.house, direction)
             except Exception:  # noqa: BLE001
                 remedy = ""
+
+        # Current MD/AD plus any Jupiter/Saturn transit on this area's house.
+        planets_involved = []
+        for p in (md_lord, ad_lord):
+            if p and p not in planets_involved:
+                planets_involved.append(p)
+        try:
+            import report_timing as RT
+            transit_segments = RT.transit_segments(
+                pc, start=today - timedelta(days=30), years=1)
+            for planet, segs in transit_segments.items():
+                for seg in segs:
+                    if (seg.get("house") == area.house
+                            and seg.get("start") <= today <= seg.get("end")):
+                        if planet not in planets_involved:
+                            planets_involved.append(planet)
+                        break
+        except Exception:  # noqa: BLE001
+            pass
+
+        trajectory = []
+        try:
+            import report_timing as RT
+            rows = RT.windows_for_area(
+                pc, area.key, area.house, start=today, years=5)
+            for r in rows:
+                if not r.get("start"):
+                    continue
+                rd = ("up" if r.get("aligned")
+                      else ("down" if r.get("dasha") == "down"
+                            or r.get("promise") == "down"
+                            or int(r.get("bav", 0) or 0) <= 3
+                            else "mixed"))
+                trajectory.append({
+                    "start": r.get("start"), "end": r.get("end"),
+                    "direction": rd, "planet": r.get("planet", ""),
+                    "dasha": r.get("dasha_label", ""),
+                })
+            trajectory.sort(key=lambda x: x.get("start"))
+            trajectory = trajectory[:4]
+        except Exception:  # noqa: BLE001
+            trajectory = []
+
         card = Card(
-            area=area.key, label=area.label, direction=direction,
+            area=area.key, label=_age_area_label(area.key, band), direction=direction,
             headline=headline, backing=backing, window=window, evidence=[],
-            action=remedy if direction != "up" else "",
-            mantra="" if direction != "down" else "",
+            action=remedy or _stage_action(area.key, band),
+            mantra="",
             agreement=(verdict or {}).get("confidence")
             or (verdict or {}).get("agreement", ""),
+            planets=planets_involved, trajectory=trajectory,
         )
         cards.append((abs(score) + (1 if live else 0), card))
 
@@ -268,6 +363,34 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
     return ordered
 
 
+def _manifest_card_headline(
+    pc: dict,
+    area: Area,
+    direction: str,
+    *,
+    today: date,
+    gate: Any,
+) -> str:
+    """Evidence-weighted current-situation headline for a life-area card."""
+    try:
+        import report_confluence as CF
+        from interpretation.evidence_builder import build_evidence
+        from interpretation.life_stage import age_band
+        from interpretation.prediction_meaning import build_meaning
+
+        band = age_band(pc, today=today)
+        dasha = CF.dasha_confluence(pc, today)
+        row = {"promise": direction, "dasha": direction, "house": area.house}
+        evidence = build_evidence(
+            pc, area=area.key, house=area.house, direction=direction,
+            row=row, dasha=dasha, age_band=band)
+        meaning = build_meaning(evidence)
+        line, _ = gate.validate_current("", meaning)
+        return line
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def build_timeline(pc: dict, *, today: Optional[date] = None,
                    limit: int = 6) -> list:
     """The next few chapters, one line each, with real dates."""
@@ -283,10 +406,19 @@ def build_timeline(pc: dict, *, today: Optional[date] = None,
         lord = ad.get("ad_lord", "")
         houses = [int(h) for h, v in hl.items() if v.get("lord") == lord]
         sits = (planets.get(lord) or {}).get("house")
-        areas = sorted({a.label for a in AREAS
-                        if a.house in houses or a.house == sits
-                        or any(h in a.support for h in houses)
-                        or sits in a.support})
+        try:
+            from interpretation.life_stage import age_band as _band
+            from narration.area_labels import area_label as _alabel
+            _b = _band(pc, today=today)
+            areas = sorted({_alabel(a.key, _b) for a in AREAS
+                            if a.house in houses or a.house == sits
+                            or any(h in a.support for h in houses)
+                            or sits in a.support})
+        except Exception:  # noqa: BLE001
+            areas = sorted({a.label for a in AREAS
+                            if a.house in houses or a.house == sits
+                            or any(h in a.support for h in houses)
+                            or sits in a.support})
         end_p = _pretty(_d(ad.get("end")))
         try:
             import impact as IMP
@@ -313,7 +445,16 @@ def _e(t: Any) -> str:
     return _html.escape(str(t or ""))
 
 
-DIRECTION_LABEL = {"up": "favourable", "mixed": "mixed", "down": "under strain"}
+DIRECTION_LABEL = {
+    "up": "supportive",
+    "mixed": "mixed",
+    "down": "more demanding",
+}
+EXPECT_LABEL = {
+    "up": "Improving",
+    "mixed": "Mixed",
+    "down": "More demanding",
+}
 
 
 def render(pc: dict, *, name: str = "", question_html: str = "",
@@ -321,7 +462,9 @@ def render(pc: dict, *, name: str = "", question_html: str = "",
            paid: bool = False, proof_html: str = "",
            daily_html: str = "", timing_html: str = "") -> str:
     today = today or date.today()
-    cards = build_cards(pc, today=today)
+    from qa_checks.report_diversity import ReportDiversityGate
+    gate = ReportDiversityGate()
+    cards = build_cards(pc, today=today, gate=gate)
     timeline = build_timeline(pc, today=today)
     vim = pc.get("vimshottari", {}) or {}
     md, ad = vim.get("current_md", {}) or {}, current_ad(pc)
@@ -341,48 +484,64 @@ def render(pc: dict, *, name: str = "", question_html: str = "",
             f'<b>{_e(r["label"])}</b></div>' for r in dc["readings"])
         n_read = len(dc.get("readings") or [])
         n_word = {2: "two", 3: "three", 4: "four"}.get(n_read, str(n_read) or "these")
-        if dc["direction"] == "up":
-            verdict = (f"All {n_word} timing lenses point the same way, "
-                       "and it is a supportive way.")
-        elif dc["direction"] == "down":
-            verdict = ("The timing lenses agree this is a demanding "
-                       "stretch rather than an easy one.")
+
+        def _dir_of(r: dict) -> str:
+            t = float(r.get("tone") or 0)
+            if t > 0.2:
+                return "up"
+            if t < -0.2:
+                return "down"
+            return "mixed"
+
+        n_same = sum(1 for r in (dc.get("readings") or [])
+                     if _dir_of(r) == dc.get("direction"))
+        direction = dc.get("direction", "mixed")
+
+        # One coherent agreement statement from actual counts — never both
+        # "strong/all agree" and "3 of 4 mixed" at once.
+        # Use words for "all four..."; digits for "3 of 4...".
+        if n_read > 0 and n_same == n_read:
+            if direction == "up":
+                conf = "Strong agreement"
+                verdict = (f"all {n_word} timing methods point in the same "
+                           f"supportive direction.")
+            elif direction == "down":
+                conf = "Strong agreement"
+                verdict = (f"all {n_word} timing methods point toward a more "
+                           f"demanding period.")
+            else:
+                conf = "Mixed agreement"
+                verdict = (f"all {n_word} timing methods are active, but the "
+                           f"overall picture stays mixed.")
+        elif n_read >= 3 and n_same == n_read - 1:
+            if direction == "up":
+                conf = "Good agreement"
+                verdict = (f"{n_same} of {n_read} timing methods point toward a "
+                           f"supportive period, with one method adding caution.")
+            elif direction == "down":
+                conf = "Mixed agreement"
+                verdict = (f"{n_same} of {n_read} timing methods point toward a "
+                           f"more demanding period, while one adds a note of caution.")
+            else:
+                conf = "Mixed agreement"
+                verdict = (f"{n_same} of {n_read} timing methods point in the same "
+                           f"direction, while one adds a note of caution.")
         else:
-            verdict = ("Vimshottari, Yogini, Chara, and the nadi read do not "
-                       "fully agree here. This usually means a period that "
-                       "rewards patience over big moves.")
-        agree_line = dc.get("agreement") or ""
-        try:
-            import predict_voice as PV
+            conf = "Mixed evidence"
+            verdict = ("the timing methods do not point consistently in the "
+                       "same direction.")
 
-            def _dir_of(r: dict) -> str:
-                t = float(r.get("tone") or 0)
-                if t > 0.2:
-                    return "up"
-                if t < -0.2:
-                    return "down"
-                return "mixed"
-
-            n_same = sum(1 for r in (dc.get("readings") or [])
-                         if _dir_of(r) == dc.get("direction"))
-            conf = PV.confidence_word(n_same, n_read, dc.get("direction", "mixed"))
-        except Exception:  # noqa: BLE001
-            conf = "mixed read"
-        extra = ""
-        if not dc.get("unanimous") and agree_line:
-            extra = (f'<div class="dagree-mix">{_e(agree_line)} — '
-                     f'weigh the mixed window carefully.</div>')
         dasha_html = (f'<div class="dasha-conf">{rows}'
-                      f'<div class="dagree">{_e(conf)} · '
-                      f'{_e(verdict)}</div>{extra}</div>')
+                      f'<div class="dagree">{_e(conf)} — {_e(verdict)}</div>'
+                      f'</div>')
 
         pers = CF.personality(pc)
         traits = "".join(f"<li>{_e(t)}</li>" for t in pers["traits"])
         yogas = "".join(f"<li>{_e(y)}</li>" for y in pers["yogas"])
         personality_html = f"""
 <h3 class="sec">Who your chart says you are</h3>
-<p class="sec-note">Read this first. If it does not describe you, nothing
-after it is worth your money.</p>
+<p class="sec-note">Read this first. If this feels familiar, the detailed timing ahead will
+make much more sense.</p>
 <div class="card persona">
   <ul class="traits">{traits}</ul>
   {f'<div class="yogas"><span class="ev-label">Standing combinations in your chart</span><ul>{yogas}</ul></div>' if yogas else ''}
@@ -391,67 +550,266 @@ after it is worth your money.</p>
         pass
 
     def card_html(c: Card) -> str:
-        agree = f'<span class="agree">{_e(c.agreement)}</span>' if c.agreement else ""
-
-        why_line = c.backing or (c.evidence[0] if c.evidence else "")
         if paid:
-            when = f'<div class="when">{_e(c.window)}</div>'
-            act = (f'<div class="action"><span class="act-label">What helps</span>'
+            agree = (f'<span class="agree">{_e(c.agreement)}</span>'
+                     if c.agreement else "")
+        else:
+            label = free_confidence_label(c.agreement, c.direction)
+            agree = f'<span class="agree">{_e(label)}</span>'
+        why_line = c.backing or (c.evidence[0] if c.evidence else "")
+        expect = EXPECT_LABEL.get(c.direction, "Mixed")
+
+        try:
+            from report_language import (
+                trajectory_explain, expect_explain, chapter_area_line)
+            from interpretation.life_stage import age_band as _age_band_fn
+        except Exception:  # noqa: BLE001
+            def trajectory_explain(d, area="", *, planet="", variant=0, age_band=""):  # type: ignore
+                return ""
+
+            def expect_explain(d, area="", *, age_band=""):  # type: ignore
+                return ""
+
+            def chapter_area_line(area="", *, age_band="adult"):  # type: ignore
+                return ""
+
+            def _age_band_fn(pc, today=None):  # type: ignore
+                return "adult"
+
+        act_label = ("What helps" if c.direction != "up"
+                     else "How to use this period")
+        card_band = _age_band_fn(pc, today=today)
+        try:
+            from narration.stage_actions import expect_for_stage
+            expect_note = expect_for_stage(c.area, card_band, c.direction)
+        except Exception:  # noqa: BLE001
+            expect_note = ""
+        if not expect_note:
+            expect_note = expect_explain(c.direction, c.area, age_band=card_band)
+        ch_line = chapter_area_line(c.area, age_band=card_band)
+
+        if paid:
+            lords = " · ".join(
+                p for p in (md.get("md_lord", ""), ad.get("ad_lord", "")) if p)
+            # Global chapter dates live in the now-box above. Cards only
+            # explain how that same chapter touches this life area.
+            phase = ""
+            if ch_line:
+                phase = (
+                    f'<div class="when"><span class="ev-label">'
+                    f'How this chapter affects this area</span>'
+                    f'<p class="chapter-area-note">{_e(ch_line)}</p></div>')
+            elif lords:
+                phase = (
+                    f'<div class="when"><span class="ev-label">'
+                    f'How this chapter affects this area</span>'
+                    f'{_e(lords)}</div>')
+            planet_html = ""
+            if c.planets:
+                chips = " · ".join(_e(p) for p in c.planets)
+                planet_html = (
+                    '<div class="card-planets"><span class="ev-label">Planets involved</span>'
+                    f'<div class="planet-names">{chips}</div></div>')
+
+            trajectory_html = ""
+            if c.trajectory:
+                rows = []
+                used_lines: set[str] = set()
+                for i, tr in enumerate(c.trajectory):
+                    a = _d(tr.get("start")); b = _d(tr.get("end"))
+                    if not a or not b:
+                        continue
+                    if a.year == b.year and a.month == b.month:
+                        ds = f"{a.day}–{b.day} {a:%b %Y}"
+                    elif a.year == b.year:
+                        ds = f"{a.day} {a:%b} – {b.day} {b:%b %Y}"
+                    else:
+                        ds = f"{a:%d %b %Y} – {b:%d %b %Y}"
+                    explain = ""
+                    for bump in range(6):
+                        try:
+                            from interpretation.evidence_builder import build_evidence
+                            from interpretation.life_stage import age_band_at
+                            from interpretation.prediction_meaning import build_meaning
+                            from narration.human_renderer import render_future_headline
+                            import report_confluence as CF
+
+                            win_start = a
+                            band = age_band_at(pc, win_start)
+                            dasha = CF.dasha_confluence(pc, win_start)
+                            row = {
+                                "planet": tr.get("planet") or "",
+                                "house": c.house,
+                                "start": win_start,
+                                "end": b,
+                                "promise": tr.get("direction", "mixed"),
+                                "bav": 5,
+                            }
+                            evidence = build_evidence(
+                                pc, area=c.area, house=c.house,
+                                direction=tr.get("direction", "mixed"),
+                                row=row, dasha=dasha, age_band=band,
+                                period_start=win_start, period_end=b)
+                            meaning = build_meaning(evidence)
+                            meaning.variant_index = i + bump
+                            candidate = render_future_headline(meaning)
+                        except Exception:  # noqa: BLE001
+                            win_band = ""
+                            try:
+                                from interpretation.life_stage import age_band_at
+                                win_band = age_band_at(pc, a)
+                            except Exception:  # noqa: BLE001
+                                win_band = card_band
+                            candidate = trajectory_explain(
+                                tr.get("direction", "mixed"), c.area,
+                                planet=tr.get("planet") or "",
+                                variant=i + bump, age_band=win_band)
+                        if candidate and candidate not in used_lines:
+                            explain = candidate
+                            break
+                    if not explain:
+                        try:
+                            from interpretation.life_stage import age_band_at
+                            win_band = age_band_at(pc, a)
+                        except Exception:  # noqa: BLE001
+                            win_band = card_band
+                        explain = trajectory_explain(
+                            tr.get("direction", "mixed"), c.area,
+                            planet=tr.get("planet") or "", variant=i,
+                            age_band=win_band)
+                    used_lines.add(explain)
+                    rows.append(
+                        f'<div class="trajectory-row">'
+                        f'<div class="traj-when">{_e(ds)}</div>'
+                        f'<b class="traj-{tr["direction"]}">{_e(EXPECT_LABEL.get(tr["direction"], "Mixed"))}</b>'
+                        f'<p class="traj-note">{_e(explain)}</p>'
+                        f'<small>Influence: {_e(tr.get("planet") or "timing")}</small></div>')
+                if rows:
+                    trajectory_html = (
+                        '<div class="trajectory">'
+                        '<span class="ev-label">How this area changes over time</span>'
+                        + ''.join(rows) + '</div>')
+
+            act = (f'<div class="action"><span class="act-label">{act_label}</span>'
                    f'<p>{_e(c.action)}</p>'
                    + (f'<p class="mantra">{_e(c.mantra)}</p>' if c.mantra else "")
                    + "</div>") if c.action else ""
-            ev_block = (
-                f'<div class="evidence"><span class="ev-label">Why your chart says this</span>'
-                f'{agree}<p class="pred-why"><b>Why:</b> {_e(why_line)}</p></div>')
+            try:
+                from report_language import why_block_html
+                why_body = why_block_html(why_line, "")
+            except Exception:  # noqa: BLE001
+                why_body = f'<p class="pred-why">{_e(why_line)}</p>'
+            why = (
+                f'<details class="evidence-astro"><summary>Why does Graharekha say this?</summary>'
+                f'{why_body}</details>')
+            body = (
+                f'<div class="expect"><span class="ev-label">What to expect</span>'
+                f'<b class="traj-{c.direction}">{_e(expect)}</b>'
+                + (f'<p class="expect-note">{_e(expect_note)}</p>'
+                   if expect_note else "")
+                + f'</div>{phase}{planet_html}{trajectory_html}{act}{why}')
         else:
-            when = ('<div class="when locked-inline">'
-                    '<span class="lockicon">•</span> Exact dates in the full reading</div>')
+            phase = ('<div class="when locked-inline">'
+                     '<span class="lockicon">•</span> Exact dates in the full reading</div>')
             act = ('<div class="action locked-inline">'
-                   '<span class="act-label">What helps</span>'
+                   f'<span class="act-label">{act_label}</span>'
                    '<p class="blurred">{}</p></div>'.format(_e(c.action))
                    ) if c.action else ""
-            ev_block = (
-                f'<div class="evidence"><span class="ev-label">Why your chart says this</span>'
+            body = (
+                f'<div class="expect"><span class="ev-label">What to expect</span>'
+                f'<b class="traj-{c.direction}">{_e(expect)}</b>'
+                + (f'<p class="expect-note">{_e(expect_note)}</p>'
+                   if expect_note else "")
+                + f'</div>{phase}'
+                f'<div class="evidence"><span class="ev-label">Why this reads this way</span>'
                 f'{agree}<p class="pred-why locked-inline"><span class="lockicon">•</span> '
-                f'The one-line chart read is in the full report.</p></div>')
+                f'The full report shows the planets, timing and chart factors '
+                f'behind this reading.</p></div>'
+                f'{act}')
 
         return f"""
 <article class="card" data-verdict="{c.direction}">
   <div class="card-top"><span class="area">{_e(c.label)}</span>
     <span class="pill {c.direction}">{DIRECTION_LABEL[c.direction]}</span></div>
+  <div class="ev-label">Current situation</div>
   <p class="claim">{_e(c.headline)}</p>
-  {when}
-  {ev_block}
-  {act}
+  {body}
 </article>"""
 
     tl = "".join(f"""
 <li class="{'now' if r['current'] else ''}">
   <div class="tl-when">{_e(r['window'])}</div>
-  <div class="tl-body"><b>{_e(r['lord'])}</b>. {_e(r['theme'])}
+  <div class="tl-body"><b>{_e(r['theme'])}</b>
+  <span class="tl-period">{_e(r['lord'])} period</span>
   {f'<span class="tl-areas">{_e(" · ".join(r["areas"]))}</span>' if r['areas'] else ''}</div>
 </li>""" for r in timeline)
 
     cards_html = "".join(card_html(c) for c in cards)
 
+    def _chapter_planet_block(*lords: str) -> str:
+        try:
+            from report_language import planet_influence_line
+        except Exception:  # noqa: BLE001
+            def planet_influence_line(p):  # type: ignore
+                return f"{p} is active in this period."
+        seen: list[str] = []
+        for p in lords:
+            if p and p not in seen:
+                seen.append(p)
+        if not seen:
+            return ""
+        rows = "".join(
+            f'<div class="planet-theme"><b>{_e(p)}</b>'
+            f'<p>{_e(planet_influence_line(p))}</p></div>'
+            for p in seen)
+        return f'<div class="chapter-planets">{rows}</div>'
+
+    md_l = md.get("md_lord", "")
+    ad_l = ad.get("ad_lord", "")
     if paid:
-        end_p = _pretty(_d(ad.get("end")))
+        start_src = _d(ad.get("start")) or _d(md.get("start"))
+        end_src = _d(ad.get("end")) or _d(md.get("end"))
+        start_p = _pretty_long(start_src)
+        end_p = _pretty_long(end_src)
         try:
             import impact as IMP
             chapter_impact = IMP.period_impact(
-                md.get("md_lord", ""), ad.get("ad_lord", ""), end_pretty=end_p)
+                md_l, ad_l, end_pretty=end_p or _pretty(end_src))
         except Exception:  # noqa: BLE001
             chapter_impact = (
-                f"{PLANET_VOICE.get(md.get('md_lord',''),'')} sets the background; "
-                f"{PLANET_VOICE.get(ad.get('ad_lord',''),'')} is what you feel week to week.")
-        chapter_h2 = (f"{_e(md.get('md_lord',''))}–{_e(ad.get('ad_lord',''))}, "
-                      f"to {_e(end_p)}")
+                f"You are in a {md_l}–{ad_l} period. Opportunities and effort "
+                f"both matter here; the best results usually come through steady "
+                f"action and the right support"
+                + (f" until {end_p}." if end_p else "."))
+        try:
+            from report_language import humanise_client_language
+            chapter_impact = humanise_client_language(chapter_impact)
+        except Exception:  # noqa: BLE001
+            pass
+        if start_p and end_p:
+            chapter_h2 = (f"{_e(md_l)}–{_e(ad_l)}<br/>"
+                          f"{_e(start_p)} → {_e(end_p)}")
+        elif end_p:
+            chapter_h2 = f"{_e(md_l)}–{_e(ad_l)}, to {_e(end_p)}"
+        else:
+            chapter_h2 = f"{_e(md_l)}–{_e(ad_l)}"
+        chapter_planets = _chapter_planet_block(md_l, ad_l)
         chapter_dasha = dasha_html
     else:
-        chapter_h2 = f"{_e(md.get('md_lord',''))}–{_e(ad.get('ad_lord',''))}"
-        chapter_impact = (
-            f"{PLANET_VOICE.get(md.get('md_lord',''),'')} sets the background; "
-            f"{PLANET_VOICE.get(ad.get('ad_lord',''),'')} is what you feel week to week.")
+        chapter_h2 = f"{_e(md_l)}–{_e(ad_l)}"
+        try:
+            import impact as IMP
+            chapter_impact = IMP.period_impact(md_l, ad_l, end_pretty="")
+        except Exception:  # noqa: BLE001
+            chapter_impact = (
+                f"You are in a {md_l}–{ad_l} period. This combination is "
+                f"shaping the background of daily life right now.")
+        try:
+            from report_language import humanise_client_language
+            chapter_impact = humanise_client_language(chapter_impact)
+        except Exception:  # noqa: BLE001
+            pass
+        chapter_planets = _chapter_planet_block(md_l, ad_l)
         chapter_dasha = ""
 
     timeline_section = ""
@@ -504,6 +862,7 @@ after it is worth your money.</p>
   <div class="lbl">The chapter you are in</div>
   <h2>{chapter_h2}</h2>
   <p>{_e(chapter_impact)}</p>
+  {chapter_planets}
   {chapter_dasha}
 </div>
 

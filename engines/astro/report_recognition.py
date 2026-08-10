@@ -53,6 +53,25 @@ from typing import Any
 
 from report_language import client_prose
 
+try:
+    from interpretation.life_stage import age_band as _age_band_fn, is_minor
+    from qa_checks.age_context_check import age_violations
+except Exception:  # noqa: BLE001
+    def _age_band_fn(pc, today=None):  # type: ignore
+        return "adult"
+
+    def is_minor(band):  # type: ignore
+        return False
+
+    def age_violations(text, band):  # type: ignore
+        return []
+
+RECOG_LABELS_MINOR: dict[str, str] = {
+    "love": "Friendships & close bonds",
+    "career": "Studies & recognition",
+    "money": "Resources & money habits",
+}
+
 BENEFIC = ("Jupiter", "Venus", "Mercury", "Moon")
 MALEFIC = ("Saturn", "Mars", "Sun", "Rahu", "Ketu")
 
@@ -233,10 +252,12 @@ def _b19(pc: dict, v) -> list:
     h = _house_of(pc, _lord(pc, 8).get("lord", ""))
     if not h:
         return []
+    lord = _lord(pc, 8).get("lord") or "Saturn"
     return [(HOUSE_DOMAIN[h], f"upheaval_{h}",
              "The part of your life that has never quite settled is "
              f"{HOUSE_THEME[h]}. That is where the sudden turns came, and "
-             "they arrived without much warning.")]
+             "they arrived without much warning.",
+             "", (h, lord))]
 
 
 def _b48(pc: dict, v) -> list:
@@ -247,7 +268,8 @@ def _b48(pc: dict, v) -> list:
     return [(HOUSE_DOMAIN[h], f"repeat_{h}",
              "The same mistake has cost you twice in one area of life — "
              f"{HOUSE_THEME[h]}. The second time it came dressed differently "
-             "and you did not recognise it until afterwards.")]
+             "and you did not recognise it until afterwards.",
+             "", (h, "Rahu"))]
 
 
 def _b76(pc: dict, v) -> list:
@@ -258,17 +280,20 @@ def _b76(pc: dict, v) -> list:
     placed (debilitated, in the 7th)", which is self-contradictory. Dignity is
     the thing the classical rule is actually about, so we read that directly.
     """
+    lord = _lord(pc, 10).get("lord") or "Mercury"
     dig = _lord(pc, 10).get("lord_dignity", "")
     if dig in ("exalted", "own_sign", "moolatrikona"):
         return [("career", "career_straight",
                  "Work has paid you back roughly in proportion to what you "
                  "put in. You have not had to reinvent yourself to stay "
-                 "employed, and that is rarer than you think.")]
+                 "employed, and that is rarer than you think.",
+                 "", (10, lord))]
     if dig in ("debilitated", "enemy_sign"):
         return [("career", "career_detour",
                  "Your career has not run in a straight line. You have had to "
                  "re-establish yourself at least once, later than the people "
-                 "you started with, and explain a gap you did not choose.")]
+                 "you started with, and explain a gap you did not choose.",
+                 "", (10, lord))]
     return []
 
 
@@ -277,38 +302,45 @@ def _b15(pc: dict, v) -> list:
     out = []
     for house in (6, 8, 12):
         info = _lord(pc, house)
+        lord = info.get("lord") or "Saturn"
         if info.get("lord_dignity") in ("own_sign", "moolatrikona"):
             if house == 6:
                 out.append(("health", "health_outlasts",
                             "Illness, debt and opposition have all come at "
                             "you, and none of them stuck. You have outlasted "
-                            "things that put other people out of action."))
+                            "things that put other people out of action.",
+                            "", (house, lord)))
             elif house == 8:
                 out.append(("health", "health_survived",
                             "You have been through at least one thing that "
                             "should have marked you permanently, and it did "
-                            "not. You came out roughly intact."))
+                            "not. You came out roughly intact.",
+                            "", (house, lord)))
             else:
                 out.append(("money", "money_loss_absorbed",
                             "You have absorbed a loss that other people would "
                             "still be talking about, and you stopped talking "
-                            "about it quickly."))
+                            "about it quickly.",
+                            "", (house, lord)))
     return out[:1]  # one is a statement; three is a theme, and reads padded
 
 
 def _b66(pc: dict, v) -> list:
     """6th house/lord — the running fight, or the winning of it."""
+    lord = _lord(pc, 6).get("lord") or "Mars"
     dig = _lord(pc, 6).get("lord_dignity", "")
     if dig in ("exalted", "own_sign", "moolatrikona"):
         return [("health", "health_outlasts",
                  "You beat the people and the illnesses that were expected to "
                  "beat you. Conflict has never frightened you the way it "
-                 "frightens others.")]
+                 "frightens others.",
+                 "", (6, lord))]
     return [("health", "health_running_fight",
              "There has been a low-grade running fight in your life — with "
              "your own body, with a debt, or with someone who would not let "
              "go. It has been long rather than dramatic, and it wore you down "
-             "in a way nobody saw.")]
+             "in a way nobody saw.",
+             "", (6, lord))]
 
 
 def _b3(pc: dict, v) -> list:
@@ -386,18 +418,22 @@ def _b31(pc: dict, v) -> list:
     """A debilitated house lord — the specific thing the household lacked."""
     out = []
     for house in (4, 9):
-        if _lord(pc, house).get("lord_dignity") == "debilitated":
+        info = _lord(pc, house)
+        lord = info.get("lord") or ("Moon" if house == 4 else "Sun")
+        if info.get("lord_dignity") == "debilitated":
             if house == 4:
                 out.append(("parents", "home_underresourced",
                             "The house you grew up in was short of something "
                             "specific — money, space, or the attention of "
                             "whoever should have been giving it — and you "
-                            "learned not to ask."))
+                            "learned not to ask.",
+                            "", (house, lord)))
             else:
                 out.append(("parents", "father_diminished",
                             "Your father was diminished in some way you were "
                             "old enough to see: his position, his health, or "
-                            "how the family talked about him."))
+                            "how the family talked about him.",
+                            "", (house, lord)))
     return out
 
 
@@ -456,7 +492,8 @@ def _b38(pc: dict, v) -> list:
                 return [("career", f"career_stage_{h}",
                          f"Your working life has been the stage on which "
                          f"{STAGE_THEME[h]} got worked out. The two have "
-                         "never been separable for you.")]
+                         "never been separable for you.",
+                         "", (10, p))]
     return []
 
 
@@ -466,7 +503,7 @@ def _b50(pc: dict, v) -> list:
             if _dig(pc, p) in ("exalted", "own_sign", "moolatrikona"):
                 line = _AUTHORITY_BY_PLANET.get(p)
                 if line:
-                    return [("career", "authority", line)]
+                    return [("career", "authority", line, "", (h, p))]
     return []
 
 
@@ -475,7 +512,7 @@ def _b25(pc: dict, v) -> list:
         if d.get("dignity") == "exalted" and d.get("house") in (1, 4, 5, 7, 9, 10):
             line = _EXALTED_STATUS_BY_PLANET.get(p)
             if line:
-                return [("career", "status", line)]
+                return [("career", "status", line, "", (int(d["house"]), p))]
     return []
 
 
@@ -483,14 +520,16 @@ def _b57(pc: dict, v) -> list:
     return [("career", "adhi_respected",
              "You have quietly accumulated a good name. People who barely "
              "know you would speak well of you, and you have benefited from "
-             "that without ever engineering it.")]
+             "that without ever engineering it.",
+             "", (10, "Jupiter"))]
 
 
 def _b58(pc: dict, v) -> list:
     return [("health", "adhi_struggle",
              "You were built by difficulty rather than by encouragement. "
              "There is a hardness in you that shows up when you are tired, "
-             "and the people closest to you have seen it.")]
+             "and the people closest to you have seen it.",
+             "", (6, "Saturn"))]
 
 
 # rule no -> builder. Anything not in here is excluded; EXCLUDED_108 records why.
@@ -587,28 +626,28 @@ def _resolve_conflicts(pc: dict, items: list) -> list:
     if "health_outlasts" in tags:
         drop.add("health_running_fight")
         # Not a contradiction but a restatement: the hand-written resilience
-        # lines ("you recover faster than most", "you fight off illness better
+        # lines ("you recover faster than most", older direct medical-claim wording
         # than average") say what health_outlasts says, from looser conditions
         # (one dignity, one Ashtakavarga threshold). Three ways of saying the
         # same thing reads as padding, so the narrower rule keeps the slot.
-        drop.add("health_resistant")
+        drop.add("health_sav_6")
         # Same axis, opposite direction: "your baseline stamina has always been
         # lower than people assume" cannot stand next to "you outlasted things
         # that put others out of action". The stamina line reads the lagna
         # lord (general constitution); health_outlasts reads the 6th/8th lord,
         # which is the house that specifically governs how illness resolves.
         # For a claim about illness outcomes the 6th lord is the closer witness.
-        drop.add("health_low_stamina")
+        drop.add("health_lagna_weak")
 
     # health_running_fight (6th lord neither strong nor weak, so the engine
-    # defaults to the grinding reading) vs health_resistant (SAV of the 6th at
+    # defaults to the grinding reading) vs health_sav_6 (SAV of the 6th at
     # 30+, i.e. a measured strength figure). A Sarvashtakavarga count is a
     # number; "functional malefic" is a label. Where the 6th lord is only
     # neutral, the number wins and the grinding reading is dropped. If the 6th
     # lord is genuinely weak, the label is backed by dignity too and it stays.
-    if {"health_running_fight", "health_resistant"} <= tags:
+    if {"health_running_fight", "health_sav_6"} <= tags:
         if _lord(pc, 6).get("lord_dignity") in ("debilitated", "enemy_sign"):
-            drop.add("health_resistant")
+            drop.add("health_sav_6")
         else:
             drop.add("health_running_fight")
 
@@ -648,7 +687,7 @@ def _verdict_finding(v: Any) -> str:
 
 
 def _items108(pc: dict) -> list:
-    """(domain, tag, statement, why) from the 108 rules that hit."""
+    """(domain, tag, statement, why, evidence) from the 108 rules that hit."""
     hits = _p108(pc)
     items: list = []
     for no, builder in RULE108_BUILDERS.items():
@@ -658,12 +697,11 @@ def _items108(pc: dict) -> list:
         try:
             why = _verdict_finding(v)
             for it in builder(pc, v):
-                # A builder may already supply its own derivation; the rule's
-                # own finding wins only when it does not.
-                if len(it) >= 4 and it[3]:
-                    items.append(tuple(it[:4]))
-                else:
-                    items.append((it[0], it[1], it[2], why))
+                domain, tag, text = it[0], it[1], it[2]
+                why_override = it[3] if len(it) > 3 and it[3] else ""
+                explicit_ev = it[4] if len(it) > 4 else None
+                evidence = _item_evidence(tag, pc, explicit_ev)
+                items.append((domain, tag, text, why_override or why, evidence))
         except Exception:  # noqa: BLE001
             # One broken rule must not cost the reader the whole section.
             continue
@@ -707,13 +745,122 @@ HANDWRITTEN_TAGS = {
     "about spending.": "money_tight",
     "Your baseline stamina has always been lower than the people "
     "around you assume, and you have compensated by pushing "
-    "rather than by resting.": "health_low_stamina",
-    "You fight off illness better than average — the same is "
-    "true of opposition generally. People who take you on tend "
-    "to tire before you do.": "health_resistant",
+    "rather than by resting.": "health_lagna_weak",
+    "You tend to recover from setbacks with more resilience than people "
+    "may expect. The same persistence often appears when you face "
+    "opposition or difficult circumstances.": "health_sav_6",
     "You recover faster than most people. You have probably been "
-    "back on your feet from things that flattened others.": "health_resistant",
+    "back on your feet from things that flattened others.": "health_lagna_strong",
+    "Whatever goes wrong with your health tends to be slow and "
+    "recurring rather than sudden — it builds for months, and it "
+    "usually shows up first as stiffness, sleep or the lower back.": "health_saturn_6",
+    "Your health problems arrive fast and hot — inflammation, "
+    "fevers, sudden injuries — and they clear almost as quickly "
+    "as they came.": "health_mars_6",
+    "You have had at least one health complaint that took an "
+    "unusually long time to diagnose correctly.": "health_node_6",
+    "Your stomach is where your stress goes first. When life is "
+    "difficult, digestion is the thing that tells you before you "
+    "have admitted it to yourself.": "health_moon_gut",
+    "Heat, eyes or blood pressure — one of those three is the "
+    "thing you have been told to watch.": "health_sun_vitals",
+    "You put on weight when life gets comfortable, and it comes "
+    "off only when something forces the issue.": "health_jupiter_weight",
+    "Your money has come through people rather than through "
+    "salary alone — introductions, networks, someone who thought "
+    "of you.": "money_lord_exchange",
+    "Your best earnings have come from something slightly "
+    "unconventional, or from outside your home state or country.": "money_rahu_11",
+    "You accumulate slowly and you are careful with money in a "
+    "way that looks like anxiety to people who earn more easily.": "money_saturn_2",
+    "Money leaves you in large single amounts rather than "
+    "draining away — a medical bill, a family obligation, one "
+    "big commitment at a time.": "money_malefic_12",
+    "Money has arrived at the moment you needed it more than "
+    "once, in a way that was hard to plan for and easy to be "
+    "grateful for.": "money_jupiter_wealth",
+    "You earn from what you know rather than from what you own "
+    "— your income is tied to your own head, not to assets.": "money_mercury_earn",
+    "You are better at earning than at holding. Income has "
+    "rarely been the problem; what stays is.": "money_sav_earn_hold",
+    "Once money reaches you it tends to stay. You are not a "
+    "person who loses what they have built.": "money_sav_hold",
+    "Your closest relationships have had a private difficulty in "
+    "them that outsiders never saw — you handled it without "
+    "telling many people.": "love_lord_dusthana",
+    "You undersell yourself in love. You have been chosen by "
+    "people who saw your worth before you did.": "love_venus_debilitated",
+    "Affection has rarely been hard for you to find. Choosing "
+    "well from what was offered was the harder part.": "love_venus_strong",
+    "Your significant relationship involved an age, distance or "
+    "responsibility gap — something that made it heavier than a "
+    "simple romance.": "love_saturn_7",
+    "Arguments in your relationships flare quickly. The heat "
+    "passes fast, but it has frightened people who are not built "
+    "like you.": "love_mars_7",
+    "Relationships have asked more work of you than they seem "
+    "to ask of other people. When they work, it is because you "
+    "built them, not because they were easy.": "love_sav_7",
+    "People notice you before you have said anything. That has "
+    "opened doors and it has also attracted the wrong sort of "
+    "attention.": "love_venus_angle",
+    "There has been at least one attachment you kept largely to "
+    "yourself.": "love_venus_hidden",
+    "Your father was either absent in some practical way, or "
+    "carried a difficulty — health, work or temperament — that "
+    "the family arranged itself around.": "parents_sun_weak",
+    "Your father's standing mattered in your household, and some "
+    "of what you expect of yourself came directly from him.": "parents_sun_strong",
+    "You are closer to your mother than to your father, and she "
+    "is still the one you would call first.": "parents_moon_4",
+    "Home was not entirely settled when you were young — a move, "
+    "a financial squeeze, or a stretch where things were tense.": "parents_4th_dusthana",
+    "You did not inherit an easy road. Whatever you have, you "
+    "assembled — and part of you still does not fully trust "
+    "help when it is offered.": "parents_9th_dusthana",
+    "Responsibility landed on you earlier than it should have. "
+    "You were the sensible one before you were ready to be.": "parents_saturn_early",
+    "Whatever else was going on, you had one steady place to "
+    "come back to. That is more than many people get.": "parents_sav_4",
 }
+
+
+def _hand_tag(text: str) -> str:
+    return HANDWRITTEN_TAGS.get(text, f"hw:{hash(text)}")
+
+
+def _item_evidence(tag: str, pc: dict, explicit: tuple | None = None) -> tuple[int, str] | None:
+    """Resolve (house, planet) for a recognition tag."""
+    if explicit:
+        return explicit
+    if tag == "health_lagna_weak":
+        return (1, _lord(pc, 1).get("lord") or "Saturn")
+    if tag == "health_lagna_strong":
+        return (1, _lord(pc, 1).get("lord") or "Sun")
+    if tag == "health_sun_vitals":
+        return (_house_of(pc, "Sun") or 1, "Sun")
+    if tag == "health_jupiter_weight":
+        return (_house_of(pc, "Jupiter") or 6, "Jupiter")
+    if tag == "money_mercury_earn":
+        return (_house_of(pc, "Mercury") or 11, "Mercury")
+    if tag == "money_jupiter_wealth":
+        occ2, occ11 = _occupants(pc, 2), _occupants(pc, 11)
+        if "Jupiter" in occ11:
+            return (11, "Jupiter")
+        return (2, "Jupiter")
+    if tag == "money_malefic_12":
+        occ12 = _occupants(pc, 12)
+        planet = next((p for p in occ12 if p in MALEFIC), "Saturn")
+        return (12, planet)
+    if tag.startswith("career_stage_"):
+        for p in _occupants(pc, 10):
+            return (10, p)
+        return (10, "Saturn")
+    try:
+        from narration.recognition_variants import tag_evidence_house_planet
+        return tag_evidence_house_planet(tag)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 
@@ -807,12 +954,12 @@ def health_claims(pc: dict) -> list:
         out.append(("Whatever goes wrong with your health tends to be slow and "
                    "recurring rather than sudden — it builds for months, and it "
                    "usually shows up first as stiffness, sleep or the lower back.",
-                    why_planet(pc, "Saturn", note="Saturn in the 6th slows illness down and makes it recur.")))
+                    why_planet(pc, "Saturn", note="Saturn's symbolism here emphasizes discipline, persistence and consistent routines.")))
     if "Mars" in occ6:
         out.append(("Your health problems arrive fast and hot — inflammation, "
                    "fevers, sudden injuries — and they clear almost as quickly "
                    "as they came.",
-                    why_planet(pc, "Mars", note="Mars in the 6th brings heat and speed to illness.")))
+                    why_planet(pc, "Mars", note="Mars in the 6th is associated with energy, pace and physical responsiveness.")))
     if "Ketu" in occ6 or "Rahu" in occ6:
         out.append(("You have had at least one health complaint that took an "
                    "unusually long time to diagnose correctly.",
@@ -843,9 +990,9 @@ def health_claims(pc: dict) -> list:
                     why_planet(pc, "Jupiter", note="Jupiter expands whatever it touches, including the body.")))
     s6 = _sav(pc, 6)
     if s6 is not None and s6 >= 30:
-        out.append(("You fight off illness better than average — the same is "
-                   "true of opposition generally. People who take you on tend "
-                   "to tire before you do.",
+        out.append(("You tend to recover from setbacks with more resilience "
+                   "than people may expect. The same persistence often appears "
+                   "when you face opposition or difficult circumstances.",
                     why_sav(pc, 6)))
     return out
 
@@ -1091,6 +1238,7 @@ def build(pc: dict, *, per_domain: int = 3) -> list:
     The ruler floor stays last and only fills a domain that would otherwise be
     thin.
     """
+    band = _age_band_fn(pc)
     from_108 = _items108(pc)
 
     # Hand-written claims join the same list so that contradiction resolution
@@ -1104,8 +1252,9 @@ def build(pc: dict, *, per_domain: int = 3) -> list:
             # here keeps every builder free to add its derivation later without
             # a coordinated change.
             text, why = (c if isinstance(c, tuple) else (c, ""))
-            hand.append((key, HANDWRITTEN_TAGS.get(text, f"hw:{hash(text)}"),
-                         text, why))
+            tag = _hand_tag(text)
+            evidence = _item_evidence(tag, pc)
+            hand.append((key, tag, text, why, evidence))
 
     kept = _resolve_conflicts(pc, from_108 + hand)
     # One statement per tag across both sources: two rules reaching the same
@@ -1122,42 +1271,174 @@ def build(pc: dict, *, per_domain: int = 3) -> list:
     kept_108 = {it[1] for it in kept if it[1] in tags_108}
 
     by_domain: dict = {}
+    tag_evidence: dict[tuple[str, str], tuple[int, str] | None] = {}
     for it in kept:
         domain, tag, text = it[0], it[1], it[2]
         why = it[3] if len(it) > 3 else ""
+        evidence = it[4] if len(it) > 4 else None
+        tag_evidence[(domain, text)] = evidence
         bucket = by_domain.setdefault(domain, {"a": [], "b": []})
         bucket["a" if tag in kept_108 else "b"].append((text, why))
 
     out = []
+    try:
+        from narration.recognition_renderer import (
+            build_meaning_for_tag,
+            recognition_bullets,
+            recognition_domain_label,
+            render_from_meaning,
+            render_recognition_claim,
+        )
+        from qa_checks.report_validator import ReportValidator
+        from interpretation.manifestation_merger import merge_recognition_candidates
+    except Exception:  # noqa: BLE001
+        build_meaning_for_tag = None  # type: ignore
+        render_from_meaning = None  # type: ignore
+        recognition_bullets = lambda _m: []  # type: ignore
+        merge_recognition_candidates = None  # type: ignore
+
+        def render_recognition_claim(domain, tag, band, adult_text, **kw):  # type: ignore
+            return None
+
+        def recognition_domain_label(domain, band):  # type: ignore
+            return RECOG_LABELS_MINOR.get(domain, domain) if is_minor(band) else domain
+
+        ReportValidator = None  # type: ignore
+
+    validator = ReportValidator() if ReportValidator else None
+    max_domain_claims = min(per_domain, 2)
+
     for key, label, _fn in DOMAINS:
         bucket = by_domain.get(key, {"a": [], "b": []})
-        found: list = []
+        candidates: list = []
         seen_text: set = set()
         for text, why in bucket["a"] + bucket["b"]:
             if text in seen_text:
                 continue
-            seen_text.add(text)
-            found.append((text, why))
-        if len(found) < 2:
+            # Resolve tag from kept items — find matching tag for this text
+            tag = ""
+            evidence = None
+            for it in kept:
+                if it[0] == key and it[2] == text:
+                    tag = it[1]
+                    evidence = it[4] if len(it) > 4 else tag_evidence.get((key, text))
+                    break
+            ev_house, ev_planet = (evidence or (None, None))
+            meaning = (
+                build_meaning_for_tag(
+                    key, tag or "hw", band, pc=pc,
+                    house=ev_house, planet=ev_planet,
+                )
+                if build_meaning_for_tag else None
+            )
+            rendered = render_recognition_claim(
+                key, tag, band, text, seen_texts=seen_text, pc=pc,
+                house=ev_house, planet=ev_planet,
+            )
+            if rendered is None and meaning:
+                rendered = render_from_meaning(meaning, seen_texts=seen_text)
+            if rendered is None:
+                continue
+            if validator and not validator.check_claim(
+                    rendered, band=band,
+                    signature=meaning.evidence_signature if meaning else (key, tag, band),
+                    meaning=meaning):
+                continue
+            bullets = recognition_bullets(meaning) if meaning else []
+            safe_why = validator.sanitize_why(why, band=band, meaning=meaning) if validator else why
+            if not safe_why and not validator:
+                from qa_checks.why_safety_check import safe_why_text
+                safe_why = safe_why_text(why, band=band, meaning=meaning)
+            candidates.append({
+                "rendered": rendered,
+                "why": safe_why,
+                "bullets": bullets,
+                "meaning": meaning,
+                "tag": tag or "hw",
+            })
+        # The old floor filled a thin domain with a second generic archetype.
+        # That created exactly the "same story twice" regression. A floor is now
+        # allowed only when the domain has no validated candidate at all.
+        if len(candidates) == 0:
             for c in _floor_claim(pc, key):
                 pair = c if isinstance(c, tuple) else (c, why_lord(pc, DOMAIN_HOUSE.get(key, 1)))
-                if pair[0] not in seen_text:
-                    seen_text.add(pair[0])
-                    found.append(pair)
-        claims = found[:per_domain]
+                if pair[0] in seen_text:
+                    continue
+                floor_tag = "floor"
+                meaning = build_meaning_for_tag(key, floor_tag, band, pc=pc) if build_meaning_for_tag else None
+                rendered = render_recognition_claim(
+                    key, floor_tag, band, pair[0], seen_texts=seen_text, pc=pc)
+                if rendered is None:
+                    if meaning:
+                        rendered = render_from_meaning(meaning, seen_texts=seen_text)
+                if rendered is None:
+                    continue
+                if validator and not validator.check_claim(
+                        rendered, band=band,
+                        signature=(key, floor_tag, band),
+                        meaning=meaning):
+                    continue
+                if not meaning and build_meaning_for_tag:
+                    meaning = build_meaning_for_tag(key, floor_tag, band, pc=pc)
+                bullets = recognition_bullets(meaning) if meaning else []
+                floor_why = pair[1] if isinstance(c, tuple) else pair[1]
+                safe_why = validator.sanitize_why(floor_why, band=band, meaning=meaning) if validator else floor_why
+                if not safe_why and not validator:
+                    from qa_checks.why_safety_check import safe_why_text
+                    safe_why = safe_why_text(floor_why, band=band, meaning=meaning)
+                candidates.append({
+                    "rendered": rendered,
+                    "why": safe_why,
+                    "bullets": bullets,
+                    "meaning": meaning,
+                    "tag": floor_tag,
+                })
+        if merge_recognition_candidates and render_from_meaning:
+            claims = merge_recognition_candidates(
+                candidates,
+                domain=key,
+                band=band,
+                render_from_meaning=render_from_meaning,
+                recognition_bullets=recognition_bullets,
+                seen_text=seen_text,
+                max_claims=max_domain_claims,
+            )
+        else:
+            claims = [(c["rendered"], c["why"], c["bullets"]) for c in candidates[:max_domain_claims]]
         if claims:
-            out.append({"key": key, "label": label, "claims": claims})
+            display_label = recognition_domain_label(key, band)
+            out.append({"key": key, "label": display_label, "claims": claims})
     return out
 
 
 def render(blocks: list) -> str:
     if not blocks:
         return ""
+    try:
+        from qa_checks.why_safety_check import safe_why_text
+    except Exception:  # noqa: BLE001
+        def safe_why_text(why, *, band="adult", meaning=None):  # type: ignore
+            return why or ""
+
     def one(c) -> str:
-        text, why = (c if isinstance(c, tuple) else (c, ""))
+        if len(c) >= 3:
+            text, why, bullets = c[0], c[1], c[2]
+        else:
+            text, why = (c if isinstance(c, tuple) else (c, ""))[0], (c[1] if isinstance(c, tuple) and len(c) > 1 else "")
+            bullets = c[2] if isinstance(c, tuple) and len(c) > 2 else []
         text = client_prose(text)
-        why = client_prose(why) if why else ""
+        why = safe_why_text(why or "", band="adult") if why else ""
+        if why:
+            why = client_prose(why)
+        bullet_html = ""
+        if bullets:
+            items = "".join(f"<li>{_e(b)}</li>" for b in bullets[:3])
+            bullet_html = (
+                f'<p class="recog-recognize"><span>You may recognize this as:</span></p>'
+                f'<ul class="recog-bullets">{items}</ul>'
+            )
         return (f'<p class="recog-claim">{_e(text)}</p>'
+                + bullet_html
                 + (f'<p class="recog-why"><span>Why</span> {_e(why)}</p>'
                    if why else ""))
 
@@ -1173,9 +1454,10 @@ def render(blocks: list) -> str:
   <p>You have not told us anything except when and where you were born.
   Everything below is read from that. Nothing here is a guess about dates.
   These are patterns that have been running for years.</p>
-  <p><b>Read these {n} statements and be honest with yourself.</b> If most of
-  them are wrong, close this page and keep your money. If most of them are
-  right, the same chart is what the predictions are built on.</p>
+  <p><b>Read these {n} statements and be honest with yourself.</b> If several of
+  these feel clearly wrong, your birth details may need to be checked before
+  you rely on the predictions. If they feel surprisingly familiar, the same
+  chart is the foundation for the timing ahead.</p>
   {sections}
   <div class="recog-ask">
     <span>Did these land?</span>

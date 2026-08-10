@@ -49,10 +49,59 @@ PRACTICAL = {
     "Ketu": "Loosen your grip for a fortnight. This one moves when you stop forcing it.",
 }
 
+STAGE_PRACTICAL: dict[str, dict[str, str]] = {
+    "Sun": {
+        "child": "Show consistent effort on something you care about and ask a teacher or parent for feedback.",
+        "teen": "Put your name on work that matters — ask a teacher or mentor to notice your effort.",
+    },
+    "Moon": {
+        "child": "Protect sleep and routine at home first — judgement follows from both.",
+        "teen": "Protect sleep and home routine first — your mood follows from both.",
+    },
+    "Mars": {
+        "child": "Finish what you started before trying to win an argument.",
+        "teen": "Finish what you started before escalating — patience often works better than force.",
+    },
+    "Mercury": {
+        "child": "Write down what you need to remember and check it twice before acting.",
+        "teen": "Put important plans in writing and re-read before you send or commit.",
+    },
+    "Jupiter": {
+        "child": "Ask a parent, teacher or trusted adult for guidance. This opens through support, not shortcuts.",
+        "teen": "Ask a teacher, mentor or parent for guidance. This opens through experienced support.",
+        "young_adult": "Ask a mentor or experienced person for guidance. This opens through sponsorship, not effort alone.",
+        "senior": "Use the support of experienced family members or trusted advisors.",
+    },
+    "Venus": {
+        "child": "Clear up a misunderstanding with a friend or family member before pressing for what you want.",
+        "teen": "Clear up a misunderstanding with a friend or close peer before pressing for what you want.",
+        "young_adult": "Repair goodwill in the relationship before you press the request again.",
+        "senior": "Protect companionship through patient, clear conversation before pressing a request.",
+    },
+    "Saturn": {
+        "child": "Finish the steady part of a task carefully — half-done work is harder to recover.",
+        "teen": "Finish the verifiable part of school or project work before expecting recognition.",
+        "young_adult": "Finish the dull, verifiable part first. Progress follows completion, not hype.",
+    },
+    "Rahu": {
+        "child": "Check with a trusted adult before acting on something that looks too easy.",
+        "teen": "Verify what looks too convenient before you commit time or reputation to it.",
+    },
+    "Ketu": {
+        "child": "Take a short break from pushing — some things move when you stop forcing them.",
+        "teen": "Step back for a week rather than grip harder — not every battle needs fighting now.",
+    },
+}
+
+
+def practical_remedy(planet: str, band: str = "adult") -> str:
+    by_planet = STAGE_PRACTICAL.get(planet) or {}
+    return by_planet.get(band) or PRACTICAL.get(planet, "")
+
 WEAR_LABEL = {
-    "recommended": ("Safe for you to wear", "up"),
-    "test_required": ("Wear on trial first", "trial"),
-    "mantra_only": ("Do not wear the stone — mantra only", "down"),
+    "recommended": ("Considered suitable for your chart", "up"),
+    "test_required": ("Trial wear only", "trial"),
+    "mantra_only": ("Do not wear this stone. Use mantra instead", "down"),
     "avoid": ("Do not wear this stone", "down"),
 }
 
@@ -94,14 +143,50 @@ def build(pc: dict, *, domain: str = "", question: str = "",
     # Per-area cards must NOT reuse this — see area_report.classical_area_remedy.
     dasha = rep.get("dasha") or {}
     lord = dasha.get("ad_lord") or dasha.get("md_lord") or ""
+    try:
+        from interpretation.life_stage import age_band as _ab
+        band = _ab(pc)
+    except Exception:  # noqa: BLE001
+        band = "adult"
     return {"wear": wear, "mantra_only": mantra_only, "avoid": avoid,
             "practical_planet": lord,
-            "practical": PRACTICAL.get(lord, ""),
+            "practical": practical_remedy(lord, band),
             "lagna_lord": rep.get("lagna_lord", ""),
             "ok": bool(rep.get("ok", True))}
 
 
-def _stone_row(item: dict) -> str:
+def _free_avoid_reason(item: dict) -> str:
+    """Human Free-report language for gemstone refusals (no house/lord jargon)."""
+    snap = item.get("snap") or {}
+    planet = (snap.get("planet") or item.get("planet")
+              or (item.get("gem") or {}).get("planet") or "This planet")
+    dig = (snap.get("dignity") or "").lower().replace(" ", "_")
+    try:
+        house = int(snap.get("house") or 0)
+    except (TypeError, ValueError):
+        house = 0
+    joined = " ".join(str(r) for r in (item.get("reasons") or [])).lower()
+
+    if house in (6, 8, 12) or "pressure house" in joined:
+        return (f"{planet} is strongly connected with a sensitive area of your "
+                f"chart, so this stone is not recommended for you.")
+    if "overheat" in joined or "strong malefic" in joined:
+        return (f"{planet} is already forceful in your chart; wearing this stone "
+                f"can increase that pressure rather than ease it.")
+    if "debilitat" in joined or dig == "debilitated":
+        return (f"{planet} is under strain in your chart, so mantra and charity "
+                f"are safer here than wearing this stone.")
+    if planet in ("Rahu", "Ketu") or "not advised unless" in joined:
+        return (f"This {planet}-linked stone is not advised for your chart without "
+                f"clearly supportive timing.")
+    if "12th" in joined or house == 12:
+        return (f"{planet} sits in an area of your chart that favours rest and "
+                f"release, so this stone is not recommended.")
+    return (f"Based on how {planet} sits in your chart, this stone is not "
+            f"recommended for you.")
+
+
+def _stone_row(item: dict, *, paid: bool = False) -> str:
     gem = item.get("gem") or {}
     verdict = str(item.get("verdict") or "")
     label, tone = WEAR_LABEL.get(verdict, ("Check with an astrologer", "mixed"))
@@ -109,30 +194,54 @@ def _stone_row(item: dict) -> str:
     snap = item.get("snap") or {}
     detail = ""
     if verdict in ("recommended", "test_required"):
-        detail = (f"{_e(gem.get('metal'))} · {_e(gem.get('finger'))} · "
-                  f"first worn on a {_e(gem.get('day'))}")
+        detail = (f"Metal: {_e(gem.get('metal'))} · Finger: {_e(gem.get('finger'))} · "
+                  f"Start day: {_e(gem.get('day'))}")
+    why = ""
+    role_html = ""
+    if paid:
+        role_bits = []
+        if item.get("role"):
+            role_bits.append(str(item.get("role")))
+        if snap:
+            role_bits.append(
+                f"{snap.get('planet')} in your {_ord(snap.get('house'))} house, "
+                f"{_dig_plain(snap.get('dignity', ''))}")
+        if role_bits:
+            role_html = f'<div class="stone-role">{_e(". ".join(role_bits))}</div>'
+        if reasons:
+            why_label = ("Technical reason"
+                         if verdict in ("avoid", "mantra_only") else "Why")
+            why = (f'<div class="stone-why"><b>{why_label}:</b> '
+                   f'{_e(reasons[0])}</div>')
+    else:
+        # Free refusals: keep the verdict, drop lord/house mechanics.
+        if verdict in ("avoid", "mantra_only") or reasons:
+            why = f'<div class="stone-why">{_e(_free_avoid_reason(item))}</div>'
+    alt_label = "If you choose not to wear it / alongside"
+    if verdict in ("avoid", "mantra_only"):
+        alt_label = "Instead"
     return f"""
   <li class="stone {tone}" data-verdict="{tone}">
     <div class="stone-top">
       <b>{_e(gem.get('gem'))}</b>
       <span class="stone-verdict">{_e(label)}</span>
     </div>
-    <div class="stone-role">{_e(item.get('role', ''))}
-      {f". {_e(snap.get('planet'))} in your {_e(_ord(snap.get('house')))} house, {_e(_dig_plain(snap.get('dignity','')))}" if snap else ""}</div>
+    {role_html}
     {f'<div class="stone-detail">{detail}</div>' if detail else ''}
-    {f'<div class="stone-why">{_e(reasons[0])}</div>' if reasons else ''}
-    <div class="stone-alt"><b>Instead / alongside:</b>
+    {why}
+    <div class="stone-alt"><b>{alt_label}:</b>
       {_e(gem.get('mantra'))}{f" · {_e(gem.get('charity'))}" if gem.get('charity') else ""}</div>
   </li>"""
 
 
-def _stones_group(items: list, *, tone: str, label: str) -> str:
+def _stones_group(items: list, *, tone: str, label: str,
+                  paid: bool = False) -> str:
     if not items:
         return ""
     return f"""
   <div class="stones-group {tone}">
     <div class="stones-group-label">{_e(label)}</div>
-    <ul class="stones">{''.join(_stone_row(st) for st in items)}</ul>
+    <ul class="stones">{''.join(_stone_row(st, paid=paid) for st in items)}</ul>
   </div>"""
 
 
@@ -175,13 +284,13 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
         other = [w for w in wear
                  if str(w.get("verdict") or "") not in ("recommended", "test_required")]
         wear_group = _stones_group(
-            safe + other, tone="up",
-            label="Gemstones · safe to wear")
+            safe + other, tone="up", paid=True,
+            label="Gemstones · considered suitable for your chart")
         trial_group = _stones_group(
-            trial, tone="trial",
+            trial, tone="trial", paid=True,
             label="Gemstones · trial first (caution)")
         avoid_group = _stones_group(
-            list(mantra_only) + list(avoid), tone="down",
+            list(mantra_only) + list(avoid), tone="down", paid=True,
             label="Do not wear · mantra and charity instead")
         return f"""
 <section class="remedy-card">
@@ -193,8 +302,8 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
   {avoid_group}
   <p class="fine">A remedy is not a lever that overrides the chart. It works the
   way preparation works — it changes what you are ready for when the timing
-  turns. A yellow trial stone is allowed for your chart — test three days before
-  keeping it on.</p>
+  turns. If you choose to follow a traditional trial approach, test the yellow
+  stone for three days before deciding whether to continue.</p>
 </section>"""
 
     # --- free view: refusals only ------------------------------------------
@@ -213,13 +322,13 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
   </div>"""
     else:
         body = f"""
-  <p class="remedy-lede">Before anything we would sell you, here is what you
-  should <b>not</b> wear. This is free because it is the part most people are
-  never told.</p>
-  {_stones_group(refused, tone="down",
+  <p class="remedy-lede">Before we suggest anything to wear, here is what your
+  chart says to avoid.</p>
+  {_stones_group(refused, tone="down", paid=False,
                  label="Do not wear · already clear from your chart")}
   <div class="remedy-locked">
-    <b>What you should wear is the other half.</b>
+    <b>We are showing this part for free because knowing what not to use is
+    just as important.</b>
     {helpful_count} stone{'s' if helpful_count != 1 else ''} came back suitable
     for your chart — with the metal, the finger, the day to begin and the trial
     period — alongside the mantras, the charity, and the practical action that
@@ -230,6 +339,6 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
 <section class="remedy-card">
   <div class="ev-label">Gemstones — what is wrong for you, free</div>
   {body}
-  <p class="fine">Any jeweller will sell you the stone for your sign. Almost
-  none will check whether your chart can carry it.</p>
+  <p class="fine">A gemstone should be considered from your individual chart,
+  not simply from your zodiac sign.</p>
 </section>"""

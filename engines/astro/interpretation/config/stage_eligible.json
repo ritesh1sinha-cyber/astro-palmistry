@@ -1,0 +1,70 @@
+{
+  "child": {
+    "career": ["study_progress", "teacher_recognition", "responsibility", "mentor_support", "effort", "concentration", "leadership"],
+    "education": ["study_progress", "teacher_recognition", "responsibility", "mentor_support", "effort", "concentration"],
+    "money": ["resource_habits", "family_finances", "allowance", "savings_habits"],
+    "resources": ["resource_habits", "family_finances", "allowance", "savings_habits"],
+    "love": ["communication", "emotional_support", "reconnection", "expectation_management", "distance"],
+    "friendships": ["communication", "emotional_support", "reconnection", "expectation_management", "distance"],
+    "health": ["routine", "rest", "energy_management", "preventive_attention"],
+    "home": ["family_responsibility", "household_routine"],
+    "learning": ["study", "teacher_support", "concentration"],
+    "inner": ["space", "priorities", "reflection"],
+    "creativity": ["projects", "creativity", "patience"]
+  },
+  "teen": {
+    "career": ["study_progress", "teacher_recognition", "responsibility", "mentor_support", "effort", "concentration", "leadership", "projects"],
+    "education": ["study_progress", "teacher_recognition", "responsibility", "mentor_support", "effort", "concentration", "projects"],
+    "money": ["resource_habits", "family_finances", "allowance", "savings_habits"],
+    "resources": ["resource_habits", "family_finances", "allowance", "savings_habits"],
+    "love": ["communication", "emotional_support", "reconnection", "expectation_management", "distance"],
+    "friendships": ["communication", "emotional_support", "reconnection", "expectation_management", "distance"],
+    "health": ["routine", "rest", "energy_management", "preventive_attention", "stress_management"],
+    "home": ["family_responsibility", "household_routine"],
+    "learning": ["study", "teacher_support", "skill_development", "concentration"],
+    "inner": ["space", "priorities", "reflection"],
+    "creativity": ["projects", "creativity", "patience", "mentor_support"]
+  },
+  "young_adult": {
+    "career": ["visibility", "responsibility", "recognition", "delayed_reward", "mentor_support", "network_gain", "opportunity", "skill_development", "study_progress", "competition", "career_transition"],
+    "early_career": ["visibility", "responsibility", "recognition", "delayed_reward", "mentor_support", "network_gain", "opportunity", "skill_development", "study_progress", "competition"],
+    "money": ["income", "expense", "cash_flow", "savings", "paperwork", "financial_stability", "opportunity"],
+    "love": ["communication", "reconnection", "commitment", "expectation_management", "distance", "emotional_support"],
+    "health": ["routine", "rest", "stress_management", "energy_management", "preventive_attention"],
+    "home": ["family_responsibility", "living_arrangement", "household_routine"],
+    "learning": ["study", "teacher_support", "skill_development", "higher_education"],
+    "inner": ["space", "priorities", "withdrawal", "reflection"],
+    "children": ["creativity", "projects", "patience"],
+    "creativity": ["projects", "creativity", "patience"]
+  },
+  "adult": {
+    "career": ["visibility", "responsibility", "recognition", "delayed_reward", "mentor_support", "competition", "career_transition", "network_gain", "opportunity", "authority", "leadership", "support_from_contacts", "gains"],
+    "money": ["income", "expense", "cash_flow", "savings", "paperwork", "financial_stability", "opportunity"],
+    "love": ["communication", "reconnection", "commitment", "expectation_management", "distance", "emotional_support"],
+    "health": ["routine", "rest", "stress_management", "energy_management", "preventive_attention", "follow_up"],
+    "home": ["family_responsibility", "property", "living_arrangement", "household_routine", "domestic_stability"],
+    "learning": ["study", "teacher_support", "skill_development", "concentration", "higher_education"],
+    "inner": ["rest", "space", "priorities", "withdrawal", "reflection"],
+    "children": ["creativity", "parenting", "projects", "patience"]
+  },
+  "mature_adult": {
+    "career": ["leadership", "authority", "recognition", "mentor_support", "delayed_reward", "career_transition", "network_gain", "visibility", "responsibility"],
+    "money": ["financial_stability", "savings", "cash_flow", "paperwork", "income", "expense"],
+    "love": ["communication", "emotional_support", "commitment", "reconnection"],
+    "health": ["routine", "rest", "preventive_attention", "follow_up", "energy_management"],
+    "home": ["family_responsibility", "property", "domestic_stability"],
+    "learning": ["skill_development", "teacher_support", "study"],
+    "inner": ["priorities", "reflection", "space"],
+    "children": ["parenting", "patience", "creativity"]
+  },
+  "senior": {
+    "career": ["mentor_support", "recognition", "legacy", "transition", "leadership"],
+    "money": ["financial_stability", "savings", "preservation"],
+    "love": ["emotional_support", "reconnection", "communication", "companionship"],
+    "health": ["routine", "rest", "wellbeing", "follow_up", "preventive_attention"],
+    "home": ["family_responsibility", "domestic_stability"],
+    "learning": ["mental_engagement", "study", "teacher_support"],
+    "inner": ["reflection", "spirituality", "priorities", "space"],
+    "children": ["family_grandchildren", "patience"]
+  }
+}

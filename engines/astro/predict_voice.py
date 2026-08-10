@@ -55,15 +55,22 @@ AREA_SCENE: dict[tuple[str, str], str] = {
         "Progress with children is real but uneven; patience does more than pressure."
     ),
     ("children", "down"): "A worry about a child sits in the background of this period.",
-    ("health", "up"): "Your energy holds well. Your body recovers faster than you expect.",
+    ("health", "up"): (
+        "A more supportive stretch for maintaining routines and wellbeing."
+    ),
     ("health", "mixed"): (
-        "Energy is adequate but not abundant. Sleep is the variable that decides the rest."
+        "A good period to focus on sleep, consistency and preventive care."
     ),
     ("health", "down"): (
-        "Your energy runs lower than your schedule assumes. This is the area to protect first."
+        "This period may feel easier to manage when you maintain steady routines "
+        "and protect rest."
     ),
     ("learning", "up"): "Study, teachers and the right introductions all come easily now.",
-    ("learning", "mixed"): "Opportunity comes, but through effort rather than luck.",
+    ("learning", "mixed"): (
+        "Opportunity comes, but through effort rather than shortcuts. "
+        "A good teacher, mentor or structured learning plan can make this "
+        "period much more productive."
+    ),
     ("learning", "down"): (
         "Doors open slower than they should. Ask directly rather than waiting to be noticed."
     ),
@@ -228,9 +235,12 @@ LORD_SCENE: dict[tuple[str, str], str] = {
 }
 
 RELIEF = {
-    "fav": "This window stays open and supportive.",
-    "mix": "Mixed signals. Patience over big moves.",
-    "chal": "This eases when you stop forcing outcomes.",
+    # Timing-window tags used to be appended verbatim to every area
+    # prediction, which forced the same sentence across cards. Leave these
+    # blank — area-specific expect/trajectory copy now carries the meaning.
+    "fav": "",
+    "mix": "",
+    "chal": "",
 }
 
 TRANSIT_SUPPORT = {
@@ -245,14 +255,23 @@ class Prediction:
     backing: str
     direction: str = "mixed"
 
-    def html(self, *, esc: bool = True) -> str:
-        """Two-part block: scenario paragraph + Why line."""
+    def html(self, *, esc: bool = True, paid: bool = True) -> str:
+        """Two-part block: scenario + Why (technical only when paid)."""
         s = _html.escape(self.scenario) if esc else self.scenario
-        b = _html.escape(self.backing) if esc else self.backing
+        if paid:
+            b = _html.escape(self.backing) if esc else self.backing
+            why = f'<p class="pred-why"><b>Why:</b> {b}</p>'
+        else:
+            why = (
+                '<p class="pred-why locked-inline">'
+                '<b>Why this reads this way:</b> '
+                'The full report shows the planets, timing and chart factors '
+                'behind this reading.</p>'
+            )
         return (
             f'<div class="prediction" data-verdict="{_html.escape(self.direction)}">'
             f'<p class="pred-scenario">{s}</p>'
-            f'<p class="pred-why"><b>Why:</b> {b}</p></div>'
+            f'{why}</div>'
         )
 
 
@@ -412,11 +431,12 @@ def compose(area_key: str, *, direction: str = "mixed",
             window_end: Optional[date] = None,
             period_feeling: str = "",
             extra_scenario: str = "",
-            include_period_lord: bool = False) -> Prediction:
+            include_period_lord: bool = False,
+            area_line_override: str = "") -> Prediction:
     """Build scenario + backing from structured facts (no engine prose)."""
     direction = direction if direction in ("up", "down", "mixed") else "mixed"
     varga = varga or {}
-    area_line = AREA_SCENE.get((area_key, direction), "")
+    area_line = area_line_override or AREA_SCENE.get((area_key, direction), "")
     lord_line = LORD_SCENE.get((ad_lord or md_lord, direction), "")
 
     scenario_parts = []
@@ -493,6 +513,24 @@ def compose_period(pc: dict, *, today: Optional[date] = None,
     return Prediction(scenario=scenario, backing=backing, direction=direction)
 
 
+def _age_gated_area_scene(area: str, direction: str, band: str) -> str:
+    """AREA_SCENE fallback with minor-band vocabulary guard."""
+    from qa_checks.age_context_check import age_violations
+    text = AREA_SCENE.get((area, direction), "")
+    if not text:
+        return ""
+    if band in ("child", "teen", "young_adult") and age_violations(text, band):
+        try:
+            from narration.stage_actions import expect_for_stage
+            alt = expect_for_stage(area, band, direction)
+            if alt and not age_violations(alt, band):
+                return alt
+        except Exception:  # noqa: BLE001
+            pass
+        return ""
+    return text
+
+
 def compose_from_area(pc: dict, area_key: str, house: int, *,
                       today: Optional[date] = None,
                       transits: Optional[list] = None) -> Prediction:
@@ -525,12 +563,31 @@ def compose_from_area(pc: dict, area_key: str, house: int, *,
         de = {}
 
     direction = verdict.get("direction", "mixed")
+    area_line = ""
+    band = "adult"
+    try:
+        from interpretation.evidence_builder import build_evidence
+        from interpretation.life_stage import age_band
+        from interpretation.prediction_meaning import build_meaning
+        from narration.human_renderer import render_current_scene
+
+        band = age_band(pc, today=today)
+        dasha = CF.dasha_confluence(pc, today)
+        row = {"promise": direction, "dasha": direction, "house": house}
+        evidence = build_evidence(
+            pc, area=area_key, house=house, direction=direction,
+            row=row, dasha=dasha, age_band=band)
+        meaning = build_meaning(evidence)
+        area_line = render_current_scene(area_key, direction, meaning)
+    except Exception:  # noqa: BLE001
+        area_line = _age_gated_area_scene(area_key, direction, band)
+
     return compose(
         area_key, direction=direction, md_lord=md_lord, ad_lord=ad_lord,
         house=house, lord=lord, dignity=dignity, lord_house=lord_house,
         transits=transits, varga_strength=varga_strength, varga=varga,
         window_rating=window_rating, window_end=window_end,
-        include_period_lord=False)
+        include_period_lord=False, area_line_override=area_line)
 
 
 def compose_present_period(pc: dict, *, today: Optional[date] = None,
@@ -570,24 +627,66 @@ def compose_present_period(pc: dict, *, today: Optional[date] = None,
 
 def transit_sentence(planet: str, house: int, since: date, until: date,
                      bav: int, life_theme: str) -> Prediction:
-    """Single live transit as prediction + backing."""
+    """Single live transit as prediction + backing.
+
+    User-facing scenario stays human. Technical planet/house lives in Why.
+    """
     supported = (bav or 0) >= 5
+    human_pressure = {
+        1: ("Your energy and how you present yourself may need more deliberate "
+            "care right now. Steady routines help more than forcing a quick reset."),
+        2: ("Money and family matters may be asking for careful decisions. Keep "
+            "commitments practical rather than stretching for every opportunity."),
+        3: ("Initiative, communication or short-term moves may feel more active. "
+            "Choose effort carefully rather than pushing every front at once."),
+        4: ("Home and family matters may be taking more of your attention than usual. "
+            "Give important decisions time to settle rather than forcing an immediate outcome."),
+        5: ("Children, creative work or personal risks may need more patience. Progress "
+            "comes more easily with steady attention than with pressure."),
+        6: ("Work pressure or competition may feel louder. Handle one practical task at "
+            "a time instead of escalating everything at once."),
+        7: ("Partnership conversations may carry more weight than usual. Clear talk helps "
+            "more than leaving expectations unspoken."),
+        8: ("Something under the surface may be asking for attention. Move carefully and "
+            "avoid forcing conclusions before you have clarity."),
+        9: ("Guidance, learning or longer-term direction may feel more important. "
+            "Structure and experienced counsel help."),
+        10: ("Career and public standing may be asking for visible, consistent effort. "
+            "Steady ownership matters more than a sudden move."),
+        11: ("Networks, gains or opportunities may appear, but they still need judgment. "
+            "Do not stretch simply because something looks attractive."),
+        12: ("You may feel a stronger need to step back, rest or simplify what you are "
+             "carrying. This is a period for clearing unfinished matters rather than "
+             "adding unnecessary commitments."),
+    }
+    human_support = {
+        4: ("Home and family can move more constructively when handled calmly. Use this "
+            "window for practical conversations before it shifts."),
+        12: ("Space for rest and simplification is more available than usual. Use it to "
+             "clear unfinished matters rather than fill the gap with new commitments."),
+        10: ("Career effort can convert more easily in this window when you keep ownership "
+             "visible and consistent."),
+    }
+    h = int(house or 0)
     if supported:
-        scenario = (
-            f"{planet} has been activating {life_theme} since {_pretty(since)}. "
-            f"This is a window where effort can convert. Use it before {_pretty(until)}."
-        )
+        base = human_support.get(h) or (
+            f"{life_theme[0].upper() + life_theme[1:] if life_theme else 'This area'} "
+            f"can move more constructively right now. Use the supportive stretch "
+            f"deliberately rather than waiting for it to pass.")
+        scenario = f"{base} Use it before {_pretty(until)}."
     else:
-        scenario = (
-            f"{planet} has been pressing on {life_theme} since {_pretty(since)}. "
-            f"Go steady rather than force outcomes. This eases after {_pretty(until)}."
-        )
+        base = human_pressure.get(h) or (
+            f"Matters around {life_theme or 'this part of life'} may need more patience. "
+            f"Go steady rather than force outcomes.")
+        scenario = f"{base} The pressure should ease after {_pretty(until)}."
     backing = (
-        f"{planet} crossing your {_ord(house)} house ({TRANSIT_SUPPORT[supported]})"
+        f"{planet} is influencing the {_ord(house)}-house area during this period"
+        f" ({'well supported' if supported else 'with limited support'})."
     )
     direction = "up" if supported else "mixed"
     return Prediction(
-        scenario=polish_prose(scenario), backing=polish_prose(backing), direction=direction)
+        scenario=polish_prose(scenario), backing=polish_prose(backing),
+        direction=direction)
 
 
 def confidence_word(agreement_n: int = 0, agreement_total: int = 0,

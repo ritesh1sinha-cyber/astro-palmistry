@@ -431,6 +431,55 @@ font-size:.88rem;padding:12px 14px;border-radius:99px}
 .mm-close{appearance:none;display:block;width:100%;border:0;background:transparent;
 color:var(--muted);font:inherit;font-size:.82rem;font-weight:600;padding:10px;
 cursor:pointer}
+/* Six-month validation timeline (free trust layer) */
+.past-validation{margin:18px 0 24px}
+.past-timeline{border-left:2px solid var(--line);padding-left:16px}
+.past-event{position:relative;margin:14px 0;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.past-event:before{content:"";position:absolute;left:-23px;top:18px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.past-event.up{border-left:4px solid #2c7658}.past-event.mixed{border-left:4px solid #a06d1f}.past-event.down{border-left:4px solid #8b3d3d}
+.past-date{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.03em;margin-bottom:5px}
+.past-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700}
+.past-headline{font-size:16px;font-weight:600;margin:5px 0 8px}
+.past-noticed{margin:8px 0 10px}
+.past-noticed ul{margin:6px 0 0;padding-left:1.15rem}
+.past-noticed li{margin:3px 0;font-size:.86rem;color:#3d4250}
+.past-meta,.past-why{font-size:12px;color:var(--muted);margin-top:5px}
+.past-why{padding-top:7px;border-top:1px solid var(--line)}
+.past-signal{margin-left:8px;font-size:11px;letter-spacing:.04em;text-transform:none;color:var(--muted);font-weight:600}
+.past-manifest{margin:8px 0 4px}
+.past-manifest ul{margin:6px 0 0;padding-left:18px;font-size:.86rem;color:#3d4250}
+.past-manifest li{margin:3px 0}
+.past-astro{margin-top:8px;font-size:.8rem;color:var(--muted)}
+.past-astro summary{cursor:pointer;font-weight:600;color:var(--ink)}
+.past-astro p{margin:6px 0 0}
+.present-current{margin:18px 0}
+/* Paid area-card interactivity */
+.card-planets{display:flex;flex-direction:column;gap:8px;margin:10px 0 6px}
+.card-planets .ev-label{width:100%;margin:0}
+.planet-names{font-size:.9rem;font-weight:600;color:#2b303b;letter-spacing:.01em}
+.planet-row{display:flex;gap:8px;align-items:flex-start;font-size:.82rem;color:#3d4250}
+.chapter-planets{display:grid;gap:10px;margin:14px 0 4px}
+.planet-theme{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fbfaf7}
+.planet-theme b{display:block;font-size:.84rem;margin-bottom:4px}
+.planet-theme p{margin:0;font-size:.84rem;color:#3d4250;line-height:1.45}
+.tl-period{display:block;margin-top:4px;font-size:.78rem;color:var(--muted);font-weight:500}
+.planet-chip{display:inline-block;font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#f7f5f1;color:var(--ink);white-space:nowrap}
+.expect{margin:8px 0}
+.expect-note{margin:6px 0 0;font-size:.86rem;color:#3d4250;line-height:1.45}
+.chapter-area-note{margin:8px 0 0;font-size:.86rem;color:#3d4250;line-height:1.45}
+.trajectory{margin:10px 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fbfaf7}
+.trajectory .ev-label{display:block;margin-bottom:8px}
+.trajectory-row{display:grid;grid-template-columns:1fr;gap:4px;font-size:.82rem;padding:10px 0;border-top:1px solid var(--line)}
+.trajectory-row:first-of-type{border-top:0}
+.traj-when{color:var(--muted);font-weight:600}
+.traj-note{margin:0;color:#3d4250}
+.trajectory-row small{color:var(--muted)}
+.traj-up{color:#2c7658}.traj-mixed{color:#a06d1f}.traj-down{color:#8b3d3d}
+.evidence-astro{margin-top:10px;font-size:.86rem}
+.evidence-astro summary{cursor:pointer;font-weight:600}
+.evidence-astro .pred-why{margin-top:8px}
+.evidence-astro p{margin:6px 0;line-height:1.45;color:#3d4250}
+.evidence-astro .pred-agree{font-weight:600;color:#2b303b}
 """
 
 #: Click handlers for accuracy pills + mismatch modal. Reports are iframes, so
@@ -441,12 +490,11 @@ INTERACT = """
 (function(){
   var MODAL_HTML = '<div class="mm-overlay" id="mismatch" hidden>'
     + '<div class="mm-box">'
-    + '<div class="ev-label">Then something upstream is wrong</div>'
-    + '<h3>Most likely, your birth time is not accurate.</h3>'
-    + '<p>This is the common case, not a rare one. Hospital records round to the '
-    + 'nearest five or ten minutes, and families remember approximately. A '
-    + '<b>twenty-minute error moves your rising sign</b>. Once that moves, '
-    + 'every house shifts, so every prediction built on it shifts with it.</p>'
+    + '<div class="ev-label">A useful next step</div>'
+    + '<h3>Your birth time may need checking.</h3>'
+    + '<p>Even a small difference in birth time can change the ascendant and house '
+    + 'positions, which can affect the timing of a reading. That does not prove the '
+    + 'birth time is wrong — but it is a common place to look when a reading feels off.</p>'
     + '<p>Three ways forward:</p>'
     + '<ol class="mm-routes">'
     + '<li><b>Birth-time rectification</b>. Test candidate minutes against dates from your life.</li>'
@@ -513,7 +561,7 @@ INTERACT = """
       return;
     }
     if(v === 'partly' || v === 'some' || v === 'no'){
-      thanksNear(btn, 'Noted. A wrong present reading usually means the birth time needs a check.');
+      thanksNear(btn, 'Noted. If this does not feel right, your birth time may need checking.');
       showMismatch();
     }
   });

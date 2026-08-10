@@ -47,6 +47,19 @@ TRANSIT_VOICE = {
     "Saturn": ("tests", "delay, weight and what you must earn"),
 }
 
+# Human focus phrases for paid window Why lines (no raw house/sector jargon).
+AREA_FOCUS_PLAIN = {
+    "career": "career and public standing",
+    "money": "money and gains",
+    "love": "relationship matters",
+    "home": "home and family matters",
+    "children": "children and creative matters",
+    "health": "health and energy",
+    "learning": "learning and guidance",
+    "inner": "inner life and rest",
+    "legal": "disputes and formal matters",
+}
+
 
 def _e(t: Any) -> str:
     return _html.escape(str(t or ""))
@@ -87,48 +100,19 @@ def transit_segments(pc: dict, *, start: Optional[date] = None,
 
 
 def _div_note_from_promise(promise: dict, area_key: str) -> str:
-    """Surface the governing divisional vote used inside the area promise.
-
-    Divisionals already move `promise['score']` via area_verdict →
-    divisional_votes; this only makes that vote readable in the Why line.
-    """
+    """Surface the governing divisional vote in human-first wording."""
     try:
-        from report_confluence import AREA_VARGA, VARGA_PHRASE
+        from report_confluence import AREA_VARGA
     except Exception:  # noqa: BLE001
         return ""
-    primary, primary_name = AREA_VARGA.get(area_key, ("", ""))
-    votes = promise.get("votes") or []
-
-    def _match(method: str) -> bool:
-        m = (method or "").lower()
-        return bool(
-            method == primary_name
-            or method == "the confirmation chart"
-            or method == "the cross-check chart"
-            or m.endswith(" chart")
-            or m.endswith(" division")
-        )
-
-    pick = None
-    for v in votes:
-        if getattr(v, "method", "") == primary_name:
-            pick = v
-            break
-    if pick is None:
-        for v in votes:
-            if _match(getattr(v, "method", "")):
-                pick = v
-                break
-    if pick is not None:
-        because = str(getattr(pick, "because", "") or "").strip()
-        if because and primary and primary_name and primary_name in because and f"({primary})" not in because:
-            because = because.replace(primary_name, f"{primary_name} ({primary})", 1)
-        if because:
-            return because
-    if primary:
-        phrase = VARGA_PHRASE.get(primary) or primary_name or primary
-        return f"{phrase} ({primary}) weighed in the promise"
-    return ""
+    primary, _primary_name = AREA_VARGA.get(area_key, ("", ""))
+    if not primary:
+        return ""
+    focus = AREA_FOCUS_PLAIN.get(area_key, "this part of life")
+    direction = (promise or {}).get("direction", "mixed")
+    if direction == "up":
+        return (f"The {primary} chart provides additional support for {focus}")
+    return (f"The {primary} chart provides additional context for {focus}")
 
 
 def windows_for_area(pc: dict, area_key: str, house: int, *,
@@ -240,40 +224,87 @@ def best_windows(pc: dict, areas: list, *, start: Optional[date] = None,
 
 # ---------------------------------------------------------------------------
 
-def explain(row: dict, area_label: str) -> str:
-    """One sentence a reader can act on."""
+def explain(row: dict, area_label: str, *, pc: Optional[dict] = None) -> str:
+    """One sentence a reader can act on — manifestation-driven when evidence exists."""
+    from report_language import trajectory_explain
+    area = (row.get("area") or "").lower()
     strong = row["bav"] >= 5
-    if row["aligned"]:
-        return f"{area_label} is the thing to push in this window."
-    if row["promise"] == "down" and strong:
-        return (f"A real opening in {area_label.lower()}, but your chart does "
-                f"not promise much here — take it, do not bet on it.")
-    if not strong:
-        return (f"{row['planet']} reaches {area_label.lower()} in this window "
-                f"but arrives weak. Expect the offer without the delivery.")
-    return f"A mixed window for {area_label.lower()}."
+    if row.get("aligned"):
+        direction = "up"
+    elif row.get("promise") == "down" and strong:
+        direction = "down"
+    elif not strong:
+        direction = "mixed"
+    else:
+        direction = "mixed"
+
+    # Preferred path: evidence → PredictionMeaning → age-at-window prose.
+    if pc is not None:
+        try:
+            import report_confluence as CF
+            from interpretation.evidence_builder import build_evidence
+            from interpretation.life_stage import age_band_at
+            from interpretation.prediction_meaning import build_meaning
+            from narration.human_renderer import render_future_headline
+
+            start = row.get("start")
+            band = age_band_at(pc, start)
+            dasha = CF.dasha_confluence(pc, start) if start else {}
+            evidence = build_evidence(
+                pc, area=area or "career",
+                house=int(row.get("house") or 0),
+                direction=direction, row=row, dasha=dasha,
+                age_band=band, period_start=start, period_end=row.get("end"))
+            meaning = build_meaning(evidence)
+            line = render_future_headline(meaning)
+            if line:
+                return line
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Health stays lifestyle-oriented even on supportive windows.
+    if area == "health" and direction == "up":
+        return trajectory_explain(
+            "up", "health", planet=row.get("planet") or "",
+            variant=abs(hash((str(row.get("start")), row.get("planet")))) % 3)
+    variant = abs(hash((str(row.get("start")), row.get("planet"), area))) % 9
+    band = ""
+    if pc is not None:
+        try:
+            from interpretation.life_stage import age_band_at
+            band = age_band_at(pc, row.get("start"))
+        except Exception:  # noqa: BLE001
+            band = ""
+    return trajectory_explain(
+        direction, area or area_label, planet=row.get("planet") or "",
+        variant=variant, age_band=band)
 
 
 def _window_backing(row: dict) -> str:
-    """One compressed Why line for a timing window."""
-    try:
-        import predict_voice as PV
-        sup = (row.get("bav") or 0) >= 5
-        parts = [
-            f"chart reads {row.get('promise', 'mixed')} on this area",
-        ]
-        div = (row.get("div_note") or "").strip()
-        if div:
-            parts.append(div)
-        parts.append(
-            f"{row.get('planet', '')} crossing your {PV._ord(row.get('house'))} house "
-            f"({'well supported' if sup else 'weakly supported'})"
-        )
-        if row.get("period_owns_area"):
-            parts.append("period activates this area")
-        return "; ".join(parts)
-    except Exception:  # noqa: BLE001
-        return "promise (incl. divisional chart), period and transit line up here"
+    """Readable Why line for a timing window — human-first, still accurate."""
+    from report_language import fix_house_ordinals
+    area = row.get("area") or ""
+    focus = AREA_FOCUS_PLAIN.get(area, "this part of life")
+    promise = row.get("promise", "mixed")
+    bits = [
+        f"The birth chart reads {promise} on this area",
+    ]
+    div = (row.get("div_note") or "").strip()
+    if div:
+        bits.append(div[0].upper() + div[1:] if len(div) > 1 else div)
+    planet = row.get("planet", "")
+    if planet:
+        strong = (row.get("bav") or 0) >= 5
+        if strong:
+            bits.append(
+                f"{planet}'s movement gives additional support to {focus}")
+        else:
+            bits.append(
+                f"{planet}'s movement gives some support to {focus}, "
+                f"although the overall signal is more cautious")
+    if row.get("period_owns_area"):
+        bits.append("the running period also points here")
+    return fix_house_ordinals(". ".join(bits).rstrip(".") + ".")
 
 
 def render(pc: dict, rows: list, labels: dict) -> str:
@@ -281,20 +312,28 @@ def render(pc: dict, rows: list, labels: dict) -> str:
         return ""
     items = []
     for r in rows:
+        # Age-aware label at window start (not only report today).
         label = labels.get(r["area"], r["area"].title())
-        verb, theme = TRANSIT_VOICE.get(r["planet"], ("moves through", ""))
+        try:
+            from interpretation.life_stage import age_band_at
+            from narration.area_labels import area_label as _age_label
+            band = age_band_at(pc, r.get("start"))
+            label = _age_label(r["area"], band)
+        except Exception:  # noqa: BLE001
+            pass
         cls = "up" if r["aligned"] else ("down" if r["score"] < -0.4 else "mixed")
         items.append(f"""
   <li class="win {cls}">
     <div class="win-when">{_e(_pretty(r['start']))} → {_e(_pretty(r['end']))}</div>
     <div class="win-head">{_e(label)} · <span class="win-tag">{_e(
         'aligned' if r['aligned'] else 'partial')}</span></div>
-    <p class="win-lead">{_e(explain(r, label))}</p>
+    <p class="win-lead">{_e(explain(r, label, pc=pc))}</p>
     <p class="pred-why"><b>Why:</b> {_e(_window_backing(r))}</p>
   </li>""")
     return f"""
-<h3 class="sec">When it actually happens</h3>
+<h3 class="sec">Your strongest upcoming windows</h3>
 <p class="sec-note">These are the windows where the birth promise
 (including each area’s divisional chart), the running period, and a slow planet
 crossing the right house all line up.</p>
+<p class="sec-note"><b>Aligned</b> — birth chart, current timing and major planetary movement agree. <b>Partial</b> — some major factors agree, while others add caution or uncertainty.</p>
 <ol class="windows-list">{''.join(items)}</ol>"""

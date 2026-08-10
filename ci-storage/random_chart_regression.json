@@ -1,0 +1,31 @@
+{
+  "charts": 24,
+  "intra_family_failures": 0,
+  "cross_chart_failures": 0,
+  "cross_chart_warnings": 39,
+  "passed": true,
+  "failures": [],
+  "cross_failures": [],
+  "warnings": [
+    "WARN chart_00 vs chart_06: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_00 vs chart_10: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_00 vs chart_11: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_00 vs chart_14: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_00 vs chart_22: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_01 vs chart_07: health composite sim\u22650.90 \u2014 You may have become more aware that rest",
+    "WARN chart_01 vs chart_09: health composite sim\u22650.90 \u2014 You may have become more aware that rest",
+    "WARN chart_01 vs chart_17: health composite sim\u22650.90 \u2014 You may have become more aware that rest",
+    "WARN chart_04 vs chart_07: health composite sim\u22650.90 \u2014 You may have become more aware that rest",
+    "WARN chart_04 vs chart_09: health composite sim\u22650.90 \u2014 You may have become more aware that rest",
+    "WARN chart_04 vs chart_17: health composite sim\u22650.90 \u2014 You may have become more aware that rest",
+    "WARN chart_05 vs chart_06: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_05 vs chart_10: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_05 vs chart_11: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_05 vs chart_14: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_05 vs chart_22: sim 0.82\u20130.90 \u2014 Changes in routine may have made you mor",
+    "WARN chart_06 vs chart_13: sim 0.82\u20130.90 \u2014 You may have become more aware of how re",
+    "WARN chart_06 vs chart_15: sim 0.82\u20130.90 \u2014 You may have become more aware of how re",
+    "WARN chart_06 vs chart_21: sim 0.82\u20130.90 \u2014 You may have become more aware of how re",
+    "WARN chart_07 vs chart_09: health composite sim\u22650.90 \u2014 You may have become aware that rest and "
+  ]
+}

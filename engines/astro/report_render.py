@@ -156,10 +156,10 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                        today: date, price: int = 298, bundle_price: int = 298,
                        lat: float = 0.0, lon: float = 0.0, tz: float = 5.5,
                        daily: Any = None, first: str = "") -> tuple:
-    present_html = ""
+    present_block = None
     try:
         import present_read as PR
-        present_html = PR.render(PR.build(pc, today=today))
+        present_block = PR.build(pc, today=today)
     except Exception as exc:                                         # noqa: BLE001
         print(f"[report_render] present read failed: {exc}", flush=True)
 
@@ -190,6 +190,13 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
 
     def build(paid: bool) -> str:
         import report_cards as RC
+        present_html = ""
+        if present_block is not None:
+            try:
+                import present_read as PR
+                present_html = PR.render(present_block, paid=paid)
+            except Exception as exc:                                 # noqa: BLE001
+                print(f"[report_render] present render failed: {exc}", flush=True)
         remedy = _safe(_remedy, pc, name=first, paid=paid, price=price)
         if paid:
             tail = timing_html + remedy
@@ -209,14 +216,19 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
     meta = {
         "design": "cards-v2",
         "price": price, "bundlePrice": bundle_price,
-        "freeSections": ["Where you are right now", "Who your chart says you are",
-                         "Your past", "Every life area, and which way it leans"],
+        "freeSections": ["Your current chapter", "Who your chart says you are",
+                         "Your recent past — free and checkable",
+                         "What is happening right now",
+                         "Major life areas",
+                         "Gemstones you should not wear"],
         "paidSections": ["Why each life area reads the way it does",
                          "Exact dates for every life area",
-                         "When it actually happens — the five-year windows",
+                         "How this area changes over time",
+                         "Planets involved",
+                         "Your strongest upcoming windows",
                          "The full period sequence",
                          "What helps, per area",
-                         "Remedies and gemstones"],
+                         "Remedies and suitable gemstones"],
         "teasers": {},
     }
     return free_html, paid_html, meta
@@ -227,9 +239,11 @@ def _remedy(pc: dict, *, name: str = "", paid: bool = False,
     import remedy_block as RB
     return RB.render(
         RB.build(pc, domain="", name=name), paid=paid, price=price,
-        lede="Your chart's difficult places all have a classical answer. Some of "
-             "them say do NOT wear the obvious stone. That half is free, "
-             "because nobody else will tell you.")
+        lede="For the areas that need more care, the traditional approach is to "
+             "support them through practical habits, mantra, charity and — where "
+             "appropriate — gemstones. Some charts also indicate that a commonly "
+             "recommended stone may not be suitable. That distinction is included "
+             "here because gemstones should be considered from the individual chart.")
 
 
 def _locked_preview(*, price: int, n_areas: int, n_windows: int,
@@ -254,7 +268,7 @@ def _locked_preview(*, price: int, n_areas: int, n_windows: int,
          f"The chart working behind all {n_areas} headlines."),
         ("The dated window for every life area",
          "When each part of your life actually moves."),
-        ("When it actually happens", windows_teaser),
+        ("Your strongest upcoming windows", windows_teaser),
         ("The full period sequence", periods_teaser),
         ("What helps in each area",
          "The practical step and mantra where one applies."),

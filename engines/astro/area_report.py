@@ -9,10 +9,15 @@ Customer output: prediction + 1–2 line proof + when + remedy.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
-from report_language import client_prose, normalize_sentence_dashes
+from report_language import (
+    client_prose,
+    fix_house_ordinals,
+    humanise_client_language,
+    strip_visible_claim_jargon,
+)
 
 VARGA_PLAIN = {
     "career": "career chart",
@@ -212,70 +217,135 @@ def _area_when(pc: dict, area_key: str, house: int, *,
 
 def _build_proof(pc: dict, area_key: str, house: int, *,
                    today: Optional[date] = None,
-                   max_len: int = 220) -> str:
-    """One or two compressed proof lines — not a calculation dump."""
+                   direction: str = "mixed",
+                   confidence: str = "") -> str:
+    """Structured Why block for expandable evidence — engine facts only."""
     today = today or date.today()
-    parts: list[str] = []
+    area_name = {
+        "career": "career and public standing",
+        "money": "money and resources",
+        "love": "relationships and partnership",
+        "home": "home and family",
+        "children": "children and creativity",
+        "health": "health and vitality",
+        "learning": "learning and direction",
+        "inner": "inner life and space",
+    }.get(area_key, "this area")
+    lines: list[str] = []
 
-    hl = (pc.get("house_lords", {}) or {}).get(str(house)) or {}
-    lord = hl.get("lord", "")
-    if lord:
-        clause = f"{lord} rules your {_ord(house)} house, {_dig_plain(hl.get('lord_dignity', ''))}"
-        lh = hl.get("lord_house")
-        if lh:
-            clause += f", placed in the {_ord(lh)}"
-        parts.insert(0, clause)
-
+    # Birth chart / specialised support — human English, no contradictions.
+    chart_label = {
+        "career": "Career", "money": "Money", "love": "Relationship",
+        "home": "Home", "children": "Children and creativity",
+        "health": "Health and energy", "learning": "Learning",
+        "inner": "Inner life",
+    }.get(area_key, area_name.title())
+    strength = ""
+    fld = ""
+    dig = ""
     try:
         import deep_evidence as DE
         de = DE.for_area(area_key, house=house)
         varga = de.get("varga") or {}
-        chart = VARGA_PLAIN.get(area_key, "specialised chart")
+        strength = (varga.get("strength") or "").lower()
         fld = varga.get("field_lord") or varga.get("ruler", "")
-        if fld:
-            parts.append(
-                f"{chart}: {fld} {_dig_plain(varga.get('field_lord_dignity') or varga.get('ruler_dignity', ''))}"
-            )
-        elif chart:
-            parts.append(f"{chart} {varga.get('strength', 'mixed')}")
+        dig = _dig_plain(varga.get("field_lord_dignity")
+                         or varga.get("ruler_dignity", ""))
     except Exception:  # noqa: BLE001
         pass
 
     sav = _sav_word(pc, house)
-    if sav:
-        parts.append(f"house strength {sav}")
+    if strength in ("strong", "favourable", "up") and sav == "under strain":
+        birth = (f"{chart_label} has a supportive foundation, although some "
+                 f"underlying factors make progress more gradual")
+    elif strength in ("strong", "favourable", "up") or sav == "well supported":
+        birth = (f"{chart_label} has a generally solid foundation"
+                 + (", although some factors can create periods of fluctuation"
+                    if dig == "mixed" else ""))
+    elif strength in ("weak", "challenging", "down") or sav == "under strain":
+        birth = (f"{chart_label} needs more care right now; progress is "
+                 f"possible but less automatic")
+    elif fld:
+        birth = (f"{chart_label} has mixed underlying support"
+                 + (f", with {fld} playing a key role" if fld else ""))
+    else:
+        birth = f"{chart_label} has mixed underlying support"
+    lines.append(f"Birth chart: {birth.rstrip('.')}.")
 
+    # Current timing
+    timing = ""
+    secondary = ""
     try:
         import report_confluence as CF
-        vim = CF.vimshottari_at(pc, today)
+        vim = CF.vimshottari_at(pc, today) or {}
         yog = CF.yogini_at(pc, today) or {}
-        jai = CF.jaimini_at(pc, today) or {}
-        period_bits = []
         if vim.get("md") and vim.get("ad"):
-            period_bits.append(f"{vim['md']}–{vim['ad']}")
+            timing = f"{vim['md']}–{vim['ad']} is active"
         if yog.get("lord"):
-            period_bits.append(f"lunar {yog['lord']}")
-        if jai.get("sign"):
-            period_bits.append(f"sign {jai['sign']}")
-        if period_bits:
-            parts.append("; ".join(period_bits[:2]))
+            secondary = (
+                f"Another timing method also points toward {yog['lord']}")
     except Exception:  # noqa: BLE001
         pass
+    if timing:
+        lines.append(f"Current timing: {timing}.")
 
+    # Transit
+    transit_line = ""
     try:
         import deep_evidence as DE
         tr = (DE.for_area(area_key, house=house).get("transit") or {})
         if tr.get("support"):
-            parts.append(tr["support"][0][:60])
+            transit_line = humanise_client_language(str(tr["support"][0])[:120])
         elif tr.get("pressure"):
-            parts.append(tr["pressure"][0][:60])
+            transit_line = humanise_client_language(str(tr["pressure"][0])[:120])
     except Exception:  # noqa: BLE001
         pass
+    if not transit_line:
+        try:
+            import report_timing as RT
+            segs = RT.transit_segments(
+                pc, start=today - timedelta(days=30), years=1)
+            hits = []
+            for planet, arr in (segs or {}).items():
+                for seg in arr or []:
+                    if (seg.get("house") == house
+                            and seg.get("start") <= today <= seg.get("end")):
+                        hits.append(planet)
+            if hits:
+                transit_line = (
+                    f"{' and '.join(hits)} currently influencing the "
+                    f"{area_name} area")
+        except Exception:  # noqa: BLE001
+            pass
+    if transit_line:
+        lines.append(f"Transit: {transit_line.rstrip('.')}.")
 
-    line = "; ".join(p for p in parts[:3] if p)
-    if len(line) > max_len:
-        line = line[: max_len - 1].rsplit(";", 1)[0] + "…"
-    return client_prose(line or "your chart points here from several independent reads")
+    if secondary:
+        lines.append(f"Secondary confirmation: {secondary.rstrip('.')}.")
+
+    agree = {
+        "strong agreement": "Overall: Strong agreement.",
+        "strong": "Overall: Strong agreement.",
+        "strong read": "Overall: Strong agreement.",
+        "moderate agreement": "Overall: Partial agreement.",
+        "partial agreement": "Overall: Partial agreement.",
+        "mixed evidence": "Overall: Mixed evidence.",
+        "mixed read": "Overall: Mixed evidence.",
+        "mixed": "Overall: Mixed evidence.",
+        "split read": "Overall: Mixed evidence.",
+        "cautious read": "Overall: Partial agreement.",
+        "demanding read": "Overall: Mixed evidence.",
+    }.get((confidence or "").lower())
+    if not agree:
+        if direction == "mixed":
+            agree = "Overall: Mixed evidence."
+        elif direction == "up":
+            agree = "Overall: Partial agreement."
+        else:
+            agree = "Overall: Mixed evidence."
+    lines.append(agree)
+
+    return fix_house_ordinals("\n".join(lines))
 
 
 def _planet_stress(pc: dict, planet: str) -> float:
@@ -416,10 +486,14 @@ def build_area(pc: dict, area_key: str, house: int, *,
                if getattr(v, "direction", "mixed") == direction)
     confidence = PV.confidence_word(same, len(decided) or len(votes), direction)
 
-    prediction = client_prose(pred.scenario)
-    proof = _build_proof(pc, area_key, house, today=today)
+    prediction = strip_visible_claim_jargon(
+        humanise_client_language(client_prose(pred.scenario)))
+    proof = _build_proof(
+        pc, area_key, house, today=today,
+        direction=direction, confidence=confidence)
     when = _area_when(pc, area_key, house, today=today)
     remedy, _mantra = _area_remedy(pc, area_key, house, direction, question=question)
+    remedy = humanise_client_language(remedy)
 
     if len(prediction) > 220:
         prediction = prediction[:217].rsplit(" ", 1)[0] + "…"

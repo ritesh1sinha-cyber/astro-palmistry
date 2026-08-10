@@ -1,0 +1,36 @@
+{
+  "forbidden_patterns": [
+    "you have \\w+ disease",
+    "you will get \\w+",
+    "you will recover from",
+    "you are prone to",
+    "your stomach is where",
+    "health problems arrive fast",
+    "inflammation",
+    "fevers?",
+    "stroke",
+    "cancer",
+    "diabetes",
+    "heart attack",
+    "recurring illness",
+    "fight off illness",
+    "diagnos",
+    "medication",
+    "prescription",
+    "guaranteed recovery",
+    "hardness in you",
+    "built by difficulty",
+    "slow and recurring",
+    "slows illness",
+    "makes it recur",
+    "slows .* down",
+    "brings heat and speed to illness",
+    "your \\w+ will fail",
+    "organ"
+  ],
+  "wellbeing_replacements": {
+    "hardness": "Changes in routine or stress may make you more aware of your energy and physical wellbeing.",
+    "medical": "Consistency, rest and timely follow-up may be particularly important during demanding periods.",
+    "stress_body": "Stress may make you more aware of how closely your emotional state, routine and physical wellbeing are connected."
+  }
+}

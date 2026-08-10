@@ -1,0 +1,28 @@
+{
+  "adult_only": [
+    "income", "salary_increase", "promotion", "career_advancement", "marriage", "spouse",
+    "mortgage", "retirement", "asset_building", "public_sector", "government_career",
+    "financial_independence", "partnership", "parenting", "leadership", "authority"
+  ],
+  "senior_preferred": ["mentor_support", "legacy", "transition", "companionship", "preservation", "wellbeing"],
+  "replacements": {
+    "income": {"child": "family_finances", "teen": "resource_habits", "young_adult": "income", "adult": "income", "mature_adult": "financial_stability", "senior": "financial_stability"},
+    "salary_increase": {"child": "family_finances", "teen": "resource_habits", "young_adult": "income", "adult": "income", "mature_adult": "financial_stability", "senior": "preservation"},
+    "promotion": {"child": "achievement", "teen": "teacher_recognition", "young_adult": "visibility", "adult": "recognition", "mature_adult": "leadership", "senior": "mentor_support"},
+    "marriage": {"child": "communication", "teen": "emotional_support", "young_adult": "commitment", "adult": "commitment", "mature_adult": "emotional_support", "senior": "companionship"},
+    "career": {"child": "achievement", "teen": "study_progress", "young_adult": "visibility", "adult": "responsibility", "mature_adult": "leadership", "senior": "mentor_support"},
+    "recognition": {"child": "teacher_recognition", "teen": "study_progress", "young_adult": "visibility", "adult": "recognition", "mature_adult": "recognition", "senior": "mentor_support"},
+    "leadership": {"child": "responsibility", "teen": "responsibility", "young_adult": "responsibility", "adult": "leadership", "mature_adult": "leadership", "senior": "mentor_support"},
+    "parenting": {"child": "projects", "teen": "projects", "young_adult": "patience", "adult": "parenting", "mature_adult": "parenting", "senior": "family_grandchildren"}
+  },
+  "major_houses": {
+    "1": ["career", "health", "inner"],
+    "2": ["money", "resources"],
+    "4": ["home"],
+    "5": ["children", "creativity", "learning"],
+    "7": ["love", "friendships"],
+    "10": ["career", "education", "early_career"],
+    "11": ["career", "money"],
+    "12": ["inner", "health"]
+  }
+}

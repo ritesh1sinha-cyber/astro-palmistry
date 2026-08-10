@@ -1,0 +1,48 @@
+{
+  "career": {
+    "10": {
+      "child": {"primary": ["achievement", "responsibility"], "secondary": ["teacher_recognition", "leadership"], "default": "study_progress"},
+      "teen": {"primary": ["study_progress", "responsibility"], "secondary": ["teacher_recognition", "mentor_support"], "default": "study_progress"},
+      "young_adult": {"primary": ["visibility", "skill_development"], "secondary": ["mentor_support", "network_gain"], "default": "visibility"},
+      "adult": {"primary": ["visibility", "responsibility"], "secondary": ["recognition", "authority"], "default": "visibility"},
+      "mature_adult": {"primary": ["leadership", "recognition"], "secondary": ["authority", "mentor_support"], "default": "leadership"},
+      "senior": {"primary": ["mentor_support", "recognition"], "secondary": ["legacy", "transition"], "default": "mentor_support"}
+    },
+    "11": {
+      "child": {"primary": ["teacher_recognition"], "secondary": ["study_progress"], "default": "teacher_recognition"},
+      "teen": {"primary": ["study_progress"], "secondary": ["mentor_support"], "default": "study_progress"},
+      "young_adult": {"primary": ["network_gain", "opportunity"], "secondary": ["gains"], "default": "network_gain"},
+      "adult": {"primary": ["network_gain", "opportunity"], "secondary": ["gains", "support_from_contacts"], "default": "network_gain"},
+      "mature_adult": {"primary": ["network_gain", "gains"], "secondary": ["opportunity"], "default": "network_gain"},
+      "senior": {"primary": ["support_from_contacts"], "secondary": ["gains"], "default": "support_from_contacts"}
+    }
+  },
+  "money": {
+    "2": {
+      "child": {"primary": ["resource_habits"], "secondary": ["family_finances"], "default": "resource_habits"},
+      "teen": {"primary": ["resource_habits", "savings_habits"], "secondary": ["family_finances"], "default": "resource_habits"},
+      "young_adult": {"primary": ["income", "savings"], "secondary": ["financial_stability"], "default": "income"},
+      "adult": {"primary": ["income", "financial_stability"], "secondary": ["savings"], "default": "income"},
+      "mature_adult": {"primary": ["financial_stability", "savings"], "secondary": ["paperwork"], "default": "financial_stability"},
+      "senior": {"primary": ["financial_stability"], "secondary": ["savings"], "default": "financial_stability"}
+    },
+    "11": {
+      "child": {"primary": ["family_finances"], "secondary": ["resource_habits"], "default": "family_finances"},
+      "teen": {"primary": ["resource_habits"], "secondary": ["allowance"], "default": "resource_habits"},
+      "young_adult": {"primary": ["income", "cash_flow"], "secondary": ["opportunity"], "default": "income"},
+      "adult": {"primary": ["income", "cash_flow"], "secondary": ["gains"], "default": "cash_flow"},
+      "mature_adult": {"primary": ["financial_stability"], "secondary": ["cash_flow"], "default": "financial_stability"},
+      "senior": {"primary": ["financial_stability"], "secondary": ["savings"], "default": "financial_stability"}
+    }
+  },
+  "love": {
+    "7": {
+      "child": {"primary": ["communication"], "secondary": ["emotional_support"], "default": "communication"},
+      "teen": {"primary": ["communication", "emotional_support"], "secondary": ["reconnection"], "default": "communication"},
+      "young_adult": {"primary": ["communication", "commitment"], "secondary": ["emotional_support"], "default": "communication"},
+      "adult": {"primary": ["communication", "commitment"], "secondary": ["reconnection"], "default": "communication"},
+      "mature_adult": {"primary": ["communication"], "secondary": ["emotional_support"], "default": "communication"},
+      "senior": {"primary": ["emotional_support", "reconnection"], "secondary": ["communication"], "default": "emotional_support"}
+    }
+  }
+}

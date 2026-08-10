@@ -1,0 +1,8 @@
+{
+  "recognition_group": ["visibility", "recognition", "status", "teacher_recognition", "study_progress"],
+  "money_group": ["income", "cash_flow", "gains", "financial_stability", "resource_habits", "family_finances"],
+  "relationship_group": ["communication", "commitment", "emotional_support", "reconnection", "distance"],
+  "authority_group": ["authority", "leadership", "responsibility", "mentor_support"],
+  "network_group": ["network_gain", "opportunity", "support_from_contacts", "gains"],
+  "health_group": ["routine", "rest", "energy_management", "stress_management", "preventive_attention", "wellbeing"]
+}

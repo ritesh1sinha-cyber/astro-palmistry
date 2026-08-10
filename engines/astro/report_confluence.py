@@ -845,33 +845,33 @@ def dasha_confluence(pc: dict, when: Optional[date] = None) -> dict:
 # ---------------------------------------------------------------------------
 
 LAGNA_TRAIT = {
-    "Aries": "You move first and think about it afterwards, usually faster than the people around you are comfortable with.",
-    "Taurus": "You are slow to start and almost impossible to stop once you have.",
-    "Gemini": "You think in several directions at once, which reads as restlessness to people who only think in one.",
-    "Cancer": "You feel the room before anyone speaks, and you carry more of other people's weather than you admit.",
-    "Leo": "You need your work to be seen. Not praised. Seen. There is a difference and you know it.",
-    "Virgo": "You notice the flaw first. It makes you excellent and it makes you tired.",
-    "Libra": "You weigh both sides so fairly that deciding costs you more than it costs most people.",
-    "Scorpio": "You keep more back than you let on, and you read other people faster than they read you.",
-    "Sagittarius": "You need room. Anything that fences you in gets left behind eventually.",
-    "Capricorn": "You are building something long, and you are quietly contemptuous of shortcuts.",
-    "Aquarius": "You are in the group without ever quite being of it.",
-    "Pisces": "You absorb everything, which is your gift and the reason you need to be alone so often.",
+    "Aries": "You tend to act quickly when you see an opportunity, sometimes before everyone around you is ready.",
+    "Taurus": "You are careful about starting, and unusually steady once you have committed.",
+    "Gemini": "You often hold several possibilities at once, which can look restless to people who prefer one track.",
+    "Cancer": "You usually sense the mood of a room early, and you can carry more of other people's feelings than you show.",
+    "Leo": "Being seen for your work matters to you — not only praise, but genuine recognition.",
+    "Virgo": "You often notice what needs improving first. That precision is a strength, and it can also tire you.",
+    "Libra": "You tend to weigh both sides carefully, so decisions can take more from you than they take from others.",
+    "Scorpio": "You keep some things private, and you often read people a little sooner than they read you.",
+    "Sagittarius": "You need room to move. Anything that feels too confining tends not to last with you.",
+    "Capricorn": "You are usually building for the long term, and shortcuts rarely impress you.",
+    "Aquarius": "You can be part of a group without fully merging into it.",
+    "Pisces": "You absorb a lot from your surroundings — a gift that also makes quiet time important.",
 }
 
 MOON_TRAIT = {
-    "Aries": "Under pressure you get sharp and want it settled today.",
-    "Taurus": "Under pressure you go still and wait it out.",
-    "Gemini": "Under pressure you talk it through with anyone available.",
-    "Cancer": "Under pressure you retreat to whoever feels like home.",
-    "Leo": "Under pressure you need someone to tell you the work mattered.",
-    "Virgo": "Under pressure you organise something. It is how you take back control.",
-    "Libra": "Under pressure you smooth things over, sometimes at your own cost.",
-    "Scorpio": "Under pressure you go quiet and deep, and people mistake it for anger.",
-    "Sagittarius": "Under pressure you look for the exit, or a plane ticket.",
-    "Capricorn": "Under pressure you work. Rest feels like losing.",
-    "Aquarius": "Under pressure you detach and analyse yourself from the outside.",
-    "Pisces": "Under pressure you drift, and need someone to bring you back.",
+    "Aries": "When pressure rises, you prefer a clear decision sooner rather than later.",
+    "Taurus": "When pressure rises, you tend to steady yourself and wait it out.",
+    "Gemini": "When pressure rises, talking it through with someone usually helps.",
+    "Cancer": "When pressure rises, you lean toward familiar people and familiar places.",
+    "Leo": "Recognition matters to you, especially when you've carried a difficult responsibility for a long time.",
+    "Virgo": "When pressure rises, organising something concrete often helps you regain your footing.",
+    "Libra": "When pressure rises, you may smooth things over — sometimes at a personal cost.",
+    "Scorpio": "When pressure rises, you can go quiet and inward; people sometimes misread that as anger.",
+    "Sagittarius": "When pressure rises, you look for space — perspective, movement, or a change of scene.",
+    "Capricorn": "When pressure rises, you tend to work harder. Rest can feel unproductive even when it is needed.",
+    "Aquarius": "When pressure rises, you often step back and analyse the situation from the outside.",
+    "Pisces": "When pressure rises, focus can drift; a steady person nearby helps you come back.",
 }
 
 AK_TRAIT = {
@@ -915,9 +915,16 @@ def personality(pc: dict) -> dict:
     ak = (pc.get("jaimini") or {}).get("atmakaraka", "")
     pillar = pc.get("pillar", {}) or {}
     traits = [client_prose(t) for t in (LAGNA_TRAIT.get(lagna), MOON_TRAIT.get(moon.get("sign"))) if t]
-    if ak:
+    if ak == "Mars":
         traits.append(client_prose(
-            f"The thread running through your whole life is {AK_TRAIT.get(ak, 'your own path')}. "
+            "A recurring theme in your life is learning which battles deserve "
+            "your energy — and which ones are better left alone."))
+        traits.append(client_prose(
+            "Mars is the main astrological influence behind this theme."))
+    elif ak:
+        traits.append(client_prose(
+            f"The thread running through your whole life is "
+            f"{AK_TRAIT.get(ak, 'your own path')}. "
             f"{ak} carries that in your chart."))
     nb = pillar.get("neecha_bhanga") or {}
     if nb.get("neecha_bhanga_present"):

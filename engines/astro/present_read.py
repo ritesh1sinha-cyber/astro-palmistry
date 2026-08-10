@@ -152,36 +152,68 @@ def build(pc: dict, *, today: Optional[date] = None) -> dict:
         )
         predictions.append(yog_pred)
 
+    # Dated six-month validation, separate from generic "present" predictions
+    # so the reader can judge the recent past independently.
+    try:
+        import past_validation as PVH
+        history = PVH.build(pc, today=today, months=6, max_events=8)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[present_read] past validation skipped: {exc}", flush=True)
+        history = {"today": today, "since": back, "events": []}
+
     return {"today": today, "since": back, "predictions": predictions,
             "direction": dasha["direction"], "agreement": dasha["agreement"],
             "period": f"{md}–{ad}", "live": live,
-            "active_houses": active}
+            "active_houses": active, "history": history}
 
 
-def render(block: dict, *, tab: str = "") -> str:
-    """Always free. This is the part that has to earn the rest."""
-    preds = block.get("predictions") or []
-    if not block or not preds:
+def render(block: dict, *, tab: str = "", paid: bool = False) -> str:
+    """Present + past layer. Scenario is always shown; technical Why is paid."""
+    history = block.get("history") or {}
+    history_html = ""
+    try:
+        import past_validation as PVH
+        history_html = PVH.render(history)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[present_read] history render skipped: {exc}", flush=True)
+
+    preds = list(block.get("predictions") or [])
+    if not paid:
+        # Free focuses on life-area observations; lunar-cycle detail stays Paid.
+        preds = [
+            p for p in preds
+            if "shorter lunar rhythm" not in (getattr(p, "scenario", "") or "").lower()
+            and not str(getattr(p, "backing", "") or "").lower().startswith("lunar cycle")
+        ]
+    if preds:
+        try:
+            from report_language import (
+                strip_visible_claim_jargon, humanise_client_language)
+            for p in preds:
+                if getattr(p, "scenario", None):
+                    p.scenario = strip_visible_claim_jargon(
+                        humanise_client_language(p.scenario))
+        except Exception:  # noqa: BLE001
+            pass
+    if not block or (not preds and not history_html):
         return ""
-    items = "".join(f"<li>{p.html()}</li>" for p in preds)
-    return f"""
-<section class="present">
+    items = "".join(f"<li>{p.html(paid=paid)}</li>" for p in preds)
+    current_html = f"""
+<section class="present-current">
   <div class="present-head">
-    <span class="ev-label">Where you are right now, free and checkable</span>
-    <h3>The last six months, and what you are inside of today</h3>
+    <span class="ev-label">What is happening right now</span>
+    <h3>Why your life may feel like this today</h3>
   </div>
-  <p class="present-lede">Read this before anything else. It describes a period
-  you have just lived through, so you can judge it immediately. That is the
-  point of putting it first.</p>
+  <p class="present-lede">This section answers one question: what are you inside of
+  right now, and what is shaping that feeling.</p>
   <ul class="present-list pred-list">{items}</ul>
-  <div class="present-ask">
-    <span>Does this describe your last six months?</span>
-    <button type="button" class="pillbtn" data-mm="yes">Yes, closely</button>
-    <button type="button" class="pillbtn" data-mm="partly">Partly</button>
-    <button type="button" class="pillbtn" data-mm="no">Not at all</button>
-  </div>
+</section>""" if preds else ""
+    return f"""
+{history_html}
+{current_html}
+<div class="present-mismatch">
   {mismatch_modal(tab)}
-</section>"""
+</div>"""
 
 
 def mismatch_modal(tab: str = "") -> str:
@@ -194,15 +226,14 @@ def mismatch_modal(tab: str = "") -> str:
     return """
 <div class="mm-overlay" id="mismatch" hidden>
   <div class="mm-box">
-    <div class="ev-label">Then something upstream is wrong</div>
-    <h3>Most likely, your birth time is not accurate.</h3>
-    <p>This is the common case, not a rare one. Hospital records round to the
-    nearest five or ten minutes, and families remember approximately. A
-    <b>twenty-minute error moves your rising sign</b>. Once that moves,
-    every house shifts, so every prediction built on it shifts with it. A
-    reading that does not sound like you is usually a chart that is not quite
-    yours.</p>
-    <p>Three ways forward, in order of how much they need from you:</p>
+    <div class="ev-label">A useful next step</div>
+    <h3>Your birth time may need checking.</h3>
+    <p>Even a small difference in birth time can change the ascendant and house
+    positions, which can affect the timing of a reading. Hospital records often
+    round to the nearest five or ten minutes, and families sometimes remember
+    approximately. That does not prove the birth time is wrong — but it is the
+    most common place to look when a present reading feels off.</p>
+    <p>Three ways forward:</p>
     <ol class="mm-routes">
       <li><b>Birth-time rectification</b>. Give us four or five dates from your
       life and we test hundreds of candidate minutes against them, then rebuild

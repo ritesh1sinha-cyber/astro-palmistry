@@ -1,0 +1,60 @@
+{
+  "default_claim_level": 2,
+  "max_recognition_level": 2,
+  "level_3_patterns": [
+    "you changed (jobs|roles|career)",
+    "you received a promotion",
+    "you got promoted",
+    "you changed roles",
+    "you married",
+    "you received support from a senior",
+    "money came through a family settlement",
+    "you lost what you have built",
+    "not a person who loses"
+  ],
+  "level_4_patterns": [
+    "in (january|february|march|april|may|june|july|august|september|october|november|december) \\d{4}",
+    "on \\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}"
+  ],
+  "level_3_required_manifestations": {
+    "promotion|promoted|pay raise|salary increase|career_advancement": [
+      "recognition", "visibility", "authority", "leadership", "career_transition"
+    ],
+    "changed (jobs|roles)|role change": [
+      "career_transition", "visibility", "responsibility", "recognition"
+    ],
+    "married|marriage|wedding|spouse": [
+      "commitment", "communication", "emotional_support"
+    ],
+    "family settlement|inheritance|windfall|large payment": [
+      "gains", "income", "cash_flow", "shared_resources", "inheritance"
+    ]
+  },
+  "legacy_archetype_banned": [
+    "once money reaches you it tends to stay",
+    "not a person who loses what they have built",
+    "you know most of it was stubbornness",
+    "they call it strength; you know most of it was stubbornness",
+    "people bring you their problems, including strangers",
+    "people ring when it has gone wrong, not when it is going well",
+    "your income has moved in steps, and each step followed a fight",
+    "government, public-sector or state-funded work has run through your line",
+    "built by difficulty rather than by encouragement",
+    "visibly changed the people who went through it with you",
+    "you are better at earning than at holding",
+    "income has rarely been the problem; what stays is",
+    "people notice you before you have said anything",
+    "attracted the wrong sort of attention",
+    "openings have come through your reputation rather than through applications",
+    "money has reached you at least once from a source you did not earn week by week",
+    "a legacy, a settlement, an insurance, or someone else's resources becoming yours",
+    "you tend to recover from setbacks with more resilience than people may expect",
+    "tend to recover from setbacks with more resilience than people"
+  ],
+  "generic_guidance_markers": [
+    "consistency may help",
+    "clear communication can reduce",
+    "may be particularly important during demanding periods",
+    "timing activity without a confidently specific"
+  ]
+}

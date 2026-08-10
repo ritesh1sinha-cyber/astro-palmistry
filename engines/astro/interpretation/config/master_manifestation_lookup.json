@@ -1,0 +1,1838 @@
+{
+  "version": "1.0",
+  "purpose": "Canonical modern-life manifestation vocabulary. Existing astrology calculations remain the source of truth; this table maps validated manifestations to human-readable meaning.",
+  "principles": [
+    "Do not infer a manifestation unless its required evidence is present.",
+    "Age changes the manifestation context, not only the wording.",
+    "Same cohesion group is one user-facing story within a life area.",
+    "Specific events require stronger evidence than broad patterns.",
+    "Health entries are wellbeing interpretations, not medical diagnoses or outcomes."
+  ],
+  "manifestations": {
+    "academic_responsibility": {
+      "semantic_family": "career_responsibility",
+      "modern_meaning": "taking study, projects or academic duties more seriously",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "accumulated_resources": {
+      "semantic_family": "accumulated_resources",
+      "modern_meaning": "accumulated resources",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "achievement": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "achievement",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "action": {
+      "semantic_family": "action",
+      "modern_meaning": "action",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "adaptability": {
+      "semantic_family": "adaptability",
+      "modern_meaning": "adaptability",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "agreement": {
+      "semantic_family": "agreement",
+      "modern_meaning": "agreement",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "allowance": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "managing allowance, gifts or small personal resources",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "ambition": {
+      "semantic_family": "ambition",
+      "modern_meaning": "ambition",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "analysis": {
+      "semantic_family": "analysis",
+      "modern_meaning": "analysis",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "assertiveness": {
+      "semantic_family": "assertiveness",
+      "modern_meaning": "assertiveness",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "asset_building": {
+      "semantic_family": "asset_building",
+      "modern_meaning": "asset building",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "authority": {
+      "semantic_family": "career_responsibility",
+      "modern_meaning": "growing influence, decision-making responsibility or professional standing",
+      "required_evidence": [
+        "10H_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "greater decision-making responsibility",
+        "being trusted in important situations",
+        "professional standing growing over time"
+      ],
+      "allowed_areas": [
+        "career"
+      ]
+    },
+    "beauty": {
+      "semantic_family": "beauty",
+      "modern_meaning": "beauty",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "behind_scenes": {
+      "semantic_family": "behind_scenes",
+      "modern_meaning": "behind scenes",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "beliefs": {
+      "semantic_family": "beliefs",
+      "modern_meaning": "beliefs",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "care": {
+      "semantic_family": "care",
+      "modern_meaning": "care",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "career": {
+      "semantic_family": "career",
+      "modern_meaning": "career",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "career_advancement": {
+      "semantic_family": "career_advancement",
+      "modern_meaning": "career advancement",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "career_responsibility": {
+      "semantic_family": "career_responsibility",
+      "modern_meaning": "greater professional responsibility and ownership",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "context": "adult work",
+      "recognition_bullets": [
+        "greater responsibility before reward",
+        "being trusted with important work",
+        "authority building through sustained effort"
+      ],
+      "allowed_areas": [
+        "career"
+      ]
+    },
+    "career_transition": {
+      "semantic_family": "career_transition",
+      "modern_meaning": "change in role, direction or professional chapter",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "a change in role or direction",
+        "re-establishing yourself in a new chapter",
+        "learning from a professional detour"
+      ],
+      "allowed_areas": [
+        "career"
+      ]
+    },
+    "cash_flow": {
+      "semantic_family": "money_progress",
+      "modern_meaning": "money arriving and leaving in ways that require practical management",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "managing uneven inflows and outflows",
+        "timing becoming important in financial decisions",
+        "keeping enough flexibility between income and expenses"
+      ],
+      "allowed_areas": [
+        "money"
+      ]
+    },
+    "children": {
+      "semantic_family": "children",
+      "modern_meaning": "children",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "clients": {
+      "semantic_family": "clients",
+      "modern_meaning": "clients",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "comfort": {
+      "semantic_family": "home_stability",
+      "modern_meaning": "comfort",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "commerce": {
+      "semantic_family": "commerce",
+      "modern_meaning": "commerce",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "commitment": {
+      "semantic_family": "relationship_bond",
+      "modern_meaning": "willingness to sustain an important relationship or bond",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "taking an important bond seriously",
+        "working through differences rather than walking away",
+        "learning what commitment requires"
+      ],
+      "allowed_areas": [
+        "love"
+      ]
+    },
+    "communication": {
+      "semantic_family": "relationship_bond",
+      "modern_meaning": "clearer or more patient communication in close relationships",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "needing clearer conversations",
+        "private issues being handled quietly",
+        "patience mattering in close bonds"
+      ],
+      "allowed_areas": [
+        "love"
+      ]
+    },
+    "companionship": {
+      "semantic_family": "companionship",
+      "modern_meaning": "companionship",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "competition": {
+      "semantic_family": "competition",
+      "modern_meaning": "competition",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "concentration": {
+      "semantic_family": "career_responsibility",
+      "modern_meaning": "ability to sustain attention on learning or tasks",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "confidence": {
+      "semantic_family": "confidence",
+      "modern_meaning": "confidence",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "conflict": {
+      "semantic_family": "relationship_bond",
+      "modern_meaning": "conflict",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "arguments becoming intense when communication is unclear",
+        "learning to handle friction without escalation",
+        "direct conversation reducing misunderstandings"
+      ],
+      "allowed_areas": [
+        "love"
+      ]
+    },
+    "contracts": {
+      "semantic_family": "contracts",
+      "modern_meaning": "contracts",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "cooperation": {
+      "semantic_family": "cooperation",
+      "modern_meaning": "cooperation",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "courage": {
+      "semantic_family": "courage",
+      "modern_meaning": "courage",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "creativity": {
+      "semantic_family": "creativity",
+      "modern_meaning": "creating, expressing or developing something personally meaningful",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "debts_conflict": {
+      "semantic_family": "debts_conflict",
+      "modern_meaning": "debts conflict",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "delay": {
+      "semantic_family": "delay",
+      "modern_meaning": "delay",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "delayed_recognition": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "responsibility or effort preceding recognition",
+      "required_evidence": [
+        "10H_activation",
+        "Saturn_influence",
+        "delay_indicator"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "effort continuing before recognition caught up",
+        "results taking longer to become visible",
+        "patience being rewarded over time"
+      ],
+      "allowed_areas": [
+        "career"
+      ]
+    },
+    "delayed_reward": {
+      "semantic_family": "money_progress",
+      "modern_meaning": "progress occurring before the full reward or recognition becomes visible",
+      "required_evidence": [
+        "money_house_activation",
+        "Saturn_influence",
+        "delay_indicator"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "progress preceding the full reward",
+        "results taking time to become tangible",
+        "consistency mattering before payoff"
+      ],
+      "allowed_areas": [
+        "career",
+        "money"
+      ]
+    },
+    "detachment": {
+      "semantic_family": "detachment",
+      "modern_meaning": "detachment",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "discipline": {
+      "semantic_family": "discipline",
+      "modern_meaning": "discipline",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "distance": {
+      "semantic_family": "relationship_bond",
+      "modern_meaning": "periods of emotional or practical distance in a relationship",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "periods of emotional or practical distance",
+        "needing space before reconnecting",
+        "learning when to communicate and when to step back"
+      ],
+      "allowed_areas": [
+        "love"
+      ]
+    },
+    "domestic_stability": {
+      "semantic_family": "home_stability",
+      "modern_meaning": "having a steadier home base or household rhythm",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "one steady place to return to",
+        "home acting as an anchor",
+        "valuing stability during change"
+      ],
+      "allowed_areas": [
+        "home"
+      ]
+    },
+    "drive": {
+      "semantic_family": "drive",
+      "modern_meaning": "drive",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "early_career": {
+      "semantic_family": "early_career",
+      "modern_meaning": "early career",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "early_career_direction": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "forming a clearer direction in study or early work",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "education": {
+      "semantic_family": "education",
+      "modern_meaning": "education",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "education_foundation": {
+      "semantic_family": "education_foundation",
+      "modern_meaning": "education foundation",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "effort": {
+      "semantic_family": "effort",
+      "modern_meaning": "consistent effort producing gradual improvement",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "emotional_security": {
+      "semantic_family": "home_stability",
+      "modern_meaning": "emotional security",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "emotional_support": {
+      "semantic_family": "relationship_bond",
+      "modern_meaning": "giving or receiving emotional support",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "emotions": {
+      "semantic_family": "emotions",
+      "modern_meaning": "emotions",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "energy_management": {
+      "semantic_family": "wellbeing",
+      "modern_meaning": "becoming more aware of energy levels and recovery needs",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "noticing when rest or recovery was needed",
+        "becoming more aware of energy limits",
+        "adjusting pace during demanding periods"
+      ],
+      "allowed_areas": [
+        "health"
+      ]
+    },
+    "ethics": {
+      "semantic_family": "ethics",
+      "modern_meaning": "ethics",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "expansion": {
+      "semantic_family": "expansion",
+      "modern_meaning": "expansion",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "expectation_management": {
+      "semantic_family": "relationship_bond",
+      "modern_meaning": "adjusting expectations and communicating needs clearly",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "expense": {
+      "semantic_family": "expense",
+      "modern_meaning": "expense",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "expenses": {
+      "semantic_family": "expenses",
+      "modern_meaning": "expenses",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "family": {
+      "semantic_family": "family",
+      "modern_meaning": "family",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "family_finances": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "awareness or responsibility around shared/family resources",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "family_grandchildren": {
+      "semantic_family": "family_grandchildren",
+      "modern_meaning": "family continuity, mentoring and intergenerational involvement",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "family_responsibility": {
+      "semantic_family": "home_stability",
+      "modern_meaning": "taking responsibility for recurring family or home matters",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "responsibility arriving early",
+        "being the sensible one before feeling ready",
+        "family expectations shaping decisions"
+      ],
+      "allowed_areas": [
+        "home"
+      ]
+    },
+    "family_values": {
+      "semantic_family": "family_values",
+      "modern_meaning": "family values",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "financial_independence": {
+      "semantic_family": "financial_independence",
+      "modern_meaning": "financial independence",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "financial_progress": {
+      "semantic_family": "money_progress",
+      "modern_meaning": "gradual improvement in financial position",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "financial progress building in stages",
+        "results following sustained effort",
+        "practical decisions making a difference over time"
+      ],
+      "allowed_areas": [
+        "money"
+      ]
+    },
+    "financial_retention": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "preserving resources after they are acquired",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "context": "adult money",
+      "recognition_bullets": [
+        "preserving what you built",
+        "becoming more deliberate about what you keep",
+        "valuing stability alongside growth"
+      ],
+      "allowed_areas": [
+        "money"
+      ]
+    },
+    "financial_stability": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "building a steadier financial base",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "stability becoming more important over time",
+        "building a dependable financial base",
+        "protecting accumulated resources"
+      ],
+      "allowed_areas": [
+        "money"
+      ]
+    },
+    "follow_up": {
+      "semantic_family": "follow_up",
+      "modern_meaning": "following through on wellbeing checks or recommended care",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "foreign_connections": {
+      "semantic_family": "foreign_connections",
+      "modern_meaning": "foreign connections",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "foreign_influence": {
+      "semantic_family": "foreign_influence",
+      "modern_meaning": "foreign influence",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "fortune": {
+      "semantic_family": "fortune",
+      "modern_meaning": "fortune",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "friends_groups": {
+      "semantic_family": "friends_groups",
+      "modern_meaning": "friends groups",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "friendships": {
+      "semantic_family": "friendships",
+      "modern_meaning": "friendships",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "gains": {
+      "semantic_family": "money_progress",
+      "modern_meaning": "results or benefits from networks, effort or accumulated work",
+      "required_evidence": [
+        "11H_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "government_career": {
+      "semantic_family": "government_career",
+      "modern_meaning": "government career",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "gradual_financial_progress": {
+      "semantic_family": "money_progress",
+      "modern_meaning": "financial improvement developing step by step",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "growth": {
+      "semantic_family": "growth",
+      "modern_meaning": "growth",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "guidance": {
+      "semantic_family": "guidance",
+      "modern_meaning": "guidance",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "habits": {
+      "semantic_family": "habits",
+      "modern_meaning": "habits",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "hands_on_learning": {
+      "semantic_family": "hands_on_learning",
+      "modern_meaning": "hands on learning",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "harmony": {
+      "semantic_family": "relationship_bond",
+      "modern_meaning": "harmony",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "health": {
+      "semantic_family": "health",
+      "modern_meaning": "health",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "health_routines": {
+      "semantic_family": "wellbeing",
+      "modern_meaning": "consistent wellbeing routines",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "hidden_matters": {
+      "semantic_family": "hidden_matters",
+      "modern_meaning": "hidden matters",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "higher_education": {
+      "semantic_family": "higher_education",
+      "modern_meaning": "progress toward advanced or specialized learning",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "higher_learning": {
+      "semantic_family": "higher_learning",
+      "modern_meaning": "higher learning",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "home": {
+      "semantic_family": "home_stability",
+      "modern_meaning": "home environment and living conditions",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "household_routine": {
+      "semantic_family": "household_routine",
+      "modern_meaning": "recurring household duties and routines",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "identity": {
+      "semantic_family": "identity",
+      "modern_meaning": "identity",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "income": {
+      "semantic_family": "money_progress",
+      "modern_meaning": "money earned through work, skills or practical activity",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "income improving gradually",
+        "earning becoming more dependent on consistency",
+        "financial progress building in stages"
+      ],
+      "allowed_areas": [
+        "money"
+      ]
+    },
+    "income_from_work": {
+      "semantic_family": "income_from_work",
+      "modern_meaning": "income from work",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "independence": {
+      "semantic_family": "independence",
+      "modern_meaning": "independence",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "inheritance": {
+      "semantic_family": "inheritance",
+      "modern_meaning": "inheritance",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "initiative": {
+      "semantic_family": "initiative",
+      "modern_meaning": "initiative",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "inner": {
+      "semantic_family": "inner",
+      "modern_meaning": "inner",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "inner_stability": {
+      "semantic_family": "inner_stability",
+      "modern_meaning": "inner stability",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "intelligence": {
+      "semantic_family": "intelligence",
+      "modern_meaning": "intelligence",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "intense_desire": {
+      "semantic_family": "intense_desire",
+      "modern_meaning": "intense desire",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "internship": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "early practical exposure to work or professional environments",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "inward_focus": {
+      "semantic_family": "inward_focus",
+      "modern_meaning": "inward focus",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "joint_finances": {
+      "semantic_family": "joint_finances",
+      "modern_meaning": "joint finances",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "knowledge": {
+      "semantic_family": "knowledge",
+      "modern_meaning": "knowledge",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "leadership": {
+      "semantic_family": "career_responsibility",
+      "modern_meaning": "guiding people, projects or decisions",
+      "required_evidence": [
+        "10H_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "being trusted to make decisions",
+        "others relying on your judgment",
+        "authority growing through responsibility"
+      ],
+      "allowed_areas": [
+        "career"
+      ]
+    },
+    "learning": {
+      "semantic_family": "learning",
+      "modern_meaning": "learning",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "legacy": {
+      "semantic_family": "career_network",
+      "modern_meaning": "influence, mentoring and what remains valuable from accumulated experience",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "letting_go": {
+      "semantic_family": "letting_go",
+      "modern_meaning": "letting go",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "living_arrangement": {
+      "semantic_family": "living_arrangement",
+      "modern_meaning": "changes or decisions around where/how one lives",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "logic": {
+      "semantic_family": "logic",
+      "modern_meaning": "logic",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "long_distance": {
+      "semantic_family": "long_distance",
+      "modern_meaning": "long distance",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "long_term_achievement": {
+      "semantic_family": "career_responsibility",
+      "modern_meaning": "long term achievement",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "long_term_results": {
+      "semantic_family": "long_term_results",
+      "modern_meaning": "long term results",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "love": {
+      "semantic_family": "love",
+      "modern_meaning": "love",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "marriage": {
+      "semantic_family": "marriage",
+      "modern_meaning": "marriage",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "maturity": {
+      "semantic_family": "maturity",
+      "modern_meaning": "maturity",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "mental_engagement": {
+      "semantic_family": "mental_engagement",
+      "modern_meaning": "mental engagement",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "mentor_support": {
+      "semantic_family": "career_network",
+      "modern_meaning": "helpful guidance from an experienced person",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "guidance from an experienced person or professional contact",
+        "sponsorship or an introduction opening a practical door",
+        "learning from someone further along"
+      ],
+      "allowed_areas": [
+        "career",
+        "education"
+      ]
+    },
+    "mentors": {
+      "semantic_family": "mentors",
+      "modern_meaning": "mentors",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "mind": {
+      "semantic_family": "mind",
+      "modern_meaning": "mind",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "mixed_signal": {
+      "semantic_family": "general_mixed",
+      "modern_meaning": "mixed signal",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "money": {
+      "semantic_family": "money",
+      "modern_meaning": "money",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "mortgage": {
+      "semantic_family": "mortgage",
+      "modern_meaning": "mortgage",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "negotiation": {
+      "semantic_family": "negotiation",
+      "modern_meaning": "negotiation",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "network_gain": {
+      "semantic_family": "money_network",
+      "modern_meaning": "useful openings through existing contacts or wider networks",
+      "required_evidence": [
+        "11H_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "an existing contact becoming useful",
+        "opportunities through colleagues or mentors",
+        "support arriving through your wider network"
+      ],
+      "allowed_areas": [
+        "money",
+        "career"
+      ]
+    },
+    "network_opportunity": {
+      "semantic_family": "career_network",
+      "modern_meaning": "network opportunity",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "an opportunity through an existing network",
+        "a useful introduction",
+        "support from colleagues, mentors or contacts"
+      ],
+      "allowed_areas": [
+        "money",
+        "career"
+      ]
+    },
+    "networks": {
+      "semantic_family": "networks",
+      "modern_meaning": "networks",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "novelty": {
+      "semantic_family": "novelty",
+      "modern_meaning": "novelty",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "obstacles": {
+      "semantic_family": "obstacles",
+      "modern_meaning": "obstacles",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "opportunity": {
+      "semantic_family": "money_network",
+      "modern_meaning": "a practical opening that becomes easier to act on",
+      "required_evidence": [
+        "11H_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "paperwork": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "documents, financial records or administrative follow-through",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "parenting": {
+      "semantic_family": "parenting",
+      "modern_meaning": "responsibilities and choices around raising children",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "partnership": {
+      "semantic_family": "partnership",
+      "modern_meaning": "partnership",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "patience": {
+      "semantic_family": "patience",
+      "modern_meaning": "learning to stay steady while something develops",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "performance": {
+      "semantic_family": "performance",
+      "modern_meaning": "performance",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "persistence": {
+      "semantic_family": "persistence",
+      "modern_meaning": "persistence",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "personal_visibility": {
+      "semantic_family": "personal_visibility",
+      "modern_meaning": "personal visibility",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "physical_vitality": {
+      "semantic_family": "physical_vitality",
+      "modern_meaning": "physical vitality",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "preservation": {
+      "semantic_family": "preservation",
+      "modern_meaning": "preservation",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "preventive_attention": {
+      "semantic_family": "wellbeing",
+      "modern_meaning": "giving timely attention to wellbeing and routine",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "paying attention before a problem becomes bigger",
+        "timely follow-up becoming useful",
+        "steady routines supporting wellbeing"
+      ],
+      "allowed_areas": [
+        "health"
+      ]
+    },
+    "priorities": {
+      "semantic_family": "priorities",
+      "modern_meaning": "re-evaluating what deserves time and energy",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "problem_solving": {
+      "semantic_family": "problem_solving",
+      "modern_meaning": "problem solving",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "projects": {
+      "semantic_family": "projects",
+      "modern_meaning": "creating, completing or taking ownership of projects",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "promotion": {
+      "semantic_family": "promotion",
+      "modern_meaning": "promotion",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "property": {
+      "semantic_family": "property",
+      "modern_meaning": "property, home or living-arrangement matters",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "psychological_change": {
+      "semantic_family": "psychological_change",
+      "modern_meaning": "psychological change",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "public_interaction": {
+      "semantic_family": "public_interaction",
+      "modern_meaning": "public interaction",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "public_role": {
+      "semantic_family": "public_role",
+      "modern_meaning": "public role",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "public_sector": {
+      "semantic_family": "public_sector",
+      "modern_meaning": "public sector",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "purpose": {
+      "semantic_family": "purpose",
+      "modern_meaning": "purpose",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "rapid_change": {
+      "semantic_family": "rapid_change",
+      "modern_meaning": "rapid change",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "recognition": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "receiving more acknowledgement for work or contribution already made",
+      "required_evidence": [
+        "10H_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "recognition arriving after sustained effort",
+        "progress becoming more visible",
+        "contribution receiving greater attention"
+      ],
+      "allowed_areas": [
+        "career",
+        "education"
+      ]
+    },
+    "recognition_after_effort": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "recognition after effort",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "reconnection": {
+      "semantic_family": "relationship_bond",
+      "modern_meaning": "renewing a bond after distance or interruption",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "reflection": {
+      "semantic_family": "reflection",
+      "modern_meaning": "thinking through experiences before taking the next step",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "relationships": {
+      "semantic_family": "relationships",
+      "modern_meaning": "relationships",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "release": {
+      "semantic_family": "release",
+      "modern_meaning": "release",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "research": {
+      "semantic_family": "research",
+      "modern_meaning": "research",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "resource_discipline": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "careful handling of available resources",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "careful handling of resources",
+        "making practical financial decisions",
+        "avoiding unnecessary leakage of resources"
+      ],
+      "allowed_areas": [
+        "money"
+      ]
+    },
+    "resource_habits": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "learning to manage spending, saving and available resources",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "resources": {
+      "semantic_family": "resources",
+      "modern_meaning": "resources",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "responsibility": {
+      "semantic_family": "career_responsibility",
+      "modern_meaning": "taking on greater responsibility, ownership or follow-through",
+      "required_evidence": [
+        "10H_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "greater responsibility before reward",
+        "persistence mattering more than shortcuts",
+        "being trusted with important work"
+      ],
+      "allowed_areas": [
+        "career",
+        "education",
+        "home"
+      ]
+    },
+    "rest": {
+      "semantic_family": "wellbeing",
+      "modern_meaning": "recognizing the need for recovery and adequate rest",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "results": {
+      "semantic_family": "results",
+      "modern_meaning": "results",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "retirement": {
+      "semantic_family": "retirement",
+      "modern_meaning": "retirement",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "romance": {
+      "semantic_family": "romance",
+      "modern_meaning": "romance",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "roots": {
+      "semantic_family": "roots",
+      "modern_meaning": "roots",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "routine": {
+      "semantic_family": "wellbeing",
+      "modern_meaning": "greater awareness of the role of routine, sleep and consistency in wellbeing",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "rest and routine mattering during demanding stretches",
+        "becoming more aware of how routine affected wellbeing",
+        "steady habits supporting day-to-day balance"
+      ],
+      "allowed_areas": [
+        "health"
+      ]
+    },
+    "salary_increase": {
+      "semantic_family": "salary_increase",
+      "modern_meaning": "salary increase",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "savings": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "preserving part of what comes in",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "holding onto what reaches you",
+        "learning to value what you already have",
+        "preserving resources after they are acquired"
+      ],
+      "allowed_areas": [
+        "money"
+      ]
+    },
+    "savings_habits": {
+      "semantic_family": "money_discipline",
+      "modern_meaning": "developing a habit of preserving part of available resources",
+      "required_evidence": [
+        "money_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "self_direction": {
+      "semantic_family": "self_direction",
+      "modern_meaning": "self direction",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "self_expression": {
+      "semantic_family": "self_expression",
+      "modern_meaning": "self expression",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "self_worth": {
+      "semantic_family": "self_worth",
+      "modern_meaning": "self worth",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "shared_resources": {
+      "semantic_family": "shared_resources",
+      "modern_meaning": "shared resources",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "short_travel": {
+      "semantic_family": "short_travel",
+      "modern_meaning": "short travel",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "siblings": {
+      "semantic_family": "siblings",
+      "modern_meaning": "siblings",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "skill_development": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "building useful skills through learning or practice",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "skills": {
+      "semantic_family": "skills",
+      "modern_meaning": "skills",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "slow_recovery": {
+      "semantic_family": "wellbeing",
+      "modern_meaning": "a need for patience around recovery and restoration",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "social_connection": {
+      "semantic_family": "social_connection",
+      "modern_meaning": "social connection",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "social_reach": {
+      "semantic_family": "social_reach",
+      "modern_meaning": "social reach",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "solitude": {
+      "semantic_family": "solitude",
+      "modern_meaning": "solitude",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "space": {
+      "semantic_family": "space",
+      "modern_meaning": "need for personal space, reflection or reduced noise",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "specialization": {
+      "semantic_family": "specialization",
+      "modern_meaning": "specialization",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "speculation": {
+      "semantic_family": "speculation",
+      "modern_meaning": "speculation",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "speech": {
+      "semantic_family": "speech",
+      "modern_meaning": "speech",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "spiritual_inner": {
+      "semantic_family": "spiritual_inner",
+      "modern_meaning": "spiritual inner",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "spirituality": {
+      "semantic_family": "spirituality",
+      "modern_meaning": "spirituality",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "spouse": {
+      "semantic_family": "spouse",
+      "modern_meaning": "spouse",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "status": {
+      "semantic_family": "status",
+      "modern_meaning": "status",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "stress_management": {
+      "semantic_family": "wellbeing",
+      "modern_meaning": "handling pressure through steadier routines and boundaries",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "noticing the effect of pressure on routine",
+        "learning when to slow down",
+        "becoming more aware of the connection between stress and wellbeing"
+      ],
+      "allowed_areas": [
+        "health"
+      ]
+    },
+    "structure": {
+      "semantic_family": "structure",
+      "modern_meaning": "structure",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "structured_work": {
+      "semantic_family": "career_responsibility",
+      "modern_meaning": "structured work",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "study": {
+      "semantic_family": "study",
+      "modern_meaning": "study",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "study_progress": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "learning, study or structured education moving forward",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "teachers or mentors noticing effort",
+        "school responsibilities needing more organization",
+        "steady learning producing visible progress"
+      ],
+      "allowed_areas": [
+        "education"
+      ]
+    },
+    "sudden_change": {
+      "semantic_family": "sudden_change",
+      "modern_meaning": "sudden change",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "support_from_contacts": {
+      "semantic_family": "career_network",
+      "modern_meaning": "practical support or introductions from existing contacts",
+      "required_evidence": [
+        "11H_activation",
+        "network_indicator"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "an existing contact becoming useful",
+        "an introduction opening a door",
+        "support arriving through professional relationships"
+      ],
+      "allowed_areas": [
+        "career",
+        "money"
+      ]
+    },
+    "teacher_recognition": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "effort being noticed by teachers, mentors or guides",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "effort being noticed before full results showed",
+        "structured learning paying off",
+        "encouragement from a teacher or mentor"
+      ],
+      "allowed_areas": [
+        "education"
+      ]
+    },
+    "teacher_support": {
+      "semantic_family": "teacher_support",
+      "modern_meaning": "guidance from teachers or mentors",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "teachers": {
+      "semantic_family": "teachers",
+      "modern_meaning": "teachers",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "technology": {
+      "semantic_family": "technology",
+      "modern_meaning": "technology",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "transformation": {
+      "semantic_family": "transformation",
+      "modern_meaning": "transformation",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "transition": {
+      "semantic_family": "career_network",
+      "modern_meaning": "moving from one life chapter or role into another",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "travel": {
+      "semantic_family": "travel",
+      "modern_meaning": "travel",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "unusual_insight": {
+      "semantic_family": "unusual_insight",
+      "modern_meaning": "unusual insight",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "unusual_paths": {
+      "semantic_family": "unusual_paths",
+      "modern_meaning": "unusual paths",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "visibility": {
+      "semantic_family": "career_recognition",
+      "modern_meaning": "work, effort or contribution becoming easier for others to notice",
+      "required_evidence": [
+        "10H_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "recognition_bullets": [
+        "effort becoming more visible",
+        "recognition catching up with work already done",
+        "results being easier for others to notice"
+      ],
+      "allowed_areas": [
+        "career",
+        "education"
+      ]
+    },
+    "wellbeing": {
+      "semantic_family": "wellbeing",
+      "modern_meaning": "maintaining steadier daily wellbeing habits",
+      "required_evidence": [
+        "health_house_activation"
+      ],
+      "default_claim_level": 2,
+      "personalized": true,
+      "context": "health/wellbeing only; do not diagnose",
+      "recognition_bullets": [
+        "protecting energy",
+        "keeping steadier routines",
+        "recognizing when recovery matters"
+      ],
+      "allowed_areas": [
+        "health"
+      ]
+    },
+    "wisdom": {
+      "semantic_family": "wisdom",
+      "modern_meaning": "wisdom",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "withdrawal": {
+      "semantic_family": "withdrawal",
+      "modern_meaning": "temporary inward focus or stepping back from external demands",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "work_service": {
+      "semantic_family": "work_service",
+      "modern_meaning": "work service",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    },
+    "writing": {
+      "semantic_family": "writing",
+      "modern_meaning": "writing",
+      "required_evidence": [],
+      "default_claim_level": 2,
+      "personalized": true
+    }
+  }
+}

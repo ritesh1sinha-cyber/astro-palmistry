@@ -1,0 +1,14 @@
+{
+  "1": ["identity", "self_direction", "confidence", "initiative", "physical_vitality", "personal_visibility", "independence", "leadership"],
+  "2": ["resources", "money", "savings", "family_values", "speech", "routine", "self_worth", "accumulated_resources"],
+  "3": ["communication", "skills", "writing", "effort", "courage", "siblings", "short_travel", "projects", "hands_on_learning"],
+  "4": ["home", "family", "emotional_security", "education_foundation", "property", "comfort", "roots", "inner_stability"],
+  "5": ["learning", "creativity", "performance", "recognition", "children", "romance", "speculation", "self_expression", "intelligence"],
+  "6": ["work_service", "competition", "routine", "discipline", "obstacles", "problem_solving", "health_routines", "debts_conflict"],
+  "7": ["partnership", "marriage", "contracts", "clients", "public_interaction", "cooperation", "relationships", "communication"],
+  "8": ["transformation", "shared_resources", "inheritance", "sudden_change", "research", "hidden_matters", "joint_finances", "psychological_change"],
+  "9": ["higher_learning", "mentors", "beliefs", "travel", "fortune", "ethics", "teachers", "long_distance"],
+  "10": ["career", "authority", "status", "responsibility", "recognition", "leadership", "public_role", "achievement", "visibility"],
+  "11": ["gains", "networks", "friends_groups", "opportunity", "results", "income_from_work", "social_reach", "network_gain", "support_from_contacts"],
+  "12": ["rest", "withdrawal", "foreign_connections", "expenses", "release", "solitude", "behind_scenes", "spiritual_inner"]
+}

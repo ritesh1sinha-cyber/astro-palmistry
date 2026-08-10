@@ -1,0 +1,8 @@
+{
+  "child": {"min_age": 0, "max_age": 12},
+  "teen": {"min_age": 13, "max_age": 17},
+  "young_adult": {"min_age": 18, "max_age": 24},
+  "adult": {"min_age": 25, "max_age": 44},
+  "mature_adult": {"min_age": 45, "max_age": 59},
+  "senior": {"min_age": 60, "max_age": 120}
+}

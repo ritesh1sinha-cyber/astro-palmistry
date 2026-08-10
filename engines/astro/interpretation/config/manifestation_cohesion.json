@@ -1,0 +1,177 @@
+{
+  "health": {
+    "wellbeing": [
+      "routine",
+      "rest",
+      "stress_management",
+      "energy_management",
+      "preventive_attention",
+      "follow_up",
+      "wellbeing",
+      "health_routines",
+      "slow_recovery"
+    ]
+  },
+  "career": {
+    "career_progression": [
+      "responsibility",
+      "career_responsibility",
+      "recognition",
+      "visibility",
+      "delayed_reward",
+      "delayed_recognition",
+      "authority",
+      "leadership",
+      "structured_work",
+      "long_term_achievement",
+      "career_transition"
+    ],
+    "career_network": [
+      "mentor_support",
+      "support_from_contacts",
+      "network_opportunity",
+      "network_gain",
+      "opportunity",
+      "gains"
+    ]
+  },
+  "early_career": {
+    "career_progression": [
+      "responsibility",
+      "recognition",
+      "visibility",
+      "delayed_reward",
+      "delayed_recognition",
+      "skill_development",
+      "early_career_direction",
+      "internship"
+    ],
+    "career_network": [
+      "mentor_support",
+      "support_from_contacts",
+      "network_gain",
+      "network_opportunity",
+      "opportunity"
+    ]
+  },
+  "education": {
+    "education_progression": [
+      "study_progress",
+      "teacher_recognition",
+      "academic_responsibility",
+      "concentration",
+      "effort",
+      "projects",
+      "teacher_support",
+      "higher_education",
+      "mentor_support"
+    ]
+  },
+  "money": {
+    "money_core": [
+      "savings",
+      "savings_habits",
+      "resource_habits",
+      "financial_stability",
+      "financial_retention",
+      "resource_discipline",
+      "paperwork",
+      "family_finances",
+      "allowance",
+      "income",
+      "cash_flow",
+      "gains",
+      "financial_progress",
+      "gradual_financial_progress",
+      "delayed_reward"
+    ],
+    "money_network": [
+      "network_gain",
+      "opportunity",
+      "support_from_contacts"
+    ]
+  },
+  "resources": {
+    "money_discipline": [
+      "savings",
+      "savings_habits",
+      "resource_habits",
+      "financial_stability",
+      "financial_retention",
+      "resource_discipline",
+      "paperwork",
+      "family_finances",
+      "allowance"
+    ]
+  },
+  "love": {
+    "relationship_bond": [
+      "communication",
+      "commitment",
+      "emotional_support",
+      "reconnection",
+      "distance",
+      "expectation_management",
+      "harmony",
+      "conflict"
+    ]
+  },
+  "friendships": {
+    "relationship_bond": [
+      "communication",
+      "commitment",
+      "emotional_support",
+      "reconnection",
+      "distance",
+      "expectation_management",
+      "harmony",
+      "conflict"
+    ]
+  },
+  "home": {
+    "home_stability": [
+      "domestic_stability",
+      "family_responsibility",
+      "home",
+      "emotional_security",
+      "comfort",
+      "property",
+      "living_arrangement",
+      "household_routine"
+    ]
+  },
+  "inner": {
+    "inner_wellbeing": [
+      "space",
+      "priorities",
+      "withdrawal",
+      "reflection"
+    ]
+  },
+  "children": {
+    "children_development": [
+      "creativity",
+      "parenting",
+      "projects",
+      "patience"
+    ]
+  },
+  "creativity": {
+    "children_development": [
+      "creativity",
+      "projects",
+      "patience",
+      "mentor_support"
+    ]
+  },
+  "learning": {
+    "learning_development": [
+      "study",
+      "teacher_support",
+      "skill_development",
+      "concentration",
+      "communication",
+      "higher_education"
+    ]
+  }
+}

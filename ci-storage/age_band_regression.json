@@ -1,0 +1,71 @@
+{
+  "today": "2026-08-10",
+  "rows": [
+    {
+      "id": "child_2018",
+      "dob": "2018-06-01",
+      "expected_band": "child",
+      "actual_band": "child",
+      "band_ok": true,
+      "recognition_chars": 349,
+      "age_violations": [],
+      "health_violations": [],
+      "violation_count": 0
+    },
+    {
+      "id": "teen_2012",
+      "dob": "2012-01-01",
+      "expected_band": "teen",
+      "actual_band": "teen",
+      "band_ok": true,
+      "recognition_chars": 508,
+      "age_violations": [],
+      "health_violations": [],
+      "violation_count": 0
+    },
+    {
+      "id": "young_adult_2005",
+      "dob": "2005-03-15",
+      "expected_band": "young_adult",
+      "actual_band": "young_adult",
+      "band_ok": true,
+      "recognition_chars": 438,
+      "age_violations": [],
+      "health_violations": [],
+      "violation_count": 0
+    },
+    {
+      "id": "adult_1986",
+      "dob": "1986-03-08",
+      "expected_band": "adult",
+      "actual_band": "adult",
+      "band_ok": true,
+      "recognition_chars": 375,
+      "age_violations": [],
+      "health_violations": [],
+      "violation_count": 0
+    },
+    {
+      "id": "mature_1970",
+      "dob": "1970-07-20",
+      "expected_band": "mature_adult",
+      "actual_band": "mature_adult",
+      "band_ok": true,
+      "recognition_chars": 465,
+      "age_violations": [],
+      "health_violations": [],
+      "violation_count": 0
+    },
+    {
+      "id": "senior_1955",
+      "dob": "1955-11-05",
+      "expected_band": "senior",
+      "actual_band": "senior",
+      "band_ok": true,
+      "recognition_chars": 508,
+      "age_violations": [],
+      "health_violations": [],
+      "violation_count": 0
+    }
+  ]
+}

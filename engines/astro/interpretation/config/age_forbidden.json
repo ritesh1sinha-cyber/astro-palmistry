@@ -1,0 +1,23 @@
+{
+  "child": [
+    "promotion", "promoted", "salary", "spouse", "marriage", "married", "wedding",
+    "investment", "professional recognition", "senior person noticing your work",
+    "wider role", "pay raise", "romantic partner", "partner", "income", "earn",
+    "earnings", "public-sector", "public sector", "government work", "mortgage",
+    "retirement", "progeny", "promotions", "closest relationship", "in love",
+    "romance", "commit slowly", "significant relationship", "undersell yourself in love"
+  ],
+  "teen": [
+    "promotion", "promoted", "salary", "spouse", "marriage", "married", "wedding",
+    "investment", "professional recognition", "senior person noticing your work",
+    "wider role", "pay raise", "romantic partner", "partner", "income has moved",
+    "you earn", "your income", "earnings", "public-sector", "public sector",
+    "government, public-sector", "state-funded work", "mortgage", "retirement",
+    "progeny", "promotions and recognition", "closest relationship", "in love",
+    "significant relationship", "undersell yourself in love", "want a partner",
+    "not a person who loses what they have built", "each step followed a fight"
+  ],
+  "young_adult": [
+    "retirement", "legacy planning", "grandchildren", "grandchild"
+  ]
+}

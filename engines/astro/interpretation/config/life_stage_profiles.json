@@ -1,0 +1,26 @@
+{
+  "child": {
+    "primary_context": ["school", "family", "friendships", "learning", "activities", "confidence", "routine"],
+    "avoid_context": ["salary", "promotion", "marriage", "spouse", "retirement", "investment", "professional_income", "partner", "income", "earnings"]
+  },
+  "teen": {
+    "primary_context": ["school", "studies", "exams", "teachers", "mentors", "projects", "friendships", "family", "skills", "confidence"],
+    "avoid_context": ["salary", "promotion", "mortgage", "retirement", "marriage", "spouse", "professional_income", "partner", "income", "earnings", "public-sector"]
+  },
+  "young_adult": {
+    "primary_context": ["higher_education", "skills", "first_job", "early_career", "income", "financial_independence", "relationships", "networking"],
+    "avoid_context": ["retirement", "legacy", "grandchildren"]
+  },
+  "adult": {
+    "primary_context": ["career", "money", "marriage", "children", "property", "family", "learning", "health", "leadership"],
+    "avoid_context": []
+  },
+  "mature_adult": {
+    "primary_context": ["leadership", "career_stability", "recognition", "mentoring", "financial_stability", "family_responsibilities", "property", "transition"],
+    "avoid_context": []
+  },
+  "senior": {
+    "primary_context": ["legacy", "mentoring", "family", "companionship", "financial_preservation", "health", "wellbeing", "spirituality"],
+    "avoid_context": ["promotion", "first_job", "exams"]
+  }
+}
