@@ -44,37 +44,46 @@ MOUNT_DOMAIN: dict[str, str] = {
 
 # Per-mark voice: (display name, concrete clause using {domain}, actionable tail).
 MARK_READING: dict[str, tuple[str, str, str]] = {
-    "star": ("a star", "a sudden, powerful surge in {domain}; a standout moment that arrives fast", ""),
-    "cross": ("a cross", "a real test or obstacle to work through in {domain}",
-              " Meet it with patience rather than force, and it turns in your favour."),
-    "grille": ("a grille", "energy that scatters in {domain} when you spread yourself too thin",
-               " Pick one focus and protect it, and this becomes drive instead of drain."),
-    "triangle": ("a triangle", "a genuine talent and sharp judgement in {domain}",
-                 " It is a constructive mark — lean on it."),
-    "square": ("a square", "a protective shield around {domain} that keeps you safe through rough patches", ""),
-    "island": ("an island", "a temporary dip or strain in {domain} for a period",
-               " It passes — treat it as a season to rest and consolidate, not a lasting loss."),
-    "fish": ("a fish (Matsya)", "a highly auspicious promise of prosperity and good fortune in {domain}", ""),
-    "trident": ("a trident (Trishul)", "strongly amplified success and fortune in {domain}",
-                " One of the luckiest marks you can carry here."),
+    # A mark is a modifier, not a standalone promise. The wording intentionally
+    # stays probabilistic so one heuristic CV detection cannot become a life-event
+    # guarantee.
+    "star": ("a star", "traditionally associated with heightened expression or a noticeable surge in {domain}", ""),
+    "cross": ("a cross", "traditionally associated with a test or obstacle to work through in {domain}",
+              " Meet it with patience rather than force."),
+    "grille": ("a grille", "traditionally associated with scattered energy in {domain} when too many demands compete",
+               " Narrowing your focus can help."),
+    "triangle": ("a triangle", "traditionally associated with constructive skill and judgement in {domain}",
+                 " It is best read as supporting evidence, not a guarantee."),
+    "square": ("a square", "traditionally associated with protection or resilience around {domain}", ""),
+    "island": ("an island", "traditionally associated with a temporary dip or strain in {domain}",
+               " Treat it as a period to rest and consolidate."),
+    "fish": ("a fish (Matsya)", "traditionally associated with favourable development in {domain}", ""),
+    "trident": ("a trident (Trishul)", "traditionally associated with amplified confidence, recognition or success in {domain}",
+                " It should be read together with the surrounding lines and mounts."),
 }
+
 
 # Specific (mark, mount) readings that override the generic tone with a concrete,
 # book-aligned statement for that exact placement.
 ZONE_OVERRIDE: dict[tuple[str, str], str] = {
-    ("trident", "apollo"): "it points to lasting fame and real wealth, a standout mark for public success.",
-    ("trident", "jupiter"): "it promises leadership honours and success in your ambitions.",
-    ("star", "apollo"): "it signals brilliant success or sudden fame in your creative and public life.",
-    ("star", "jupiter"): "it marks great ambition fulfilled, a real rise in your standing.",
-    ("cross", "jupiter"): "in this position it is a fortunate sign of a meaningful union or marriage, not an obstacle.",
-    ("fish", "venus"): "near the thumb it adds lasting family prosperity, comfort and warmth at home.",
-    ("triangle", "saturn"): "it shows a sharp aptitude for science, research or the deeper, hidden subjects.",
-    ("square", "saturn"): "it protects you against career setbacks, a safety net in your professional life.",
+    ("trident", "apollo"): "it is traditionally associated with recognition, creative visibility and material progress.",
+    ("trident", "jupiter"): "it is traditionally associated with leadership, confidence and recognition of effort.",
+    ("star", "apollo"): "it is traditionally associated with heightened recognition or creative visibility.",
+    ("star", "jupiter"): "it is traditionally associated with strong ambition and a desire to make an impact.",
+    ("cross", "jupiter"): "in this position it is traditionally treated as a supportive relationship/union indicator rather than a burden.",
+    ("fish", "venus"): "near the thumb it is traditionally associated with family warmth, comfort and material support.",
+    ("triangle", "saturn"): "it is traditionally associated with structured learning, research and deeper subjects.",
+    ("square", "saturn"): "it is traditionally associated with resilience through career setbacks.",
 }
 
 
+
 def _compose_mark_meaning(mtype: str, zone: str) -> str:
-    """A concrete, mount-specific reading for a detected mark (no hedging)."""
+    """Cautious, mount-specific modifier for a detected mark.
+
+    A heuristic mark never creates a standalone promise; surrounding features
+    must confirm the life theme.
+    """
     name, clause, tail = MARK_READING.get(
         mtype, (f"a {mtype} mark", "a distinct influence in {domain}", ""))
     mount_lbl = ZONE_LABEL.get(zone, zone.title())

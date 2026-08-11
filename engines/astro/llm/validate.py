@@ -8,6 +8,7 @@ from typing import Any, Iterable, Optional
 
 from .rules import check_prose, check_prose_fields
 from .facts import public_fact_payload
+from .schemas import QuestionFacts
 
 
 def _walk_strings(obj: Any) -> Iterable[str]:
@@ -84,6 +85,19 @@ def validate_prose_against_facts(prose: Any, facts: Any, *, area: str = "") -> l
         area_hint = getattr(prose, "area", "") or ""
 
     errors.extend(check_prose_fields(_field_pairs(prose), facts, area=area_hint))
+
+    # User-question truth contract: when QuestionFacts came from the full
+    # report, the question prose must be grounded in that same canonical
+    # promise/activation/timing source. This is a validation invariant, not a
+    # prompt instruction.
+    if isinstance(facts, QuestionFacts):
+        if getattr(facts, "truth_source", "") == "full_report_canonical":
+            if getattr(facts, "promise_status", "") != getattr(facts, "canonical_promise_status", ""):
+                errors.append("question_canonical_promise_mismatch")
+            if getattr(facts, "activation_status", "") != getattr(facts, "canonical_activation_status", ""):
+                errors.append("question_canonical_activation_mismatch")
+            if getattr(facts, "timing_can_create_promise", False):
+                errors.append("question_timing_can_create_promise")
 
     # Promise / activation consistency for report cards
     cards_facts = getattr(facts, "cards", None)

@@ -77,12 +77,15 @@ def palm_opening(req: "_Req", dom: Dict[str, Any]) -> str:
         ], d, 3)
 
     spec = ""
-    if life.get("depth") and heart.get("quality"):
+    quality_grade = str(((feats.get("quality") or {}).get("grade") or "fair")).lower()
+    if quality_grade != "poor" and life.get("depth") and heart.get("quality"):
         spec = (f" Your life line runs <b>{prose(life['depth'])}</b> and your heart line reads "
                 f"<b>{prose(heart['quality'])}</b>")
         if head.get("start_relation"):
             spec += f", while your head line begins <b>{prose(head['start_relation'])}</b>"
         spec += " — no two people carry that combination the same way."
+    elif quality_grade == "poor":
+        spec = " The photograph is not clear enough for me to lean on fine line detail, so I keep the reading to the broader patterns that can still be checked."
 
     age_bit = (f" At {req.age}, a fair part of your palm is already written; the rest is still "
                f"forming, and that is the half worth talking about." if req.age else "")
@@ -179,12 +182,20 @@ def build_scores(dom: Dict[str, Any], aspects: Dict[str, Any]) -> List[Dict[str,
             parts.append(MOUNT_SCORE.get(str(mounts[mount_key]), 70))
         return int(round(sum(parts) / len(parts)))
 
-    return [
+    rows = [
         {"k": "Vitality",  "v": blend("life",  "health", "venus")},
         {"k": "Intellect", "v": blend("head",  "mind",   "mercury")},
         {"k": "Emotion",   "v": blend("heart", "love",   "moon")},
         {"k": "Fortune",   "v": blend("fate",  "career", "jupiter")},
     ]
+    grade = str(((dom.get("features") or {}).get("quality") or {}).get("grade") or "fair").lower()
+    if grade == "poor":
+        for row in rows:
+            row["v"] = min(int(row["v"]), 65)
+    elif grade == "fair":
+        for row in rows:
+            row["v"] = min(int(row["v"]), 78)
+    return rows
 
 
 def _aspect_tags(a: Dict[str, Any]) -> List[str]:

@@ -121,17 +121,26 @@ def _photos(raw: dict, dom_key: str) -> str:
 def _quality(dom: dict) -> str:
     feats = dom.get("features") or {}
     q = feats.get("quality") or {}
-    grade = q.get("grade")
-    if not grade or str(grade).lower() in ("a", "excellent", "good"):
+    grade = str(q.get("grade") or "fair").lower()
+    if grade == "good":
         return ""
+    if grade == "poor":
+        return f"""
+<div class="card">
+  <div class="ev-label">About your photos</div>
+  <p class="claim">Some fine palm details could not be measured reliably.</p>
+  <p class="fine">This reading keeps the broad, visible patterns but withholds special marks
+  and age-position timing from an unclear photograph. For a deeper reading, retake the
+  palm straight-on in bright, even light with the full palm and fingers visible.</p>
+</div>"""
     advice = ((feats.get("photo_guidance") or {}).get("suggestions") or [])[:3]
     tips = ("<ul>" + "".join(f"<li>{_e(a)}</li>" for a in advice) + "</ul>") if advice else ""
     return f"""
 <div class="card">
   <div class="ev-label">About your photos</div>
   <p class="claim">Photo grade {_e(grade)}.</p>
-  <p class="fine">A palm reading is only as good as the image. We would rather
-  tell you than quietly read a blurred line.</p>
+  <p class="fine">The main patterns can still be read, but fine marks and age positions are less certain.
+  We have deliberately widened the timing windows rather than implying false precision.</p>
   {tips}
 </div>"""
 
@@ -192,45 +201,35 @@ def _recognition_block(a: dict) -> str:
 
 def _technical_evidence(a: dict, *, paid: bool) -> str:
     pts = [p for p in (a.get("points") or []) if (p.get("text") or "").strip()]
-    if paid:
-        rows = ""
-        for p in pts:
-            traditional = str(p.get("traditional_meaning") or "").strip()
-            evidence = str(p.get("text") or "").strip()
-            if not evidence and not traditional:
-                continue
-            source = p.get("book_label") or p.get("book")
-            page = p.get("page")
-            source_html = (
-                f'<div class="evidence-why"><b>Source:</b> {_e(source)}'
-                f'{f", p. {_e(page)}" if page else ""}</div>'
-                if source else ""
-            )
-            traditional_html = (
-                f'<div class="evidence-why"><b>Traditional reading:</b> '
-                f'{_e(traditional)}</div>'
-                if traditional and traditional != evidence else ""
-            )
-            rows += f"""
-<div class="evidence-row">
-  <div class="evidence-meaning"><b>{_e(evidence or traditional)}</b>
-  {(' <b class="both">&#10003; both hands</b>' if p.get("reinforced") else '')}</div>
-  {traditional_html}
-  {source_html}
-</div>"""
-        if not rows:
-            return ""
+    if not pts:
+        return ""
+    if not paid:
+        n = len(pts)
         return f"""
-<details class="technical-evidence">
-  <summary>Why Graharekha says this</summary>
-  <div>{rows}</div>
-</details>"""
-    n = len(pts)
-    return f"""
 <details class="technical-evidence locked-inline">
   <summary>Why Graharekha says this</summary>
-  <p><span class="lockicon">&bull;</span> {n} palm finding{"s" if n != 1 else ""} support this interpretation.
+  <p><span class="lockicon">&bull;</span> {n} measured palm finding{"s" if n != 1 else ""} support this interpretation.
   The detailed evidence is in the full reading.</p>
+</details>"""
+
+    rows = ""
+    for p in pts:
+        evidence = str(p.get("text") or "").strip()
+        if not evidence:
+            continue
+        confirmation = (' <b class="both">&#10003; both hands</b>' if p.get("reinforced") else "")
+        rows += f"""
+<div class="evidence-row">
+  <div class="evidence-meaning"><b>{_e(evidence)}</b>{confirmation}</div>
+</div>"""
+    if not rows:
+        return ""
+    return f"""
+<details class="technical-evidence">
+  <summary>Why Graharekha says this</summary>
+  <p class="sec-note">The supporting observations are shown in everyday language.
+  Traditional source text and internal rule identifiers are kept out of the customer reading.</p>
+  <div>{rows}</div>
 </details>"""
 
 
@@ -343,9 +342,9 @@ def _hands_compare(conf: dict) -> str:
         return ""
     return f"""
 <h3 class="sec">What may have changed with age</h3>
-<p class="sec-note">Traditionally, the non-dominant hand is read as the underlying
-tendency and the dominant hand as how life has shaped or expressed it. Differences
-between them are often the most useful part to reflect on.</p>
+<p class="sec-note">Your non-dominant hand is treated as the underlying tendency, while
+your dominant hand reflects how life has shaped or expressed it. Where they differ,
+that difference is the most personal part of the reading.</p>
 <div class="card"><ul class="palm-list">{rows}</ul></div>"""
 
 
@@ -441,7 +440,11 @@ def _mark_zone_plain(zone: str) -> str:
 
 
 def _marks(dom: dict, conf: dict, *, paid: bool) -> str:
-    raw_marks = (dom.get("features") or {}).get("special_marks") or []
+    feats = dom.get("features") or {}
+    quality = feats.get("quality") or {}
+    if not bool(quality.get("special_marks_allowed", str(quality.get("grade") or "").lower() == "good")):
+        return ""
+    raw_marks = feats.get("special_marks") or []
     if not raw_marks and not (conf.get("marks") or []):
         return ""
     if paid:
@@ -458,9 +461,9 @@ def _marks(dom: dict, conf: dict, *, paid: bool) -> str:
                 f'{_e(_mark_zone_plain(str(m.get("zone", "palm"))))}</p></li>'
                 for m in raw_marks)
         return f"""
-<h3 class="sec">Your special marks, and what each one means</h3>
-<p class="sec-note">Rarer than the lines, and read differently: a mark modifies
-whatever it sits on.</p>
+<h3 class="sec">Your special marks, and what they add</h3>
+<p class="sec-note">A special mark is treated as a modifier, not a standalone promise.
+Its meaning is read together with the surrounding lines, mounts and both-hand comparison.</p>
 <div class="card"><ul class="palm-list">{rows}</ul></div>"""
 
     named = "".join(
@@ -472,8 +475,8 @@ whatever it sits on.</p>
     n = len(raw_marks)
     return f"""
 <h3 class="sec">Your special marks</h3>
-<p class="sec-note">Turn your hand over and look — these are on it. What they
-mean is the part you have to unlock.</p>
+<p class="sec-note">These are the marks the image analysis could identify with enough confidence.
+Their deeper interpretation is part of the full reading.</p>
 <div class="card">
   <ul class="palm-list plain">{named}</ul>
   <div class="when locked-inline"><span class="lockicon">&bull;</span>
@@ -499,8 +502,8 @@ def _timeline_ahead(ahead: List[dict]) -> str:
 </li>""" for i in ahead)
     return f"""
 <h3 class="sec">What is still ahead of you</h3>
-<p class="sec-note">Dated by where the marking falls on the line, not by a
-calendar. Treat the age as a window, not a day.</p>
+<p class="sec-note">These ages come from the position of the marking on the line, not a calendar date.
+Treat each one as an approximate life-stage window, not a fixed event date.</p>
 <ol class="timeline">{rows}</ol>"""
 
 
@@ -582,9 +585,9 @@ Any gem, metal, or practice tied to your mounts and marks is in the full reading
     <div class="stones-group-label">Don't · ease off</div>
     <ul class="stones">{dont_html}</ul>
   </div>''' if dont_html else ''}
-  <p class="fine">Educational palmistry only. Classical gems/metals are optional —
-  try for a few days and remove if you feel off. Lucky marks (trident, fish, star)
-  are explained in the marks section; they are not turned into extra rituals here.</p>
+  <p class="fine">Educational palmistry only. These are optional traditional practices,
+  not guarantees or medical advice. Material remedies are shown only when the image
+  is clear enough to support the underlying measurement.</p>
 </section>"""
 
 
@@ -758,6 +761,11 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
     sub = f"{age} years · {dom_key}-dominant · both palms analysed"
     if hand_type:
         sub += f" · {hand_type} hand"
+    q_grade = str(((dom.get("features") or {}).get("quality") or {}).get("grade") or "").lower()
+    if q_grade == "poor":
+        sub += " · limited visual confidence"
+    elif q_grade == "fair":
+        sub += " · moderate visual confidence"
 
     body = (_photos(raw, dom_key)
             + _quality(dom)

@@ -19,6 +19,7 @@ from palm_api.confluence import build_confluence
 from palm_api.engine import predict
 from palm_api.reference import build_reference_text
 from palm_api.report_links import enrich_checklist_with_predictions, linked_prediction_count
+from palm_api.quality_gate import apply_quality_gate, apply_checklist_quality_gate
 from palm_api.rules_builder import load_corpus, save_corpus
 
 _corpus: dict[str, Any] | None = None
@@ -80,6 +81,9 @@ def analyze_one(
     if overlay_path:
         save_overlay(path, feats, overlay_path)
     clean = features_for_json(feats)
+    # Quality is a prediction gate, not merely a UI warning. Apply it before
+    # rule matching so unclear special marks cannot create downstream claims.
+    clean = apply_quality_gate(clean)
     pred = predict(clean, corpus=corpus, exclude_rule_ids=exclude_rule_ids)
     shape = feats.get("_warped_shape") or [400, 400]
     palm_size = int(max(shape))
@@ -92,6 +96,7 @@ def analyze_one(
         corpus=corpus,
         lines=clean.get("lines") or {},
     )
+    checklist = apply_checklist_quality_gate(checklist, clean.get("quality") or {})
     pred["linked_quote_count"] = linked_prediction_count(checklist)
     return {
         "path": str(path),

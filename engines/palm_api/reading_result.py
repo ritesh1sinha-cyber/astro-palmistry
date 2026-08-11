@@ -142,12 +142,21 @@ def build_reading_result(
             "confidence": "moderate",
         })
 
+    active_features = (raw.get(active_hand) or {}).get("features") or {}
+    active_quality = active_features.get("quality") or {}
+    active_grade = str(active_quality.get("grade") or "fair").lower()
+    active_conf = {"good": 0.90, "fair": 0.70, "poor": 0.40}.get(active_grade, 0.70)
+
     return {
         "person": person or {},
         "measurement_quality": {
-            "photo_grade": (measurements_by_hand.get(active_hand) or {})
-            .get("quality", {}).get("grade", "fair"),
-            "confidence": 0.78,
+            "photo_grade": active_grade,
+            "confidence": active_conf,
+            "interpretation_confidence": active_quality.get("interpretation_confidence", "moderate"),
+            "special_marks_allowed": bool(active_quality.get("special_marks_allowed", active_grade == "good")),
+            "future_timing_allowed": bool(active_quality.get("future_timing_allowed", active_grade != "poor")),
+            "age_precision": active_quality.get("age_precision", "window"),
+            "quality_note": active_quality.get("quality_note", ""),
         },
         "measurements": measurements_by_hand,
         "canonical_signals": all_signals,

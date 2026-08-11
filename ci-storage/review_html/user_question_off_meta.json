@@ -1,0 +1,142 @@
+{
+  "design": "cards-v2",
+  "answer": {
+    "label": "No clear window for a job change in the next 7 years",
+    "confidence": "moderate",
+    "direction": "mixed"
+  },
+  "question": "Will my career improve in the next two years?",
+  "area": "",
+  "price": 1499,
+  "llm": {
+    "enabled": false,
+    "stats": {
+      "accepted": 0,
+      "rejected": 0,
+      "errors": 0
+    },
+    "free": {
+      "stats": {
+        "accepted": 0,
+        "rejected": 0,
+        "errors": 0
+      },
+      "fallback_used": false
+    },
+    "paid": {
+      "stats": {
+        "accepted": 0,
+        "rejected": 0,
+        "errors": 0
+      },
+      "fallback_used": false
+    }
+  },
+  "_facts": {
+    "kind": "user_question",
+    "schema_version": "1.0",
+    "engine_version": "astro-2026.08.11-qcanonical-v2",
+    "report_id": "",
+    "facts_hash": "754f08ca8a7d0fa6a540832e",
+    "first_name": "Meera",
+    "age_band": "adult",
+    "access": "paid",
+    "question": "Will my career improve in the next two years?",
+    "area_key": "career",
+    "direction": "mixed",
+    "confidence": "low",
+    "promise_status": "insufficient_evidence",
+    "activation_status": "mixed",
+    "n_methods": 8,
+    "n_up": 3,
+    "n_down": 3,
+    "route": {
+      "domain": "career",
+      "primary_house": 10,
+      "topic": "career"
+    },
+    "best": null,
+    "nearest": null,
+    "windows": [],
+    "support_n": 3,
+    "caution_n": 3,
+    "manifestation_ids": [],
+    "allowed_planets": [],
+    "allowed_dates": [],
+    "truth_source": "full_report_canonical",
+    "canonical_area_key": "career",
+    "canonical_promise_status": "insufficient_evidence",
+    "canonical_activation_status": "mixed",
+    "canonical_direction": "mixed",
+    "canonical_confidence": "low",
+    "canonical_agreement": "weak",
+    "canonical_evidence": [
+      {
+        "family": "other",
+        "polarity": "caution",
+        "text_id": "question-canonical:caution:be4951c6",
+        "text": "rules it,",
+        "semantic_tags": []
+      },
+      {
+        "family": "other",
+        "polarity": "caution",
+        "text_id": "question-canonical:caution:f0ec8be9",
+        "text": "house strength 24 of 56 \u2014 below average",
+        "semantic_tags": []
+      },
+      {
+        "family": "other",
+        "polarity": "caution",
+        "text_id": "question-canonical:caution:38581be7",
+        "text": "Sun, Venus, Rahu sit here",
+        "semantic_tags": []
+      },
+      {
+        "family": "other",
+        "polarity": "support",
+        "text_id": "question-canonical:support:a3c8a4a0",
+        "text": "Taking on greater responsibility, ownership or follow-through.",
+        "semantic_tags": []
+      },
+      {
+        "family": "other",
+        "polarity": "support",
+        "text_id": "question-canonical:support:4144c195",
+        "text": "Greater professional responsibility and ownership.",
+        "semantic_tags": []
+      },
+      {
+        "family": "other",
+        "polarity": "support",
+        "text_id": "question-canonical:support:4144c195",
+        "text": "Greater professional responsibility and ownership.",
+        "semantic_tags": []
+      },
+      {
+        "family": "other",
+        "polarity": "caution",
+        "text_id": "question-canonical:caution:4144c195",
+        "text": "Greater professional responsibility and ownership.",
+        "semantic_tags": []
+      },
+      {
+        "family": "other",
+        "polarity": "caution",
+        "text_id": "question-canonical:caution:a3c8a4a0",
+        "text": "Taking on greater responsibility, ownership or follow-through.",
+        "semantic_tags": []
+      }
+    ],
+    "canonical_manifestations": [],
+    "canonical_timing": [],
+    "timing_can_create_promise": false
+  },
+  "paidSections": [
+    "The verdict \u2014 what your chart actually says",
+    "Timing \u2014 dated windows when to move",
+    "Watch-out rules for this question",
+    "Chart-targeted remedy"
+  ],
+  "teasers": {}
+}

@@ -377,6 +377,104 @@ def _plain_agreement(text: str) -> str:
 
 # ---------------------------------------------------------------------------
 
+# The question tab is a consumer of the full-report confluence, not a second
+# astrology engine. These are the full-report life areas available for lookup.
+_CANONICAL_AREA_HOUSES = {
+    "career": 10,
+    "money": 2,
+    "love": 7,
+    "home": 4,
+    "children": 5,
+    "health": 1,
+    "learning": 9,
+    "inner": 12,
+}
+
+
+def _canonical_area_for_topic(topic_key: str, area_key: str = "") -> tuple[str, int]:
+    explicit = (area_key or "").strip().lower()
+    if explicit in _CANONICAL_AREA_HOUSES:
+        return explicit, _CANONICAL_AREA_HOUSES[explicit]
+    topic_area = {
+        "job_change": "career",
+        "promotion": "career",
+        "business": "career",
+        "money": "money",
+        "property": "home",
+        "foreign": "inner",
+        "study": "learning",
+        "health": "health",
+        "children": "children",
+        "marriage": "love",
+    }.get(topic_key, "")
+    if topic_area:
+        return topic_area, _CANONICAL_AREA_HOUSES[topic_area]
+    return "", 0
+
+
+def _build_canonical_question_result(
+    pc: dict,
+    *,
+    topic_key: str,
+    area_key: str,
+    today: date,
+) -> Optional[dict]:
+    """Fetch the same CanonicalAreaResult used by full-report cards.
+
+    No question-specific confluence score is allowed to overwrite this object.
+    """
+    canonical_area, house = _canonical_area_for_topic(topic_key, area_key)
+    if not canonical_area or not house:
+        return None
+    try:
+        from canonical_result import build_area_result
+        return build_area_result(pc, canonical_area, house, today=today)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[question_answer] canonical lookup failed: {exc}", flush=True)
+        return None
+
+
+def _question_windows_from_canonical(canonical: dict, start: date) -> list[dict]:
+    timing = canonical.get("timing") or {}
+    rows = (
+        list(timing.get("featured_windows") or [])
+        or list(timing.get("strong_windows") or [])
+        or list(timing.get("validated_windows") or [])
+        or list(timing.get("opportunity_windows") or [])
+    )
+    out: list[dict] = []
+    for w in rows:
+        if not isinstance(w, dict) or not w.get("start"):
+            continue
+        try:
+            if w["start"] < start:
+                continue
+        except TypeError:
+            pass
+        promise_status = str(
+            w.get("promise_status")
+            or (canonical.get("promise") or {}).get("status")
+            or "insufficient_evidence"
+        )
+        strong = bool(
+            w.get("aligned")
+            and promise_status in ("strongly_supported", "supported")
+            and w.get("confidence") in ("high", "very high")
+        )
+        out.append({
+            **w,
+            "strong": strong,
+            "period_hits": ["validated_confluence"] if w.get("period_owns_area") else [],
+            "dasha_dir": w.get("dasha", "mixed"),
+            "period": w.get("dasha_label", ""),
+        })
+    out.sort(key=lambda x: (-float(x.get("score") or 0), x.get("start")))
+    return out
+
+
+
+# ---------------------------------------------------------------------------
+
 def answer(pc: dict, question: str, *, start: Optional[date] = None,
            years: int = 7, lat: Optional[float] = None,
            lon: Optional[float] = None, tz: float = 5.5,
@@ -398,8 +496,23 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
         "marriage": "love", "legal": "legal",
     }
     area_key = _TOPIC_AREA.get(topic.key) or _area_for(primary)
-    promise = CF.area_verdict(pc, area_key, primary)
-    promise = CF.merge_semantic_verdict(area_key, promise)
+
+    # IMPORTANT: for all life areas represented in the full report, the
+    # question tab reads the exact same canonical confluence/promise/activation
+    # result. The question router may refine wording, but it cannot create a
+    # second promise or timing truth.
+    canonical = _build_canonical_question_result(
+        pc, topic_key=topic.key, area_key=area_key, today=start)
+    if canonical:
+        area_key = str(canonical.get("area") or area_key)
+        promise = dict(canonical.get("promise") or {})
+        activation = dict(canonical.get("activation") or {})
+        windows = _question_windows_from_canonical(canonical, start)
+    else:
+        promise = CF.area_verdict(pc, area_key, primary)
+        promise = CF.merge_semantic_verdict(area_key, promise)
+        activation = {}
+        windows = []
 
     deep: dict = {}
     try:
@@ -414,42 +527,38 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
     owners.discard(None)
     keys = owners | set(topic.significators)
 
-    segments = RT.transit_segments(pc, start=start, years=years)
-
-    windows = []
-    for planet, segs in segments.items():
-        for seg in segs:
-            if seg.get("house") not in topic.houses:
-                continue
-            when = max(seg.get("start"), start)
-            if when > start + timedelta(days=365 * years):
-                continue
-            dasha = CF.dasha_confluence(pc, when)
-            vim = CF.vimshottari_at(pc, when)
-            yog = (CF.yogini_at(pc, when) or {}).get("lord", "")
-            running = [x for x in (vim.get("md"), vim.get("ad"), yog) if x]
-            # does the period itself own this question?
-            period_hits = sorted({p for p in running if p in keys})
-            bav = seg.get("bav", 0)
-
-            score = (0.9 * len(period_hits)
-                     + (1.2 if bav >= 5 else (-1.0 if bav <= 3 else 0))
-                     + (0.8 if seg["house"] == primary else 0.3)
-                     + 0.5 * promise["score"]
-                     + (0.6 if dasha["direction"] == "up" else
-                        -0.6 if dasha["direction"] == "down" else 0))
-            windows.append({
-                "start": when, "end": seg.get("end"),
-                "planet": planet, "sign": seg.get("sign"), "house": seg["house"],
-                "bav": bav, "period": f"{vim.get('md','')}–{vim.get('ad','')}",
-                "yogini": yog, "period_hits": period_hits,
-                "dasha_dir": dasha["direction"],
-                "dasha_label": " · ".join(r["label"] for r in dasha["readings"]),
-                "score": round(score, 2),
-                "strong": bool(period_hits) and bav >= 5,
-            })
-
-    windows.sort(key=lambda w: -w["score"])
+    if not canonical:
+        segments = RT.transit_segments(pc, start=start, years=years)
+        for planet, segs in segments.items():
+            for seg in segs:
+                if seg.get("house") not in topic.houses:
+                    continue
+                when = max(seg.get("start"), start)
+                if when > start + timedelta(days=365 * years):
+                    continue
+                dasha = CF.dasha_confluence(pc, when)
+                vim = CF.vimshottari_at(pc, when)
+                yog = (CF.yogini_at(pc, when) or {}).get("lord", "")
+                running = [x for x in (vim.get("md"), vim.get("ad"), yog) if x]
+                period_hits = sorted({p for p in running if p in keys})
+                bav = seg.get("bav", 0)
+                score = (0.9 * len(period_hits)
+                         + (1.2 if bav >= 5 else (-1.0 if bav <= 3 else 0))
+                         + (0.8 if seg["house"] == primary else 0.3)
+                         + 0.5 * promise["score"]
+                         + (0.6 if dasha["direction"] == "up" else
+                            -0.6 if dasha["direction"] == "down" else 0))
+                windows.append({
+                    "start": when, "end": seg.get("end"),
+                    "planet": planet, "sign": seg.get("sign"), "house": seg["house"],
+                    "bav": bav, "period": f"{vim.get('md','')}–{vim.get('ad','')}",
+                    "yogini": yog, "period_hits": period_hits,
+                    "dasha_dir": dasha["direction"],
+                    "dasha_label": " · ".join(r["label"] for r in dasha["readings"]),
+                    "score": round(score, 2),
+                    "strong": bool(period_hits) and bav >= 5,
+                })
+        windows.sort(key=lambda w: -w["score"])
     best = windows[0] if windows else None
 
     # Someone asking "when" wants two different things and the strongest
@@ -463,50 +572,56 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
     if nearest and best and nearest["start"] == best["start"]:
         nearest = None
 
-    # Lines for the free view: which planet owns each house of the question,
-    # where it sits, in what condition. Facts, no conclusion drawn.
+    # Customer evidence comes from the canonical result whenever available.
+    # Never expose raw house/rule/classical working merely because the question
+    # engine calculated it for internal routing.
     chart_lines = []
-    for h in topic.houses:
-        info = hl.get(str(h)) or {}
-        lord = info.get("lord", "")
-        if not lord:
-            continue
-        dig = _human_dignity(str(info.get("lord_dignity") or ""))
-        sits = info.get("lord_house")
-        detail = dig
-        if sits:
-            detail += ", placed in your " + _ord(sits) + " house"
-        if lord in topic.significators:
-            detail += "; also a natural significator for this question"
-        chart_lines.append((_ord(h) + " house — " + lord, detail))
-
-    # Deep-dive layer: divisional chart + classical rules for this question
-    for fact in (deep.get("house_facts") or [])[:2]:
-        chart_lines.append(("Your chart", _plain_line(fact)))
-    varga = deep.get("varga") or {}
-    vdiag = (varga.get("diagnosis") or "").strip()
-    if vdiag:
-        vname = (varga.get("name") or varga.get("code") or "Divisional chart").strip()
-        chart_lines.append((vname, _plain_line(vdiag)))
-    for rule in (deep.get("rules_pos") or [])[:2]:
-        chart_lines.append(("Classical rule", _plain_line(rule)))
-    for rule in (deep.get("rules_neg") or [])[:1]:
-        chart_lines.append(("Watch", _plain_line(rule)))
-    if deep.get("transit", {}).get("note"):
-        chart_lines.append(("Sky now", _plain_line(deep["transit"]["note"])))
-    cw = deep.get("current_window") or {}
-    if cw.get("word"):
-        chart_lines.append((
-            "Period outlook",
-            f"{cw.get('period', 'Now')}: {cw.get('word', '')}"
-            + (f" — {cw['reason'][:80]}" if cw.get("reason") else "")))
+    if canonical:
+        why = canonical.get("why") or {}
+        for text in list(why.get("supporting") or [])[:2]:
+            chart_lines.append(("Support", str(text)[:220]))
+        for text in list(why.get("caution") or [])[:1]:
+            chart_lines.append(("Watch", str(text)[:220]))
+    else:
+        for h in topic.houses:
+            info = hl.get(str(h)) or {}
+            lord = info.get("lord", "")
+            if not lord:
+                continue
+            dig = _human_dignity(str(info.get("lord_dignity") or ""))
+            sits = info.get("lord_house")
+            detail = dig
+            if sits:
+                detail += ", placed in your " + _ord(sits) + " house"
+            if lord in topic.significators:
+                detail += "; also a natural significator for this question"
+            chart_lines.append((_ord(h) + " house — " + lord, detail))
+        for fact in (deep.get("house_facts") or [])[:2]:
+            chart_lines.append(("Your chart", _plain_line(fact)))
+        varga = deep.get("varga") or {}
+        vdiag = (varga.get("diagnosis") or "").strip()
+        if vdiag:
+            vname = (varga.get("name") or varga.get("code") or "Divisional chart").strip()
+            chart_lines.append((vname, _plain_line(vdiag)))
+        for rule in (deep.get("rules_pos") or [])[:2]:
+            chart_lines.append(("Classical rule", _plain_line(rule)))
+        for rule in (deep.get("rules_neg") or [])[:1]:
+            chart_lines.append(("Watch", _plain_line(rule)))
+        if deep.get("transit", {}).get("note"):
+            chart_lines.append(("Sky now", _plain_line(deep["transit"]["note"])))
+        cw = deep.get("current_window") or {}
+        if cw.get("word"):
+            chart_lines.append((
+                "Period outlook",
+                f"{cw.get('period', 'Now')}: {cw.get('word', '')}"
+                + (f" — {cw['reason'][:80]}" if cw.get("reason") else "")))
 
     vim_now = CF.vimshottari_at(pc, start)
     yog_now = (CF.yogini_at(pc, start) or {}).get("lord", "")
     now_label = f"{vim_now.get('md','')}-{vim_now.get('ad','')}" + (
         f", lunar cycle on {yog_now}" if yog_now else "")
 
-    strong = [w for w in windows if w["strong"]]
+    strong = [w for w in windows if w.get("strong")]
 
     route_info: dict = {}
     if route is not None:
@@ -527,21 +642,33 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
         except Exception:  # noqa: BLE001
             route_info = {}
 
-    votes = promise.get("votes") or []
-    n_methods = len(votes)
-    n_up = sum(1 for v in votes if getattr(v, "value", 0) > 0.3)
-    n_down = sum(1 for v in votes if getattr(v, "value", 0) < -0.3)
+    if canonical:
+        why = canonical.get("why") or {}
+        rows = list(why.get("rows") or [])
+        n_methods = len(rows)
+        n_up = int(why.get("support") or sum(1 for r in rows if r.get("direction") == "support"))
+        n_down = int(why.get("caution_count") or sum(1 for r in rows if r.get("direction") == "caution"))
+    else:
+        votes = promise.get("votes") or []
+        n_methods = len(votes)
+        n_up = sum(1 for v in votes if getattr(v, "value", 0) > 0.3)
+        n_down = sum(1 for v in votes if getattr(v, "value", 0) < -0.3)
 
     area_report = None
-    try:
-        import area_report as AR
-        area_report = AR.build_area(
-            pc, area_key, primary, today=start, question=question)
-    except Exception:  # noqa: BLE001
-        area_report = None
+    if not canonical:
+        try:
+            import area_report as AR
+            area_report = AR.build_area(
+                pc, area_key, primary, today=start, question=question)
+        except Exception:  # noqa: BLE001
+            area_report = None
 
     prediction = None
-    if area_report:
+    if canonical:
+        # Canonical result is already the report's prediction truth. Never
+        # calculate a second area prose path for the same question.
+        area_report = None
+    elif area_report:
         import predict_voice as PV
         prediction = PV.Prediction(
             scenario=area_report.prediction,
@@ -578,7 +705,10 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
             "deep_verdict": (deep.get("overall") or {}).get("text", ""),
             "route": route_info, "area_key": area_key, "area": area or "",
             "n_methods": n_methods, "n_up": n_up, "n_down": n_down,
-            "prediction": prediction, "area_report": area_report}
+            "prediction": prediction, "area_report": area_report,
+            "activation": activation,
+            "canonical_result": canonical,
+            "truth_source": "full_report_canonical" if canonical else "question_specific_fallback"}
 
 
 def _area_for(house: int) -> str:
@@ -640,6 +770,23 @@ def _human_question_evidence(result: dict) -> list[str]:
     return out[:3]
 
 
+def _topic_customer_note(topic_key: str) -> str:
+    notes = {
+        "job_change": "The reading considers both the conditions around your current work and the possibility of moving into a different role.",
+        "promotion": "The reading focuses on professional growth, responsibility and recognition rather than assuming a promotion title.",
+        "business": "The reading focuses on the chart's support for independent work, commercial activity and professional growth.",
+        "money": "The reading focuses on income, financial stability and gains rather than treating one lucky event as guaranteed.",
+        "property": "The reading focuses on home and property-related potential and the timing around it.",
+        "foreign": "The reading focuses on movement, distance and opportunities connected with a different place.",
+        "study": "The reading focuses on learning, qualifications, guidance and the ability to apply what you learn.",
+        "health": "The reading focuses on wellbeing, routine and recovery rather than diagnosis.",
+        "children": "The reading focuses on child- and family-related potential, adjusted to your life stage.",
+        "marriage": "The reading focuses on relationships, partnership and commitment without assuming your current relationship status.",
+        "legal": "The reading focuses on the practical direction of the matter and the periods that require more care.",
+    }
+    return notes.get(topic_key, "The reading focuses on the part of life most relevant to your question.")
+
+
 def render_free(result: dict, *, name: str = "", price: int = 1499,
                 prose: Optional[dict] = None) -> str:
     """Free half: plain prediction + one Why line; verdict and dates locked."""
@@ -663,6 +810,11 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
         main_pred = "".join(parts)
     elif pred is not None:
         main_pred = pred.html()
+    elif isinstance(result.get("canonical_result"), dict) and result.get("canonical_result"):
+        cr = result.get("canonical_result") or {}
+        backing = str(cr.get("backing") or "").strip()
+        if backing:
+            main_pred = f'<div class="prediction"><p class="pred-scenario">{_e(backing)}</p></div>'
     else:
         try:
             import predict_voice as PV
@@ -698,7 +850,7 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
   {lede_html}
 
   <div class="qa-promise">
-    <b>{label}</b> is read from your {houses} houses. {note}
+    <b>{label}</b> is assessed from the parts of your chart that govern this question. {note}
   </div>
 
   {main_pred}
@@ -730,7 +882,7 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
         lede_html=lede_html,
         label=_e(topic.label),
         houses=_e(", ".join(_ord(h) for h in topic.houses)),
-        note=_e(topic.note),
+        note=_e(_topic_customer_note(topic.key)),
         main_pred=main_pred,
         n=len(windows), horizon=result["horizon"], price=price)
 
@@ -785,7 +937,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
         if promise["direction"] == "down" and not best["strong"]:
             lead = ("This is possible but your chart does not favour it. "
                     "The window below is the best of a weak set.")
-    deep_txt = (result.get("deep_verdict") or "").strip()
+    deep_txt = "" if result.get("canonical_result") else (result.get("deep_verdict") or "").strip()
     if deep_txt:
         lead = f"{deep_txt} {lead}"
 
@@ -796,8 +948,8 @@ def render(result: dict, *, name: str = "", paid: bool = False,
                     f"{_pretty(w['end'])}.")
         if (w.get("bav") or 0) >= 5:
             return (f"An opening appears between {_pretty(w['start'])} and "
-                    f"{_pretty(w['end'])}, though your chart does not fully "
-                    f"guarantee the outcome.")
+                    f"{_pretty(w['end'])}, but this remains an opportunity rather "
+                    f"than a confirmed outcome.")
         return (f"A partial window runs from {_pretty(w['start'])} to "
                 f"{_pretty(w['end'])} — expect movement, not a finished result.")
 
@@ -876,6 +1028,13 @@ def render(result: dict, *, name: str = "", paid: bool = False,
         main_pred = (
             f'<div class="prediction"><p class="pred-scenario">'
             f'{_e(promise["headline"])}</p></div>')
+    elif isinstance(result.get("canonical_result"), dict):
+        cr = result.get("canonical_result") or {}
+        backing = str(cr.get("backing") or "").strip()
+        if backing:
+            main_pred = (
+                f'<div class="prediction"><p class="pred-scenario">'
+                f'{_e(backing)}</p></div>')
 
     # The house-by-house, planet-by-planet reasoning was always computed in
     # answer() but never shown — the reader only saw a verdict and dates,
@@ -918,7 +1077,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   {main_pred}
   <p class="qa-promise"><b>{_e(promise_heading)}</b>
   {_e(topic.label)} reads <b>{_e(promise['direction'])}</b> in your chart —
-  {_e(promise_conf)}. {_e(topic.note)}</p>
+  {_e(promise_conf)}. {_e(_topic_customer_note(topic.key))}</p>
   {now_line}
   {house_block}
   <h3 class="sec">Timing — when to move</h3>

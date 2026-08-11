@@ -89,6 +89,12 @@ def build_palm_remedies(feats: dict[str, Any]) -> list[PalmRemedy]:
 
     feats = feats or {}
     mounts = feats.get("mounts") or {}
+    quality = feats.get("quality") or {}
+    grade = str(quality.get("grade") or "fair").lower()
+    # Gemstone advice requires a clear image. A fair/poor image may still support
+    # a behavioural suggestion, but not a material recommendation based on a
+    # potentially misread mount.
+    allow_gemstones = grade == "good"
     marks = feats.get("special_marks") or []
     out: list[PalmRemedy] = []
     seen: set[str] = set()
@@ -103,6 +109,8 @@ def build_palm_remedies(feats: dict[str, Any]) -> list[PalmRemedy]:
     # --- gems for flat / under-developed mounts (corpus) -------------------
     gem_picks: list[tuple[str, str, str, str]] = []
     for mount, (gem, action) in _FLAT_GEM.items():
+        if not allow_gemstones:
+            break
         if _mount_level(mounts, mount) != "flat":
             continue
         # Avoid double-picking moon/luna
@@ -175,7 +183,7 @@ def build_palm_remedies(feats: dict[str, Any]) -> list[PalmRemedy]:
         add(
             "do",
             f"{action} (about {_life(zone)}).",
-            f"Coded mark rule for a {kind} near the {zone} mount.",
+            f"A measured {kind} mark is associated with this focus area; use the practice as optional self-reflection.",
             "special_marks.MARK_READING",
         )
 
@@ -196,5 +204,5 @@ def build_palm_remedies(feats: dict[str, Any]) -> list[PalmRemedy]:
 
 
 def format_remedy_line(r: PalmRemedy) -> str:
-    """One readable line: action first, then short reason + source."""
-    return f"{r.action} Why: {r.reason} [{r.source}]"
+    """Customer-safe remedy line; internal source IDs never reach HTML."""
+    return f"{r.action} Why: {r.reason}"

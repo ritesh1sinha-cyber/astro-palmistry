@@ -302,8 +302,8 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
   {avoid_group}
   <p class="fine">A remedy is not a lever that overrides the chart. It works the
   way preparation works — it changes what you are ready for when the timing
-  turns. If you choose to follow a traditional trial approach, test the yellow
-  stone for three days before deciding whether to continue.</p>
+  turns. If you choose a trial approach, follow the specific trial period
+  shown for that stone before deciding whether to continue.</p>
 </section>"""
 
     # --- free view: refusals only ------------------------------------------

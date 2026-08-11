@@ -79,6 +79,14 @@ _CLASSICAL_RAW = re.compile(
     r"jamakkol|prashna kundali|case-book|technical reason)\b",
     re.I,
 )
+_PALM_RAW = re.compile(
+    r"\b(?:mount of (?:jupiter|saturn|sun|apollo|mercury|venus|moon|mars)|"
+    r"traditional reading|classical text|classical rule|case[- ]?book|"
+    r"fate line|head line|heart line|life line|special mark|"
+    r"promises? leadership|promises? success|promises? fame|"
+    r"sudden,? powerful surge|standout moment that arrives fast)\b",
+    re.I,
+)
 
 SYSTEM_PROMPT = """\
 You are a report-language generator, not an astrology calculator.
@@ -120,8 +128,12 @@ def system_prompt_for(kind: str) -> str:
         "user_question": (
             f"Prompt version: {prompt_version('user_question')}. "
             "Fields: opening, answer, timing, action. "
-            "Answer only from QuestionFacts. If no validated window supports the "
-            "asked outcome, say the facts do not support a high-confidence claim."
+            "QuestionFacts are projected from the full-report CanonicalAreaResult "
+            "whenever truth_source=full_report_canonical. Treat canonical promise, "
+            "activation, direction and timing as immutable. Do not recalculate the "
+            "chart or create a second timing/confluence interpretation. If no "
+            "validated window supports the asked outcome, say the facts do not "
+            "support a high-confidence claim."
         ),
         "horary": (
             f"Prompt version: {prompt_version('horary')}. "
@@ -131,7 +143,12 @@ def system_prompt_for(kind: str) -> str:
         "palm": (
             f"Prompt version: {prompt_version('palm')}. "
             "Fields: opening plus per-aspect headline/why/points. "
-            "Do not invent ages, titles, or life events not in PalmFacts."
+            "Do not invent ages, titles, or life events not in PalmFacts. "
+            "Treat every palm mark as a modifier, never as a standalone promise. "
+            "Do not claim fame, wealth, marriage, leadership or a sudden life event from one mark. "
+            "For poor photo quality, do not mention special marks or age timing. "
+            "For fair photo quality, use cautious language and wider life-stage windows. "
+            "Do not mention Mount of names, raw source/book labels, or internal rule IDs."
         ),
         "chat": (
             f"Prompt version: {prompt_version('chat')}. "
@@ -242,6 +259,34 @@ def check_prose(text: str, facts: Any = None, *, area: str = "") -> list[str]:
         fails.append("flattery")
     if _CLASSICAL_RAW.search(t):
         fails.append("classical_raw")
+    if isinstance(facts, dict):
+        palm_payload = facts
+    else:
+        try:
+            palm_payload = public_fact_payload(facts) if facts is not None else {}
+        except Exception:
+            palm_payload = {}
+    palm_kind = palm_payload.get("kind") if isinstance(palm_payload, dict) else getattr(facts, "kind", "")
+    palm_grade = str(
+        palm_payload.get("photo_grade") if isinstance(palm_payload, dict)
+        else getattr(facts, "photo_grade", "") or ""
+    ).lower()
+    palm_marks_allowed = bool(
+        palm_payload.get("special_marks_allowed") if isinstance(palm_payload, dict)
+        else getattr(facts, "special_marks_allowed", False)
+    )
+    if palm_kind == "palm":
+        if _PALM_RAW.search(t):
+            fails.append("palm_technical_or_overclaim_language")
+        mark_words = re.search(
+            r"\b(?:trident|trishul|star|grille|fish|matsya|triangle|square|island|cross)\b",
+            t, re.I,
+        )
+        if mark_words and not palm_marks_allowed:
+            fails.append("palm_mark_not_supported_by_quality")
+        if palm_grade == "poor":
+            if re.search(r"\b(?:age|aged)\s+\d{1,3}\b", t, re.I):
+                fails.append("palm_poor_photo_overreach")
     for term in _SANSKRIT:
         if re.search(rf"\b{term}\b", low):
             fails.append(f"sanskrit:{term}")

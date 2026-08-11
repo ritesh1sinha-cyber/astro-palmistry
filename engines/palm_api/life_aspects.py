@@ -24,12 +24,12 @@ from palm_api.report_format import book_label
 ASPECTS: list[tuple[str, str]] = [
     ("character", "Character & Temperament"),
     ("mind", "Mind & Intellect"),
-    ("love", "Love, Marriage & Emotions"),
+    ("love", "Relationships & Emotions"),
     ("career", "Career & Destiny"),
     ("wealth", "Wealth & Fortune"),
     ("health", "Health & Vitality"),
     ("travel", "Travel, Change & Imagination"),
-    ("fortune", "Special Marks & Destiny Signs"),
+    ("fortune", "Special Marks & Direction"),
 ]
 
 
@@ -359,6 +359,8 @@ def build_life_aspects(
     if not dom:
         return []
     non = blocks.get(non_key)
+    dom_quality = ((dom.get("features") or {}).get("quality") or {})
+    quality_grade = str(dom_quality.get("grade") or "fair").lower()
 
     dv = View((dom.get("features") or {}))
     nv = View((non.get("features") or {})) if non else None
@@ -428,6 +430,15 @@ def build_life_aspects(
 
         reinforced = sum(1 for p in points if p.get("reinforced"))
         level, level_note = _strength(len(points), reinforced)
+        # Image quality caps the confidence of the interpretation. A poor image
+        # cannot legitimately produce a strong customer verdict even if several
+        # heuristic rules happen to match the same uncertain feature.
+        if quality_grade == "poor":
+            level = "tentative"
+            level_note = "Tentative — the photograph is not clear enough to support a stronger palm verdict."
+        elif quality_grade == "fair" and level == "strong":
+            level = "moderate"
+            level_note = "Moderate — the pattern is supported, but fine visual detail is less certain in this photograph."
 
         # A human-facing summary is intentionally separate from the technical
         # rule text. It tells the reader what the selected signs could look like

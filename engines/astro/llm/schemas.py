@@ -153,6 +153,21 @@ class QuestionFacts(BaseModel):
     allowed_planets: list[str] = Field(default_factory=list, max_length=8)
     allowed_dates: list[str] = Field(default_factory=list, max_length=12)
 
+    # Canonical full-report truth. These are a projection of the same
+    # CanonicalAreaResult used by the full report; QuestionFacts must not
+    # become a second prediction engine.
+    truth_source: Literal["full_report_canonical", "question_specific_fallback"] = "question_specific_fallback"
+    canonical_area_key: str = ""
+    canonical_promise_status: str = ""
+    canonical_activation_status: str = ""
+    canonical_direction: Direction = "mixed"
+    canonical_confidence: Confidence = "low"
+    canonical_agreement: Agreement = "weak"
+    canonical_evidence: list[EvidenceFact] = Field(default_factory=list, max_length=8)
+    canonical_manifestations: list[str] = Field(default_factory=list, max_length=6)
+    canonical_timing: list[WindowFact] = Field(default_factory=list, max_length=6)
+    timing_can_create_promise: bool = False
+
 
 class HoraryLaneFact(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -187,6 +202,7 @@ class PalmAspectFacts(BaseModel):
     model_config = ConfigDict(extra="forbid")
     aspect: str
     direction: Direction = "mixed"
+    strength: str = "tentative"
     confidence: Confidence = "low"
     signal_ids: list[str] = Field(default_factory=list, max_length=12)
     point_ids: list[str] = Field(default_factory=list, max_length=8)
@@ -207,6 +223,11 @@ class PalmFacts(BaseModel):
     access: Literal["free", "paid"] = "free"
     dominant_hand: str = "right"
     photo_grade: str = "fair"
+    photo_confidence: Confidence = "moderate"
+    special_marks_allowed: bool = False
+    future_timing_allowed: bool = True
+    age_precision: str = "window"
+    quality_note: str = Field(default="", max_length=180)
     aspects: list[PalmAspectFacts] = Field(default_factory=list)
     future_windows: list[dict[str, Any]] = Field(default_factory=list, max_length=6)
     special_mark_ids: list[str] = Field(default_factory=list, max_length=8)

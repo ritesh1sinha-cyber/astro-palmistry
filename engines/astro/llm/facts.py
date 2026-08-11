@@ -26,7 +26,7 @@ from .schemas import (
     WindowFact,
 )
 
-ENGINE_VERSION = "astro-2026.08.11"
+ENGINE_VERSION = "astro-2026.08.11-qcanonical-v2"
 
 _ID_RE = re.compile(r"[^a-z0-9]+")
 _CLASSICAL_RAW = re.compile(
@@ -39,7 +39,11 @@ _CLASSICAL_RAW = re.compile(
     r"sub[- ]lord|karakamsa|atmakaraka|"
     r"cusp|bhava|nakshatra|varga|lagna|"
     r"jamakkol|prashna kundali|dasha|bhukti|"
-    r"case-book|classical rule|technical reason)\b",
+    r"case-book|classical rule|technical reason|"
+    r"\b(?:spouse|husband|wife)\s*:" 
+    r"|\b(?:watch|vulnerability|sensitive)\b.{0,40}\b(?:brain|head|heart|"
+    r"gut|intestine|kidney|liver|lungs|circulation|reproductive|"
+    r"stomach|calves|ankles)\b)",
     re.I,
 )
 _PLANET_TOKEN = re.compile(
@@ -296,6 +300,27 @@ def project_for_access(facts: T, access: str) -> T:
         # Question/Horary/Palm may carry allowed_dates — clear on free
         if "allowed_dates" in data:
             data["allowed_dates"] = []
+        # Canonical question timing is also paid data. Strip exact dates from
+        # the canonical projection, otherwise the LLM could leak a paid window
+        # through QuestionFacts.canonical_timing even though best/windows were
+        # already redacted.
+        if data.get("canonical_timing"):
+            data["canonical_timing"] = [
+                {
+                    **w,
+                    "start": "",
+                    "end": "",
+                    "label": w.get("label") or "a validated window",
+                    "source": "teaser",
+                }
+                for w in data["canonical_timing"]
+                if isinstance(w, dict)
+            ][:2]
+        # Only QuestionFacts carries canonical_evidence — do not inject the
+        # key into ReportFacts/HoraryFacts/PalmFacts (extra=forbid).
+        if "canonical_evidence" in data:
+            data["canonical_evidence"] = list(data.get("canonical_evidence") or [])[:2]
+
         # Palm: drop future age windows on free
         if data.get("future_windows"):
             data["future_windows"] = []
@@ -562,6 +587,13 @@ def build_question_facts(
     access: str = "free",
     report_id: str = "",
 ) -> QuestionFacts:
+    """Project one user question from the canonical full-report result.
+
+    ``result['canonical_result']`` is authoritative whenever the requested
+    topic maps to one of the full-report life areas. The question engine may
+    still supply question-specific routing/context, but it must not replace
+    the canonical promise, activation, direction or validated timing.
+    """
     topic = result.get("topic")
     question = ""
     if topic is not None:
@@ -572,6 +604,29 @@ def build_question_facts(
     promise = result.get("promise") or {}
     if not isinstance(promise, dict):
         promise = {}
+
+    canonical = result.get("canonical_result") or {}
+    if not isinstance(canonical, dict):
+        canonical = {}
+
+    if canonical:
+        promise = canonical.get("promise") or promise
+        direction = canonical.get("direction") or promise.get("direction") or "mixed"
+        confidence = canonical.get("confidence") or promise.get("confidence") or "low"
+        activation_status = str(
+            (canonical.get("activation") or {}).get("status") or ""
+        )
+        truth_source = "full_report_canonical"
+        canonical_area_key = str(canonical.get("area") or result.get("area_key") or "")
+    else:
+        direction = promise.get("direction") or "mixed"
+        confidence = promise.get("confidence") or "low"
+        activation_status = str(
+            (result.get("activation") or {}).get("status")
+            if isinstance(result.get("activation"), dict) else ""
+        )
+        truth_source = "question_specific_fallback"
+        canonical_area_key = ""
 
     def _win(w: Any) -> Optional[WindowFact]:
         if not w or not isinstance(w, dict):
@@ -586,31 +641,88 @@ def build_question_facts(
             score=float(w.get("score") or 0.0),
         )
 
-    windows = []
-    for w in (result.get("windows") or [])[:6]:
-        wf = _win(w)
-        if wf:
-            windows.append(wf)
+    # Prefer the canonical timing windows. The legacy question windows are only
+    # used when the topic has no corresponding full-report life area.
+    canonical_timing = []
+    if canonical:
+        t = canonical.get("timing") or {}
+        source_rows = (
+            list(t.get("featured_windows") or [])
+            or list(t.get("strong_windows") or [])
+            or list(t.get("validated_windows") or [])
+            or list(t.get("opportunity_windows") or [])
+        )
+        for w in source_rows[:6]:
+            wf = _win(w)
+            if wf:
+                canonical_timing.append(wf)
+
+    raw_windows = canonical_timing if canonical else []
+    if not raw_windows:
+        raw_windows = []
+        for w in (result.get("windows") or [])[:6]:
+            wf = _win(w)
+            if wf:
+                raw_windows.append(wf)
+
+    windows = raw_windows[:6]
+    best = _win(canonical.get("timing", {}).get("best_window")) if canonical else None
+    nearest = None
+
+    if canonical:
+        future = [w for w in windows if not w.start or w.start >= _pretty_date(result.get("start"))]
+        if future:
+            # best_window is authoritative when present; otherwise choose the
+            # first strong/validated canonical window.
+            if best is None:
+                best = future[0]
+            earlier = [w for w in future if w.start and best.start and w.start < best.start]
+            nearest = earlier[0] if earlier else None
+    else:
+        best = _win(result.get("best"))
+        nearest = _win(result.get("nearest"))
 
     route = result.get("route") or {}
     if not isinstance(route, dict):
         route = {}
     route_clean = {
-        k: route[k] for k in ("domain", "primary_house", "topic", "method")
+        k: route[k] for k in ("domain", "primary_house", "topic")
         if k in route
     }
 
-    best = _win(result.get("best"))
-    nearest = _win(result.get("nearest"))
-    allowed_dates = _dates_from_windows(best, nearest, *windows)
+    canonical_evidence: list[EvidenceFact] = []
+    canonical_manifests: list[str] = []
+    if canonical:
+        why = canonical.get("why") or {}
+        for row in list(why.get("rows") or [])[:8]:
+            if not isinstance(row, dict):
+                continue
+            pol = str(row.get("direction") or "neutral").lower()
+            polarity = "support" if pol in ("support", "up") else "caution"
+            reasons = row.get("reasons") or []
+            reason = str(row.get("reason") or (reasons[0] if reasons else "")).strip()
+            text, tags = _normalize_evidence_text(reason)
+            if text or tags:
+                canonical_evidence.append(EvidenceFact(
+                    family="other",
+                    polarity=polarity,
+                    text=text,
+                    semantic_tags=tags,
+                    text_id=_eid("question-canonical", polarity, reason or str(row)),
+                ))
+        canonical_manifests = [
+            str(x)[:120] for x in (canonical.get("manifestation") or [])
+            if str(x).strip()
+        ][:6]
 
+    allowed_dates = _dates_from_windows(best, nearest, *windows)
     facts = QuestionFacts(
         first_name=_first_name(name),
         access="paid" if access == "paid" else "free",  # type: ignore[arg-type]
         question=question[:280],
-        area_key=str(result.get("area_key") or ""),
-        direction=_dir(promise.get("direction") or "mixed"),  # type: ignore[arg-type]
-        confidence=_conf(promise.get("confidence") or "low"),  # type: ignore[arg-type]
+        area_key=str(result.get("area_key") or canonical_area_key),
+        direction=_dir(direction),  # type: ignore[arg-type]
+        confidence=_conf(confidence),  # type: ignore[arg-type]
         n_methods=int(result.get("n_methods") or 0),
         n_up=int(result.get("n_up") or 0),
         n_down=int(result.get("n_down") or 0),
@@ -619,13 +731,24 @@ def build_question_facts(
         nearest=nearest,
         windows=windows,
         promise_status=str(promise.get("status") or ""),
-        activation_status=str(
-            (result.get("activation") or {}).get("status")
-            if isinstance(result.get("activation"), dict) else ""
-        ),
+        activation_status=activation_status,
         support_n=int(result.get("n_up") or 0),
         caution_n=int(result.get("n_down") or 0),
         allowed_dates=allowed_dates,
+        truth_source=truth_source,  # type: ignore[arg-type]
+        canonical_area_key=canonical_area_key,
+        canonical_promise_status=str(promise.get("status") or ""),
+        canonical_activation_status=activation_status,
+        canonical_direction=_dir(direction),  # type: ignore[arg-type]
+        canonical_confidence=_conf(confidence),  # type: ignore[arg-type]
+        canonical_agreement=_agreement(
+            canonical.get("agreement") if canonical else promise.get("agreement")
+        ),  # type: ignore[arg-type]
+        canonical_evidence=canonical_evidence,
+        canonical_manifestations=canonical_manifests,
+        canonical_timing=canonical_timing,
+        timing_can_create_promise=False,
+        manifestation_ids=canonical_manifests[:6],
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
 
@@ -690,7 +813,19 @@ def build_palm_facts(
     conf = raw.get("confluence") or {}
     dominant = str(conf.get("dominant_hand") or rr.get("dominant_hand") or "right")
     quality = (rr.get("measurement_quality") or {})
-    photo_grade = str(quality.get("photo_grade") or "fair")
+    photo_grade = str(quality.get("photo_grade") or "fair").lower()
+    photo_confidence = str(quality.get("interpretation_confidence") or (
+        "high" if photo_grade == "good" else "low" if photo_grade == "poor" else "moderate"
+    )).lower()
+    if photo_confidence not in {"high", "moderate", "low"}:
+        photo_confidence = "moderate"
+    special_marks_allowed = bool(quality.get("special_marks_allowed", photo_grade == "good"))
+    future_timing_allowed = bool(quality.get("future_timing_allowed", photo_grade != "poor"))
+    age_precision = str(quality.get("age_precision") or (
+        "withheld" if photo_grade == "poor"
+        else "wider_window" if photo_grade == "fair"
+        else "window"
+    ))
 
     aspects: list[PalmAspectFacts] = []
     life_aspects = conf.get("life_aspects") or rr.get("present") or []
@@ -701,6 +836,10 @@ def build_palm_facts(
         if not key:
             continue
         strength = str(row.get("strength") or "").lower()
+        if photo_grade == "poor":
+            strength = "tentative"
+        elif photo_grade == "fair" and strength in ("strong", "very strong"):
+            strength = "moderate"
         direction = (
             "support" if strength in ("strong", "reinforced") else
             "caution" if strength in ("weak", "challenged") else
@@ -729,6 +868,7 @@ def build_palm_facts(
         aspects.append(PalmAspectFacts(
             aspect=key,
             direction=direction,  # type: ignore[arg-type]
+            strength=strength or "tentative",
             confidence=_conf(row.get("confidence") or "moderate"),  # type: ignore[arg-type]
             signal_ids=signal_ids[:12],
             point_ids=point_ids[:8],
@@ -738,23 +878,25 @@ def build_palm_facts(
         ))
 
     future = []
-    for fw in (rr.get("future_windows") or [])[:6]:
-        if not isinstance(fw, dict):
-            continue
-        future.append({
-            "age_window": fw.get("age_window"),
-            "domain": str(fw.get("domain") or "")[:40],
-            "confidence": str(fw.get("confidence") or "moderate"),
-        })
+    if future_timing_allowed:
+        for fw in (rr.get("future_windows") or [])[:6]:
+            if not isinstance(fw, dict):
+                continue
+            future.append({
+                "age_window": fw.get("age_window"),
+                "domain": str(fw.get("domain") or "")[:40],
+                "confidence": str(fw.get("confidence") or "moderate"),
+            })
 
     mark_ids = []
-    for m in (rr.get("special_marks") or [])[:8]:
-        if isinstance(m, dict):
-            mid = str(m.get("id") or m.get("kind") or m.get("name") or "")
-            if mid:
-                mark_ids.append(mid[:60])
-        elif isinstance(m, str) and m.strip():
-            mark_ids.append(m.strip()[:60])
+    if special_marks_allowed:
+        for m in (rr.get("special_marks") or [])[:8]:
+            if isinstance(m, dict):
+                mid = str(m.get("id") or m.get("kind") or m.get("name") or "")
+                if mid:
+                    mark_ids.append(mid[:60])
+            elif isinstance(m, str) and m.strip():
+                mark_ids.append(m.strip()[:60])
 
     facts = PalmFacts(
         first_name=_first_name(name),
@@ -762,6 +904,11 @@ def build_palm_facts(
         access="paid" if access == "paid" else "free",  # type: ignore[arg-type]
         dominant_hand=dominant,
         photo_grade=photo_grade,
+        photo_confidence=photo_confidence,  # type: ignore[arg-type]
+        special_marks_allowed=special_marks_allowed,
+        future_timing_allowed=future_timing_allowed,
+        age_precision=age_precision,
+        quality_note=str(quality.get("quality_note") or "")[:180],
         aspects=aspects,
         future_windows=future,
         special_mark_ids=mark_ids,

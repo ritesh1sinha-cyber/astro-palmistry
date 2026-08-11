@@ -1,0 +1,773 @@
+{
+  "design": "cards-v2",
+  "price": 298,
+  "bundlePrice": 298,
+  "llm": {
+    "enabled": false,
+    "stats": {
+      "accepted": 0,
+      "rejected": 0,
+      "errors": 0
+    },
+    "free": {
+      "stats": {
+        "accepted": 0,
+        "rejected": 0,
+        "errors": 0
+      },
+      "fallback_used": false,
+      "run_meta": {
+        "enabled": false,
+        "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+        "prompt_version": "REPORT_PROSE_PROMPT_V1",
+        "facts_hash": "bce59f25d2f3bfc5c66e9942",
+        "schema_version": "1.0",
+        "retry_count": 0,
+        "fallback_used": false,
+        "accepted": 0,
+        "rejected": 0,
+        "errors": 0
+      }
+    },
+    "paid": {
+      "stats": {
+        "accepted": 0,
+        "rejected": 0,
+        "errors": 0
+      },
+      "fallback_used": false,
+      "run_meta": {
+        "enabled": false,
+        "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+        "prompt_version": "REPORT_PROSE_PROMPT_V1",
+        "facts_hash": "7d6639c120373c474edd2433",
+        "schema_version": "1.0",
+        "retry_count": 0,
+        "fallback_used": false,
+        "accepted": 0,
+        "rejected": 0,
+        "errors": 0
+      }
+    }
+  },
+  "_facts": {
+    "kind": "full_report",
+    "schema_version": "1.0",
+    "engine_version": "astro-2026.08.11-qcanonical-v2",
+    "report_id": "",
+    "facts_hash": "7d6639c120373c474edd2433",
+    "first_name": "Gyanesh",
+    "age_band": "teen",
+    "access": "paid",
+    "cards": [
+      {
+        "area": "career",
+        "label": "Studies & Recognition",
+        "kind": "promise",
+        "status": "mixed",
+        "activation_status": "active",
+        "confidence": "moderate",
+        "agreement": "partial",
+        "direction": "support",
+        "score": 1.183,
+        "support_n": 4,
+        "caution_n": 0,
+        "house": 10,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:be4951c6",
+            "text": "rules it,",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:f6750c1b",
+            "text": "house strength 28 of 56 \u2014 average",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:74c21f4a",
+            "text": "Mercury, Rahu sit here",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:f7249ecf",
+            "text": "Work, effort or contribution becoming easier for others to notice.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:4144c195",
+            "text": "Greater professional responsibility and ownership.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:4144c195",
+            "text": "Greater professional responsibility and ownership.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "2030-09-23",
+          "end": "2031-02-17",
+          "label": "career_opportunity_window",
+          "event_type": "career_opportunity_window",
+          "confidence": "low",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 1.47
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": [],
+        "allowed_planets": [],
+        "allowed_dates": [
+          "2030-09-23",
+          "2031-02-17",
+          "career_opportunity_window"
+        ]
+      },
+      {
+        "area": "home",
+        "label": "Home & Family",
+        "kind": "promise",
+        "status": "weak",
+        "activation_status": "inactive",
+        "confidence": "low",
+        "agreement": "strong",
+        "direction": "caution",
+        "score": -0.842,
+        "support_n": 0,
+        "caution_n": 4,
+        "house": 4,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:be4951c6",
+            "text": "rules it,",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:7e9280f0",
+            "text": "house strength 26 of 56 \u2014 average",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:2952a811",
+            "text": "Ketu sits here",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:9802797c",
+            "text": "Taking responsibility for recurring family or home matters.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:4c76f037",
+            "text": "Having a steadier home base or household rhythm.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:4c76f037",
+            "text": "Having a steadier home base or household rhythm.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Aug 2029 \u2192 Oct 2029",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": [],
+        "allowed_planets": [
+          "Ketu",
+          "Mars",
+          "Moon"
+        ],
+        "allowed_dates": [
+          "Aug 2029 \u2192 Oct 2029"
+        ]
+      },
+      {
+        "area": "learning",
+        "label": "Learning & Luck",
+        "kind": "promise",
+        "status": "mixed",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": -0.369,
+        "support_n": 2,
+        "caution_n": 4,
+        "house": 9,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:be4951c6",
+            "text": "rules it,",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:3bfe9a1f",
+            "text": "house strength 29 of 56 \u2014 average",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:0ad72b00",
+            "text": "Saturn sits here",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:e47acb0f",
+            "text": "Modern technique \u2014 adds caution to this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:9f98d891",
+            "text": "Astrology method \u2014 supports this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:f5c33fe7",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Dec 2028 \u2192 Mar 2029",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": [],
+        "allowed_planets": [
+          "Saturn"
+        ],
+        "allowed_dates": [
+          "Dec 2028 \u2192 Mar 2029"
+        ]
+      },
+      {
+        "area": "children",
+        "label": "Creativity & Projects",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": 0.296,
+        "support_n": 4,
+        "caution_n": 2,
+        "house": 5,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:be4951c6",
+            "text": "rules it,",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:78284f7c",
+            "text": "house strength 31 of 56 \u2014 above average",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:d1d6308c",
+            "text": "Case-based confirmation \u2014 supports this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:683e49bd",
+            "text": "For knowledge, creativity and authorship, 5th from KL (Scorpio) holds Moon. Moon: Moon in 5th from KL: authorship and knowledge themes.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:f5c33fe7",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:3282a3a5",
+            "text": "Current transit \u2014 adds caution to this reading.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Dec 2025 \u2192 Mar 2028",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": [],
+        "allowed_planets": [
+          "Moon",
+          "Saturn"
+        ],
+        "allowed_dates": [
+          "Dec 2025 \u2192 Mar 2028"
+        ]
+      },
+      {
+        "area": "money",
+        "label": "Resources & Money Habits",
+        "kind": "promise",
+        "status": "mixed",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": 0.249,
+        "support_n": 4,
+        "caution_n": 2,
+        "house": 2,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:be4951c6",
+            "text": "rules it,",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:2f1a7790",
+            "text": "house strength 30 of 56 \u2014 above average",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:df3cbefb",
+            "text": "Moon sits here",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:ddd58dd0",
+            "text": "Building a steadier financial base.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:ddd58dd0",
+            "text": "Building a steadier financial base.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:ddd58dd0",
+            "text": "Building a steadier financial base.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Now \u2192 Jun 2027",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [
+          {
+            "key": "income",
+            "status": "mixed",
+            "score": 0.033,
+            "label": "Income"
+          },
+          {
+            "key": "accumulation",
+            "status": "mixed",
+            "score": 0.033,
+            "label": "Accumulation & savings"
+          },
+          {
+            "key": "business_gains",
+            "status": "mixed",
+            "score": 0.032,
+            "label": "Business gains"
+          },
+          {
+            "key": "sudden_gains",
+            "status": "mixed",
+            "score": 0.032,
+            "label": "Sudden gains"
+          }
+        ],
+        "remedy_eligible": false,
+        "approved_remedies": [],
+        "allowed_planets": [
+          "Moon",
+          "Mars"
+        ],
+        "allowed_dates": [
+          "Now \u2192 Jun 2027"
+        ]
+      },
+      {
+        "area": "love",
+        "label": "Friendships & Close Bonds",
+        "kind": "promise",
+        "status": "mixed",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": -0.23,
+        "support_n": 3,
+        "caution_n": 5,
+        "house": 7,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:be4951c6",
+            "text": "rules it,",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:c311a248",
+            "text": "house strength 21 of 56 \u2014 below average",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:2b1b22fc",
+            "text": "Mars sits here",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:01479ce8",
+            "text": "Holds a philosophical outlook and often engages in divine contemplation, with moderate prestige in your career.\u2026",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:d1d6308c",
+            "text": "Case-based confirmation \u2014 supports this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:17edbd27",
+            "text": "Specialist timing cross-check \u2014 adds caution to this reading.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Oct 2026 \u2192 Jan 2027",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": [],
+        "allowed_planets": [
+          "Mars",
+          "Moon"
+        ],
+        "allowed_dates": [
+          "Oct 2026 \u2192 Jan 2027"
+        ]
+      },
+      {
+        "area": "inner",
+        "label": "Inner Life",
+        "kind": "promise",
+        "status": "mixed",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": 0.13,
+        "support_n": 6,
+        "caution_n": 2,
+        "house": 12,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:be4951c6",
+            "text": "rules it,",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:17491d68",
+            "text": "house strength 27 of 56 \u2014 average",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:5aa19c05",
+            "text": "Venus sits here",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:d1d6308c",
+            "text": "Case-based confirmation \u2014 supports this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text_id": "row:support:4dd0e134",
+            "text": "Your life opens through Aquarius rising Saturn steers the body and first impression in this map.\u2026",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:f3de21a4",
+            "text": "Life-pattern cross-check \u2014 is broadly neutral for this reading.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Dec 2025 \u2192 Mar 2028",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": [],
+        "allowed_planets": [
+          "Venus",
+          "Saturn"
+        ],
+        "allowed_dates": [
+          "Dec 2025 \u2192 Mar 2028"
+        ]
+      },
+      {
+        "area": "health",
+        "label": "Health & Energy",
+        "kind": "challenge",
+        "status": "mixed",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": -0.04,
+        "support_n": 1,
+        "caution_n": 2,
+        "house": 1,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:be4951c6",
+            "text": "rules it,",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:f6750c1b",
+            "text": "house strength 28 of 56 \u2014 average",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:e55f4fcf",
+            "text": "Consistency, rest and timely follow-up may be particularly important during demanding periods.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:33317a3f",
+            "text": "This period calls for more attention to routine, rest and preventive care.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:626c1968",
+            "text": "Stress may make you more aware of how closely your emotional state, routine and physical wellbeing are connected.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text_id": "row:caution:33317a3f",
+            "text": "This period calls for more attention to routine, rest and preventive care.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [
+          "wellbeing_sensitivity",
+          "routine",
+          "recovery"
+        ],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Dec 2025 \u2192 Mar 2028",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": [],
+        "allowed_planets": [],
+        "allowed_dates": [
+          "Dec 2025 \u2192 Mar 2028"
+        ]
+      }
+    ],
+    "dashboard_buckets": {
+      "strongest": [],
+      "currently_activated": [
+        "career"
+      ],
+      "promised_not_active": [
+        "learning",
+        "children",
+        "money",
+        "love",
+        "inner"
+      ],
+      "needs_care": [
+        "home",
+        "health"
+      ]
+    },
+    "timing_windows": [
+      {
+        "start": "2030-09-23",
+        "end": "2031-02-17",
+        "label": "career_opportunity_window",
+        "event_type": "career_opportunity_window",
+        "confidence": "low",
+        "source": "dasha_ashtakavarga_transit_confluence",
+        "score": 1.47
+      }
+    ]
+  },
+  "freeSections": [
+    "Your current chapter",
+    "Who your chart says you are",
+    "Your recent past \u2014 free and checkable",
+    "What is happening right now",
+    "Major life areas",
+    "Gemstones you should not wear"
+  ],
+  "paidSections": [
+    "Why each life area reads the way it does",
+    "Exact dates for every life area",
+    "How this area changes over time",
+    "Planets involved",
+    "Your strongest upcoming windows",
+    "The full period sequence",
+    "What helps, per area",
+    "Remedies and suitable gemstones"
+  ],
+  "teasers": {}
+}

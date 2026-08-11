@@ -156,9 +156,9 @@ def _age_phase(age: int) -> dict[str, str]:
     if age < 28:
         return {"label": "early adulthood", "event": "first career steps, independence, early relationships"}
     if age < 35:
-        return {"label": "establishing years", "event": "consolidating work, home, and partnerships"}
+        return {"label": "establishing years", "event": "consolidating work, home, and close relationships"}
     if age < 42:
-        return {"label": "mid-life build", "event": "responsibility peak; health and partnership tests"}
+        return {"label": "mid-life build", "event": "responsibility, relationships and wellbeing come into sharper focus"}
     if age < 49:
         return {"label": "mid-life", "event": "reassessment of career and vitality; course corrections"}
     if age < 56:
@@ -166,14 +166,14 @@ def _age_phase(age: int) -> dict[str, str]:
     if age < 63:
         return {"label": "pre-retirement", "event": "slowing pace; family and health priorities"}
     if age < 77:
-        return {"label": "senior years (7-yr block)", "event": "inheritance, health vigilance, spiritual focus"}
+        return {"label": "senior years (7-yr block)", "event": "legacy, wellbeing and reflective priorities"}
     return {"label": "late life", "event": "legacy, withdrawal, reflection"}
 
 
 LINE_AGE_EVENT: dict[str, str] = {
-    "life": "vitality, relocation, family crisis, or major health turning point",
+    "life": "changes in vitality, routine, living circumstances, or family responsibilities",
     "head": "mental outlook shift, education, or decision that changes thinking",
-    "heart": "love, marriage, or emotional commitment",
+    "heart": "relationship or emotional commitment",
     "fate": "career change, vocation, or public-status event",
 }
 
@@ -346,21 +346,28 @@ def build_conclusive_reading(
     age_clause = ""
     age_range = (timing or {}).get("age_range")
     if age is not None and kind == "line":
-        phase = _age_phase(age)
-        event = LINE_AGE_EVENT.get(key, "significant life event")
-        sys_note = (
-            "Cheiro's System of Seven timing"
-            if key in ("life", "fate")
-            else "approximate timing — the head/heart lines are not age-marked in Cheiro's system"
-        )
-        if age_range and len(age_range) == 2:
-            window = f"About {age_range[0]}–{age_range[1]}"
+        timing_conf = str((timing or {}).get("timing_confidence") or "moderate").lower()
+        if timing_conf == "withheld":
+            age = None
         else:
-            window = f"About age {age}"
-        age_clause = (
-            f"{window} on {line_phrase(key)} ({phase['label']}, {sys_note}): "
-            f"this point marks {phase['event']} for you, especially {event}."
-        )
+            phase = _age_phase(age)
+            event = LINE_AGE_EVENT.get(key, "a significant life transition")
+            sys_note = (
+                "a traditional seven-year timing guide"
+                if key in ("life", "fate")
+                else "an approximate line-position guide"
+            )
+            if age_range and len(age_range) == 2:
+                lo, hi = int(age_range[0]), int(age_range[1])
+            else:
+                lo, hi = max(1, int(age) - 2), min(98, int(age) + 2)
+            if timing_conf == "low":
+                lo, hi = max(1, lo - 2), min(98, hi + 2)
+            window = f"Around ages {lo}–{hi}" if hi > lo else f"Around age {age}"
+            age_clause = (
+                f"{window} on {line_phrase(key)} ({phase['label']}, {sys_note}): "
+                f"this point is traditionally associated with {phase['event']}, especially {event}."
+            )
 
     best = matched_rules[0] if matched_rules else None
     book_clause = ""
