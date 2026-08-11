@@ -140,6 +140,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_promo_once
 CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT, action TEXT NOT NULL,
   subject TEXT, detail TEXT, created_at TEXT);
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY, report_id TEXT NOT NULL, user_id TEXT NOT NULL,
+  role TEXT NOT NULL, content TEXT NOT NULL, meta TEXT DEFAULT '{}',
+  created_at TEXT);
+CREATE INDEX IF NOT EXISTS ix_chat_report ON chat_messages(report_id, created_at);
 """
 
 
@@ -399,3 +404,37 @@ def report_delete(report_id: str, user_id: str) -> bool:
         res = c.execute(text("DELETE FROM reports WHERE id = :i AND user_id = :u"),
                         {"i": report_id, "u": user_id})
     return (res.rowcount or 0) > 0
+
+
+# ---------------------------------------------------------------------------
+# chat (paid follow-up against a report's facts.json)
+# ---------------------------------------------------------------------------
+def chat_append(report_id: str, user_id: str, role: str, content: str,
+                meta: Optional[dict] = None) -> dict:
+    mid = new_id()
+    with tx() as c:
+        c.execute(text(
+            "INSERT INTO chat_messages (id, report_id, user_id, role, content, meta, created_at)"
+            " VALUES (:i, :r, :u, :role, :c, :m, :t)"),
+            {"i": mid, "r": report_id, "u": user_id, "role": role,
+             "c": content, "m": jdump(meta or {}), "t": now()})
+    return {"id": mid, "role": role, "content": content}
+
+
+def chat_history(report_id: str, user_id: str, *, limit: int = 20) -> list[dict]:
+    with tx() as c:
+        rows = c.execute(text(
+            "SELECT id, role, content, meta, created_at FROM chat_messages"
+            " WHERE report_id = :r AND user_id = :u"
+            " ORDER BY created_at DESC LIMIT :n"),
+            {"r": report_id, "u": user_id, "n": int(limit)}).mappings().all()
+    out = []
+    for r in reversed(list(rows)):
+        d = dict(r)
+        if isinstance(d.get("meta"), str):
+            try:
+                d["meta"] = json.loads(d["meta"] or "{}")
+            except Exception:  # noqa: BLE001
+                d["meta"] = {}
+        out.append(d)
+    return out

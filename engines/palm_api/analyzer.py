@@ -663,6 +663,7 @@ def _line_marker_position(
     return _snap_marker_to_group(group, anchor, size)
 
 
+# Deprecated legacy Hough classifier — production uses palm_lines.detect_major_lines.
 def _classify_segments(
     segs: list[dict[str, Any]],
     size: int,

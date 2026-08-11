@@ -12,8 +12,8 @@
         "lon": 77.209,
         "tz": 5.5
       },
-      "free_bytes": 62105,
-      "paid_bytes": 73250,
+      "free_bytes": 84451,
+      "paid_bytes": 102914,
       "free_path": "/tmp/review_samples/oversample/ramesh_1986-03-08_delhi_free.html",
       "paid_path": "/tmp/review_samples/oversample/ramesh_1986-03-08_delhi_paid.html",
       "checks": {
@@ -50,8 +50,8 @@
         "lon": 77.209,
         "tz": 5.5
       },
-      "free_bytes": 61613,
-      "paid_bytes": 74044,
+      "free_bytes": 83576,
+      "paid_bytes": 103193,
       "free_path": "/tmp/review_samples/oversample/suresh_1990-01-12_delhi_free.html",
       "paid_path": "/tmp/review_samples/oversample/suresh_1990-01-12_delhi_paid.html",
       "checks": {
@@ -88,8 +88,8 @@
         "lon": 78.4867,
         "tz": 5.5
       },
-      "free_bytes": 60903,
-      "paid_bytes": 73098,
+      "free_bytes": 62325,
+      "paid_bytes": 74821,
       "free_path": "/tmp/review_samples/oversample/gyanesh_2012-01-01_hyderabad_free.html",
       "paid_path": "/tmp/review_samples/oversample/gyanesh_2012-01-01_hyderabad_paid.html",
       "checks": {

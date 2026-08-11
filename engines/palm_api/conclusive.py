@@ -22,15 +22,15 @@ from palm_api.report_format import book_label
 
 # Measured feature → interpretation (second person: your line / your mount)
 FEATURE_MEANING: dict[tuple[str, str, str], str] = {
-    ("life", "depth", "deep"): "Your life line is deep — strong vitality, resistance to illness, steady life force.",
-    ("life", "depth", "medium"): "Your life line is moderate in depth — average stamina; your health responds to lifestyle.",
-    ("life", "depth", "thin"): "Your life line is thin — sensitive constitution; conserve your energy.",
+    ("life", "depth", "deep"): "Your life line is deep — traditionally read as a stronger baseline of vitality and resilience; steady routines help you use that energy well.",
+    ("life", "depth", "medium"): "Your life line is moderate in depth — your energy may respond noticeably to sleep, routine and lifestyle balance.",
+    ("life", "depth", "thin"): "Your life line is thin — you may notice the effects of overwork or poor recovery sooner, so pacing and rest become more important.",
     ("life", "start_zone", "mars"): "Your life line rises from the inner thumb pad — courageous vitality; you may face competitive tests.",
     ("life", "start_zone", "jupiter"): "Your life line rises toward Jupiter — ambition and self-belief shape your early direction.",
     ("life", "start_zone", "between"): "Your life line starts between zones — mixed family influence on your vitality.",
     ("head", "depth", "deep"): "Your head line is deep — you focus strongly and think before you act.",
     ("head", "depth", "medium"): "Your head line is balanced — practical, steady thinking.",
-    ("head", "depth", "thin"): "Your head line is fine — quick, sensitive mind; you tire mentally easily.",
+    ("head", "depth", "thin"): "Your head line is fine — you may process things sensitively and need more mental recovery after prolonged concentration.",
     ("head", "start_relation", "merged"): (
         "Your head line is merged with your life line at the start — early caution, reliance on family, "
         "and hesitation in asserting yourself until experience builds your confidence."
@@ -110,9 +110,9 @@ INDEX_RING_MEANING: dict[str, str] = {
         "natural urge to lead; you want recognition and to be in charge."
     ),
     "ring_longer": (
-        "Your ring (Apollo) finger is longer than your index finger — strong self-confidence and a "
-        "love of success, fame and creative display; you are a risk-taker who values achievement "
-        "over money."
+        "Your ring (Apollo) finger is longer than your index finger — you may carry "
+        "strong self-confidence and a love of success, fame and creative display; "
+        "achievement may matter more to you than immediate financial reward."
     ),
     "equal": (
         "Your index and ring fingers are about equal — a balance between ambition for status and "
@@ -305,10 +305,16 @@ def build_conclusive_reading(
         if m:
             meanings.append(m)
     elif kind == "finger":
-        lc = props.get("length_class", "average")
-        m = FINGER_MEANING.get((key, str(lc)))
-        if m:
-            meanings.append(m)
+        ivr = morphology.get("index_vs_ring")
+        if key in ("index", "ring") and ivr in INDEX_RING_MEANING:
+            # Index/ring comparison is canonical — do not also describe each
+            # finger's length vs middle, which reads as contradictory.
+            pass
+        else:
+            lc = props.get("length_class", "average")
+            m = FINGER_MEANING.get((key, str(lc)))
+            if m:
+                meanings.append(m)
         if props.get("setting") == "low":
             meanings.append(f"{finger_phrase(key)} has a low setting at the palm — hesitation in that finger's qualities.")
     elif kind == "morphology":
@@ -338,18 +344,21 @@ def build_conclusive_reading(
 
     age = timing.get("estimated_age") if timing else None
     age_clause = ""
+    age_range = (timing or {}).get("age_range")
     if age is not None and kind == "line":
         phase = _age_phase(age)
         event = LINE_AGE_EVENT.get(key, "significant life event")
-        # Cheiro's System of Seven times only the Life and Saturn/Fate lines;
-        # he does not time the Head or Heart lines, so label those approximate.
         sys_note = (
             "Cheiro's System of Seven timing"
             if key in ("life", "fate")
             else "approximate timing — the head/heart lines are not age-marked in Cheiro's system"
         )
+        if age_range and len(age_range) == 2:
+            window = f"About {age_range[0]}–{age_range[1]}"
+        else:
+            window = f"About age {age}"
         age_clause = (
-            f"At about age {age} on {line_phrase(key)} ({phase['label']}, {sys_note}): "
+            f"{window} on {line_phrase(key)} ({phase['label']}, {sys_note}): "
             f"this point marks {phase['event']} for you, especially {event}."
         )
 

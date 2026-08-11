@@ -15,6 +15,15 @@ x-app-env: &app-env
     ALLOWED_ORIGINS: https://${DOMAIN}
     S3_BUCKET: ${S3_BUCKET:-}
     S3_ENDPOINT: ${S3_ENDPOINT:-}
+    # LLM prose layer — defaults off; set LLM_ENABLED=1 and keys in .env
+    LLM_ENABLED: ${LLM_ENABLED:-0}
+    LLM_BASE_URL: ${LLM_BASE_URL:-}
+    LLM_API_KEY: ${LLM_API_KEY:-}
+    LLM_MODEL: ${LLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}
+    LLM_TABS: ${LLM_TABS:-full_report,user_question,horary,palm}
+    LLM_TIMEOUT: ${LLM_TIMEOUT:-20}
+    LLM_CONCURRENCY: ${LLM_CONCURRENCY:-4}
+    LLM_CACHE_TTL: ${LLM_CACHE_TTL:-86400}
 
 services:
   postgres:

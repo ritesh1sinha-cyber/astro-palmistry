@@ -129,6 +129,7 @@ class AreaReport:
     remedy: str
     confidence: str
     score: float = 0.0
+    confluence: dict = None
 
 
 def _ord(n: Any) -> str:
@@ -218,7 +219,10 @@ def _area_when(pc: dict, area_key: str, house: int, *,
 def _build_proof(pc: dict, area_key: str, house: int, *,
                    today: Optional[date] = None,
                    direction: str = "mixed",
-                   confidence: str = "") -> str:
+                   confidence: str = "",
+                   agreement: str = "",
+                   promise: Optional[dict] = None,
+                   secondary_confirmations: Optional[list] = None) -> str:
     """Structured Why block for expandable evidence — engine facts only."""
     today = today or date.today()
     area_name = {
@@ -274,16 +278,11 @@ def _build_proof(pc: dict, area_key: str, house: int, *,
 
     # Current timing
     timing = ""
-    secondary = ""
     try:
         import report_confluence as CF
         vim = CF.vimshottari_at(pc, today) or {}
-        yog = CF.yogini_at(pc, today) or {}
         if vim.get("md") and vim.get("ad"):
             timing = f"{vim['md']}–{vim['ad']} is active"
-        if yog.get("lord"):
-            secondary = (
-                f"Another timing method also points toward {yog['lord']}")
     except Exception:  # noqa: BLE001
         pass
     if timing:
@@ -320,30 +319,28 @@ def _build_proof(pc: dict, area_key: str, house: int, *,
     if transit_line:
         lines.append(f"Transit: {transit_line.rstrip('.')}.")
 
-    if secondary:
-        lines.append(f"Secondary confirmation: {secondary.rstrip('.')}.")
-
-    agree = {
-        "strong agreement": "Overall: Strong agreement.",
-        "strong": "Overall: Strong agreement.",
-        "strong read": "Overall: Strong agreement.",
-        "moderate agreement": "Overall: Partial agreement.",
-        "partial agreement": "Overall: Partial agreement.",
-        "mixed evidence": "Overall: Mixed evidence.",
-        "mixed read": "Overall: Mixed evidence.",
-        "mixed": "Overall: Mixed evidence.",
-        "split read": "Overall: Mixed evidence.",
-        "cautious read": "Overall: Partial agreement.",
-        "demanding read": "Overall: Mixed evidence.",
-    }.get((confidence or "").lower())
-    if not agree:
-        if direction == "mixed":
-            agree = "Overall: Mixed evidence."
-        elif direction == "up":
-            agree = "Overall: Partial agreement."
-        else:
-            agree = "Overall: Mixed evidence."
-    lines.append(agree)
+    try:
+        from narration.verdict_phrases import (
+            proof_overall_line,
+            promise_proof_line,
+            secondary_confirmation_lines,
+        )
+        if promise and promise.get("status"):
+            lines.append(promise_proof_line(
+                status=str(promise.get("status") or ""),
+                label=str(promise.get("label") or ""),
+            ))
+        lines.extend(secondary_confirmation_lines(
+            secondary_confirmations or [],
+            area_key=area_key,
+        ))
+        lines.append(proof_overall_line(
+            direction=direction,
+            confidence=confidence,
+            agreement=agreement,
+        ))
+    except Exception:  # noqa: BLE001
+        lines.append("Overall: Mixed evidence.")
 
     return fix_house_ordinals("\n".join(lines))
 
@@ -419,9 +416,19 @@ def _stress_planet_for_area(pc: dict, area_key: str, house: int) -> str:
     return best or primary_lord
 
 
-def classical_area_remedy(pc: dict, area_key: str, house: int, direction: str) -> str:
-    """Rule-backed classical upaya for the stressed planet of this area."""
-    if direction == "up":
+def classical_area_remedy(pc: dict, area_key: str, house: int, direction: str,
+                          promise_status: str = "") -> str:
+    """Rule-backed classical upaya for the stressed planet of this area.
+
+    P1-10: a weak or mixed *promise* still deserves a supportive remedy path
+    even when the *current* activation direction happens to read "up" — the
+    two are different questions, and a temporarily active but structurally
+    weak area is exactly the case a customer should not be left without
+    guidance for. `_gem_safety` downstream remains the sole authority on
+    whether a gemstone is ever actually recommended.
+    """
+    weak_promise = promise_status.lower() in ("weak", "insufficient_evidence", "mixed")
+    if direction == "up" and not weak_promise:
         return ""
     planet = _stress_planet_for_area(pc, area_key, house)
     if not planet:
@@ -459,12 +466,13 @@ def classical_area_remedy(pc: dict, area_key: str, house: int, direction: str) -
 
 
 def _area_remedy(pc: dict, area_key: str, house: int, direction: str, *,
-                   question: str = "") -> tuple[str, str]:
+                   question: str = "", promise_status: str = "") -> tuple[str, str]:
     """Classical upaya for this area's stressed planet — not dasha slogans."""
     _ = question  # reserved for callers that pass a question context
-    if direction == "up":
+    weak_promise = promise_status.lower() in ("weak", "insufficient_evidence", "mixed")
+    if direction == "up" and not weak_promise:
         return "", ""
-    return classical_area_remedy(pc, area_key, house, direction), ""
+    return classical_area_remedy(pc, area_key, house, direction, promise_status=promise_status), ""
 
 
 def build_area(pc: dict, area_key: str, house: int, *,
@@ -480,19 +488,25 @@ def build_area(pc: dict, area_key: str, house: int, *,
     pred = PV.compose_from_area(pc, area_key, house, today=today)
     direction = verdict.get("direction", pred.direction)
 
-    votes = verdict.get("votes") or []
-    decided = [v for v in votes if getattr(v, "direction", "mixed") != "mixed"]
-    same = sum(1 for v in decided
-               if getattr(v, "direction", "mixed") == direction)
-    confidence = PV.confidence_word(same, len(decided) or len(votes), direction)
-
+    # The canonical confluence engine owns direction/confidence. Do not
+    # recalculate confidence from raw votes here, because that would reintroduce
+    # double-counting of correlated methods.
+    confidence = verdict.get("confidence", "low")
     prediction = strip_visible_claim_jargon(
         humanise_client_language(client_prose(pred.scenario)))
     proof = _build_proof(
         pc, area_key, house, today=today,
-        direction=direction, confidence=confidence)
+        direction=direction,
+        confidence=confidence,
+        agreement=verdict.get("agreement", ""),
+        promise=verdict.get("promise") or {},
+        secondary_confirmations=verdict.get("secondary_confirmations") or [],
+    )
     when = _area_when(pc, area_key, house, today=today)
-    remedy, _mantra = _area_remedy(pc, area_key, house, direction, question=question)
+    promise_status = str((verdict.get("promise") or {}).get("status") or "")
+    remedy, _mantra = _area_remedy(
+        pc, area_key, house, direction, question=question,
+        promise_status=promise_status)
     remedy = humanise_client_language(remedy)
 
     if len(prediction) > 220:
@@ -507,4 +521,5 @@ def build_area(pc: dict, area_key: str, house: int, *,
         remedy=remedy,
         confidence=confidence,
         score=verdict.get("score", 0.0),
+        confluence=verdict,
     )

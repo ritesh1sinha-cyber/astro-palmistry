@@ -12,7 +12,10 @@ import argparse
 import json
 from pathlib import Path
 
-from palm_features import extract_features, features_for_json, save_overlay
+try:
+    from palm_api.analyzer import extract_features, features_for_json, save_overlay
+except ImportError:
+    from palm_features import extract_features, features_for_json, save_overlay
 from palm_interpret import interpret_features, load_rules, render_html, render_markdown
 
 

@@ -27,9 +27,10 @@ from core import billing, promo, queue as Q, turnstile as TS
 from core.auth import (COOKIE, current_user, has_full_access, has_full_access_id,
                        is_admin, login_admin, login_dev, login_with_google, logout)
 from core.config import S
-from core.db import (engine, extend_partitions, init_schema, job_get,
-                     job_insert, job_update, jdump, new_id, now,
-                     report_delete, report_get, reports_for_user, tx)
+from core.db import (chat_append, chat_history, engine, extend_partitions,
+                     init_schema, job_get, job_insert, job_update, jdump,
+                     new_id, now, report_delete, report_get, reports_for_user,
+                     tx)
 from core.pdf_export import entitlement_item_for_kind, html_to_pdf, report_title
 from core.store import store
 
@@ -120,6 +121,8 @@ def _set_cookie(resp: Response, token: str) -> None:
 @app.get("/api/public-config")
 def public_config():
     """Non-secret flags the site needs before sign-in (Google Client ID, etc.)."""
+    # Chat UI is shown only when the LLM layer is on AND "chat" is in LLM_TABS.
+    chat_enabled = bool(S.llm_tab_enabled("chat"))
     return {
         "googleClientId": S.google_client_id or "",
         "guestLogin": bool(S.dev_login),
@@ -129,6 +132,8 @@ def public_config():
         "razorpayPaymentButtonId": S.razorpay_payment_button_id or "",
         "turnstileSiteKey": S.turnstile_site_key or "",
         "turnstileRequired": TS.enabled(),
+        "llmEnabled": bool(S.llm_enabled),
+        "chatEnabled": chat_enabled,
     }
 
 
@@ -490,7 +495,8 @@ def delete_one_report(rid: str, user: dict = Depends(current_user)):
     if not rep:
         raise HTTPException(404, "no such report")
     st = store()
-    for k in (rep.get("free_key"), rep.get("paid_key")):
+    for k in (rep.get("free_key"), rep.get("paid_key"),
+              (rep.get("meta") or {}).get("facts_key")):
         if not k:
             continue
         try:
@@ -500,6 +506,107 @@ def delete_one_report(rid: str, user: dict = Depends(current_user)):
     if not report_delete(rid, user["id"]):
         raise HTTPException(404, "no such report")
     return {"ok": True, "reportId": rid}
+
+
+class ChatIn(BaseModel):
+    message: str = Field(..., min_length=1, max_length=600)
+
+
+def _require_chat_enabled() -> None:
+    """Chat is available only when LLM is on and LLM_TABS includes chat."""
+    if not S.llm_tab_enabled("chat"):
+        raise HTTPException(
+            503,
+            "report chat is disabled — enable LLM_ENABLED=1 with chat in LLM_TABS",
+        )
+
+
+@app.get("/api/reports/{rid}/chat")
+def report_chat_history(rid: str, user: dict = Depends(current_user)):
+    """Return recent chat turns for a paid report."""
+    _require_chat_enabled()
+    rep = report_get(rid, user["id"])
+    if not rep:
+        raise HTTPException(404, "no such report")
+    if not _report_unlocked(rep, user["id"]):
+        raise HTTPException(402, "payment required")
+    return {"reportId": rid, "messages": chat_history(rid, user["id"], limit=40)}
+
+
+@app.post("/api/reports/{rid}/chat")
+def report_chat(rid: str, body: ChatIn, user: dict = Depends(current_user)):
+    """Paid-only follow-up chat grounded in the report's facts.json.
+
+    Never invents predictions outside the persisted facts. Rate-limited.
+    """
+    _require_chat_enabled()
+    rep = report_get(rid, user["id"])
+    if not rep:
+        raise HTTPException(404, "no such report")
+    if not _report_unlocked(rep, user["id"]):
+        raise HTTPException(402, "payment required")
+    if not Q.rate_ok(user["id"]):
+        raise HTTPException(429, "too many requests — try again in a moment")
+
+    meta = rep.get("meta") or {}
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except Exception:                                             # noqa: BLE001
+            meta = {}
+    facts_key = meta.get("facts_key") or ""
+    facts: Any = {}
+    if facts_key:
+        try:
+            facts = json.loads(store().get(facts_key).decode("utf-8"))
+        except Exception:                                             # noqa: BLE001
+            facts = {}
+    if not facts:
+        raise HTTPException(
+            503,
+            "this report has no fact context for chat yet — regenerate it with "
+            "the LLM layer enabled")
+
+    # Ensure engines/astro is importable for the llm package.
+    import sys
+    from pathlib import Path
+    eng = Path(__file__).resolve().parent / "engines" / "astro"
+    if eng.is_dir() and str(eng) not in sys.path:
+        sys.path.insert(0, str(eng))
+
+    question = (body.message or "").strip()
+    chat_append(rid, user["id"], "user", question)
+    history = [
+        {"role": m["role"], "content": m["content"]}
+        for m in chat_history(rid, user["id"], limit=12)
+    ]
+
+    refusal = (
+        "I can only talk about what is already in your reading. "
+        "That question goes beyond the facts we have here."
+    )
+    try:
+        from llm.humanize import humanize_chat
+        from llm.rules import OUT_OF_SCOPE_REFUSAL
+        refusal = OUT_OF_SCOPE_REFUSAL
+        result = humanize_chat(facts, question, history=history[:-1])
+        answer = (result.get("answer") or refusal).strip()
+        out_of_scope = bool(result.get("out_of_scope"))
+        used = list(result.get("used_fact_ids") or [])
+    except Exception as exc:                                          # noqa: BLE001
+        print(f"[chat] failed: {type(exc).__name__}: {exc}", flush=True)
+        answer = refusal
+        out_of_scope = True
+        used = []
+
+    chat_append(rid, user["id"], "assistant", answer,
+                meta={"out_of_scope": out_of_scope, "used_fact_ids": used})
+    return {
+        "reportId": rid,
+        "answer": answer,
+        "out_of_scope": out_of_scope,
+        "used_fact_ids": used,
+    }
 
 
 @app.get("/api/reading/{rid}/full")

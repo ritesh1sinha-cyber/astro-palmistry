@@ -68,6 +68,21 @@ def _save_report(user_id: str, chart_id: Optional[str], kind: str,
     st = store()
     st.put(fk, (free_html or "").encode(), "text/html; charset=utf-8")
     st.put(pk, (paid_html or "").encode(), "text/html; charset=utf-8")
+
+    # Persist fact-only JSON for the LLM chat layer (Phase 2). Never leave
+    # the full facts blob in the customer-facing meta payload.
+    meta = dict(meta or {})
+    facts = meta.pop("_facts", None) or meta.pop("facts", None)
+    if facts:
+        try:
+            from .store import facts_key as _facts_key
+            fkey = _facts_key(rid)
+            st.put(fkey, json.dumps(facts, default=str).encode("utf-8"),
+                   "application/json; charset=utf-8")
+            meta["facts_key"] = fkey
+        except Exception as exc:  # noqa: BLE001
+            print(f"[handlers] facts.json skipped: {exc}", flush=True)
+
     # keep the id we generated so the storage keys match the row
     from sqlalchemy import text as _text
 

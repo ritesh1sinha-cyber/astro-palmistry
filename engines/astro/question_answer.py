@@ -618,7 +618,30 @@ def answer_meta(result: dict) -> dict:
 
 # ---------------------------------------------------------------------------
 
-def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
+def _human_question_evidence(result: dict) -> list[str]:
+    """Collapse technical house/planet working into customer-level reasons."""
+    promise = result.get("promise") or {}
+    direction = str(promise.get("direction") or "mixed")
+    area = str(result.get("area_key") or "this area")
+    out = []
+    if direction in ("up", "support"):
+        out.append(f"The chart provides supportive evidence around {area.replace('_', ' ')}.")
+    elif direction in ("down", "caution"):
+        out.append(f"The chart shows pressure around {area.replace('_', ' ')}.")
+    else:
+        out.append(f"The chart is mixed around {area.replace('_', ' ')}.")
+    deep = str(result.get("deep_verdict") or "").strip()
+    if deep:
+        # Keep only a short human sentence; raw house/rule mechanics stay internal.
+        deep = re.sub(r"\b\d{1,2}(?:st|nd|rd|th)?\s+house\b", "this life area", deep, flags=re.I)
+        deep = re.sub(r"\b(?:sub[- ]lord|karakamsa|atmakaraka|nakshatra|varga|lagna|bhava)\b", "specialist chart factors", deep, flags=re.I)
+        deep = re.sub(r"\b(?:dasha|bhukti|yogini|chara|bnn|kp)\b", "timing factors", deep, flags=re.I)
+        out.append(deep[:220])
+    return out[:3]
+
+
+def render_free(result: dict, *, name: str = "", price: int = 1499,
+                prose: Optional[dict] = None) -> str:
     """Free half: plain prediction + one Why line; verdict and dates locked."""
     topic = result["topic"]
     who = (name or "").split()[0] if name else ""
@@ -626,9 +649,19 @@ def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
     promise = result["promise"]
     route = result.get("route") or {}
     pred = result.get("prediction")
+    prose = prose or {}
 
     main_pred = ""
-    if pred is not None:
+    llm_opening = (prose.get("opening") or "").strip()
+    llm_answer = (prose.get("answer") or "").strip()
+    if llm_opening or llm_answer:
+        parts = []
+        if llm_opening:
+            parts.append(f"<p>{_e(llm_opening)}</p>")
+        if llm_answer:
+            parts.append(f'<div class="qa-promise"><p>{_e(llm_answer)}</p></div>')
+        main_pred = "".join(parts)
+    elif pred is not None:
         main_pred = pred.html()
     else:
         try:
@@ -646,16 +679,23 @@ def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
         ph = topic.houses[0] if topic.key != "general" else route.get("primary_house", 0)
         domain = route.get("domain") or topic.key
         route_block = (
-            f'<p class="qa-route">We read this as a <b>{_e(domain)}</b> '
-            f'question, centred on your {_ord(ph)} house.</p>')
+            f'<p class="qa-route">We read this primarily as a <b>{_e(domain)}</b> '
+            f'question, centred on the part of life that governs this matter.</p>')
+
+    lede = (prose.get("opening") or "").strip()
+    who_prefix = _e(who + ", ") if who else ""
+    lede_html = (
+        f'<p class="qa-lede">{_e(lede)}</p>' if lede else
+        f'<p class="qa-lede">{who_prefix}here is what your chart is doing on this question now. '
+        f'The straight answer, the dated timing windows, and the remedy for what to '
+        f'do inside them are in the paid reading.</p>'
+    )
 
     return """
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {question}</div>
   {route_block}
-  <p class="qa-lede">{who}here is what your chart is doing on this question now.
-  The straight answer, the dated timing windows, and the remedy for what to
-  do inside them are in the paid reading.</p>
+  {lede_html}
 
   <div class="qa-promise">
     <b>{label}</b> is read from your {houses} houses. {note}
@@ -687,7 +727,7 @@ def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
 </section>""".format(
         question=_e(result["question"]),
         route_block=route_block,
-        who=_e(who + ", ") if who else "",
+        lede_html=lede_html,
         label=_e(topic.label),
         houses=_e(", ".join(_ord(h) for h in topic.houses)),
         note=_e(topic.note),
@@ -696,9 +736,10 @@ def render_free(result: dict, *, name: str = "", price: int = 1499) -> str:
 
 
 def render(result: dict, *, name: str = "", paid: bool = False,
-           price: int = 1499) -> str:
+           price: int = 1499, prose: Optional[dict] = None) -> str:
     if not paid:
-        return render_free(result, name=name, price=price)
+        return render_free(result, name=name, price=price, prose=prose)
+    prose = prose or {}
     topic, best = result["topic"], result["best"]
     nearest = result.get("nearest")
     who = (name or "").split()[0] if name else ""
@@ -761,17 +802,17 @@ def render(result: dict, *, name: str = "", paid: bool = False,
                 f"{_pretty(w['end'])} — expect movement, not a finished result.")
 
     def _window_backing(w: dict) -> str:
-        sup = (w.get("bav") or 0) >= 5
-        parts = [
-            f"{w.get('period', '')} running",
-            (f"{w.get('planet', '')} crossing your {_ord(w.get('house'))} house "
-             f"({'well supported' if sup else 'weakly supported'})"),
-        ]
+        parts = []
+        if (w.get("bav") or 0) >= 5:
+            parts.append("The current timing is supportive for this question.")
+        elif (w.get("bav") or 0) <= 3:
+            parts.append("The timing offers movement but needs more effort and care.")
+        else:
+            parts.append("The timing is mixed and should be treated as an opportunity rather than a guarantee.")
         if w.get("period_hits"):
-            parts.append("period activates this question")
-        if w.get("yogini"):
-            parts.append(f"lunar cycle on {w['yogini']}")
-        return "; ".join(p for p in parts if p)
+            parts.append("The active period also connects with the matter being asked about.")
+        return " ".join(parts)
+
 
     def window_block(w: dict, label: str) -> str:
         return f"""
@@ -840,22 +881,39 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     # answer() but never shown — the reader only saw a verdict and dates,
     # never the chart that produced them. Surfacing it here is what makes
     # this a chart reading rather than a fortune-cookie yes/no.
-    house_rows = "".join(
-        f"<li><b>{_e(label)}</b>{' — ' + _e(detail) if detail else ''}</li>"
-        for label, detail in (result.get("chart_lines") or []) if label)
+    evidence_rows = _human_question_evidence(result)
+    house_rows = "".join(f"<li>{_e(x)}</li>" for x in evidence_rows)
     house_block = (
-        f'<div class="evidence"><span class="ev-label">The house and planet '
-        f'behind this</span><ul>{house_rows}</ul></div>') if house_rows else ""
+        f'<div class="evidence"><span class="ev-label">Why this reading points this way</span>'
+        f'<ul>{house_rows}</ul></div>') if house_rows else ""
 
     now_label = (result.get("now_label") or "").strip()
-    now_line = (f'<p class="qa-now">Right now you are running <b>{_e(now_label)}</b>.</p>'
+    now_line = (f'<p class="qa-now">Right now the broader timing is active around this question.</p>'
                if now_label else "")
+
+    # Prefer validated LLM prose when present (facts→prose layer).
+    llm_opening = (prose.get("opening") or "").strip()
+    llm_answer = (prose.get("answer") or "").strip()
+    llm_timing = (prose.get("timing") or "").strip()
+    llm_action = (prose.get("action") or "").strip()
+    if llm_answer:
+        lead = llm_answer
+    lede_txt = llm_opening or (
+        f"{who + ', ' if who else ''}here is the straight answer, then the chart behind it."
+    )
+    timing_note = (
+        f'<p class="sec-note">{_e(llm_timing)}</p>' if llm_timing else
+        '<p class="sec-note">These are the windows where the period and the sky agree '
+        'with the houses that own this question.</p>'
+    )
+    action_note = (
+        f'<p class="qa-action">{_e(llm_action)}</p>' if llm_action else ""
+    )
 
     return f"""
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
-  <p class="qa-lede">{_e(who + ', ' if who else '')}here is the straight answer,
-  then the chart behind it.</p>
+  <p class="qa-lede">{_e(lede_txt)}</p>
   <h2 class="qa-verdict">{_e(lead)}</h2>
   {main_pred}
   <p class="qa-promise"><b>{_e(promise_heading)}</b>
@@ -864,10 +922,10 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   {now_line}
   {house_block}
   <h3 class="sec">Timing — when to move</h3>
-  <p class="sec-note">These are the windows where the period and the sky agree
-  with the houses that own this question.</p>
+  {timing_note}
   {blocks}
   {gap_note}
+  {action_note}
   <p class="qa-caveat">Timing is a window, not a date. What the chart says is
   <em>when the conditions are right</em> — you still have to apply, ask, and
   move inside it. The remedy below is what tips those windows your way.</p>

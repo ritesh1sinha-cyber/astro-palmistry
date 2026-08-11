@@ -111,7 +111,7 @@ LANE_METHOD = {
     "Jaimini": "the karaka method",
     "Mehta": "the modern-technique method",
     "Bhardwaj": "the case-book method",
-    "Goel": "the disease-indication method",
+    "Goel": "the vulnerability-indication method",
     "KVS": "the birth-star method",
     "Longevity": "the lifespan method",
     "Ashtakavarga": "the point-score method",
@@ -220,6 +220,376 @@ def _dignity_in(planet: str, sign: str) -> float:
     if SIGN_LORD.get(sign) == planet:
         return 1.5
     return 0.0
+
+
+# ---------------------------------------------------------------------------
+# canonical confluence engine
+# ---------------------------------------------------------------------------
+
+_METHOD_FAMILY = {
+    "the classical method": "natal_structure",
+    "the strength-scoring method": "natal_structure",
+    "occupancy": "natal_structure",
+    "the cancellation rule": "natal_structure",
+    "chart combinations": "natal_structure",
+
+    "the confirmation chart": "divisional",
+    "the cross-check chart": "divisional",
+
+    "the nadi method": "specialist",
+    "the sub-lord method": "specialist",
+    "the karaka method": "specialist",
+    "the modern-technique method": "specialist",
+    "the case-book method": "specialist",
+    "the vulnerability-indication method": "specialist",
+    "the birth-star method": "specialist",
+    "the lifespan method": "specialist",
+    "the point-score method": "specialist",
+    "a further classical method": "specialist",
+
+    "the classical rule-book": "rules",
+    "the sky right now": "transit",
+    "the period clock": "timing",
+    "dasha timing": "timing",
+    "palmistry": "independent",
+    "palm": "independent",
+    "numerology": "independent",
+}
+
+_FAMILY_NAMES = {
+    "natal_structure": "Birth-chart structure",
+    "divisional": "Divisional-chart confirmation",
+    "specialist": "Independent specialist methods",
+    "timing": "Dasha timing",
+    "transit": "Current transits",
+    "rules": "Classical rule checks",
+    "independent": "Independent cross-checks",
+}
+
+# Every family gets one bounded contribution. This prevents ten statements
+# from one technique, or several correlated readings of the same planet, from
+# drowning out a genuinely conflicting family.
+_FAMILY_CAP = {
+    "natal_structure": 1.00,
+    "divisional": 1.00,
+    "specialist": 1.00,
+    "timing": 1.00,
+    "transit": 1.00,
+    "rules": 0.75,
+    "independent": 0.75,
+}
+
+def _family_for_method(method: str) -> str:
+    raw = str(method or "").strip()
+    if raw in _METHOD_FAMILY:
+        return _METHOD_FAMILY[raw]
+    low = raw.lower()
+    if "transit" in low or "sky" in low:
+        return "transit"
+    if "period" in low or "dasha" in low or "yogini" in low or "chara" in low:
+        return "timing"
+    if "rule" in low:
+        return "rules"
+    if "palm" in low:
+        return "independent"
+    if "numer" in low:
+        return "independent"
+    if "varga" in low or "chart" in low or "d9" in low:
+        return "divisional"
+    return "specialist"
+
+def _side(value: float) -> str:
+    return "up" if value > 0.4 else ("down" if value < -0.4 else "mixed")
+
+def _touches_area(pc: dict, area_key: str, house: int, planet: str) -> bool:
+    """Whether a planet has a defensible natal connection to this area."""
+    if not planet:
+        return False
+    support = {
+        "career": (10, 6, 11), "money": (2, 11), "love": (7, 5),
+        "home": (4, 2), "children": (5, 9), "health": (1, 6, 8),
+        "learning": (9, 5), "inner": (12, 9),
+    }.get(area_key, (house,))
+    hl = pc.get("house_lords") or {}
+    planets = pc.get("planets") or {}
+    if any((hl.get(str(h)) or {}).get("lord") == planet for h in support):
+        return True
+    return (planets.get(planet) or {}).get("house") in support
+
+def _dasha_area_vote(pc: dict, area_key: str, house: int,
+                     when: Optional[date] = None) -> Optional[Vote]:
+    """One bounded timing vote built from Vimshottari + Yogini + Chara + BNN.
+
+    These clocks are related systems, so they are intentionally combined into
+    one timing-family vote instead of pretending they are four independent
+    proofs. Their component readings remain available for audit/debugging.
+    """
+    when = when or date.today()
+    try:
+        dc = dasha_confluence(pc, when)
+    except Exception:
+        return None
+    readings = [r for r in (dc.get("readings") or []) if r.get("label")]
+    if not readings:
+        return None
+
+    relevant = []
+    for r in readings:
+        planets = r.get("planets") or []
+        if any(_touches_area(pc, area_key, house, p) for p in planets):
+            relevant.append(r)
+
+    # If no dasha planet directly touches the area, timing is not allowed to
+    # manufacture a prediction for it. It can remain neutral.
+    if not relevant:
+        return Vote("dasha timing", 0.0,
+                    "The current dasha clocks do not directly activate this area")
+
+    vals = [float(r.get("tone") or 0) for r in relevant]
+    score = sum(vals) / len(vals)
+    # Require actual directional agreement before allowing timing to be strong.
+    up = sum(v > 0.2 for v in vals)
+    down = sum(v < -0.2 for v in vals)
+    if up and down:
+        score *= 0.55
+    score = max(-1.6, min(1.6, score))
+    names = []
+    for r in relevant:
+        n = str(r.get("system") or "")
+        label = str(r.get("label") or "")
+        if n and label:
+            names.append(f"{n}: {label}")
+    because = " · ".join(names[:4])
+    if up and down:
+        because += " — the timing clocks disagree, so this is treated cautiously"
+    elif because:
+        because += " — the active clocks broadly point the same way"
+    return Vote("dasha timing", score, because)
+
+def _aggregate_family(votes: list[Vote]) -> dict:
+    """Collapse related evidence into one bounded family signal."""
+    decided = [v for v in votes if v.direction != "mixed"]
+    if not decided:
+        return {"score": 0.0, "direction": "mixed", "n": 0,
+                "up": 0, "down": 0, "methods": []}
+
+    # Diminishing returns: the first two independent methods in a family
+    # carry most information; further agreement increases confidence but not
+    # linearly increases the final score.
+    vals = sorted((float(v.value) for v in decided), key=abs, reverse=True)
+    weights = [1.0, 0.75, 0.55, 0.40, 0.30]
+    num = sum(v * weights[min(i, len(weights)-1)] for i, v in enumerate(vals))
+    den = sum(weights[min(i, len(weights)-1)] for i in range(len(vals)))
+    score = num / den if den else 0.0
+    up = sum(v.direction == "up" for v in decided)
+    down = sum(v.direction == "down" for v in decided)
+    return {
+        "score": max(-2.0, min(2.0, score)),
+        "direction": _side(score),
+        "n": len(decided), "up": up, "down": down,
+        "methods": [v.method for v in decided],
+    }
+
+def _promise_for(pc: dict, area_key: str) -> dict:
+    """Natal/divisional promise gate — lazy import keeps tests lightweight."""
+    try:
+        from personalized_confluence import resolve_promise
+    except Exception:  # noqa: BLE001
+        return {}
+    return resolve_promise(pc, area_key)
+
+
+def _activation_for(*, direction: str, score: float, confidence: str,
+                    agreement: str, promise_status: str) -> dict:
+    """Timing-only activation gate (P0-8) — separate object, never merged into promise."""
+    try:
+        from personalized_confluence import resolve_activation
+    except Exception:  # noqa: BLE001
+        return {}
+    return resolve_activation(
+        direction=direction, score=score, confidence=confidence,
+        agreement=agreement, promise_status=promise_status,
+    )
+
+
+def build_confluence(pc: dict, area_key: str, house: int,
+                     *, today: Optional[date] = None,
+                     raw_votes: Optional[list[Vote]] = None) -> dict:
+    """Canonical promise × timing × manifestation confluence.
+
+    The engine first gathers all existing evidence, then prevents correlated
+    evidence from being counted as independent proof. The final direction is
+    determined here. Semantic language is never allowed to override it.
+    """
+    today = today or date.today()
+    votes = list(raw_votes if raw_votes is not None else area_votes(pc, area_key, house))
+    dv = _dasha_area_vote(pc, area_key, house, today)
+    if dv is not None:
+        votes.append(dv)
+
+    # Palm/numerology may arrive through specialist collectors under a different
+    # method name; family detection keeps them independent without changing
+    # their underlying vote.
+    families: dict[str, list[Vote]] = {}
+    for v in votes:
+        families.setdefault(_family_for_method(v.method), []).append(v)
+
+    family_rows = []
+    weighted = 0.0
+    total_weight = 0.0
+    for family, fvotes in families.items():
+        agg = _aggregate_family(fvotes)
+        cap = _FAMILY_CAP.get(family, 0.75)
+        if agg["n"] == 0:
+            continue
+        weighted += agg["score"] * cap
+        total_weight += cap
+        family_rows.append({
+            "family": family,
+            "label": _FAMILY_NAMES.get(family, family.replace("_", " ").title()),
+            "score": round(agg["score"], 3),
+            "direction": agg["direction"],
+            "methods": list(dict.fromkeys(agg["methods"])),
+            "up": agg["up"], "down": agg["down"], "n": agg["n"],
+        })
+
+    final_score = weighted / total_weight if total_weight else 0.0
+    direction = _side(final_score)
+
+    supporting = [f for f in family_rows if f["direction"] == direction and direction != "mixed"]
+    opposing = [f for f in family_rows
+                if f["direction"] not in ("mixed", direction)]
+    decided_families = [f for f in family_rows if f["direction"] != "mixed"]
+
+    # Confidence requires both breadth and strength. A pile of related
+    # techniques is not enough; at least two families must independently agree.
+    same = len(supporting)
+    breadth = same / len(decided_families) if decided_families else 0.0
+    if direction == "mixed":
+        confidence = "low"
+    elif same >= 4 and breadth >= 0.70 and abs(final_score) >= 0.65:
+        confidence = "very high"
+    elif same >= 3 and breadth >= 0.65 and abs(final_score) >= 0.50:
+        confidence = "high"
+    elif same >= 2 and breadth >= 0.60:
+        confidence = "moderate"
+    else:
+        confidence = "low"
+
+    # A conflict penalty is recorded separately so later calibration can use
+    # it without changing the directional score.
+    conflict = sum(min(1.0, abs(f["score"])) for f in opposing)
+    conflict_ratio = conflict / max(1.0, sum(abs(f["score"]) for f in family_rows))
+
+    agreement = _derive_agreement(
+        same, len(decided_families), breadth, conflict_ratio)
+    secondary_confirmations = _build_secondary_confirmations(
+        pc, area_key, house, direction, today)
+
+    promise = _promise_for(pc, area_key)
+    activation = _activation_for(
+        direction=direction, score=final_score, confidence=confidence,
+        agreement=agreement, promise_status=str(promise.get("status") or ""),
+    )
+
+    return {
+        "direction": direction,
+        "score": round(final_score, 3),
+        "confidence": confidence,
+        "promise": promise,
+        "activation": activation,
+        "agreement": agreement,
+        "votes": votes,
+        "families": family_rows,
+        "supporting_families": [f["label"] for f in supporting],
+        "opposing_families": [f["label"] for f in opposing],
+        "family_agreement": f"{same} of {len(decided_families)} evidence families align"
+                             if decided_families else "",
+        "conflict_ratio": round(conflict_ratio, 3),
+        "secondary_confirmations": secondary_confirmations,
+        "timing": {
+            "method": "Vimshottari + Yogini + Jaimini Chara + BNN",
+            "vote": {"direction": dv.direction if dv else "mixed",
+                     "score": round(dv.value, 3) if dv else 0.0,
+                     "because": dv.because if dv else ""},
+        },
+    }
+
+
+def _derive_agreement(
+    same: int,
+    decided_count: int,
+    breadth: float,
+    conflict_ratio: float,
+) -> str:
+    """Agreement among evidence families — separate from direction/confidence."""
+    if decided_count == 0:
+        return "weak"
+    if conflict_ratio >= 0.45 and decided_count >= 2:
+        return "conflicting"
+    if breadth >= 0.75 and same >= 3:
+        return "strong"
+    if breadth >= 0.50 or same >= 2:
+        return "partial"
+    return "weak"
+
+
+def _build_secondary_confirmations(
+    pc: dict,
+    area_key: str,
+    house: int,
+    direction: str,
+    when: date,
+) -> list[dict]:
+    """Independent timing confirmations that align with the area direction."""
+    if direction == "mixed":
+        return []
+    try:
+        dc = dasha_confluence(pc, when)
+    except Exception:  # noqa: BLE001
+        return []
+
+    _METHOD_LABELS = {
+        "yogini": "Yogini",
+        "chara": "Jaimini Chara",
+        "bnn": "BNN",
+    }
+    out: list[dict] = []
+    for reading in dc.get("readings") or []:
+        kind = str(reading.get("kind") or "")
+        if kind == "vimshottari":
+            continue
+        planets = [p for p in (reading.get("planets") or []) if p]
+        if not planets:
+            continue
+        if not any(_touches_area(pc, area_key, house, p) for p in planets):
+            continue
+        tone = float(reading.get("tone") or 0)
+        r_dir = "up" if tone > 0.2 else ("down" if tone < -0.2 else "mixed")
+        if r_dir != direction:
+            continue
+        method = _METHOD_LABELS.get(kind, str(reading.get("system") or "Timing"))
+        planet = planets[0]
+        if direction == "up":
+            reason = (
+                f"{method} timing also supports this {area_key} window "
+                f"through {planet}."
+            )
+        else:
+            reason = (
+                f"{method} timing also adds caution in this {area_key} window "
+                f"through {planet}."
+            )
+        strength = "strong" if abs(tone) >= 1.0 else ("moderate" if abs(tone) >= 0.5 else "low")
+        out.append({
+            "method": method,
+            "planet": planet,
+            "direction": "support" if direction == "up" else "caution",
+            "area": area_key,
+            "reason": reason,
+            "strength": strength,
+        })
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -515,54 +885,8 @@ def palm_votes(pc: dict, area_key: str, palm_features: Any = None,
 
 
 def area_verdict(pc: dict, area_key: str, house: int) -> dict:
-    """Combine the votes into one verdict plus an honest confidence."""
-    votes = area_votes(pc, area_key, house)
-    if not votes:
-        return {"direction": "mixed", "score": 0.0, "votes": [],
-                "agreement": "", "confidence": "low"}
-
-    score = sum(v.value for v in votes) / len(votes)
-    direction = "up" if score >= 0.5 else ("down" if score <= -0.5 else "mixed")
-
-    # Agreement is measured over the methods that actually took a side. With
-    # a dozen methods voting, counting abstentions against the majority made
-    # every area read "low confidence" — and a confidence chip that always says
-    # low tells the customer nothing. A method with no opinion is not a
-    # dissenter. (It also fixed the inverse bug: three neutral votes used to
-    # score "3 of 3 agree, high" on a verdict of mixed.)
-    total = len(votes)
-    decided = [v for v in votes if v.direction != "mixed"]
-    ups = sum(1 for v in decided if v.direction == "up")
-    downs = sum(1 for v in decided if v.direction == "down")
-    same = sum(1 for v in decided if v.direction == direction)
-    ratio = same / len(decided) if decided else 0.0
-    if direction == "mixed":
-        confidence = "low"                  # we are not confident, by definition
-    elif ratio >= 0.75 and len(decided) >= 4:
-        confidence = "high"
-    elif ratio >= 0.6:
-        confidence = "moderate"
-    else:
-        confidence = "low"
-    if direction == "mixed":
-        # A genuine split is a finding, not a failure — and reporting it as
-        # "0 of 5 methods agree" made a real result look like a broken one.
-        if ups and downs:
-            agreement = f"the methods split {ups}–{downs} here"
-        elif ups or downs:
-            # Everything that leans, leans one way, but not hard enough to call.
-            agreement = (f"{ups or downs} of {total} methods lean "
-                         f"{'positive' if ups else 'negative'}, the rest are neutral")
-        else:
-            agreement = f"none of the {total} methods takes a side"
-    else:
-        agreement = f"{same} of {len(decided)} methods with a view agree"
-    result = {"direction": direction, "score": round(score, 2), "votes": votes,
-              "agreement": agreement, "confidence": confidence}
-    try:
-        result["agreement"] = customer_confidence(result) or agreement
-    except Exception:  # noqa: BLE001
-        pass
+    """Canonical area verdict. All final direction/confidence decisions happen here."""
+    result = build_confluence(pc, area_key, house)
     return result
 
 
@@ -1001,40 +1325,39 @@ def _dir_from_cluster(cl) -> str:
 
 
 def merge_semantic_verdict(area_key: str, verdict: dict) -> dict:
-    """Rule votes supply direction and evidence; semantic cluster adjusts confidence only."""
+    """Add semantic/language context without changing the canonical verdict.
+
+    Semantic clustering is allowed to help wording and explanatory confidence,
+    but it must never turn a mixed or cautionary chart into a supportive one.
+    """
     cl = semantic_cluster_for_area(area_key)
     if not cl:
         return verdict
+    out = dict(verdict)
     systems = _cluster_field(cl, "systems", []) or []
     conf = str(_cluster_field(cl, "confidence", "MODERATE") or "MODERATE")
-    direction = _dir_from_cluster(cl)
     texts = [str(t).strip() for t in (_cluster_field(cl, "texts", []) or []) if t]
-    out = dict(verdict)
-    # Keep rule-vote direction unless semantic cluster is unanimous and strong
-    if systems and len(systems) >= 2:
-        out["direction"] = direction
     out["semantic"] = True
     out["semantic_mode"] = _semantic_mode
-    # Do NOT replace headline with BOOK_LINES affirmation — keep concrete CLAIMS
-    n = len(systems)
-    out["confidence"] = conf.lower()
-    out["agreement"] = customer_confidence(out) or (
-        f"{n} methods align · {conf}" if n else f"semantic cluster · {conf}")
-    # Keep structured votes for scoring; do not attach raw because strings
-    # or deep_evidence prose to customer-facing evidence lists.
-    out["evidence"] = []
+    out["semantic_systems"] = systems
+    out["semantic_texts"] = texts[:3]
+    # Preserve canonical score, direction, family agreement and confidence.
+    # Semantic confidence is retained only as metadata for diagnostics.
+    out["semantic_confidence"] = conf.lower()
+    out["agreement"] = out.get("family_agreement") or customer_confidence(out)
     return out
 
 
 def customer_confidence(verdict: dict) -> str:
-    """Plain confidence chip — never 'N of M methods with a view agree'."""
+    """Human confidence derived from canonical evidence families."""
     try:
-        import predict_voice as PV
-        votes = verdict.get("votes") or []
-        direction = verdict.get("direction", "mixed")
-        decided = [v for v in votes if getattr(v, "direction", "mixed") != "mixed"]
-        same = sum(1 for v in decided if getattr(v, "direction", "mixed") == direction)
-        return PV.confidence_word(same, len(decided) or len(votes), direction)
+        conf = str(verdict.get("confidence") or "").lower()
+        return {
+            "very high": "Very strong confluence",
+            "high": "Strong confluence",
+            "moderate": "Moderate confluence",
+            "low": "Mixed evidence",
+        }.get(conf, "")
     except Exception:  # noqa: BLE001
         return ""
 

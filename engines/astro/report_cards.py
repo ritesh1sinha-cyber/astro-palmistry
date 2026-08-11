@@ -60,7 +60,7 @@ class Area:
 AREAS: tuple[Area, ...] = (
     Area("career", "Work & Career", 10, (6, 11), "your work"),
     Area("money", "Money", 2, (11,), "money"),
-    Area("love", "Love & Marriage", 7, (5,), "your closest relationship"),
+    Area("love", "Relationships & Partnership", 7, (5,), "your closest relationship"),
     Area("home", "Home & Family", 4, (2,), "home and family"),
     Area("children", "Children", 5, (9,), "children"),
     Area("health", "Health & Energy", 1, (6, 8), "your health"),
@@ -154,6 +154,7 @@ class Card:
     label: str
     direction: str                 # up | mixed | down
     headline: str                  # scenario (plain prediction)
+    house: int = 0
     backing: str = ""              # one-line Why
     window: str = ""
     evidence: list = field(default_factory=list)  # legacy; use backing
@@ -162,6 +163,7 @@ class Card:
     agreement: str = ""            # confidence chip, not method counts
     planets: list = field(default_factory=list)
     trajectory: list = field(default_factory=list)
+    confluence: dict = field(default_factory=dict)
     locked: bool = False           # kept for callers that still gate whole cards
 
 
@@ -189,6 +191,119 @@ def free_confidence_label(agreement: str, direction: str) -> str:
         return "strong support"
     return "mixed support"
 
+
+_CONFLUENCE_LABELS = {
+    "the classical method": "Birth chart",
+    "the strength-scoring method": "Ashtakavarga",
+    "occupancy": "Planets in the house",
+    "the cancellation rule": "Cancellation / reversal rules",
+    "chart combinations": "Chart combinations",
+    "the confirmation chart": "Relationship divisional confirmation",
+    "the cross-check chart": "Cross-check divisional chart",
+    "BNN": "BNN / Nadi",
+    "KP": "KP",
+    "Jaimini": "Jaimini / Chara",
+    "Yogini": "Yogini",
+    "Vimshottari": "Vimshottari",
+    "RTVD": "RTVD",
+    "Pillar": "Pillar",
+    "Bhardwaj": "Bhardwaj",
+    "Goel": "Goel",
+    "Numerology": "Numerology",
+    "Blind chart": "Blind-chart analysis",
+    "Blindchart": "Blind-chart analysis",
+    "the 108-rule analysis": "108-rule analysis",
+    "108 rules": "108-rule analysis",
+    "slow transits": "Transit analysis",
+    "transit": "Transit analysis",
+    "period clock": "Period timing",
+    "palm": "Palmistry cross-check",
+    "palmistry": "Palmistry cross-check",
+}
+
+def _confluence_label(method: str) -> str:
+    raw = str(method or "").strip()
+    if raw in _CONFLUENCE_LABELS:
+        return _CONFLUENCE_LABELS[raw]
+    low = raw.lower()
+    for key, val in _CONFLUENCE_LABELS.items():
+        if key.lower() in low:
+            return val
+    return raw or "Astrology method"
+
+def _build_confluence(area_key: str, house: int, pc: dict) -> dict:
+    """Presentation-only view of the same votes used by report_confluence."""
+    try:
+        import report_confluence as CF
+        result = CF.area_verdict(pc, area_key, house)
+        votes = result.get("votes") or []
+    except Exception as exc:  # noqa: BLE001
+        return {"support": 0, "caution": 0, "neutral": 0, "total": 0,
+                "rows": [], "error": type(exc).__name__}
+
+    grouped = {}
+    for v in votes:
+        label = _confluence_label(getattr(v, "method", ""))
+        val = float(getattr(v, "value", 0) or 0)
+        direction = ("support" if val > 0.4 else
+                     "caution" if val < -0.4 else "neutral")
+        if label not in grouped:
+            grouped[label] = {"label": label, "direction": direction,
+                              "value": val, "reasons": []}
+        else:
+            cur = grouped[label]
+            if abs(val) > abs(cur["value"]):
+                cur["value"] = val
+                cur["direction"] = direction
+        if len(grouped[label]["reasons"]) < 2:
+            try:
+                from evidence_normalizer import normalize_vote
+                norm = normalize_vote(v, area=area_key)
+                because = norm.normalized_reason
+            except Exception:  # noqa: BLE001
+                because = str(getattr(v, "because", "") or "").strip()
+                if because:
+                    try:
+                        from qa_checks.customer_text_sanitizer import sanitize_customer_text
+                        because = sanitize_customer_text(
+                            because,
+                            method_label=label,
+                            direction=direction,
+                            area=area_key,
+                            seed=f"{area_key}:{label}:{because[:48]}",
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
+            if because:
+                grouped[label]["reasons"].append(because)
+
+    rows = list(grouped.values())
+    support = sum(r["direction"] == "support" for r in rows)
+    caution = sum(r["direction"] == "caution" for r in rows)
+    neutral = sum(r["direction"] == "neutral" for r in rows)
+    total = len(rows)
+
+    if support and caution:
+        summary = f"{support} support · {caution} caution · {neutral} neutral"
+    elif support:
+        summary = f"{support} support · {neutral} neutral"
+    elif caution:
+        summary = f"{caution} caution · {neutral} neutral"
+    else:
+        summary = f"{neutral} neutral"
+
+    return {
+        "support": support, "caution": caution, "neutral": neutral,
+        "total": total, "rows": rows, "summary": summary,
+        "verdict": result.get("confidence", ""),
+        "confidence": result.get("confidence", ""),
+        "agreement": result.get("agreement", ""),
+        "direction": result.get("direction", "mixed"),
+        "score": result.get("score", 0),
+        "promise": result.get("promise") or {},
+        "activation": result.get("activation") or {},
+        "secondary_confirmations": result.get("secondary_confirmations") or [],
+    }
 
 def _window(start: Any, end: Any, today: Optional[date] = None) -> str:
     today = today or date.today()
@@ -236,6 +351,7 @@ def score_area(pc: dict, area: Area, *, today: Optional[date] = None) -> tuple:
             "score": report.score,
             "when": report.when,
             "remedy": report.remedy,
+            "confluence": _build_confluence(area.key, area.house, pc),
         }
         return (report.direction, [report.proof], report.score, verdict)
     except Exception:
@@ -248,7 +364,9 @@ def score_area(pc: dict, area: Area, *, today: Optional[date] = None) -> tuple:
     score = DIGNITY_WEIGHT.get(dignity, 0.0)
     direction = "up" if score >= 1.5 else ("down" if score <= -1 else "mixed")
     lord = info.get("lord") or ""
-    return direction, [f"<b>{lord}</b> rules this area"], score, {}
+    return direction, [f"<b>{lord}</b> rules this area"], score, {
+        "confluence": _build_confluence(area.key, area.house, pc)
+    }
 
 
 def _ord(n: Any) -> str:
@@ -261,8 +379,14 @@ def _ord(n: Any) -> str:
 
 def build_cards(pc: dict, *, today: Optional[date] = None,
                 free_areas: int = 0,
-                gate: Optional[Any] = None) -> list:
-    """One card per life area, ordered so the sharpest reading leads."""
+                gate: Optional[Any] = None,
+                featured_timing: Optional[list[dict]] = None) -> list:
+    """One card per life area, ordered so the sharpest reading leads.
+
+    Each area is computed once via ``canonical_result.build_area_result`` so
+    dashboard / free / paid / why / timing all read the same object. If the
+    canonical module is unavailable, falls back to the legacy per-card path.
+    """
     today = today or date.today()
     from interpretation.life_stage import age_band
     from narration.area_labels import area_label as _age_area_label
@@ -276,24 +400,123 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
     ad = current_ad(pc)
     md_lord, ad_lord = md.get("md_lord", ""), ad.get("ad_lord", "")
 
+    try:
+        from canonical_result import build_area_result, attach_result_to_confluence
+        _canonical_ok = True
+    except Exception:  # noqa: BLE001
+        build_area_result = None  # type: ignore
+        attach_result_to_confluence = None  # type: ignore
+        _canonical_ok = False
+
     cards = []
     for area in AREAS:
         direction, evidence, score, verdict = score_area(pc, area, today=today)
         live = _dasha_touches(pc, area.house, [md_lord, ad_lord])
-        headline = _manifest_card_headline(
-            pc, area, direction, today=today, gate=gate)
-        if not headline:
-            headline = (verdict or {}).get("headline") or CLAIMS.get(
+
+        if _canonical_ok and build_area_result is not None:
+            # ONE canonical result per area. All later report surfaces consume
+            # this same object instead of recomputing promise/activation/timing.
+            canonical = build_area_result(
+                pc, area.key, area.house, today=today,
+                featured_timing=featured_timing,
+                current_headline=(verdict or {}).get("headline") or "",
+                current_backing=(verdict or {}).get("backing")
+                or (evidence[0] if evidence else ""),
+            )
+            direction = canonical.get("direction") or direction
+            headline = _manifest_card_headline(
+                pc, area, direction, today=today, gate=gate)
+            headline = headline or canonical.get("headline") or CLAIMS.get(
                 (area.key, direction), "")
-        backing = (verdict or {}).get("backing") or (evidence[0] if evidence else "")
-        window = (verdict or {}).get("when") or ""
-        remedy = (verdict or {}).get("remedy") or ""
-        if not remedy:
+            backing = canonical.get("backing") or (evidence[0] if evidence else "")
+            timing = canonical.get("timing") or {}
+            windows = timing.get("windows") or []
+            window = ""
+            if windows:
+                first = windows[0]
+                try:
+                    window = _window(first.get("start"), first.get("end"), today)
+                except Exception:  # noqa: BLE001
+                    window = ""
+            if not window:
+                window = (verdict or {}).get("when") or ""
+            remedy = canonical.get("remedy") or ""
+            trajectory = [
+                {
+                    "start": r.get("start"), "end": r.get("end"),
+                    "direction": ("up" if r.get("aligned") else
+                                  ("down" if r.get("dasha") == "down"
+                                   or r.get("promise") == "down"
+                                   or int(r.get("bav", 0) or 0) <= 3
+                                   else "mixed")),
+                    "planet": r.get("planet", ""),
+                    "dasha": r.get("dasha_label", ""),
+                    "source": r.get("source", ""),
+                    "event_type": r.get("event_type", ""),
+                    "confidence": r.get("confidence", ""),
+                }
+                for r in list(windows[:4])
+            ]
+            agreement = str(canonical.get("agreement") or "")
+            action = canonical.get("action") or _stage_action(area.key, band)
+            confluence = attach_result_to_confluence(
+                (verdict or {}).get("confluence") or {}, canonical)
+            sort_score = abs(float(canonical.get("score") or score)) + (1 if live else 0)
+        else:
+            # Legacy fallback when canonical_result is unavailable.
+            headline = _manifest_card_headline(
+                pc, area, direction, today=today, gate=gate)
+            if not headline:
+                headline = (verdict or {}).get("headline") or CLAIMS.get(
+                    (area.key, direction), "")
+            backing = (verdict or {}).get("backing") or (evidence[0] if evidence else "")
+            window = (verdict or {}).get("when") or ""
+            remedy = (verdict or {}).get("remedy") or ""
+            if not remedy:
+                try:
+                    import area_report as AR
+                    promise_status = str(
+                        ((verdict or {}).get("confluence") or {}).get("promise", {}).get("status", "")
+                        or ((verdict or {}).get("promise") or {}).get("status", "")
+                    )
+                    remedy = AR.classical_area_remedy(
+                        pc, area.key, area.house, direction,
+                        promise_status=promise_status)
+                except Exception:  # noqa: BLE001
+                    remedy = ""
+            trajectory = []
             try:
-                import area_report as AR
-                remedy = AR.classical_area_remedy(pc, area.key, area.house, direction)
+                import report_timing as RT
+                rows = RT.windows_for_area(
+                    pc, area.key, area.house, start=today, years=5)
+                for r in rows:
+                    if not r.get("start"):
+                        continue
+                    rd = ("up" if r.get("aligned")
+                          else ("down" if r.get("dasha") == "down"
+                                or r.get("promise") == "down"
+                                or int(r.get("bav", 0) or 0) <= 3
+                                else "mixed"))
+                    trajectory.append({
+                        "start": r.get("start"), "end": r.get("end"),
+                        "direction": rd, "planet": r.get("planet", ""),
+                        "dasha": r.get("dasha_label", ""),
+                    })
+                trajectory.sort(key=lambda x: x.get("start"))
+                trajectory = trajectory[:4]
             except Exception:  # noqa: BLE001
-                remedy = ""
+                trajectory = []
+            try:
+                import report_confluence as CF
+                agreement = (CF.customer_confidence(verdict or {})
+                             or (verdict or {}).get("agreement", ""))
+            except Exception:  # noqa: BLE001
+                agreement = ((verdict or {}).get("confidence")
+                             or (verdict or {}).get("agreement", ""))
+            action = remedy or _stage_action(area.key, band)
+            confluence = ((verdict or {}).get("confluence")
+                          or _build_confluence(area.key, area.house, pc))
+            sort_score = abs(score) + (1 if live else 0)
 
         # Current MD/AD plus any Jupiter/Saturn transit on this area's house.
         planets_involved = []
@@ -314,50 +537,23 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
         except Exception:  # noqa: BLE001
             pass
 
-        trajectory = []
-        try:
-            import report_timing as RT
-            rows = RT.windows_for_area(
-                pc, area.key, area.house, start=today, years=5)
-            for r in rows:
-                if not r.get("start"):
-                    continue
-                rd = ("up" if r.get("aligned")
-                      else ("down" if r.get("dasha") == "down"
-                            or r.get("promise") == "down"
-                            or int(r.get("bav", 0) or 0) <= 3
-                            else "mixed"))
-                trajectory.append({
-                    "start": r.get("start"), "end": r.get("end"),
-                    "direction": rd, "planet": r.get("planet", ""),
-                    "dasha": r.get("dasha_label", ""),
-                })
-            trajectory.sort(key=lambda x: x.get("start"))
-            trajectory = trajectory[:4]
-        except Exception:  # noqa: BLE001
-            trajectory = []
-
         card = Card(
-            area=area.key, label=_age_area_label(area.key, band), direction=direction,
-            headline=headline, backing=backing, window=window, evidence=[],
-            action=remedy or _stage_action(area.key, band),
+            area=area.key, label=_age_area_label(area.key, band),
+            direction=direction,
+            headline=headline, house=area.house, backing=backing,
+            window=window, evidence=[],
+            action=action,
             mantra="",
-            agreement=(verdict or {}).get("confidence")
-            or (verdict or {}).get("agreement", ""),
+            agreement=agreement,
             planets=planets_involved, trajectory=trajectory,
+            confluence=confluence,
         )
-        cards.append((abs(score) + (1 if live else 0), card))
+        cards.append((sort_score, card))
 
     # sharpest and most active first — a reader should meet the strongest
     # statement about their life on line one, not the 1st house by convention
     cards.sort(key=lambda kv: -kv[0])
     ordered = [c for _, c in cards]
-    # free_areas=0 is the default now: EVERY headline is free, and the paywall
-    # sits on the dated window and the remedy inside each card. Locking whole
-    # cards hid whichever areas the chart happened to speak loudest about —
-    # on a test chart that meant Career was hidden and Children was free.
-    # Seeing the whole picture and paying for "when" and "what to do" is both
-    # a better hook and an honest one.
     for c in ordered[free_areas:] if free_areas else []:
         c.locked = True
     return ordered
@@ -460,11 +656,43 @@ EXPECT_LABEL = {
 def render(pc: dict, *, name: str = "", question_html: str = "",
            price: int = 298, today: Optional[date] = None,
            paid: bool = False, proof_html: str = "",
-           daily_html: str = "", timing_html: str = "") -> str:
+           daily_html: str = "", timing_html: str = "",
+           cards: Optional[list] = None,
+           prose: Optional[dict] = None,
+           footer_unlock: bool = True) -> str:
+    """Render the card report.
+
+    ``prose`` is an optional LLM overlay from ``llm.humanize``
+    (language-only keys: headline/summary/how_this_may_show_up/what_to_watch/
+    what_helps, plus legacy why/meaning/manifestations/pressure/action):
+    ``{"opening": str, "cards": {area: {headline, why, meaning, manifestations,
+    pressure, action}}}``. Missing or rejected slots keep the deterministic
+    template text.
+    """
     today = today or date.today()
+    prose = prose or {}
+    prose_cards = prose.get("cards") if isinstance(prose, dict) else {}
+    if not isinstance(prose_cards, dict):
+        prose_cards = {}
     from qa_checks.report_diversity import ReportDiversityGate
-    gate = ReportDiversityGate()
-    cards = build_cards(pc, today=today, gate=gate)
+    if cards is None:
+        gate = ReportDiversityGate()
+        cards = build_cards(pc, today=today, gate=gate)
+    # Apply validated LLM headlines/why onto Card objects (non-destructive copy).
+    if prose_cards:
+        for c in cards:
+            overlay = prose_cards.get(c.area) or {}
+            if not isinstance(overlay, dict):
+                continue
+            hl = (overlay.get("headline") or "").strip()
+            why = (overlay.get("why") or "").strip()
+            act = (overlay.get("action") or "").strip()
+            if hl:
+                c.headline = hl
+            if why:
+                c.backing = why
+            if act:
+                c.action = act
     timeline = build_timeline(pc, today=today)
     vim = pc.get("vimshottari", {}) or {}
     md, ad = vim.get("current_md", {}) or {}, current_ad(pc)
@@ -548,6 +776,350 @@ make much more sense.</p>
 </div>"""
     except Exception:
         pass
+
+    def _overall_picture_phrase(cf: dict) -> str:
+        from narration.verdict_phrases import overall_picture_phrase
+        promise = cf.get("promise") or {}
+        return overall_picture_phrase(
+            direction=str(cf.get("direction") or "mixed"),
+            confidence=str(cf.get("verdict") or cf.get("confidence") or ""),
+            agreement=str(cf.get("agreement") or ""),
+            support=int(cf.get("support") or 0),
+            caution=int(cf.get("caution") or 0),
+            kind=str(promise.get("kind") or "promise"),
+            challenge_status=str(promise.get("status") or ""),
+        )
+
+    def _confluence_html(c: Card) -> str:
+        cf = c.confluence or {}
+        # Prefer the single-source canonical_result when present (legacy
+        # confluence fields remain as fallback if the module was unavailable).
+        canonical = cf.get("canonical_result") or {}
+        why = canonical.get("why") or {}
+        rows = why.get("rows") or cf.get("rows") or []
+        if not rows and not canonical:
+            return ""
+        summary = why.get("summary") or cf.get("summary") or ""
+        support = int(why.get("support") if "support" in why else cf.get("support") or 0)
+        caution = int(
+            why.get("caution_count") if "caution_count" in why
+            else cf.get("caution") or 0
+        )
+        promise = canonical.get("promise") or cf.get("promise") or {}
+        activation = canonical.get("activation") or cf.get("activation") or {}
+        kind = str(promise.get("kind") or "promise")
+        headline = _overall_picture_phrase(cf)
+        promise_html = ""
+        if promise.get("status"):
+            try:
+                from narration.verdict_phrases import (
+                    activation_status_label,
+                    challenge_mechanism_line,
+                    challenge_pattern_phrase,
+                    promise_activation_line,
+                    promise_status_label,
+                )
+
+                promise_status = str(promise.get("status") or "")
+                activation_status = str(activation.get("status") or "")
+                is_challenge = kind == "challenge"
+                promise_word = "Challenge pattern" if is_challenge else "Underlying promise"
+                status_txt = (
+                    challenge_pattern_phrase(status=promise_status)
+                    if is_challenge
+                    else promise_status_label(promise_status)
+                )
+                activation_txt = (
+                    activation_status_label(activation_status) if activation_status else ""
+                )
+
+                area_key = str(promise.get("area") or c.area)
+                band = "adult"
+                try:
+                    from interpretation.life_stage import age_band as _ab
+                    band = _ab(pc, today=today)
+                except Exception:  # noqa: BLE001
+                    pass
+
+                if paid:
+                    conf = promise.get("confidence") or "low"
+                    evidence_items = list((canonical.get("why") or {}).get("supporting") or [])
+                    evidence_items += list((canonical.get("why") or {}).get("caution") or [])
+                    if not evidence_items:
+                        evidence_items = (
+                            list(promise.get("supporting_evidence") or [])[:2]
+                            + list(promise.get("caution_evidence") or [])[:2]
+                        )
+                    ev_items = "".join(
+                        f"<li>{_e(x)}</li>" for x in evidence_items[:4]
+                    )
+                    ev_block = (
+                        f'<details class="promise-detail"><summary>Why this is supported</summary>'
+                        f'<ul class="promise-evidence">{ev_items}</ul></details>'
+                        if ev_items else ""
+                    )
+
+                    # Optional LLM prose overlay for this card (facts→prose layer).
+                    llm_card = prose_cards.get(c.area) or {}
+                    if not isinstance(llm_card, dict):
+                        llm_card = {}
+
+                    meaning_html = ""
+                    llm_meaning = (
+                        llm_card.get("meaning")
+                        or llm_card.get("summary")
+                        or ""
+                    ).strip()
+                    if llm_meaning:
+                        meaning_html = f'<p class="promise-meaning">{_e(llm_meaning)}</p>'
+                    elif not is_challenge and activation_status:
+                        meaning = promise_activation_line(
+                            promise_status=promise_status,
+                            activation_status=activation_status)
+                        meaning_html = f'<p class="promise-meaning">{_e(meaning)}</p>'
+
+                    mechanism_html = ""
+                    if is_challenge:
+                        mechanism_html = (
+                            f'<p class="conf-mechanism">'
+                            f'{_e(challenge_mechanism_line())}</p>'
+                        )
+
+                    manifest_html = ""
+                    llm_manifests = [
+                        str(x).strip()
+                        for x in (
+                            llm_card.get("manifestations")
+                            or llm_card.get("how_this_may_show_up")
+                            or []
+                        )
+                        if str(x).strip()
+                    ][:3]
+                    if llm_manifests:
+                        li = "".join(f"<li>{_e(x)}</li>" for x in llm_manifests)
+                        manifest_html = (
+                            '<div class="promise-manifest">'
+                            '<span class="ev-label">How this may show up</span>'
+                            f'<ul>{li}</ul></div>'
+                        )
+                    else:
+                        # Prefer canonical manifestations (same object as dashboard),
+                        # then the area_modules catalog as deterministic fallback.
+                        try:
+                            import area_modules as AM
+                            items = list(canonical.get("manifestation") or [])
+                            if not items:
+                                items = AM.manifestations_for(
+                                    area_key, promise_status=promise_status,
+                                    activation_status=activation_status,
+                                    age_band=band, limit=3, pc=pc)
+                            if items:
+                                li = "".join(f"<li>{_e(x)}</li>" for x in items[:3])
+                                manifest_html = (
+                                    '<div class="promise-manifest">'
+                                    '<span class="ev-label">How this may show up</span>'
+                                    f'<ul>{li}</ul></div>'
+                                )
+                        except Exception:  # noqa: BLE001
+                            manifest_html = ""
+
+                    pressure_html = ""
+                    _watch = llm_card.get("what_to_watch") or []
+                    llm_pressure = (
+                        llm_card.get("pressure")
+                        or (_watch[0] if _watch else "")
+                        or ""
+                    ).strip()
+                    if llm_pressure:
+                        pressure_html = (
+                            '<div class="promise-pressure">'
+                            '<span class="ev-label">What can create pressure</span>'
+                            f'<p>{_e(llm_pressure)}</p></div>'
+                        )
+                    else:
+                        caution_ev = promise.get("caution_evidence") or []
+                        if caution_ev:
+                            pressure_txt = str(caution_ev[0] or "")
+                            try:
+                                from qa_checks.customer_text_sanitizer import (
+                                    is_customer_safe,
+                                    sanitize_customer_text,
+                                )
+                                if not is_customer_safe(pressure_txt, area=c.area):
+                                    pressure_txt = sanitize_customer_text(
+                                        pressure_txt,
+                                        method_label="Chart evidence",
+                                        direction="caution",
+                                        area=c.area,
+                                        seed=pressure_txt[:48],
+                                    )
+                            except Exception:  # noqa: BLE001
+                                pressure_txt = (
+                                    "Steady routine and avoiding unnecessary risk "
+                                    "help most when pressure builds here."
+                                )
+                            if pressure_txt:
+                                pressure_html = (
+                                    '<div class="promise-pressure">'
+                                    '<span class="ev-label">What can create pressure</span>'
+                                    f'<p>{_e(pressure_txt)}</p></div>'
+                                )
+
+                    wealth_html = ""
+                    if c.area == "money":
+                        try:
+                            from personalized_confluence import (
+                                resolve_wealth_subareas,
+                                wealth_pressure_action,
+                            )
+                            subs = resolve_wealth_subareas(pc)
+                            rows_w = "".join(
+                                f'<div class="wealth-sub-row"><span>{_e(s["label"])}</span>'
+                                f'<b>{_e(s["status_label"])}</b></div>'
+                                for s in subs.values()
+                            )
+                            if rows_w:
+                                wealth_html = (
+                                    '<div class="promise-manifest">'
+                                    '<span class="ev-label">Inside your money picture</span>'
+                                    f'<div class="wealth-subs">{rows_w}</div></div>'
+                                )
+                            leak_line = wealth_pressure_action(subs)
+                            if leak_line and not pressure_html:
+                                pressure_html = (
+                                    '<div class="promise-pressure">'
+                                    '<span class="ev-label">What can create pressure</span>'
+                                    f'<p>{_e(leak_line)}</p></div>'
+                                )
+                            elif leak_line and pressure_html:
+                                # Prefer the practical accumulation tip for Money.
+                                pressure_html = (
+                                    '<div class="promise-pressure">'
+                                    '<span class="ev-label">What can create pressure</span>'
+                                    f'<p>{_e(leak_line)}</p></div>'
+                                )
+                        except Exception:  # noqa: BLE001
+                            wealth_html = ""
+
+                    activation_line = (
+                        f'<p class="promise-line"><b>{"Current sensitivity" if is_challenge else "Current activation"}:</b> '
+                        f'{_e(activation_txt)}</p>' if activation_txt else ""
+                    )
+                    promise_html = (
+                        f'<p class="promise-line"><b>{promise_word}:</b> '
+                        f'{_e(status_txt)} '
+                        f'<span class="promise-meta">({_e(conf)} confidence)</span></p>'
+                        f'{activation_line}'
+                        f'{meaning_html}{mechanism_html}{manifest_html}'
+                        f'{wealth_html}{pressure_html}{ev_block}'
+                    )
+                else:
+                    # Free tier reads the same canonical dict: full promise
+                    # status, activation summarised without an exact date,
+                    # and named locked items — never Dn codes or month-year.
+                    if is_challenge:
+                        locked = [
+                            "Why this challenge pattern is indicated",
+                            "How it may show up in daily life",
+                            "What can create pressure here",
+                            "A personalised remedy, where one applies",
+                        ]
+                    else:
+                        locked = [
+                            "Why this promise is as strong as it is",
+                            "What kind of success is favoured",
+                            "Your strongest upcoming timing window",
+                            "What can create pressure here",
+                            "A personalised remedy, where one applies",
+                        ]
+                    locked_html = "".join(f"<li>{_e(x)}</li>" for x in locked)
+                    activation_bit = (
+                        f' <b>{"Current sensitivity" if is_challenge else "Current activation"}:</b> {_e(activation_txt)}.'
+                        if activation_txt else ""
+                    )
+                    wealth_bit = ""
+                    if c.area == "money":
+                        try:
+                            from personalized_confluence import (
+                                resolve_wealth_subareas,
+                                wealth_comparison_sentence,
+                            )
+                            sentence = wealth_comparison_sentence(resolve_wealth_subareas(pc))
+                            if sentence:
+                                wealth_bit = f'<p class="promise-meaning">{_e(sentence)}</p>'
+                        except Exception:  # noqa: BLE001
+                            wealth_bit = ""
+                    promise_html = (
+                        f'<p class="promise-line promise-teaser">'
+                        f'<b>{promise_word}:</b> {_e(status_txt)}.{activation_bit}</p>'
+                        f'{wealth_bit}'
+                        f'<ul class="promise-locked">{locked_html}</ul>'
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        health_framing = ""
+        if c.area == "health" and caution > support:
+            from narration.verdict_phrases import health_framing as _health_frame
+            frame = _health_frame(caution=caution, support=support)
+            if frame:
+                health_framing = f'<p class="conf-health-frame">{_e(frame)}</p>'
+
+        detail_rows = []
+        for r in rows:
+            direction = r["direction"]
+            signal = {"support": "supports", "caution": "adds caution",
+                      "neutral": "neutral"}.get(direction, "neutral")
+            cls = direction
+            reason = ""
+            if r.get("reasons"):
+                why_txt = str(r["reasons"][0] or "")
+                try:
+                    from qa_checks.customer_text_sanitizer import (
+                        is_customer_safe,
+                        sanitize_customer_text,
+                    )
+                    if not is_customer_safe(why_txt, area=c.area):
+                        why_txt = sanitize_customer_text(
+                            why_txt,
+                            method_label=str(r.get("label") or "Chart evidence"),
+                            direction=direction,
+                            area=c.area,
+                            seed=why_txt[:48],
+                        )
+                except Exception:  # noqa: BLE001
+                    why_txt = ""
+                if why_txt:
+                    reason = f'<small class="conf-why">{_e(why_txt)}</small>'
+            detail_rows.append(
+                f'<div class="conf-row">'
+                f'<span class="conf-method">{_e(r["label"])}</span>'
+                f'<span class="conf-signal {cls}">{_e(signal)}</span>'
+                f'{reason}</div>'
+            )
+
+        return (
+            f'<div class="confluence-box">'
+            f'<div class="ev-label">How the systems line up</div>'
+            f'{promise_html}'
+            f'{health_framing}'
+            f'<div class="confluence-summary"><strong>{_e(headline)}</strong>'
+            f'<span>{_e(summary)}</span></div>'
+            f'<details class="confluence-details">'
+            f'<summary>See how the evidence supports this reading</summary>'
+            f'<div class="confluence-rows">{"".join(detail_rows)}</div>'
+            f'</details></div>'
+        )
+
+    def _confluence_section(c: Card) -> str:
+        """Technical confluence detail is for adult charts only."""
+        try:
+            from interpretation.life_stage import age_band as _age_band_fn, is_minor
+            if is_minor(_age_band_fn(pc, today=today)):
+                return ""
+        except Exception:  # noqa: BLE001
+            pass
+        return _confluence_html(c)
 
     def card_html(c: Card) -> str:
         if paid:
@@ -707,7 +1279,7 @@ make much more sense.</p>
                 f'<b class="traj-{c.direction}">{_e(expect)}</b>'
                 + (f'<p class="expect-note">{_e(expect_note)}</p>'
                    if expect_note else "")
-                + f'</div>{phase}{planet_html}{trajectory_html}{act}{why}')
+                + f'</div>{_confluence_section(c)}{phase}{planet_html}{trajectory_html}{act}{why}')
         else:
             phase = ('<div class="when locked-inline">'
                      '<span class="lockicon">•</span> Exact dates in the full reading</div>')
@@ -720,7 +1292,7 @@ make much more sense.</p>
                 f'<b class="traj-{c.direction}">{_e(expect)}</b>'
                 + (f'<p class="expect-note">{_e(expect_note)}</p>'
                    if expect_note else "")
-                + f'</div>{phase}'
+                + f'</div>{_confluence_section(c)}{phase}'
                 f'<div class="evidence"><span class="ev-label">Why this reads this way</span>'
                 f'{agree}<p class="pred-why locked-inline"><span class="lockicon">•</span> '
                 f'The full report shows the planets, timing and chart factors '
@@ -820,7 +1392,7 @@ make much more sense.</p>
 <ol class="timeline">{tl}</ol>"""
 
     buy_block = ""
-    if not paid:
+    if not paid and footer_unlock:
         buy_block = f"""
 <div class="buy">
   <h3>Unlock the full reading</h3>

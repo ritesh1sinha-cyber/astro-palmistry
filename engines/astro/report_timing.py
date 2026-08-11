@@ -164,20 +164,55 @@ def windows_for_area(pc: dict, area_key: str, house: int, *,
                      + trigger * 0.3
                      + (0.4 if owns else 0.0))
 
+            # Promise gate: timing may activate a promise but may never create
+            # one. A strong dated event window requires an established natal
+            # promise. Mixed/weak promise remains an opportunity window.
+            try:
+                from personalized_confluence import resolve_promise
+                promise_obj = resolve_promise(pc, area_key)
+            except Exception:  # noqa: BLE001
+                promise_obj = {}
+            promise_status = str(promise_obj.get("status") or "insufficient_evidence")
+            strong_promise = promise_status in ("strongly_supported", "supported")
+            aligned = bool(
+                strong_promise
+                and promise["direction"] != "down"
+                and dasha["direction"] != "down"
+                and bav >= 5
+            )
+            opportunity = bool(
+                not strong_promise
+                and dasha["direction"] == "up"
+                and bav >= 5
+            )
+
+            # Traceability (P2-4): every window states which engine produced
+            # it, what kind of event it marks, and how confident that
+            # combination is — so a downstream validator can refuse to let
+            # an exact date survive without one of these behind it.
+            window_confidence = (
+                "high" if (owns and bav >= 5) else
+                "low" if (bav <= 3 and not owns) else
+                "moderate"
+            )
             rows.append({
                 "area": area_key, "house": house,
                 "start": when, "end": seg.get("end"),
                 "planet": planet, "sign": seg.get("sign", ""),
                 "bav": bav, "sav": seg.get("sav"),
                 "promise": promise["direction"], "promise_score": promise["score"],
+                "promise_status": promise_status,
                 "div_note": div_note,
                 "dasha": dasha["direction"],
                 "dasha_label": " · ".join(r["label"] for r in dasha["readings"]),
                 "period_owns_area": owns,
                 "score": round(score, 2),
-                "aligned": (promise["direction"] != "down"
-                            and dasha["direction"] != "down"
-                            and bav >= 5),
+                "aligned": aligned,
+                "opportunity": opportunity,
+                "source": "dasha_ashtakavarga_transit_confluence",
+                "event_type": (f"{area_key}_window" if strong_promise
+                               else f"{area_key}_opportunity_window"),
+                "confidence": (window_confidence if strong_promise else "low"),
             })
     rows.sort(key=lambda r: r["start"])
     return rows
@@ -208,6 +243,18 @@ def best_windows(pc: dict, areas: list, *, start: Optional[date] = None,
                     r["deep_note"] = de["evidence_lines"][0][:120]
     except Exception:  # noqa: BLE001
         pass
+    # Strongest event windows require an established promise. Opportunity
+    # windows are retained for per-area timing but are not promoted into the
+    # headline "strongest upcoming windows" list when validated event windows
+    # exist.
+    strong_rows = [
+        r for r in allrows
+        if r.get("aligned") and r.get("confidence") in ("high", "very high")
+    ]
+    if strong_rows:
+        allrows = strong_rows
+    else:
+        allrows = [r for r in allrows if r.get("opportunity") or r.get("aligned")]
     # strongest first, but never two of the same area back to back
     allrows.sort(key=lambda r: -abs(r["score"]))
     picked, seen = [], set()

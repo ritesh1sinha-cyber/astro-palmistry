@@ -123,7 +123,7 @@ def build(pc: dict, *, today: Optional[date] = None) -> dict:
             continue
         predictions.append(PV.transit_sentence(
             t["planet"], int(h), t["since"], t["until"],
-            t.get("bav", 0), theme))
+            t.get("bav", 0), theme, pc=pc, today=today))
 
     try:
         import deep_evidence as DE
@@ -193,6 +193,13 @@ def render(block: dict, *, tab: str = "", paid: bool = False) -> str:
                 if getattr(p, "scenario", None):
                     p.scenario = strip_visible_claim_jargon(
                         humanise_client_language(p.scenario))
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from qa_checks.grammar_check import fix_grammar
+            for p in preds:
+                if getattr(p, "scenario", None):
+                    p.scenario = fix_grammar(p.scenario)
         except Exception:  # noqa: BLE001
             pass
     if not block or (not preds and not history_html):

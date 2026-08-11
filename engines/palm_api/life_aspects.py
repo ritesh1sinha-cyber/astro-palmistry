@@ -81,6 +81,10 @@ class Rule:
     page: int | None = None
     quote: str = ""
     tags: tuple[str, ...] = field(default_factory=tuple)
+    # Stable ID used by the modern-correlation layer. The ID is assigned
+    # after RULES is built so the existing astrology/palmistry rules remain
+    # untouched.
+    rule_id: str = ""
 
 
 def _prom(v: View, m: str) -> bool:
@@ -126,7 +130,7 @@ RULES: list[Rule] = [
          "Your index finger stands taller than your ring finger, and that's pride and ambition. You want to lead, to be respected, to matter — and taking orders for too long never sits comfortably with you.",
          "secrets_profession_popularity", None, ""),
     Rule("character", lambda v: v.morph.get("index_vs_ring") == "ring_longer",
-         "Your ring finger reaches past your index — you're a natural risk-taker who loves the spotlight, the creative gamble, the bold leap. Playing it safe simply bores you.",
+         "Your ring finger reaches past your index — you may be willing to take calculated risks when achievement or recognition matters more than playing it safe.",
          "secrets_profession_popularity", None, ""),
 
     # ---------------- MIND & INTELLECT ----------------
@@ -278,6 +282,12 @@ RULES: list[Rule] = [
          "principles_self_learning", 32, "A positive sign (triangle, square and fish) gives positive results."),
 ]
 
+# Stable IDs for the 50 existing confluence rules. Keeping IDs separate from
+# the rule text lets the human-correlation layer evolve without rewriting the
+# underlying palmistry evidence rules.
+for _idx, _rule in enumerate(RULES, 1):
+    _rule.rule_id = f"R{_idx:02d}_{_rule.aspect}"
+
 
 def _strength(matched: int, reinforced: int) -> tuple[str, str]:
     if reinforced >= 2 or (matched >= 3 and reinforced >= 1):
@@ -328,7 +338,21 @@ def build_life_aspects(
     *,
     saraswati_signals: Optional[dict[str, list[dict[str, Any]]]] = None,
 ) -> list[dict[str, Any]]:
-    """Confluence reading grouped by life aspect (dominant hand led, both-hand weighted)."""
+    """Build life-aspect readings with a separate human-correlation layer.
+
+    The existing RULES remain the source of palm evidence.  This function no
+    longer treats their prose as the final customer copy.  Each selected rule
+    is translated through ``palm_modern_correlation.json`` into:
+
+      palm evidence -> traditional meaning -> modern-life manifestation ->
+      recognition cues.
+
+    This keeps the palmistry logic deterministic while making the report much
+    easier for a customer to validate against real life.
+    """
+    from pathlib import Path
+    import json
+
     dom_key = "left" if active_hand == "left" else "right"
     non_key = "right" if dom_key == "left" else "left"
     dom = blocks.get(dom_key) or blocks.get("right") or blocks.get("left")
@@ -339,12 +363,20 @@ def build_life_aspects(
     dv = View((dom.get("features") or {}))
     nv = View((non.get("features") or {})) if non else None
 
+    rubric_path = Path(__file__).resolve().parent / "data" / "palm_modern_correlation.json"
+    try:
+        rubric = json.loads(rubric_path.read_text(encoding="utf-8")) if rubric_path.is_file() else {}
+    except Exception:
+        rubric = {}
+
     out: list[dict[str, Any]] = []
     for akey, atitle in ASPECTS:
         matched: list[Rule] = [r for r in RULES if r.aspect == akey and _safe(r.cond, dv)]
         if not matched:
             continue
-        # Prefer both-hand agreement, then longer/more specific claims.
+
+        # Prefer evidence that is independently confirmed on both hands and
+        # prefer richer/composite rules after that.
         ranked = sorted(
             matched,
             key=lambda r: (
@@ -353,63 +385,174 @@ def build_life_aspects(
             ),
             reverse=True,
         )
-        reinforced = 0
+
         points: list[dict[str, Any]] = []
-        sentences: list[str] = []
+        seen_families: set[str] = set()
         for r in ranked:
-            if len(points) >= _MAX_POINTS_PER_ASPECT or not _is_distinct(r.text, points):
-                continue
             both = bool(nv and _safe(r.cond, nv))
-            if both:
-                reinforced += 1
-            sentences.append(r.text)
+            entry = rubric.get(r.rule_id) or rubric.get(akey, {}) or {}
+            family = str(entry.get("family") or f"{akey}_general")
+
+            # Do not fill an aspect with several statements that are merely
+            # different wording of the same life theme.
+            if family in seen_families:
+                continue
+
+            text = str(entry.get("modern_meaning") or r.text).strip()
+            if not text or not _is_distinct(text, points):
+                continue
+
+            recognize = list(entry.get("recognize") or [])
+            if not recognize:
+                recognize = _fallback_recognition(akey, r)
+
             points.append({
-                "text": r.text,
+                "rule_id": r.rule_id,
+                "family": family,
+                "text": text,
+                "recognize": recognize[:4],
                 "reinforced": both,
                 "book": r.book,
                 "book_label": book_label(r.book) if r.book else None,
                 "page": r.page,
                 "quote": r.quote,
+                "traditional_meaning": r.text,
+                "claim_level": entry.get("claim_level", "pattern"),
             })
-        level, level_note = _strength(len(sentences), reinforced)
+            seen_families.add(family)
+            if len(points) >= _MAX_POINTS_PER_ASPECT:
+                break
+
+        if not points:
+            continue
+
+        reinforced = sum(1 for p in points if p.get("reinforced"))
+        level, level_note = _strength(len(points), reinforced)
+
+        # A human-facing summary is intentionally separate from the technical
+        # rule text. It tells the reader what the selected signs could look like
+        # in ordinary life, without turning palmistry into a guaranteed event.
+        meaning_parts = [str(p["text"]).strip().rstrip(".") for p in points if p.get("text")]
+        if len(meaning_parts) == 1:
+            summary = meaning_parts[0] + "."
+        else:
+            summary = _combine_modern_meanings(akey, meaning_parts)
+
+        recognition: list[str] = []
+        for p in points:
+            for item in p.get("recognize") or []:
+                if item not in recognition:
+                    recognition.append(item)
+                if len(recognition) >= 4:
+                    break
+            if len(recognition) >= 4:
+                break
+
         out.append({
             "key": akey,
             "title": atitle,
-            "summary": sentences[0] if sentences else "",
+            "summary": summary,
+            "what_it_means": summary,
+            "recognition_title": "You may recognize this as",
+            "recognize": recognition,
             "strength": level,
             "strength_note": level_note,
             "reinforced_count": reinforced,
             "points": points,
         })
 
-    # Saraswati book lane — merge as extra confluence points, not a new section
+    # Saraswati book lane — keep it as evidence, but do not allow it to create
+    # a new customer-facing life theme by itself.
     extra = saraswati_signals or {}
     by_key = {row["key"]: row for row in out}
     for akey, sigs in extra.items():
         if akey not in dict(ASPECTS):
             continue
         row = by_key.get(akey)
-        # A bridge signal may support an evidence-backed palm aspect, but it
-        # must never create a standalone verdict from a secondary system.
         if not row:
             continue
-        added = 0
         for sig in sigs:
             if len(row["points"]) >= _MAX_POINTS_PER_ASPECT:
                 break
             txt = (sig.get("text") or "").strip()
-            if not _customer_safe_signal(sig) or not _is_distinct(txt, row["points"]):
+            if not _customer_safe_signal(sig):
                 continue
-            row["points"].append(sig)
-            row["summary"] = (row["summary"] + " " + txt).strip()
-            if sig.get("reinforced"):
-                row["reinforced_count"] += 1
-            added += 1
-        if added:
-            n_pts = len(row["points"])
-            n_ref = row["reinforced_count"]
-            row["strength"], row["strength_note"] = _strength(n_pts, n_ref)
+            # The bridge signal is evidence, not a new modern-life claim.
+            if not _is_distinct(txt, row["points"]):
+                continue
+            row["points"].append({
+                "rule_id": "saraswati",
+                "family": "supporting_evidence",
+                "text": row["summary"],
+                "recognize": [],
+                "reinforced": bool(sig.get("reinforced")),
+                "book": None,
+                "book_label": None,
+                "page": None,
+                "quote": "",
+                "traditional_meaning": txt,
+                "claim_level": "supporting",
+            })
+
     return out
+
+
+def _fallback_recognition(aspect: str, rule: Rule) -> list[str]:
+    """Safe generic recognition cues when a new rule lacks a rubric entry."""
+    defaults = {
+        "character": [
+            "the way you respond to people or pressure",
+            "how comfortable you feel taking the lead or holding back",
+        ],
+        "mind": [
+            "how you make important decisions",
+            "whether you prefer facts, discussion or intuition before acting",
+        ],
+        "love": [
+            "how quickly you open up to someone",
+            "what you need to feel secure in a close relationship",
+        ],
+        "career": [
+            "the kind of responsibility you naturally take on",
+            "how recognition or independence affects your work choices",
+        ],
+        "wealth": [
+            "how you approach earning, saving or financial risk",
+            "whether skill, reputation or planning matters to your income",
+        ],
+        "health": [
+            "how strongly routine, rest and recovery affect your day",
+            "whether stress changes how energetic you feel",
+        ],
+        "travel": [
+            "whether you feel refreshed by change of place",
+            "how much variety you need to stay mentally engaged",
+        ],
+        "fortune": [
+            "a period when one area of life feels unusually supported",
+            "opportunities that seem to arrive when you are ready to use them",
+        ],
+    }
+    return defaults.get(aspect, [])
+
+
+def _combine_modern_meanings(aspect: str, meanings: list[str]) -> str:
+    """Combine two independent modern manifestations without sounding like a list."""
+    a, b = meanings[0], meanings[1]
+    # The entries in the rubric are already complete human sentences.
+    # Joining them as sentences is clearer than trying to grammatically splice
+    # two full sentences with words such as "combines" or "alongside".
+    lead = {
+        "character": "Together, these signs point to two related parts of your temperament:",
+        "mind": "Together, these signs point to two related parts of how you think and decide:",
+        "love": "Together, these signs point to two related parts of your emotional life:",
+        "career": "Together, these signs point to two related parts of your work life:",
+        "wealth": "Together, these signs point to two related parts of how you build security:",
+        "health": "Together, these signs point to two related wellbeing patterns:",
+        "travel": "Together, these signs point to two related ways you respond to change:",
+        "fortune": "Together, these signs point to two related supportive themes:",
+    }.get(aspect, "Together, these signs point to two related patterns:")
+    return f"{lead} {a}. {b}."
 
 
 def _safe(cond: Callable[[View], bool], v: View) -> bool:

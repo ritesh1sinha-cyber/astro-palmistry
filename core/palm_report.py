@@ -157,8 +157,13 @@ def _line_score(lines: Dict[str, Any], key: str, fallback: int = 70) -> int:
     p = (lines or {}).get(key) or {}
     if not p.get("detected"):
         return fallback
-    s = DEPTH_SCORE.get(str(p.get("depth")), 72) + QUALITY_ADJ.get(str(p.get("quality")), 0)
-    return max(45, min(97, int(s)))
+    try:
+        from palm_api.measurements import line_strength_score
+        rank = line_strength_score(p)
+        return {0: fallback, 1: 58, 2: 74, 3: 88}.get(rank, fallback)
+    except Exception:  # noqa: BLE001
+        s = DEPTH_SCORE.get(str(p.get("depth")), 72) + QUALITY_ADJ.get(str(p.get("quality")), 0)
+        return max(45, min(97, int(s)))
 
 
 def build_scores(dom: Dict[str, Any], aspects: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -542,10 +547,67 @@ def build_palm_html_reading(raw: dict, p: dict, *,
     n_points = sum(len((raw.get(h) or {}).get("numbered_checklist") or [])
                    for h in ("left", "right"))
 
+    # LLM prose layer — facts in, structured prose out (off unless configured).
+    prose_overlay: dict = {}
+    llm_meta: dict = {"enabled": False}
+    facts_payload: dict = {}
+    try:
+        import sys
+        from pathlib import Path
+        # engines/astro is on the worker path; llm lives under it.
+        eng = Path(__file__).resolve().parents[1] / "engines" / "astro"
+        if str(eng) not in sys.path:
+            sys.path.insert(0, str(eng))
+        from llm.facts import build_palm_facts, project_for_access
+        from llm.humanize import humanize
+        # Ensure reading_result is present for the fact builder.
+        if "reading_result" not in raw:
+            try:
+                from palm_api.reading_result import build_reading_result
+                raw = dict(raw)
+                raw["reading_result"] = build_reading_result(
+                    raw, person={"name": name, "age": age},
+                    active_hand=dom_key)
+            except Exception:  # noqa: BLE001
+                pass
+        age_band = "adult"
+        if age < 13:
+            age_band = "child"
+        elif age < 18:
+            age_band = "teen"
+        elif age < 25:
+            age_band = "young_adult"
+        pfacts_paid = build_palm_facts(
+            raw, name=name, access="paid", age_band=age_band)
+        pfacts_free = project_for_access(pfacts_paid, "free")
+        facts_payload = pfacts_paid.model_dump(mode="json")
+        free_llm = humanize("palm", pfacts_free, access="free")
+        paid_llm = humanize("palm", pfacts_paid, access="paid")
+        prose_overlay = {
+            "free": free_llm.get("overlay") or {},
+            "paid": paid_llm.get("overlay") or {},
+        }
+        llm_meta = {
+            "enabled": bool(paid_llm.get("enabled") or free_llm.get("enabled")),
+            "stats": paid_llm.get("stats") or {},
+            "free": {"stats": free_llm.get("stats") or {},
+                     "fallback_used": bool(free_llm.get("fallback_used"))},
+            "paid": {"stats": paid_llm.get("stats") or {},
+                     "fallback_used": bool(paid_llm.get("fallback_used"))},
+        }
+    except Exception as exc:  # noqa: BLE001
+        print(f"[palm_report] llm humanize skipped: {exc}", flush=True)
+
     common = dict(name=name, age=age, gender=req.gender,
                   dominant=req.dominant, price=price)
-    free_html = _scrub_palm_html(PC.render(raw, paid=False, **common))
-    paid_html = _scrub_palm_html(PC.render(raw, paid=True, **common))
+    free_html = _scrub_palm_html(
+        PC.render(raw, paid=False, prose=(prose_overlay.get("free", {})
+                                          if isinstance(prose_overlay, dict) else {}),
+                  **common))
+    paid_html = _scrub_palm_html(
+        PC.render(raw, paid=True, prose=(prose_overlay.get("paid", {})
+                                         if isinstance(prose_overlay, dict) else {}),
+                  **common))
 
     quality = (dom.get("features") or {}).get("quality") or {}
     guidance = (dom.get("features") or {}).get("photo_guidance") or {}
@@ -565,5 +627,7 @@ def build_palm_html_reading(raw: dict, p: dict, *,
         "futureCount": len(ahead),
         "datedAhead": len(ahead),
         "scores": build_scores(dom, {a.get("key"): a for a in aspects}),
+        "llm": llm_meta,
+        "_facts": facts_payload,
     }
     return free_html, paid_html, meta

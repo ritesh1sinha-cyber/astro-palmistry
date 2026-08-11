@@ -148,7 +148,7 @@ def strip_visible_claim_jargon(text: str) -> str:
 HUMAN_PHRASES: tuple[tuple[str, str], ...] = (
     ("under strain", "needs more care right now"),
     ("favourable", "looks supportive"),
-    ("mixed chapter", "a mixed phase. Some things move, some need patience"),
+    ("mixed chapter", "mixed phase. Some things move, some need patience"),
     ("supportive way", "a more supportive phase"),
     ("demanding stretch", "a period that asks more from you"),
     ("protect energy", "protect your energy"),

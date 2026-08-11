@@ -1,0 +1,50 @@
+{
+  "design": "cards-v2",
+  "answer": {
+    "label": "Leaning yes",
+    "confidence": "moderate",
+    "score": 0.252,
+    "contradicted": false,
+    "favourable": true,
+    "weights": {
+      "western": 0.6,
+      "vedic": 0.4
+    },
+    "subject": "your work situation"
+  },
+  "question": "Will this job offer come through this year?",
+  "asked": "2026-08-11 18:00",
+  "price": 298,
+  "llm": {
+    "enabled": true,
+    "stats": {
+      "accepted": 0,
+      "rejected": 1,
+      "errors": 0
+    }
+  },
+  "paidSections": [
+    "The verdict \u2014 all four methods combined",
+    "Which planets are in favour and which are working against you",
+    "The timing \u2014 dated windows",
+    "The remedy \u2014 what tips this your way"
+  ],
+  "teasers": {},
+  "verdicts": {
+    "vedic": {
+      "verdict": "UNCERTAIN",
+      "confidence": "LOW",
+      "score": -0.033,
+      "systems": {
+        "jamakkol": "NO",
+        "prashna": "CONDITIONAL",
+        "kp": "CONDITIONAL"
+      }
+    },
+    "western": {
+      "verdict": "Likely yes",
+      "confidence": "moderate"
+    }
+  },
+  "facts_key": "reports/9e/9ecd6df2-3c15-4b9a-b0de-a0500cbafbfc/facts.json"
+}

@@ -2,11 +2,8 @@
 """
 Extract measurable palm features from a photo (no LLM).
 
-Output: JSON facts only — lines, mounts, morphology, quality score.
-Use palm_interpret.py to apply palm_rules.yaml.
-
-  python3 palm_features.py right.jpg -o features.json --overlay overlay.jpg
-  python3 palm_features.py left.jpg -o left.json --hand left
+Legacy CLI fork for offline tooling. Production reports use
+``palm_api.analyzer.extract_features`` — prefer that path for new code.
 """
 
 from __future__ import annotations

@@ -256,11 +256,16 @@ class Prediction:
     direction: str = "mixed"
 
     def html(self, *, esc: bool = True, paid: bool = True) -> str:
-        """Two-part block: scenario + Why (technical only when paid)."""
+        """Two-part block: scenario + collapsible Why (technical only when paid)."""
         s = _html.escape(self.scenario) if esc else self.scenario
         if paid:
             b = _html.escape(self.backing) if esc else self.backing
-            why = f'<p class="pred-why"><b>Why:</b> {b}</p>'
+            why = (
+                f'<details class="pred-details">'
+                f'<summary>Why Graharekha says this</summary>'
+                f'<p class="pred-why">{b}</p>'
+                f'</details>'
+            )
         else:
             why = (
                 '<p class="pred-why locked-inline">'
@@ -625,8 +630,71 @@ def compose_present_period(pc: dict, *, today: Optional[date] = None,
     return blocks
 
 
+def _manifestation_transit_line(
+    pc: dict,
+    house: int,
+    *,
+    supported: bool,
+    today: Optional[date] = None,
+) -> str:
+    """Evidence-gated manifestation sentence for money/career transit themes."""
+    area_map = {2: "money", 10: "career"}
+    area = area_map.get(int(house or 0))
+    if not area or not pc:
+        return ""
+    try:
+        import report_confluence as CF
+        from interpretation.evidence_builder import build_evidence
+        from interpretation.life_stage import age_band
+        from interpretation.prediction_meaning import build_meaning
+        from narration.human_renderer import render_current_scene
+
+        today = today or date.today()
+        band = age_band(pc, today=today)
+        dasha = CF.dasha_confluence(pc, today)
+        direction = "up" if supported else "mixed"
+        row = {
+            "promise": direction,
+            "dasha": dasha.get("direction", direction),
+            "house": int(house),
+        }
+        evidence = build_evidence(
+            pc, area=area, house=int(house), direction=direction,
+            row=row, dasha=dasha, age_band=band)
+        meaning = build_meaning(evidence)
+        mans = set(meaning.manifestations or [])
+        if meaning.caution:
+            mans.add(meaning.caution)
+
+        if area == "money":
+            if not (mans & {"financial_stability", "financial_progress", "income",
+                           "resource_discipline", "cash_flow", "savings"}):
+                return ""
+        elif area == "career":
+            if not (mans & {"career_responsibility", "visibility", "responsibility",
+                           "authority", "leadership", "recognition"}):
+                return ""
+            delay_ids = {"delayed_recognition", "delayed_reward", "delay"}
+            if mans & delay_ids or "delay" in str(meaning.caution or "").lower():
+                from interpretation.stage_config import evidence_atoms
+                atoms = evidence_atoms(
+                    int(house),
+                    evidence.primary_dasha or evidence.sub_dasha or "",
+                    direction=direction,
+                )
+                if "delay_indicator" not in atoms:
+                    return ""
+
+        line = render_current_scene(area, direction, meaning)
+        return (line or "").strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def transit_sentence(planet: str, house: int, since: date, until: date,
-                     bav: int, life_theme: str) -> Prediction:
+                     bav: int, life_theme: str,
+                     *, pc: Optional[dict] = None,
+                     today: Optional[date] = None) -> Prediction:
     """Single live transit as prediction + backing.
 
     User-facing scenario stays human. Technical planet/house lives in Why.
@@ -668,17 +736,24 @@ def transit_sentence(planet: str, house: int, since: date, until: date,
              "visible and consistent."),
     }
     h = int(house or 0)
+    manifest_line = _manifestation_transit_line(
+        pc or {}, h, supported=supported, today=today)
     if supported:
-        base = human_support.get(h) or (
+        base = manifest_line or human_support.get(h) or (
             f"{life_theme[0].upper() + life_theme[1:] if life_theme else 'This area'} "
             f"can move more constructively right now. Use the supportive stretch "
             f"deliberately rather than waiting for it to pass.")
         scenario = f"{base} Use it before {_pretty(until)}."
     else:
-        base = human_pressure.get(h) or (
+        base = manifest_line or human_pressure.get(h) or (
             f"Matters around {life_theme or 'this part of life'} may need more patience. "
             f"Go steady rather than force outcomes.")
         scenario = f"{base} The pressure should ease after {_pretty(until)}."
+    try:
+        from qa_checks.date_guard import guard_transit_deadline
+        scenario = guard_transit_deadline(scenario, until, supported=supported)
+    except Exception:  # noqa: BLE001
+        pass
     backing = (
         f"{planet} is influencing the {_ord(house)}-house area during this period"
         f" ({'well supported' if supported else 'with limited support'})."

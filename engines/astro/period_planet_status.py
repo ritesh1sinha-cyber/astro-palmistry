@@ -137,14 +137,14 @@ def _jaimini_pressure(pc: dict, planet: str) -> list[str]:
             from astro_precompute import house_from_lagna
             h = house_from_lagna(pl_sign, km)
             if h in _DUSTHANA:
-                flags.append(f"under pressure from karakamsa ({_ord(h)} from KL)")
+                flags.append("secondary chart factors add some pressure")
         except Exception:  # noqa: BLE001
             pass
     # AK in dusthana from birth lagna is a known Jaimini caution for the soul-karaka.
     if jm.get("atmakaraka") == planet:
         h = _house(pc, planet)
         if h in _DUSTHANA:
-            flags.append("Atmakaraka in a pressure house")
+            flags.append("a secondary chart factor adds pressure")
     return flags
 
 

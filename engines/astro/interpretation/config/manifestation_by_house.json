@@ -44,5 +44,55 @@
       "mature_adult": {"primary": ["communication"], "secondary": ["emotional_support"], "default": "communication"},
       "senior": {"primary": ["emotional_support", "reconnection"], "secondary": ["communication"], "default": "emotional_support"}
     }
+  },
+  "home": {
+    "4": {
+      "child": {"primary": ["family_responsibility"], "secondary": ["domestic_stability"], "default": "domestic_stability"},
+      "teen": {"primary": ["family_responsibility"], "secondary": ["domestic_stability"], "default": "domestic_stability"},
+      "young_adult": {"primary": ["domestic_stability", "property"], "secondary": ["family_responsibility"], "default": "domestic_stability"},
+      "adult": {"primary": ["domestic_stability", "family_responsibility"], "secondary": ["property"], "default": "domestic_stability"},
+      "mature_adult": {"primary": ["domestic_stability", "family_responsibility"], "secondary": ["comfort"], "default": "domestic_stability"},
+      "senior": {"primary": ["domestic_stability"], "secondary": ["family_grandchildren"], "default": "domestic_stability"}
+    }
+  },
+  "children": {
+    "5": {
+      "child": {"primary": ["creativity"], "secondary": ["emotional_support"], "default": "creativity"},
+      "teen": {"primary": ["creativity"], "secondary": ["emotional_support"], "default": "creativity"},
+      "young_adult": {"primary": ["creativity"], "secondary": ["emotional_support"], "default": "creativity"},
+      "adult": {"primary": ["parenting"], "secondary": ["children"], "default": "parenting"},
+      "mature_adult": {"primary": ["parenting"], "secondary": ["children"], "default": "parenting"},
+      "senior": {"primary": ["family_grandchildren"], "secondary": ["parenting"], "default": "family_grandchildren"}
+    }
+  },
+  "health": {
+    "1": {
+      "child": {"primary": ["energy_management"], "secondary": ["routine"], "default": "energy_management"},
+      "teen": {"primary": ["energy_management", "routine"], "secondary": ["stress_management"], "default": "routine"},
+      "young_adult": {"primary": ["energy_management", "preventive_attention"], "secondary": ["routine"], "default": "energy_management"},
+      "adult": {"primary": ["preventive_attention", "routine"], "secondary": ["stress_management"], "default": "routine"},
+      "mature_adult": {"primary": ["routine", "rest"], "secondary": ["preventive_attention"], "default": "routine"},
+      "senior": {"primary": ["rest", "slow_recovery"], "secondary": ["wellbeing"], "default": "wellbeing"}
+    }
+  },
+  "learning": {
+    "9": {
+      "child": {"primary": ["study_progress"], "secondary": ["teacher_recognition"], "default": "study_progress"},
+      "teen": {"primary": ["study_progress", "education"], "secondary": ["teacher_recognition"], "default": "study_progress"},
+      "young_adult": {"primary": ["higher_education", "study_progress"], "secondary": ["mentor_support"], "default": "higher_education"},
+      "adult": {"primary": ["higher_learning", "wisdom"], "secondary": ["guidance"], "default": "higher_learning"},
+      "mature_adult": {"primary": ["wisdom", "guidance"], "secondary": ["mentor_support"], "default": "wisdom"},
+      "senior": {"primary": ["wisdom", "mentor_support"], "secondary": ["guidance"], "default": "wisdom"}
+    }
+  },
+  "inner": {
+    "12": {
+      "child": {"primary": ["reflection"], "secondary": ["solitude"], "default": "reflection"},
+      "teen": {"primary": ["reflection", "space"], "secondary": ["withdrawal"], "default": "reflection"},
+      "young_adult": {"primary": ["withdrawal", "reflection"], "secondary": ["inward_focus"], "default": "reflection"},
+      "adult": {"primary": ["withdrawal", "inner_stability"], "secondary": ["reflection"], "default": "inner_stability"},
+      "mature_adult": {"primary": ["inner_stability", "reflection"], "secondary": ["spiritual_inner"], "default": "inner_stability"},
+      "senior": {"primary": ["reflection", "spiritual_inner"], "secondary": ["letting_go"], "default": "reflection"}
+    }
   }
 }

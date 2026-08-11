@@ -37,12 +37,16 @@ _MOUNT_RANK = {"flat": 1, "moderate": 2, "prominent": 3, "unknown": 0}
 
 
 def _line_strength(props: dict[str, Any]) -> int:
-    if not props or not props.get("detected"):
-        return 0
-    score = _DEPTH_RANK.get(str(props.get("depth")), 1)
-    score += _QUALITY_RANK.get(str(props.get("quality")), 1)
-    score += _LEN_RANK.get(str(props.get("length") or props.get("reach")), 1)
-    return score
+    try:
+        from palm_api.measurements import line_strength_score
+        return line_strength_score(props)
+    except Exception:  # noqa: BLE001
+        if not props or not props.get("detected"):
+            return 0
+        score = _DEPTH_RANK.get(str(props.get("depth")), 1)
+        score += _QUALITY_RANK.get(str(props.get("quality")), 1)
+        score += _LEN_RANK.get(str(props.get("length") or props.get("reach")), 1)
+        return score
 
 
 def _line_confluence(
@@ -127,15 +131,37 @@ def _mount_confluence(
                 from palm_api import palm_voice as PV
                 plain = PV._mount_name(m)
                 if d > n:
+                    developed_templates = {
+                        "ambition": "You seem to have grown into a stronger need to lead, influence decisions or be recognized for your contribution.",
+                        "discipline": "You seem to have grown more comfortable carrying responsibility and staying steady when things get demanding.",
+                        "creativity": "Your lived hand suggests you have developed a stronger need to create, improve or put your own stamp on things.",
+                        "communication": "Your lived hand suggests communication has become a more active strength — explaining, negotiating or connecting people may come more naturally now.",
+                        "warmth": "Your lived hand suggests you have developed a stronger need for warmth, closeness and supportive relationships.",
+                        "courage": "Your lived hand suggests greater confidence in facing pressure, competition or difficult situations.",
+                        "imagination": "Your lived hand suggests a stronger need for variety, imagination or a change of scene.",
+                    }
+                    scenario = developed_templates.get(
+                        trait, f"You seem to have developed more {trait} in the way you handle life now."
+                    )
                     pred = PV.compose(
-                        scenario=f"You have grown into more {trait} — "
-                                 f"it shows more on your {dom_label} hand than you were born with.",
+                        scenario=scenario,
                         backing=f"{plain} stronger on {dom_label} hand",
                     )
                 else:
+                    latent_templates = {
+                        "ambition": "The underlying hand suggests more ambition and leadership drive than you may currently express openly.",
+                        "discipline": "The underlying hand suggests a natural capacity for discipline that may be stronger than your current circumstances require.",
+                        "creativity": "The underlying hand suggests creative ability that you may not always give enough room to express.",
+                        "communication": "The underlying hand suggests communication ability that may be under-used in your current routine.",
+                        "warmth": "The underlying hand suggests a strong need for warmth and close family connection, even if you express it selectively.",
+                        "courage": "The underlying hand suggests more courage and resilience than you may show until a situation really demands it.",
+                        "imagination": "The underlying hand suggests a strong imaginative side that may need more variety or creative space.",
+                    }
+                    scenario = latent_templates.get(
+                        trait, f"The underlying hand suggests more {trait} than you may currently express."
+                    )
                     pred = PV.compose(
-                        scenario=f"Natural {trait} is there — "
-                                 f"express it more; your {non_label} hand shows the fuller pattern.",
+                        scenario=scenario,
                         backing=f"{plain} stronger on {non_label} hand",
                     )
                 txt = pred.text_block()
@@ -265,21 +291,23 @@ def build_confluence(
     latent = [i["title"] for i in line_items if i["agreement"] == "latent"]
 
     summary_parts: list[str] = [
-        f"This is a combined reading of both hands. Your {dom_label.lower()} (dominant) hand "
-        f"shows your current, lived patterns; your {non_label.lower()} hand shows your innate "
-        f"wiring and potential."
+        f"Your {dom_label.lower()} hand is read here as the way these qualities are being expressed now; "
+        f"your {non_label.lower()} hand is treated as the underlying tendency you started with."
     ]
     if reinforced:
         summary_parts.append(
-            "Reinforced across both hands (stable core traits): " + ", ".join(reinforced) + "."
+            "These areas look similar on both hands, so the reading treats them as relatively stable parts of your life: "
+            + ", ".join(reinforced) + "."
         )
     if developed:
         summary_parts.append(
-            "Grown beyond your blueprint through effort: " + ", ".join(developed) + "."
+            "The areas that look stronger on your dominant hand suggest qualities you may have developed through experience: "
+            + ", ".join(developed) + "."
         )
     if latent:
         summary_parts.append(
-            "Innate strengths you may be under-using: " + ", ".join(latent) + "."
+            "The areas that look stronger on your other hand suggest abilities or needs that may be present underneath but less fully expressed: "
+            + ", ".join(latent) + "."
         )
 
     life_aspects = build_life_aspects(

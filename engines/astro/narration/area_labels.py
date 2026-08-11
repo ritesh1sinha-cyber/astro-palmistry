@@ -7,7 +7,7 @@ from interpretation.life_stage import is_minor
 ADULT_LABELS: dict[str, str] = {
     "career": "Work & Career",
     "money": "Money",
-    "love": "Love & Marriage",
+    "love": "Relationships & Partnership",
     "home": "Home & Family",
     "children": "Children",
     "health": "Health & Energy",

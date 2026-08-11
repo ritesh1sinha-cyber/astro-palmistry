@@ -197,6 +197,32 @@ class Settings:
 
     engine_version: str = os.getenv("ENGINE_VERSION", "2026.08")
 
+    # --- LLM prose layer (facts in, prose out; off by default) -------------
+    # Keys live in env / `.config` only — never hardcode. Default off so
+    # deterministic templates remain the ship path until explicitly enabled.
+    llm_enabled: bool = field(default_factory=lambda: _bool("LLM_ENABLED", False))
+    llm_base_url: str = field(default_factory=lambda: _cfg(
+        "llm_base_url", "LLM_BASE_URL", ""))
+    llm_api_key: str = field(default_factory=lambda: _cfg(
+        "llm_api_key", "LLM_API_KEY", ""))
+    llm_model: str = field(default_factory=lambda: _cfg(
+        "llm_model", "LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct-AWQ"))
+    llm_timeout: int = field(default_factory=lambda: _int("LLM_TIMEOUT", 20))
+    llm_max_retries: int = field(default_factory=lambda: _int("LLM_MAX_RETRIES", 2))
+    llm_concurrency: int = field(default_factory=lambda: _int("LLM_CONCURRENCY", 4))
+    llm_cache_ttl: int = field(default_factory=lambda: _int("LLM_CACHE_TTL", 86400))
+    # Comma-separated tab kinds that may call the LLM when enabled.
+    llm_tabs: str = field(default_factory=lambda: _cfg(
+        "llm_tabs", "LLM_TABS",
+        "full_report,user_question,horary,palm,chat"))
+
+    def llm_tab_enabled(self, kind: str) -> bool:
+        """True when the LLM layer is on and ``kind`` is in the allow-list."""
+        if not self.llm_enabled or not self.llm_api_key or not self.llm_base_url:
+            return False
+        allowed = {t.strip() for t in (self.llm_tabs or "").split(",") if t.strip()}
+        return (kind or "").strip() in allowed
+
     def __post_init__(self) -> None:
         # Managed hosts (Railway, Render, Heroku, Neon) hand out URLs starting
         # `postgres://` or `postgresql://`. SQLAlchemy maps those to psycopg2,

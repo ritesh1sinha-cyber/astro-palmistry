@@ -134,6 +134,11 @@ class DeepEvidence:
                 self._palm_bridge = {}
         return self._palm_bridge
 
+    def verdicts(self) -> list:
+        """Cached 108-rule verdicts for this report (one evaluate_all per report)."""
+        self._ensure_base()
+        return list(self._verdicts or [])
+
     def _ensure_base(self) -> None:
         if self._verdicts is not None:
             return

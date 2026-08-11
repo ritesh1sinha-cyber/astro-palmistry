@@ -92,7 +92,13 @@ def main() -> int:
         ),
         "no_jeweller_bash": "Any jeweller will sell you" not in fb and "Any jeweller will sell you" not in pb,
         "has_chart_not_sign_gem": "individual chart, not simply from your zodiac sign" in (fb + pb),
-        "has_overall_why": "Overall:" in pb,
+        # Peer-review package replaced "Overall:" / method labels with
+        # customer-safe summaries ("Why this is supported", evidence rows).
+        "has_overall_why": (
+            "Overall:" in pb
+            or "Why this is supported" in pb
+            or "See how the evidence supports this reading" in pb
+        ),
         "no_pressing_on_main": (
             "has been pressing on" not in fb and "has been pressing on" not in pb
         ),
@@ -150,7 +156,11 @@ def main() -> int:
         "no_duplicate_traj_in_love": not dup_traj,
         "has_trajectory_label": "How this area changes over time" in pb,
         "has_windows_label": "Your strongest upcoming windows" in pb,
-        "has_structured_why": "Birth chart:" in pb and "Current timing:" in pb,
+        "has_structured_why": (
+            ("Birth chart:" in pb and "Current timing:" in pb)
+            or ("Why this is supported" in pb and "promise-evidence" in pb)
+            or "See how the evidence supports this reading" in pb
+        ),
         "has_chapter_planets": "chapter-planets" in fb or "chapter-planets" in pb,
         "paid_planet_names_only": pb.count("planet-names") > 0 and pb.count("planet-row") == 0,
         "paid_trajectory_row": pb.count("trajectory-row"),

@@ -457,20 +457,32 @@ def _western_plain_block(j: dict, *, paid: bool = True) -> str:
 </section>"""
 
 
+def _human_horary_timing_line(text: str) -> str:
+    """Remove specialist period jargon from customer-facing horary timing."""
+    raw = str(text or "").strip()
+    raw = re.sub(r"\bdaśā/bhukti\b", "active periods", raw, flags=re.I)
+    raw = re.sub(r"\bdasha/bhukti\b", "active periods", raw, flags=re.I)
+    raw = re.sub(r"\bdaśā\b", "period", raw, flags=re.I)
+    raw = re.sub(r"\bbhukti\b", "sub-period", raw, flags=re.I)
+    raw = re.sub(r"\bRuling-Planet periods\b", "Timing periods", raw, flags=re.I)
+    raw = re.sub(r"\bsub-lord\b", "specialist timing factor", raw, flags=re.I)
+    return raw
+
+
 def _vedic_plain_block(vedic_customer: dict, *, paid: bool = True) -> str:
     """Vedic — the three classical systems, each in one line; timing and remedy
     only when paid."""
     vc = vedic_customer or {}
     systems = [("Jamakkol Prasanam", vc.get("jamakkol")),
                ("Prashna Kundali", vc.get("prashna")),
-               ("Sub-lord (KP)", vc.get("kp"))]
+               ("Specialist timing check", vc.get("kp"))]
     cls_for = {"YES": "up", "CONDITIONAL": "mixed", "NEUTRAL": "mixed", "NO": "down"}
     word_for = {"YES": "Favourable", "CONDITIONAL": "Conditional", "NEUTRAL": "Neutral", "NO": "Challenging"}
     cards = []
     for name, sub in systems:
         if not sub:
             continue
-        if name == "Sub-lord (KP)" and not sub.get("available", True):
+        if name == "Specialist timing check" and not sub.get("available", True):
             continue
         label = sub.get("label", "NEUTRAL")
         cards.append(
@@ -486,7 +498,7 @@ def _vedic_plain_block(vedic_customer: dict, *, paid: bool = True) -> str:
         if timing_lines:
             timing_html = (
                 "<p class=\"eyebrow\" style=\"margin:10px 0 4px\">Timing (all three systems)</p>"
-                f"<ul class=\"windows\">{''.join(f'<li>{_e(t)}</li>' for t in timing_lines)}</ul>")
+                f"<ul class=\"windows\">{''.join(f'<li>{_e(_human_horary_timing_line(t))}</li>' for t in timing_lines)}</ul>")
         strengthen = vc.get("strengthen_planets") or []
         pacify = vc.get("pacify_planets") or []
         if strengthen or pacify:
@@ -606,8 +618,13 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                       horary_price: int = 298,
                       full_report_price: int = 298,
                       vedic_customer: dict | None = None,
-                      paid: bool = True) -> tuple[str, dict]:
-    """The single answer the customer sees. Returns (html, summary)."""
+                      paid: bool = True,
+                      prose: dict | None = None) -> tuple[str, dict]:
+    """The single answer the customer sees. Returns (html, summary).
+
+    ``prose`` is an optional LLM overlay: lead, verdict_line, why, action.
+    """
+    prose = prose or {}
     r = reconcile(verdicts)
     j = western_judgment or {}
     vc = vedic_customer or (r["vedic"] or {}).get("customer") or {}
@@ -673,23 +690,51 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
         tail_html = _locked_block(price=horary_price, n_windows=n_windows,
                                   has_remedy=has_remedy)
 
+    llm_lead = (prose.get("lead") or "").strip()
+    llm_verdict = (prose.get("verdict_line") or "").strip()
+    llm_why = (prose.get("why") or "").strip()
+    llm_action = (prose.get("action") or "").strip()
+
     if paid:
-        opening = (
-            f"<p class=\"lede\">{greeting}you asked about {subject}. "
-            f"Here is the straight answer, then exactly why the chart says it.</p>")
-        verdict_block = (
-            f"<h1 class=\"verdict-line\">{headline}</h1>"
-            f"<p class=\"pred-why\"><b>Why:</b> Western read {_e(j.get('verdict','mixed'))}; "
-            f"Vedic {_e(r.get('label','mixed'))}; confidence {_e(r.get('confidence','moderate'))}.</p>"
-            f"<p class=\"confidence\"><strong>How sure is this?</strong> {conf_line}</p>")
+        if llm_lead:
+            opening = f'<p class="lede">{_e(llm_lead)}</p>'
+        else:
+            opening = (
+                f"<p class=\"lede\">{greeting}you asked about {subject}. "
+                f"Here is the straight answer, then exactly why the chart says it.</p>")
+        if llm_verdict:
+            why_line = (
+                f'<p class="pred-why"><b>Why:</b> {_e(llm_why)}</p>'
+                if llm_why else
+                f"<p class=\"pred-why\"><b>Why:</b> Western read {_e(j.get('verdict','mixed'))}; "
+                f"Vedic {_e(r.get('label','mixed'))}; confidence {_e(r.get('confidence','moderate'))}.</p>"
+            )
+            action_line = (
+                f'<p class="qa-action">{_e(llm_action)}</p>' if llm_action else ""
+            )
+            verdict_block = (
+                f'<h1 class="verdict-line">{_e(llm_verdict)}</h1>'
+                f"{why_line}"
+                f"<p class=\"confidence\"><strong>How sure is this?</strong> {conf_line}</p>"
+                f"{action_line}"
+            )
+        else:
+            verdict_block = (
+                f"<h1 class=\"verdict-line\">{headline}</h1>"
+                f"<p class=\"pred-why\"><b>Why:</b> Western read {_e(j.get('verdict','mixed'))}; "
+                f"Vedic {_e(r.get('label','mixed'))}; confidence {_e(r.get('confidence','moderate'))}.</p>"
+                f"<p class=\"confidence\"><strong>How sure is this?</strong> {conf_line}</p>")
         verdict_flag = ("up" if r["favourable"] else
                         "down" if r["favourable"] is False else "mixed")
         lead_attrs = f'data-verdict="{verdict_flag}"'
     else:
-        opening = (
-            f"<p class=\"lede\">{greeting}you asked about {subject}. "
-            f"Four classical methods read this chart independently — Western horary "
-            f"and three Vedic systems. Here is what each one found on its own.</p>")
+        if llm_lead:
+            opening = f'<p class="lede">{_e(llm_lead)}</p>'
+        else:
+            opening = (
+                f"<p class=\"lede\">{greeting}you asked about {subject}. "
+                f"Four classical methods read this chart independently — Western horary "
+                f"and three Vedic systems. Here is what each one found on its own.</p>")
         verdict_block = ""
         lead_attrs = ""
 

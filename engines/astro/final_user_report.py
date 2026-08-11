@@ -32,6 +32,7 @@ from prediction108_rules import (
 )
 from prediction108_transit import build_transit_context, attach_contexts
 from dasha_confluence_report import compute_windows, rate_field, _planet_quality, _fmt
+from personalized_confluence import resolve_promise
 from astro_precompute import SIGNS, SIGN_LORDS, sign_index, house_sign, get_dignity
 try:
     from gemstone_remedy import build_remedy_report
@@ -140,7 +141,7 @@ def _narr_fields(gender):
         ("self", "You — your body, health & temperament", "you", "D1", [1, 6, 8], ["Sun"]),
         ("parents", "Your mother & father", "your parents", "D12", [4, 9], ["Moon", "Sun"]),
         ("siblings", "Your brothers & sisters", "your sibling", "D3", [3, 11], ["Mars"]),
-        ("spouse", "Your life partner & married life", "your partner", "D9", [7, 2, 11], _spouse_karaka(gender)),
+        ("spouse", "Your Relationships & Partnership", "your relationship", "D9", [7, 2, 11], _spouse_karaka(gender)),
         ("children", "Your children", "your child", "D7", [5, 9], ["Jupiter"]),
         ("profession", "Your work & profession", "your career", "D10", [10, 6, 11], ["Sun", "Saturn", "Mercury"]),
         ("education", "Your education & learning", "your studies", "D24", [4, 5, 2], ["Mercury", "Jupiter"]),
@@ -652,12 +653,12 @@ _FAMILY_EN = {
         "weak": ("can feel a little distant or strained — old misunderstandings or competition may linger, but a "
                  "small, sincere effort from you will mend most of the gap")},
     "spouse": {
-        "strong": ("is loyal and a true companion — married life is one of the strong pillars of your chart, with "
-                   "loyalty, support and growth shared between you"),
-        "mixed": ("is a caring partner, and the bond stays strong as long as patience and honest, open conversation "
-                  "are kept alive; small misunderstandings shouldn't be allowed to harden"),
+        "strong": ("is a meaningful source of companionship and support — the relationship pattern favours loyalty, "
+                   "shared growth and emotional steadiness"),
+        "mixed": ("can be caring but needs patience and honest, open conversation; small misunderstandings should not "
+                  "be allowed to harden into distance"),
         "weak": ("needs patience and honest conversation — friction, distance or differing expectations can surface, "
-                 "so guard the relationship with communication rather than silence")},
+                 "so protect the relationship with communication rather than silence")},
     "children": {
         "strong": ("bring you real joy and are progressing well — you are, or will be, genuinely proud of them, and "
                    "they tend to do you credit"),
@@ -847,34 +848,259 @@ def _varga_diagnosis(pc, code, key, karakas):
     return ""
 
 
-def _field_section(pc, fdef, windows, caches, table, gw, gem_report=None, lang="en"):
+def _promise_status_text(promise: dict, lang: str = "en") -> str:
+    """Human-facing promise label; intentionally separate from timing verdict."""
+    label = promise.get("label") or "Limited evidence"
+    if lang == "hi":
+        return {
+            "Strongly supported": "बहुत मजबूत समर्थन",
+            "Supported": "समर्थित",
+            "Mixed promise": "मिश्रित संकेत",
+            "Not strongly supported": "मजबूत समर्थन नहीं",
+            "Limited evidence": "सीमित प्रमाण",
+        }.get(label, label)
+    return label
+
+
+def _promise_teaser(key: str, promise: dict, lang: str = "en") -> str:
+    """Free-tier copy: useful promise status, but withholds evidence/timing depth."""
+    label = _promise_status_text(promise, lang)
+    if lang == "hi":
+        return (f"<div class='why'><b>क्या यह क्षेत्र आपके जीवन में समर्थित है?</b> {label}. "
+                f"विस्तृत कारण, समय-खिड़की और व्यक्तिगत उपाय पूर्ण रिपोर्ट में उपलब्ध हैं।</div>")
+    return (f"<div class='why'><b>Is this area genuinely supported in your chart?</b> "
+            f"{_esc(label)}. The detailed evidence, strongest timing window and personalised "
+            f"action/remedy are part of the full reading.</div>")
+
+
+def _promise_timing(pc, field, promise: dict, windows, caches, lang: str = "en") -> str:
+    """Find the first strong/usable future activation only after promise passes."""
+    if not promise.get("timing_allowed"):
+        return ""
+    candidates = []
+    for w in windows:
+        try:
+            r = rate_field(pc, field, w, caches)
+        except Exception:
+            continue
+        rating = str(r.get("rating") or "")
+        if rating in ("fav", "mix"):
+            candidates.append((w, rating))
+    if not candidates:
+        return ""
+    w, rating = candidates[0]
+    start = MON(w["row"]["start"], lang)
+    end = MON(w["row"]["end"], lang)
+    word = (RATING_NEAR_HI if lang == "hi" else RATING_NEAR).get(rating, "supportive")
+    if lang == "hi":
+        return (f"<div class='why'><b>समय संकेत:</b> {start} – {end} के दौरान "
+                f"यह क्षेत्र {word} दिखता है।</div>")
+    return (f"<div class='why'><b>Strongest upcoming activation:</b> {start} – {end} — "
+            f"this area {word}.</div>")
+
+
+def _promise_evidence_html(promise: dict, lang: str = "en") -> str:
+    support = promise.get("supporting_evidence") or []
+    caution = promise.get("caution_evidence") or []
+    if lang == "hi":
+        items = "".join(f"<li>{_esc(x)}</li>" for x in (support[:3] + caution[:2]))
+        return (f"<details><summary>तकनीकी आधार — वादा/संकेत</summary><ul>{items}</ul></details>"
+                if items else "")
+    items = "".join(f"<li>{_esc(x)}</li>" for x in (support[:3] + caution[:2]))
+    return (f"<details><summary>Why Graharekha says this</summary><ul>{items}</ul></details>"
+            if items else "")
+
+
+_PROMISE_HEADLINE_EN = {
+    "spouse": {
+        "strongly_supported": "Your relationship pattern is strongly supported.",
+        "supported": "Your chart supports meaningful relationship potential.",
+        "mixed": "Your relationship picture is possible but mixed.",
+        "weak": "Relationships need more conscious effort in your chart.",
+        "insufficient_evidence": "There is not enough evidence for a strong relationship conclusion.",
+    },
+    "children": {
+        "strongly_supported": "The chart strongly supports children and parenthood themes.",
+        "supported": "The chart supports meaningful children and parenthood potential.",
+        "mixed": "The children/parenthood picture is possible but mixed.",
+        "weak": "The children/parenthood area needs patience and support.",
+        "insufficient_evidence": "There is not enough evidence for a strong children conclusion.",
+    },
+    "profession": {
+        "strongly_supported": "Professional growth, status or recognition is strongly supported.",
+        "supported": "Career growth and visible contribution are supported.",
+        "mixed": "Career growth is possible, but the path is mixed.",
+        "weak": "Career growth requires more deliberate effort and skill-building.",
+        "insufficient_evidence": "There is not enough evidence for a strong career conclusion.",
+    },
+    "wealth": {
+        "strongly_supported": "The chart strongly supports building income and financial resources.",
+        "supported": "Financial growth and accumulation are supported.",
+        "mixed": "Income potential is present, but wealth accumulation is mixed.",
+        "weak": "Wealth is not strongly promised; disciplined accumulation matters more.",
+        "insufficient_evidence": "There is not enough evidence for a strong wealth conclusion.",
+    },
+    "troubles": {
+        "strongly_supported": "The chart shows strong resilience against recurring life difficulties.",
+        "supported": "The chart gives useful protection, provided routine and prevention are maintained.",
+        "mixed": "Wellbeing and challenge indicators are mixed, so prevention matters.",
+        "weak": "This is an area where prevention, routine and practical care deserve extra attention.",
+        "insufficient_evidence": "There is not enough evidence for a strong wellbeing conclusion.",
+    },
+}
+
+_PROMISE_HEADLINE_HI = {
+    "spouse": {
+        "strongly_supported": "आपके संबंध पैटर्न को मजबूत समर्थन मिलता है।",
+        "supported": "आपकी कुंडली सार्थक संबंध की संभावना दिखाती है।",
+        "mixed": "संबंध संभव हैं, लेकिन संकेत मिश्रित हैं।",
+        "weak": "संबंधों के लिए अधिक सचेत प्रयास की आवश्यकता है।",
+        "insufficient_evidence": "मजबूत संबंध निष्कर्ष के लिए पर्याप्त प्रमाण नहीं हैं।",
+    },
+    "children": {
+        "strongly_supported": "संतान और पarenthood के विषय को मजबूत समर्थन मिलता है।",
+        "supported": "संतान और पarenthood की सार्थक संभावना दिखती है।",
+        "mixed": "संतान का चित्र संभव है, लेकिन मिश्रित है।",
+        "weak": "संतान क्षेत्र को धैर्य और सहयोग चाहिए।",
+        "insufficient_evidence": "मजबूत संतान निष्कर्ष के लिए पर्याप्त प्रमाण नहीं हैं।",
+    },
+    "profession": {
+        "strongly_supported": "पेशेवर विकास, स्थिति या मान्यता को मजबूत समर्थन मिलता है।",
+        "supported": "करियर विकास और दृश्य योगदान समर्थित हैं।",
+        "mixed": "करियर विकास संभव है, लेकिन रास्ता मिश्रित है।",
+        "weak": "करियर विकास के लिए अधिक जानबूझकर प्रयास चाहिए।",
+        "insufficient_evidence": "मजबूत करियर निष्कर्ष के लिए पर्याप्त प्रमाण नहीं हैं।",
+    },
+    "wealth": {
+        "strongly_supported": "आय और वित्तीय संसाधन बनाने को मजबूत समर्थन मिलता है।",
+        "supported": "वित्तीय विकास और संचय समर्थित हैं।",
+        "mixed": "आय की संभावना है, लेकिन संचय मिश्रित है।",
+        "weak": "धन मजबूती से वादा नहीं; अनुशासित संचय अधिक महत्वपूर्ण है।",
+        "insufficient_evidence": "मजबूत धन निष्कर्ष के लिए पर्याप्त प्रमाण नहीं हैं।",
+    },
+    "troubles": {
+        "strongly_supported": "आवर्ती कठिनाइयों के खिलाफ मजबूत लचीलापन दिखता है।",
+        "supported": "नियमित देखभाल और रोकथाम के साथ उपयोगी सुरक्षा मिलती है।",
+        "mixed": "स्वास्थ्य और चुनौती संकेत मिश्रित हैं; रोकथाम महत्वपूर्ण है।",
+        "weak": "रोकथाम, दिनचर्या और व्यावहारिक देखभाल पर अतिरिक्त ध्यान दें।",
+        "insufficient_evidence": "मजबूत wellbeing निष्कर्ष के लिए पर्याप्त प्रमाण नहीं हैं।",
+    },
+}
+
+
+def _field_promise_headline(key: str, promise: dict, lang: str = "en") -> str:
+    status = promise.get("status")
+    table = _PROMISE_HEADLINE_HI if lang == "hi" else _PROMISE_HEADLINE_EN
+    if key in table:
+        return table[key].get(status, "")
+    return ""
+
+
+_ACTIVATION_LABEL_HI = {
+    "strongly_active": "बहुत सक्रिय",
+    "active": "सक्रिय",
+    "mixed": "मिश्रित",
+    "weak": "कम सक्रियता",
+    "inactive": "वर्तमान में सक्रिय नहीं",
+    "insufficient_evidence": "पर्याप्त प्रमाण नहीं",
+}
+
+
+def _field_current_activation_status(pc, field, windows, caches) -> str:
+    """Timing-only activation for one field — mirrors resolve_activation's intent
+
+    without a second scoring system: it reads the rating this module already
+    computes for the *current* window and nothing else, so promise and
+    activation stay two separate questions here just as they do in the
+    cards-v2 pipeline (P0-8).
+    """
+    cur_win = next((w for w in windows if w.get("is_now")), windows[0] if windows else None)
+    if not cur_win:
+        return "insufficient_evidence"
+    try:
+        rating = rate_field(pc, field, cur_win, caches).get("rating")
+    except Exception:  # noqa: BLE001
+        return "insufficient_evidence"
+    return {"fav": "active", "mix": "mixed", "chal": "weak"}.get(rating, "insufficient_evidence")
+
+
+def _activation_status_text(status: str, lang: str = "en") -> str:
+    if lang == "hi":
+        return _ACTIVATION_LABEL_HI.get(status, _ACTIVATION_LABEL_HI["insufficient_evidence"])
+    from narration.status_vocab import status_label
+    return status_label(status, kind="activation")
+
+
+def _field_section(pc, fdef, windows, caches, table, gw, gem_report=None, lang="en", access="paid"):
     key, title, rel, varga, houses, karakas = fdef
     field = (title, key, varga, houses, karakas)
     sc = _strength_of(pc, houses, karakas, caches, key=key)
     lab = _label(sc)
     vcls = (_varga_data(pc, varga, varga, "") or {}).get("vcls", "mixed") if varga else "mixed"
 
+    promise = resolve_promise(pc, key)
+
     title_disp = FIELD_TITLE_HI.get(key, title) if lang == "hi" else title
     where = _where_you_stand(key, lab, vcls, gw, lang)
-    diag = _varga_diagnosis(pc, varga, key, karakas) if lang == "en" else ""
+    diag = _varga_diagnosis(pc, varga, key, karakas) if (lang == "en" and access != "free") else ""
     if diag:
         where = f"{where} {diag}"
-    near = _near_term(pc, field, windows, caches, lang)
+    near = (_near_term(pc, field, windows, caches, lang) if access != "free"
+            else ("A fuller timing map is available in the complete reading." if lang == "en"
+                  else "पूरी समय-रेखा विस्तृत रिपोर्ट में उपलब्ध है।"))
 
-    # remedy if strained — specific to THIS life-area (not a generic planet remedy)
+    promise_headline = _field_promise_headline(key, promise, lang)
+    promise_html = ""
+    if promise_headline:
+        if key == "troubles":
+            label_word = "चुनौती पैटर्न" if lang == "hi" else "Challenge pattern"
+        else:
+            label_word = "वादा" if lang == "hi" else "Promise"
+        promise_html = f"<div class='pred'><b>{label_word}:</b> {_esc(promise_headline)}</div>"
+
+    # Activation is a separate question from promise (P0-1/P0-8): shown as a
+    # short status word on both free and paid so the two never look like the
+    # same verdict, with depth reserved for paid via `near`/`timing_html` below.
+    activation_status = _field_current_activation_status(pc, field, windows, caches)
+    activation_word = "वर्तमान सक्रियता" if lang == "hi" else "Current activation"
+    promise_html += (
+        f"<div class='pred'><b>{activation_word}:</b> "
+        f"{_esc(_activation_status_text(activation_status, lang))}</div>"
+    )
+
+    if access == "free":
+        promise_html += _promise_teaser(key, promise, lang)
+        timing_html = ""
+        evidence_html = ""
+    else:
+        strength_word = "वादा शक्ति" if lang == "hi" else "Promise strength"
+        promise_html += (f"<div class='why'><b>{strength_word}:</b> "
+                         f"{_esc(_promise_status_text(promise, lang))} "
+                         f"({promise.get('confidence', 'low')} confidence).</div>")
+        timing_html = _promise_timing(pc, field, promise, windows, caches, lang)
+        evidence_html = _promise_evidence_html(promise, lang)
+
     remedy_html = ""
-    strained = lab == "weak" or any(rate_field(pc, field, w, caches)["rating"] == "chal" for w in windows[:2])
-    if strained and key in AREA_REMEDY:
+    if access != "free" and promise.get("status") in {"weak", "insufficient_evidence"} and key in AREA_REMEDY:
         deity, practice, day, charity, gem_planet = AREA_REMEDY[key]
         gem_bit = _field_gem_bit(gem_report, gem_planet)
-        remedy_html = (f"<div class='why'><b>If this area feels heavy — a remedy for this part of life:</b> "
-                       f"{practice}; best on <b>{day}</b>. You may also offer {charity}, and keep faith in {deity}."
+        remedy_html = (f"<div class='why'><b>If this area feels heavy — supportive action:</b> "
+                       f"{_esc(practice)}; best on <b>{_esc(day)}</b>. "
+                       f"You may also offer {_esc(charity)} and keep faith in {_esc(deity)}."
                        f"{gem_bit}</div>")
+    else:
+        strained = lab == "weak" or any(rate_field(pc, field, w, caches)["rating"] == "chal" for w in windows[:2])
+        if access != "free" and strained and key in AREA_REMEDY:
+            deity, practice, day, charity, gem_planet = AREA_REMEDY[key]
+            gem_bit = _field_gem_bit(gem_report, gem_planet)
+            remedy_html = (f"<div class='why'><b>If this area feels heavy — supportive action:</b> "
+                           f"{_esc(practice)}; best on <b>{_esc(day)}</b>. "
+                           f"You may also offer {_esc(charity)} and keep faith in {_esc(deity)}."
+                           f"{gem_bit}</div>")
 
-    # caution dates from transit
     cau = _caution_windows(table, houses)
     cau_html = ""
-    if cau:
+    if access != "free" and cau:
         spans = []
         for w in cau[:3]:
             pls = ", ".join(PL(m, lang) for m in sorted(w["planets"]))
@@ -890,9 +1116,10 @@ def _field_section(pc, fdef, windows, caches, table, gw, gem_report=None, lang="
     return (f"<div class='card {cls}'>"
             f"<div class='top'><span class='title'>{_esc(title_disp)} <span class='badge'>{varga or 'D1'}</span></span>"
             f"<span class='no'>{badge}</span></div>"
+            f"{promise_html}"
             f"<div class='pred'><b>{U(lang,'where')}</b> {where}</div>"
             f"<div class='pred'><b>{U(lang,'near')}</b> {near}</div>"
-            f"{remedy_html}{cau_html}</div>")
+            f"{timing_html}{evidence_html}{remedy_html}{cau_html}</div>")
 
 
 def _where_you_stand(key, lab, vcls, gw, lang="en"):
@@ -1000,9 +1227,9 @@ _LANG_CSS = """
 """
 
 
-def _pane(pc, client_name, lg, meta, gender, windows, caches, table, gem_report, lang):
+def _pane(pc, client_name, lg, meta, gender, windows, caches, table, gem_report, lang, access="paid"):
     gw = _gender_words(gender, lang)
-    sections = [_field_section(pc, fdef, windows, caches, table, gw, gem_report, lang)
+    sections = [_field_section(pc, fdef, windows, caches, table, gw, gem_report, lang, access)
                 for fdef in _narr_fields(gender)]
     return (
         _hero_lang(client_name, lg, meta, lang)
@@ -1017,7 +1244,7 @@ def _pane(pc, client_name, lg, meta, gender, windows, caches, table, gem_report,
 
 
 # ── assemble ────────────────────────────────────────────────────────
-def build_html(pc, client_name="Client", lat=None, lon=None, tz=None):
+def build_html(pc, client_name="Client", lat=None, lon=None, tz=None, access="paid"):
     meta = pc.get("meta", {})
     gender = meta.get("gender", 0)
     if lat is not None and lon is not None:
@@ -1031,8 +1258,8 @@ def build_html(pc, client_name="Client", lat=None, lon=None, tz=None):
     gem_report = _gem_ctx(pc)
 
     lg = lagna(pc)
-    pane_en = _pane(pc, client_name, lg, meta, gender, windows, caches, table, gem_report, "en")
-    pane_hi = _pane(pc, client_name, lg, meta, gender, windows, caches, table, gem_report, "hi")
+    pane_en = _pane(pc, client_name, lg, meta, gender, windows, caches, table, gem_report, "en", access)
+    pane_hi = _pane(pc, client_name, lg, meta, gender, windows, caches, table, gem_report, "hi", access)
 
     langbar = (
         "<div class='langbar'>"
@@ -1061,10 +1288,10 @@ function setLang(l){
     return _doc(f"Personal Reading — {_esc(client_name)}", body)
 
 
-def write_report(pc, out_dir, client_name="Client", lat=None, lon=None, tz=None):
+def write_report(pc, out_dir, client_name="Client", lat=None, lon=None, tz=None, access="paid"):
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"Personal_Reading_{client_name}.html"
-    html = build_html(pc, client_name, lat, lon, tz)
+    html = build_html(pc, client_name, lat, lon, tz, access=access)
     try:
         from client_report_html import finalize_report_html
         html = finalize_report_html(html, client_name)

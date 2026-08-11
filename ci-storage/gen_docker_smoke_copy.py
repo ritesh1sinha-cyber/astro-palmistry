@@ -24,7 +24,7 @@ V3_LEGACY_PHRASES = [
 
 CONTAINER = "astro-palmistry-local-api-1"
 COMPRESSED_REVIEW = Path(
-    r"C:\Users\IN009287\Downloads\Compressed\graharekha_v5_full_source\review_html"
+    r"C:\Users\IN009287\Downloads\Compressed\latest\review_html"
 )
 
 

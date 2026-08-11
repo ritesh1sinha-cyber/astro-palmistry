@@ -1,0 +1,50 @@
+{
+  "RELATIONSHIP_PROMISE": "Underlying partnership / marriage potential",
+  "RELATIONSHIP_COMMITMENT": "A serious relationship or commitment decision",
+  "RELATIONSHIP_BOND": "Strengthening of an existing bond",
+  "RELATIONSHIP_CONNECTION": "New or closer relationships",
+  "RELATIONSHIP_COMPANIONSHIP": "Deeper long-term companionship",
+  "RELATIONSHIP_STRAIN": "Friction or strain in a close relationship",
+
+  "CHILD_PROMISE": "Underlying potential for children / parenthood",
+  "CHILD_PARENTHOOD": "Parenthood or family expansion",
+  "CHILD_BOND": "A stronger bond with children",
+  "CHILD_RESPONSIBILITY": "Added responsibility connected with children",
+  "CHILD_CREATIVITY": "Creative projects or self-expression",
+  "CHILD_MENTORSHIP": "Guidance from or towards a younger person",
+
+  "CAREER_PROMISE": "Underlying career growth potential",
+  "CAREER_RECOGNITION": "Recognition for work already done",
+  "CAREER_AUTHORITY": "Greater authority or decision-making role",
+  "CAREER_LEADERSHIP": "Leadership responsibility",
+  "CAREER_SPECIALIZATION": "Deepening expertise in one field",
+  "CAREER_BUSINESS": "A business or entrepreneurial opening",
+
+  "WEALTH_PROMISE": "Underlying earning / accumulation potential",
+  "WEALTH_INCOME": "Steady income growth",
+  "WEALTH_ACCUMULATION": "Ability to accumulate and retain savings",
+  "WEALTH_BUSINESS_GAINS": "Gains through business or enterprise",
+  "WEALTH_SUDDEN_GAINS": "Sudden or windfall-type gains",
+  "WEALTH_LEAKAGE": "Risk of financial leakage",
+
+  "HOME_PROMISE": "Underlying home / property stability",
+  "HOME_SETTLEMENT": "Settling a recurring domestic matter",
+  "HOME_PROPERTY": "A property-related decision or move",
+  "HOME_ROUTINE": "Stronger family routine",
+
+  "EDUCATION_PROMISE": "Underlying learning / guidance potential",
+  "EDUCATION_OPPORTUNITY": "A useful learning opportunity",
+  "EDUCATION_MENTOR": "Guidance from a mentor or teacher",
+  "EDUCATION_FOCUS": "Improved focus and direction",
+
+  "SPIRITUAL_PROMISE": "Underlying inner-life / reflective potential",
+  "SPIRITUAL_REFLECTION": "A need for quieter reflection",
+  "SPIRITUAL_GROWTH": "Philosophical or spiritual growth",
+  "SPIRITUAL_REPRIORITISE": "Reassessing priorities",
+
+  "CHALLENGE_PATTERN": "General challenge / vulnerability pattern",
+  "CHALLENGE_RESPONSIBILITY": "Pressure from accumulated responsibility",
+  "CHALLENGE_ROUTINE": "Risk from inconsistent routine",
+  "CHALLENGE_OVERLOAD": "Risk of overload if unmanaged",
+  "CHALLENGE_EARLY_ATTENTION": "A small issue that benefits from early attention"
+}

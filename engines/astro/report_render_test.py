@@ -148,6 +148,9 @@ if pc:
           ff.count("data-verdict=") == fp.count("data-verdict=") or
           ff.count("data-verdict=") >= 6)
     check("free locks the dates", ff.count("locked-inline") > 0)
+    unlock_ctas = ff.count('data-unlock="1"')
+    check("free has one unlock CTA", unlock_ctas == 1,
+          f"{unlock_ctas} unlock buttons")
     check("paid unlocks the dates",
           body_of(fp).count("locked-inline") < body_of(ff).count("locked-inline"),
           f"free={body_of(ff).count('locked-inline')} "

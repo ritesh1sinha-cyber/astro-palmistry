@@ -320,6 +320,20 @@ END $$;
 
 SELECT extend_partitions();
 
+-- ----------------------------------------------------------- chat messages ---
+-- Paid follow-up chat against a report's persisted facts.json. Kept short;
+-- retention matches report retention.
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    report_id    UUID NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role         TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content      TEXT NOT NULL,
+    meta         JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_chat_report ON chat_messages (report_id, created_at);
+
 -- ------------------------------------------------------------------ views ----
 CREATE OR REPLACE VIEW v_active_entitlements AS
 SELECT user_id, item, ref_id, source, expires_at

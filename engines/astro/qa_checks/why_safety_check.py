@@ -6,6 +6,7 @@ from typing import Optional
 
 from qa_checks.age_context_check import age_violations
 from qa_checks.claim_validator import legacy_archetype_banned
+from qa_checks.customer_text_sanitizer import is_customer_safe, sanitize_why_text
 from qa_checks.health_safety_check import health_violations
 
 
@@ -18,6 +19,8 @@ def why_is_safe(text: str, *, band: str = "adult") -> bool:
     if health_violations(text):
         return False
     if band and age_violations(text, band):
+        return False
+    if not is_customer_safe(text, age_band=band):
         return False
     return True
 
@@ -36,8 +39,15 @@ def safe_why_text(
         return candidate
 
     if meaning and getattr(meaning, "evidence_trace", None):
-        trace = "; ".join(meaning.evidence_trace[:4])
-        if trace and why_is_safe(trace, band=band):
-            return client_prose(trace)
+        safe_bits = []
+        area = getattr(meaning, "area", "") or getattr(meaning, "narrative_area", "")
+        for bit in meaning.evidence_trace[:4]:
+            cleaned = sanitize_why_text(str(bit), band=band, area=area)
+            if cleaned and why_is_safe(cleaned, band=band):
+                safe_bits.append(cleaned)
+        if safe_bits:
+            trace = "; ".join(safe_bits)
+            if why_is_safe(trace, band=band):
+                return client_prose(trace)
 
     return ""

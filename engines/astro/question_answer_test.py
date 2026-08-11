@@ -162,7 +162,7 @@ else:
         check("analytical intent uses the 'what your chart shows' heading",
               "What your chart shows" in html_house)
         check("the house/planet breakdown is actually rendered",
-              "The house and planet behind this" in html_house)
+              "Why this reading points this way" in html_house)
 
         r_when = QA.answer(pc, "when will I get promoted", lat=sample["lat"],
                            lon=sample["lon"], tz=sample["tz"])
@@ -170,7 +170,7 @@ else:
         check("a genuine timing question keeps the yes/no heading",
               "Does your chart even offer this?" in html_when)
         check("timing question's house/planet breakdown is also rendered",
-              "The house and planet behind this" in html_when)
+              "Why this reading points this way" in html_when)
     finally:
         DE.end()
 

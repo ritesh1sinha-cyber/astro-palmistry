@@ -1,0 +1,502 @@
+{
+  "R01_character": {
+    "family": "practical_dependability",
+    "modern_meaning": "You tend to be at your best when life gives you something concrete to build, organize or take responsibility for.",
+    "recognize": [
+      "people rely on you when something needs to be handled properly",
+      "you prefer practical solutions over big promises",
+      "you feel better when your effort produces something tangible"
+    ],
+    "claim_level": "pattern"
+  },
+  "R02_character": {
+    "family": "mental_social_energy",
+    "modern_meaning": "Your energy is strongly tied to thinking, conversation and interaction; repetitive isolation can leave you mentally flat.",
+    "recognize": [
+      "you think better by talking things through",
+      "people or ideas quickly re-energize you",
+      "long stretches of repetitive work can feel draining"
+    ],
+    "claim_level": "pattern"
+  },
+  "R03_character": {
+    "family": "action_drive",
+    "modern_meaning": "You tend to respond quickly when something excites you and may lose interest when there is no challenge or movement.",
+    "recognize": [
+      "you act quickly when motivated",
+      "you dislike unnecessary waiting",
+      "challenge brings out more energy in you"
+    ],
+    "claim_level": "pattern"
+  },
+  "R04_character": {
+    "family": "emotional_sensitivity",
+    "modern_meaning": "You may pick up changes in mood and atmosphere quickly, making emotional sensitivity both a strength and something that needs boundaries.",
+    "recognize": [
+      "you notice tension before people say what is wrong",
+      "other people's moods can affect you",
+      "you need time to reset after emotionally heavy situations"
+    ],
+    "claim_level": "pattern"
+  },
+  "R05_character": {
+    "family": "self_direction",
+    "modern_meaning": "Once you decide that something matters, you tend to prefer steering it yourself rather than being micromanaged.",
+    "recognize": [
+      "you dislike being told every small step",
+      "you persist once a decision feels right",
+      "autonomy improves your motivation"
+    ],
+    "claim_level": "pattern"
+  },
+  "R06_character": {
+    "family": "feeling_led_decisions",
+    "modern_meaning": "You may give personal feeling considerable weight when choosing between options, especially when a decision affects people you care about.",
+    "recognize": [
+      "you ask whether something feels right, not only whether it is logical",
+      "relationships can influence practical decisions",
+      "cold or purely transactional choices can feel unnatural"
+    ],
+    "claim_level": "pattern"
+  },
+  "R07_character": {
+    "family": "generosity",
+    "modern_meaning": "You tend to be open with time, help or resources when you feel comfortable with people.",
+    "recognize": [
+      "you help without keeping a strict scorecard",
+      "friends or family may approach you when they need practical help",
+      "you can be more generous than you initially intended"
+    ],
+    "claim_level": "pattern"
+  },
+  "R08_character": {
+    "family": "guarded_trust",
+    "modern_meaning": "You may take time to trust people fully and prefer to observe first rather than reveal everything immediately.",
+    "recognize": [
+      "you open up gradually",
+      "you notice small signals before trusting someone",
+      "your close circle is usually selective"
+    ],
+    "claim_level": "pattern"
+  },
+  "R09_character": {
+    "family": "leadership_ambition",
+    "modern_meaning": "You are likely to feel more engaged when your work gives you ownership, respect or room to lead.",
+    "recognize": [
+      "being overlooked frustrates you more than hard work does",
+      "you naturally notice how decisions should be made",
+      "roles with no room to influence can feel restrictive"
+    ],
+    "claim_level": "pattern"
+  },
+  "R10_character": {
+    "family": "risk_creativity",
+    "modern_meaning": "You may be comfortable taking a calculated leap when the opportunity feels exciting, visible or creatively worthwhile.",
+    "recognize": [
+      "you sometimes choose the interesting option over the safest one",
+      "creative challenges energize you",
+      "you dislike feeling boxed into a predictable path"
+    ],
+    "claim_level": "pattern"
+  },
+  "R11_mind": {
+    "family": "early_independence",
+    "modern_meaning": "You may have learned to make decisions independently relatively early and can become impatient when others slow a decision down.",
+    "recognize": [
+      "you prefer making your own call",
+      "you do not always wait for permission",
+      "independence became important early in life"
+    ],
+    "claim_level": "pattern"
+  },
+  "R12_mind": {
+    "family": "family_influenced_growth",
+    "modern_meaning": "Your confidence may have developed gradually, with family expectations or the need for reassurance influencing earlier choices.",
+    "recognize": [
+      "family opinion mattered strongly in earlier decisions",
+      "you wanted reassurance before major steps",
+      "confidence grew through experience rather than appearing all at once"
+    ],
+    "claim_level": "pattern"
+  },
+  "R13_mind": {
+    "family": "imaginative_thinking",
+    "modern_meaning": "You may solve problems through imagination, associations and intuition as much as through straight-line logic.",
+    "recognize": [
+      "ideas come to you through images or connections",
+      "creative work can hold your attention for a long time",
+      "you sometimes know what feels right before you can explain why"
+    ],
+    "claim_level": "pattern"
+  },
+  "R14_mind": {
+    "family": "practical_thinking",
+    "modern_meaning": "You tend to prefer facts, workable plans and clear outcomes before committing to an idea.",
+    "recognize": [
+      "you ask how something will actually work",
+      "you prefer evidence to hype",
+      "a practical plan makes it easier to act"
+    ],
+    "claim_level": "pattern"
+  },
+  "R15_mind": {
+    "family": "focused_followthrough",
+    "modern_meaning": "When your mind is made up and the goal matters, you can combine strong focus with the persistence to carry it through.",
+    "recognize": [
+      "you can stay with a difficult problem longer than others expect",
+      "you dislike abandoning something halfway",
+      "once committed, you prefer finishing over restarting"
+    ],
+    "claim_level": "pattern"
+  },
+  "R16_mind": {
+    "family": "commercial_communication",
+    "modern_meaning": "Communication, negotiation and understanding what people need may be practical strengths for you.",
+    "recognize": [
+      "you can explain an idea in a way people understand",
+      "you are comfortable discussing terms or value",
+      "people may come to you when something needs to be negotiated"
+    ],
+    "claim_level": "pattern"
+  },
+  "R17_mind": {
+    "family": "counselling_insight",
+    "modern_meaning": "You may naturally notice what people are struggling with and become the person others ask for perspective.",
+    "recognize": [
+      "people tell you personal problems without much prompting",
+      "you notice motives behind what people say",
+      "you are often asked for advice"
+    ],
+    "claim_level": "pattern"
+  },
+  "R18_love": {
+    "family": "warm_attachment",
+    "modern_meaning": "When you trust someone, you may invest deeply and expect warmth and effort to be mutual.",
+    "recognize": [
+      "you show care through involvement and presence",
+      "one-sided effort hurts more than open disagreement",
+      "you value affection that is returned"
+    ],
+    "claim_level": "pattern"
+  },
+  "R19_love": {
+    "family": "guarded_attachment",
+    "modern_meaning": "You may take longer to open emotionally, but once trust is established you can be more committed than your first impression suggests.",
+    "recognize": [
+      "you do not open up immediately",
+      "you watch consistency before trusting",
+      "people may initially see you as reserved"
+    ],
+    "claim_level": "pattern"
+  },
+  "R20_love": {
+    "family": "high_relationship_standards",
+    "modern_meaning": "You may have clear standards for a partner and prefer a relationship you can genuinely respect rather than one based only on convenience.",
+    "recognize": [
+      "respect is as important as attraction",
+      "you notice character and competence",
+      "you would rather wait than settle quickly"
+    ],
+    "claim_level": "pattern"
+  },
+  "R21_love": {
+    "family": "emotional_intensity",
+    "modern_meaning": "You may experience close relationships intensely and do best when the emotional environment is steady rather than unpredictable.",
+    "recognize": [
+      "small changes in a relationship can affect you strongly",
+      "you need emotional reassurance when things feel uncertain",
+      "calm communication helps you stay balanced"
+    ],
+    "claim_level": "pattern"
+  },
+  "R22_love": {
+    "family": "committed_bonds",
+    "modern_meaning": "Committed relationships can become major anchors in your life rather than remaining separate from your wider identity and responsibilities.",
+    "recognize": [
+      "important relationships influence major life decisions",
+      "you take commitment seriously",
+      "a long-term bond can reshape your priorities"
+    ],
+    "claim_level": "pattern"
+  },
+  "R23_love": {
+    "family": "family_warmth",
+    "modern_meaning": "Family connection and emotional warmth may be important sources of belonging and stability for you.",
+    "recognize": [
+      "you stay involved with people you consider family",
+      "home atmosphere affects your wellbeing",
+      "you show care through practical involvement"
+    ],
+    "claim_level": "pattern"
+  },
+  "R24_love": {
+    "family": "family_warmth",
+    "modern_meaning": "Family connection and emotional warmth may be important sources of belonging and stability for you.",
+    "recognize": [
+      "you stay involved with people you consider family",
+      "home atmosphere affects your wellbeing",
+      "you show care through practical involvement"
+    ],
+    "claim_level": "pattern"
+  },
+  "R25_career": {
+    "family": "steady_career_building",
+    "modern_meaning": "You may do better professionally when you build depth and credibility over time rather than changing direction simply because progress feels slow.",
+    "recognize": [
+      "experience has become an advantage over time",
+      "you prefer mastering a role before moving on",
+      "consistency has helped your professional position"
+    ],
+    "claim_level": "pattern"
+  },
+  "R26_career": {
+    "family": "career_transition",
+    "modern_meaning": "Your work path may contain a meaningful change of role or direction; the useful question is what the next chapter lets you build, not whether change itself is good or bad.",
+    "recognize": [
+      "your responsibilities changed significantly at some point",
+      "a role or industry shift altered your priorities",
+      "a transition eventually opened a different path"
+    ],
+    "claim_level": "pattern"
+  },
+  "R27_career": {
+    "family": "self_authored_career",
+    "modern_meaning": "You may feel strongest professionally when your choices, skills and initiative—not someone else's expectations—determine your direction.",
+    "recognize": [
+      "you dislike being locked into someone else's plan",
+      "self-employment or ownership can appeal to you",
+      "career decisions become clearer when you control the choice"
+    ],
+    "claim_level": "pattern"
+  },
+  "R28_career": {
+    "family": "career_visibility",
+    "modern_meaning": "Being good at your work is not the whole story for you; visibility, appreciation or being known for a particular skill can matter too.",
+    "recognize": [
+      "you notice when good work goes unrecognized",
+      "being trusted with visible work motivates you",
+      "you may gradually become known for a particular strength"
+    ],
+    "claim_level": "pattern"
+  },
+  "R29_career": {
+    "family": "career_responsibility",
+    "modern_meaning": "You may become more valuable as responsibility increases, especially when the role requires patience, reliability and staying power.",
+    "recognize": [
+      "people rely on you for difficult responsibilities",
+      "you can carry pressure without needing constant attention",
+      "your authority has grown through experience"
+    ],
+    "claim_level": "pattern"
+  },
+  "R30_career": {
+    "family": "leadership_role",
+    "modern_meaning": "You may feel underused in roles where you have no influence; ownership, leadership or decision-making responsibility can bring out more of your ability.",
+    "recognize": [
+      "you naturally take charge when something is unclear",
+      "recognition matters when you carry responsibility",
+      "small roles can feel restrictive when you know you can contribute more"
+    ],
+    "claim_level": "pattern"
+  },
+  "R31_wealth": {
+    "family": "skill_based_income",
+    "modern_meaning": "Your strongest financial theme here is earning through useful skill, reputation or expertise rather than relying only on luck.",
+    "recognize": [
+      "your income improves when your expertise is visible",
+      "people pay for a skill you have built over time",
+      "reputation and referrals can influence opportunities"
+    ],
+    "claim_level": "pattern"
+  },
+  "R32_wealth": {
+    "family": "opportunity_and_prosperity",
+    "modern_meaning": "This is traditionally read as a supportive prosperity sign; in modern life it is better understood as a tendency to notice or use opportunities well when they appear.",
+    "recognize": [
+      "a few opportunities have had outsized impact",
+      "good results tend to come when you act decisively on a real opening",
+      "you benefit when preparation meets opportunity"
+    ],
+    "claim_level": "pattern"
+  },
+  "R33_wealth": {
+    "family": "ambition_and_status",
+    "modern_meaning": "Financial progress may be connected with ambition, standing and the desire to build a stronger position over time.",
+    "recognize": [
+      "financial goals are tied to a larger sense of achievement",
+      "recognition motivates you to improve your position",
+      "you prefer building status through results"
+    ],
+    "claim_level": "pattern"
+  },
+  "R34_wealth": {
+    "family": "planned_risk",
+    "modern_meaning": "You may do better financially when you plan before taking a risk and keep a clear boundary around what you can afford to lose.",
+    "recognize": [
+      "you compare options before committing money",
+      "planning reduces your anxiety about risk",
+      "you prefer calculated moves over impulsive bets"
+    ],
+    "claim_level": "pattern"
+  },
+  "R35_wealth": {
+    "family": "status_and_reward",
+    "modern_meaning": "Career standing and financial reward may reinforce each other: building a strong professional position can improve the resources that follow.",
+    "recognize": [
+      "financial progress followed professional recognition",
+      "your earning power grew with experience or status",
+      "career reputation has affected money opportunities"
+    ],
+    "claim_level": "pattern"
+  },
+  "R36_health": {
+    "family": "energy_and_recovery",
+    "modern_meaning": "The reading points to a relatively strong baseline of energy; in practical terms, consistent rest and routine may help you make the most of it.",
+    "recognize": [
+      "you recover reasonably well when you give yourself time",
+      "regular routines make you feel more stable",
+      "you notice a clear difference when sleep or recovery is neglected"
+    ],
+    "claim_level": "pattern"
+  },
+  "R37_health": {
+    "family": "stamina_and_resilience",
+    "modern_meaning": "You may have a strong drive to keep going through demanding periods, but the useful lesson is to pair resilience with recovery rather than treating exhaustion as a test of strength.",
+    "recognize": [
+      "you keep functioning when things become demanding",
+      "you often push through before taking a break",
+      "recovery matters more when workload stays high"
+    ],
+    "claim_level": "pattern"
+  },
+  "R38_health": {
+    "family": "pace_and_recovery",
+    "modern_meaning": "Your wellbeing may respond noticeably to pace, sleep and recovery; steady routines can matter more than pushing harder.",
+    "recognize": [
+      "too little sleep quickly affects how you feel",
+      "busy periods make recovery more important",
+      "a sustainable routine works better than repeated bursts of effort"
+    ],
+    "claim_level": "pattern"
+  },
+  "R39_health": {
+    "family": "stress_awareness",
+    "modern_meaning": "Stress may show up first as changes in digestion, tension or nervous energy, so noticing your body's early signals can be useful.",
+    "recognize": [
+      "stress changes how your body feels",
+      "busy periods affect appetite, digestion or tension",
+      "you benefit when you slow down before stress accumulates"
+    ],
+    "claim_level": "pattern"
+  },
+  "R40_health": {
+    "family": "energy_baseline",
+    "modern_meaning": "The traditional reading suggests a solid baseline of vitality; practically, the emphasis is on preserving energy through sensible routines rather than assuming it will always be unlimited.",
+    "recognize": [
+      "you can stay active when your routine is balanced",
+      "you notice energy drops when recovery is ignored",
+      "consistency helps you use your natural stamina well"
+    ],
+    "claim_level": "pattern"
+  },
+  "R41_travel": {
+    "family": "change_and_movement",
+    "modern_meaning": "Change of place can refresh you, and travel or relocation may become especially meaningful when routine starts feeling too narrow.",
+    "recognize": [
+      "a new environment quickly changes your mood",
+      "travel can restart your motivation",
+      "you sometimes need a change of scene to think clearly"
+    ],
+    "claim_level": "pattern"
+  },
+  "R42_travel": {
+    "family": "novelty_and_imagination",
+    "modern_meaning": "You may need variety, new experiences or different environments to keep your mind engaged.",
+    "recognize": [
+      "too much sameness makes you restless",
+      "new places spark ideas",
+      "you enjoy exploring possibilities even without a fixed plan"
+    ],
+    "claim_level": "pattern"
+  },
+  "R43_travel": {
+    "family": "meaningful_moves",
+    "modern_meaning": "Movement may be more than recreation for you; certain journeys, moves or changes of environment can become important chapters in your story.",
+    "recognize": [
+      "a move changed your priorities",
+      "travel has been linked with major decisions",
+      "some journeys stayed memorable because they changed your perspective"
+    ],
+    "claim_level": "pattern"
+  },
+  "R44_travel": {
+    "family": "travel_caution",
+    "modern_meaning": "Travel can be stimulating for you, but the reading also suggests being more deliberate around long journeys and unfamiliar environments.",
+    "recognize": [
+      "you become more alert when travelling",
+      "planning reduces avoidable travel stress",
+      "you enjoy exploration more when practical details are under control"
+    ],
+    "claim_level": "pattern"
+  },
+  "R45_fortune": {
+    "family": "ambition_support",
+    "modern_meaning": "You may have periods when ambition and opportunity seem to reinforce each other, especially when you are prepared to act on an opening.",
+    "recognize": [
+      "a well-timed opportunity lifted your position",
+      "your ambition increased after a visible success",
+      "preparation helped you take advantage of a good opening"
+    ],
+    "claim_level": "pattern"
+  },
+  "R46_fortune": {
+    "family": "relationship_support",
+    "modern_meaning": "Close relationships may become an important source of warmth, support and good fortune rather than remaining separate from your wider life.",
+    "recognize": [
+      "support from a partner or family member changed what was possible",
+      "home stability improves your confidence",
+      "relationships have influenced major life choices"
+    ],
+    "claim_level": "pattern"
+  },
+  "R47_fortune": {
+    "family": "opportunity_support",
+    "modern_meaning": "This traditional mark is best translated as a supportive tendency around success: opportunities may become more useful when they meet preparation and initiative.",
+    "recognize": [
+      "some opportunities produced more than expected",
+      "you tend to benefit when you act on a genuine opening",
+      "success grows when preparation and timing meet"
+    ],
+    "claim_level": "pattern"
+  },
+  "R48_fortune": {
+    "family": "responsibility_turning_point",
+    "modern_meaning": "A demanding responsibility or turning point may become an important part of your development; the constructive response is patience, structure and deliberate decisions.",
+    "recognize": [
+      "a difficult responsibility changed how you operate",
+      "a serious period made you more disciplined",
+      "pressure eventually clarified what mattered"
+    ],
+    "claim_level": "pattern"
+  },
+  "R49_fortune": {
+    "family": "focus_management",
+    "modern_meaning": "When too many priorities compete at once, your energy can become scattered; choosing one or two priorities may produce better results.",
+    "recognize": [
+      "you start many things when excited",
+      "too many commitments reduce your follow-through",
+      "focus improves your sense of control"
+    ],
+    "claim_level": "pattern"
+  },
+  "R50_fortune": {
+    "family": "constructive_problem_solving",
+    "modern_meaning": "You may be good at turning a complicated situation into a practical plan and working your way toward a workable outcome.",
+    "recognize": [
+      "you look for the structure inside a problem",
+      "planning helps you feel in control",
+      "you often find a practical route when others see only complexity"
+    ],
+    "claim_level": "pattern"
+  }
+}

@@ -31,6 +31,17 @@ STRENGTH_LABEL = {"strong": "Strong signal", "moderate": "Moderate",
 def _e(t: Any) -> str:
     return _html.escape(str(t or ""))
 
+def _human_palm_title(title: Any) -> str:
+    """Customer-facing palm domain labels; never assume marriage status."""
+    raw = str(title or "").strip()
+    replacements = {
+        "Love, Marriage & Emotions": "Relationships & Emotions",
+        "Love & Marriage": "Relationships & Partnership",
+        "Career & Destiny": "Career & Direction",
+        "Wealth & Fortune": "Money & Resources",
+    }
+    return replacements.get(raw, raw)
+
 
 def _first(name: str) -> str:
     n = (name or "").strip().split()
@@ -149,42 +160,175 @@ def _opening(text: str) -> str:
 </div>"""
 
 
-def _aspect_card(a: dict, *, paid: bool) -> str:
+def _unique_texts(values: list[str], limit: int = 5) -> list[str]:
+    """Stable, lightweight de-duplication for human recognition cues."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = re.sub(r"\s+", " ", str(value or "")).strip()
+        if not text:
+            continue
+        key = re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(text)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _recognition_block(a: dict) -> str:
+    cues = _unique_texts(list(a.get("recognize") or []), limit=4)
+    if not cues:
+        return ""
+    rows = "".join(f"<li>{_e(x)}</li>" for x in cues)
+    return f"""
+<div class="recognition-box">
+  <strong>You may recognize this as</strong>
+  <ul>{rows}</ul>
+</div>"""
+
+
+def _technical_evidence(a: dict, *, paid: bool) -> str:
     pts = [p for p in (a.get("points") or []) if (p.get("text") or "").strip()]
-    head = pts[0]["text"] if pts else (a.get("summary") or "")
-    rest = pts[1:]
+    if paid:
+        rows = ""
+        for p in pts:
+            traditional = str(p.get("traditional_meaning") or "").strip()
+            evidence = str(p.get("text") or "").strip()
+            if not evidence and not traditional:
+                continue
+            source = p.get("book_label") or p.get("book")
+            page = p.get("page")
+            source_html = (
+                f'<div class="evidence-why"><b>Source:</b> {_e(source)}'
+                f'{f", p. {_e(page)}" if page else ""}</div>'
+                if source else ""
+            )
+            traditional_html = (
+                f'<div class="evidence-why"><b>Traditional reading:</b> '
+                f'{_e(traditional)}</div>'
+                if traditional and traditional != evidence else ""
+            )
+            rows += f"""
+<div class="evidence-row">
+  <div class="evidence-meaning"><b>{_e(evidence or traditional)}</b>
+  {(' <b class="both">&#10003; both hands</b>' if p.get("reinforced") else '')}</div>
+  {traditional_html}
+  {source_html}
+</div>"""
+        if not rows:
+            return ""
+        return f"""
+<details class="technical-evidence">
+  <summary>Why Graharekha says this</summary>
+  <div>{rows}</div>
+</details>"""
+    n = len(pts)
+    return f"""
+<details class="technical-evidence locked-inline">
+  <summary>Why Graharekha says this</summary>
+  <p><span class="lockicon">&bull;</span> {n} palm finding{"s" if n != 1 else ""} support this interpretation.
+  The detailed evidence is in the full reading.</p>
+</details>"""
+
+
+def _aspect_card(a: dict, *, paid: bool, prose: dict | None = None) -> str:
+    pts = [p for p in (a.get("points") or []) if (p.get("text") or "").strip()]
+    summary = str(a.get("what_it_means") or a.get("summary") or "").strip()
+    llm = prose or {}
+    llm_headline = (llm.get("headline") or "").strip()
+    llm_why = (llm.get("why") or "").strip()
+    if llm_headline:
+        summary = llm_headline
     both = sum(1 for p in pts if p.get("reinforced"))
     strength = str(a.get("strength") or "")
     pill_cls = STRENGTH_PILL.get(strength, "faint")
     pill_txt = STRENGTH_LABEL.get(strength, strength.title() or "Read")
     agree = f'<span class="agree">{both} on both hands</span>' if both else ""
-
-    if paid:
-        ev = "".join(
-            f"<li>{_e(p['text'])}"
-            + (' <b class="both">&#10003; both hands</b>' if p.get("reinforced") else "")
-            + "</li>" for p in rest)
-        body = (f'<div class="evidence"><span class="ev-label">What your hands show</span>'
-                f'{agree}<ul>{ev}</ul>'
-                + (f'<p class="fine">{_e(a.get("strength_note"))}</p>'
-                   if a.get("strength_note") else "")
-                + "</div>")
-    else:
-        n = len(rest)
-        body = (f'<div class="evidence locked-inline">'
-                f'<span class="ev-label">What your hands show</span>{agree}'
-                f'<p><span class="lockicon">&bull;</span> {n} further '
-                f'sign{"s" if n != 1 else ""} in your hands land on this. '
-                f'The working is in the full reading.</p></div>')
+    recognition = _recognition_block(a)
+    technical = _technical_evidence(a, paid=paid)
+    why_html = (
+        f'<p class="pred-why"><b>Why:</b> {_e(llm_why)}</p>' if llm_why else ""
+    )
 
     return f"""
 <article class="card" data-verdict="{_e(strength)}">
-  <div class="card-top"><span class="area">{_e(a.get('title'))}</span>
+  <div class="card-top"><span class="area">{_e(_human_palm_title(a.get("title")))}</span>
     <span class="pill {pill_cls}">{_e(pill_txt)}</span></div>
-  <p class="claim">{_e(head)}</p>
-  {body}
+  {f'<p class="claim">{_e(summary)}</p>' if summary else ''}
+  {why_html}
+  {agree}
+  {recognition}
+  {technical}
 </article>"""
 
+
+def _top_recognition(aspects: list[dict]) -> str:
+    """Five high-signal, cross-life-area observations for immediate self-check."""
+    candidates: list[tuple[str, str, str]] = []
+    for a in aspects:
+        title = str(a.get("title") or "").strip()
+        family = str(a.get("key") or a.get("title") or "").strip()
+        for cue in a.get("recognize") or []:
+            text = str(cue or "").strip()
+            if text:
+                candidates.append((family, title, text))
+
+    selected: list[tuple[str, str, str]] = []
+    seen_families: set[str] = set()
+    seen_text: set[str] = set()
+    # Prefer strong/moderate areas first, while limiting one dominant life area
+    # from taking over the opening.
+    ranked = sorted(
+        candidates,
+        key=lambda x: next(
+            (0 if str(a.get("key")) == x[0] and a.get("strength") == "strong"
+             else 1 if str(a.get("key")) == x[0] and a.get("strength") == "moderate"
+             else 2)
+            for a in aspects if str(a.get("key")) == x[0]
+        ),
+    )
+    for family, title, text in ranked:
+        norm = re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+        if norm in seen_text:
+            continue
+        # First pass: one cue per life area. This makes the opening a broad
+        # "does this sound like me?" check rather than five versions of career.
+        if family in seen_families:
+            continue
+        seen_families.add(family)
+        seen_text.add(norm)
+        selected.append((family, title, text))
+        if len(selected) >= 5:
+            break
+
+    if len(selected) < 5:
+        for family, title, text in ranked:
+            norm = re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+            if norm in seen_text:
+                continue
+            seen_text.add(norm)
+            selected.append((family, title, text))
+            if len(selected) >= 5:
+                break
+
+    if not selected:
+        return ""
+
+    rows = "".join(
+        f'<li><span class="top-recognition-area">{_e(title)}</span> — {_e(text)}</li>'
+        for _, title, text in selected
+    )
+    return f"""
+<section class="top-recognition">
+  <h3>5 things you may recognize about yourself</h3>
+  <p class="sec-note">Use these as a reality check. They are life-pattern
+  observations, not guaranteed events.</p>
+  <ol>{rows}</ol>
+</section>
+"""
 
 def _hands_compare(conf: dict) -> str:
     rows = ""
@@ -198,9 +342,10 @@ def _hands_compare(conf: dict) -> str:
     if not rows:
         return ""
     return f"""
-<h3 class="sec">Left hand against right hand</h3>
-<p class="sec-note">One hand is what you were handed. The other is what you have
-made of it. Where they differ is the interesting part.</p>
+<h3 class="sec">What may have changed with age</h3>
+<p class="sec-note">Traditionally, the non-dominant hand is read as the underlying
+tendency and the dominant hand as how life has shaped or expressed it. Differences
+between them are often the most useful part to reflect on.</p>
 <div class="card"><ul class="palm-list">{rows}</ul></div>"""
 
 
@@ -280,9 +425,9 @@ def _read_to_today(items: List[dict], *, first: str, age: int) -> str:
   <div class="ev-label">Your hand, read to today</div>
   <h3>{_e(first)}, check these against your own hand</h3>
   <p>You have told us nothing except your age, and shown us two photographs.
-  Everything below was measured off them.{dated_note} If most of it is wrong,
-  close this page and keep your money. If most of it is right, the same
-  measurements are what the rest of the reading is built on.</p>
+  Everything below was measured off them.{dated_note} If most of it does not fit,
+  treat that as useful feedback rather than forcing a match. If most of it does fit,
+  the same measurements are what the rest of the reading is built on.</p>
   <ul class="hits">{rows}</ul>
 </div>"""
 
@@ -427,8 +572,8 @@ Any gem, metal, or practice tied to your mounts and marks is in the full reading
     return f"""
 <section class="remedy-card">
   <h3 class="sec">Remedies for your hand</h3>
-  <p class="sec-note">Green = do. Red = ease off. Each line cites the palm book /
-  coded rule it comes from — nothing invented for padding.</p>
+  <p class="sec-note">These are traditional supportive practices tied to measured
+  patterns in your hands. They are optional, not guarantees.</p>
   {f'''<div class="stones-group up">
     <div class="stones-group-label">Do · strengthen</div>
     <ul class="stones">{do_html}</ul>
@@ -466,6 +611,15 @@ def _workings(raw: dict) -> str:
                         if len(rng) == 2 and rng[1] > rng[0] else
                         f'<span class="pt-when">around age {_e(age)}</span>')
             verdict = conc.get("verdict") or conc.get("conclusion") or it.get("finding", "")
+            # Never expose raw classical/book wording from a numbered point.
+            try:
+                from qa_checks.customer_text_sanitizer import sanitize_customer_text
+                verdict = sanitize_customer_text(
+                    str(verdict), method_label="Palm evidence",
+                    direction="neutral", area="inner",
+                    seed=str(verdict)[:48])
+            except Exception:
+                pass
             body = _scenario_why_html(str(verdict))
             if not body:
                 body = f'<p>{_e(verdict)}</p>'
@@ -480,10 +634,9 @@ def _workings(raw: dict) -> str:
         return ""
     return f"""
 <details class="workings workings-main">
-  <summary>The line-by-line working — every numbered point on both hands</summary>
+  <summary>Detailed line-by-line reading</summary>
   <div class="workings-body">
-    <p>Each dot on the photographs above carries a number. This is what was
-    read at each one.</p>
+    <p>Each numbered point is explained in plain language below.</p>
     {blocks}
   </div>
 </details>"""
@@ -538,11 +691,20 @@ def _locked_preview(*, price: int, n_areas: int, n_ahead: int, n_marks: int,
 # ---------------------------------------------------------------------------
 def render(raw: dict, *, name: str = "Seeker", age: int = 30,
            gender: str = "other", dominant: str = "right",
-           paid: bool = False, price: int = 298) -> str:
-    """One palm reading, gated. Returns a standalone HTML document."""
+           paid: bool = False, price: int = 298,
+           prose: dict | None = None) -> str:
+    """One palm reading, gated. Returns a standalone HTML document.
+
+    ``prose`` is an optional LLM overlay: ``{opening, aspects:{key:{headline,why,points}}}``.
+    """
     import report_shell as RS
 
     from .palm_report import _Req, build_scores, palm_opening
+
+    prose = prose or {}
+    prose_aspects = prose.get("aspects") if isinstance(prose, dict) else {}
+    if not isinstance(prose_aspects, dict):
+        prose_aspects = {}
 
     req = _Req({"name": name, "age": age, "gender": gender, "dominant": dominant})
     first = _first(name)
@@ -563,11 +725,15 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
                    for h in ("left", "right"))
     n_marks = len((dom.get("features") or {}).get("special_marks") or [])
 
-    cards = "".join(_aspect_card(a, paid=paid) for a in aspects
-                    if (a.get("points") or a.get("summary")))
+    cards = "".join(
+        _aspect_card(a, paid=paid, prose=prose_aspects.get(a.get("key") or ""))
+        for a in aspects
+        if (a.get("points") or a.get("summary")))
 
     scores = build_scores(dom, aspects_by_key)
-    opening = palm_opening(req, dom)
+    llm_opening = (prose.get("opening") or "").strip()
+    # Deterministic opening may contain intentional <b>; LLM prose is escaped.
+    opening = _e(llm_opening) if llm_opening else palm_opening(req, dom)
 
     if paid:
         tail = (_timeline_ahead(ahead) + _mounts(conf, dom_items)
@@ -597,9 +763,11 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
             + _quality(dom)
             + _scores(scores)
             + _opening(opening)
-            + '<h3 class="sec">Every area of your life, and which way it leans</h3>'
-              '<p class="sec-note">Ordered as the classical texts order them. The '
-              'strength badge is how many independent signs in your hands agree.</p>'
+            + _top_recognition(aspects)
+            + '<h3 class="sec">What these signs may look like in your life</h3>'
+              '<p class="sec-note">Start with the everyday meaning. Open '
+              '<b>Why Graharekha says this</b> when you want the palm evidence '
+              'behind it.</p>'
             + cards
             + _hands_compare(conf)
             + _read_to_today(dom_items, first=first, age=age)

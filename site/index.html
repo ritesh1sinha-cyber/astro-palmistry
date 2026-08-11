@@ -538,6 +538,17 @@ input[type=file]{display:none}
   background:#fbfaf8;margin-top:16px;display:block
 }
 .readingmount .reportframe{margin-top:0}
+.report-chat{margin:12px 0 0;padding:14px 16px;border:1px solid rgba(0,0,0,.08);
+  border-radius:12px;background:#faf8f4}
+.report-chat-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.report-chat-head .hint{font-size:.8rem;color:var(--muted,#6b7280)}
+.report-chat-log{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:8px;
+  margin-bottom:10px;font-size:.9rem}
+.chat-msg{padding:8px 10px;border-radius:8px;background:#fff;border:1px solid rgba(0,0,0,.06)}
+.chat-msg.me{background:#eef6ff}
+.report-chat-form{display:flex;gap:8px}
+.report-chat-form input{flex:1;min-width:0;padding:8px 10px;border-radius:8px;
+  border:1px solid rgba(0,0,0,.15)}
 .dailycard h4{font-family:var(--serif);font-size:20px;margin:0 0 8px}
 .dolist{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px}
 .dolist li{display:flex;gap:9px;font-size:14px;color:var(--muted)}
@@ -1416,6 +1427,8 @@ const CONFIG = {
   razorpayKeyId: '',
   turnstileSiteKey: '',
   turnstileRequired: false,
+  llmEnabled:   false,               // from /api/public-config
+  chatEnabled:  false,               // true only when LLM on + chat in LLM_TABS
   price:        298,
   priceStrike:  298,
   currency:     '₹',
@@ -1540,7 +1553,7 @@ function takePaySuccessBanner(){
 }
 async function waitForUnlockedReport(reportId, maxMs){
   if(!reportId || MOCK) return null;
-  const deadline = Date.now() + (maxMs || 15000);
+  const deadline = Date.now() + (maxMs || 30000);
   while(Date.now() < deadline){
     try{
       const rep = await api('/api/reports/'+reportId);
@@ -1549,6 +1562,27 @@ async function waitForUnlockedReport(reportId, maxMs){
     await new Promise(r=>setTimeout(r, 800));
   }
   return null;
+}
+// Razorpay can confirm a charge to the browser before our webhook has
+// finished writing the entitlement server-side. If waitForUnlockedReport
+// gives up, keep checking quietly in the background instead of leaving the
+// customer on a page that still looks locked with no further feedback —
+// that silence is exactly what produced the "paid but not unlocked" reports.
+function watchReportUnlock(reportId, onUnlocked, opts){
+  const o = opts || {};
+  if(!reportId || MOCK) return null;
+  const intervalMs = o.intervalMs || 5000;
+  const maxTries = o.maxTries || 24; // ~2 minutes on top of the initial wait
+  let tries = 0;
+  const iv = setInterval(async()=>{
+    tries++;
+    try{
+      const rep = await api('/api/reports/'+reportId);
+      if(reportIsUnlocked(rep)){ clearInterval(iv); onUnlocked(rep); return; }
+    }catch(e){}
+    if(tries >= maxTries){ clearInterval(iv); if(o.onTimeout) o.onTimeout(); }
+  }, intervalMs);
+  return iv;
 }
 async function downloadReportPdf(reportId){
   if(!reportId){ toast('No report selected'); return; }
@@ -1583,14 +1617,70 @@ function reportToolbar(reportId, link){
     <a class="btn btn-ghost btn-sm" href="${href}" target="_blank" rel="noopener noreferrer">Open full screen</a>
   </div>`;
 }
+function reportChatPanel(reportId){
+  const rid = esc(reportId||'');
+  const boxId = 'chat-'+Math.random().toString(36).slice(2, 9);
+  setTimeout(()=>initReportChat(boxId, reportId), 0);
+  return `<div class="report-chat" id="${boxId}" data-rid="${rid}">
+    <div class="report-chat-head">
+      <strong>Ask about this reading</strong>
+      <span class="hint">Paid follow-up — answers stay inside your report facts.</span>
+    </div>
+    <div class="report-chat-log" data-role="log"></div>
+    <form class="report-chat-form" onsubmit="return sendReportChat(event,'${boxId}')">
+      <input type="text" name="q" maxlength="600" placeholder="e.g. What does my career card say about timing?" required autocomplete="off"/>
+      <button class="btn btn-sm" type="submit">Ask</button>
+    </form>
+  </div>`;
+}
+async function initReportChat(boxId, reportId){
+  const root = document.getElementById(boxId);
+  if(!root || !reportId) return;
+  const log = root.querySelector('[data-role="log"]');
+  try{
+    const data = await api('/api/reports/'+reportId+'/chat');
+    const msgs = (data && data.messages) || [];
+    log.innerHTML = msgs.map(m =>
+      `<div class="chat-msg ${m.role==='user'?'me':'bot'}"><b>${m.role==='user'?'You':'Reading'}:</b> ${esc(m.content||'')}</div>`
+    ).join('') || '<div class="hint">Ask a follow-up about something already in this report.</div>';
+    log.scrollTop = log.scrollHeight;
+  }catch(e){
+    log.innerHTML = '<div class="hint">Chat is unavailable for this report right now.</div>';
+  }
+}
+async function sendReportChat(ev, boxId){
+  ev.preventDefault();
+  const root = document.getElementById(boxId);
+  if(!root) return false;
+  const rid = root.getAttribute('data-rid');
+  const input = root.querySelector('input[name="q"]');
+  const log = root.querySelector('[data-role="log"]');
+  const q = (input && input.value || '').trim();
+  if(!q || !rid) return false;
+  input.value = '';
+  log.innerHTML += `<div class="chat-msg me"><b>You:</b> ${esc(q)}</div>`;
+  log.scrollTop = log.scrollHeight;
+  try{
+    const data = await api('/api/reports/'+rid+'/chat', {
+      method:'POST', body: JSON.stringify({message:q})
+    });
+    log.innerHTML += `<div class="chat-msg bot"><b>Reading:</b> ${esc((data&&data.answer)||'')}</div>`;
+  }catch(e){
+    log.innerHTML += `<div class="chat-msg bot"><b>Reading:</b> ${esc(e.message||'Could not answer right now.')}</div>`;
+  }
+  log.scrollTop = log.scrollHeight;
+  return false;
+}
 function frameFor(link, reportId){
   const id = 'rf-' + Math.random().toString(36).slice(2, 9);
   setTimeout(()=>wireReportFrame(document.getElementById(id)), 0);
   const src = esc(absUrl(link));
   const toolbar = reportId ? reportToolbar(reportId, link) :
     `<div class="report-toolbar"><a class="btn btn-ghost btn-sm" href="${src}" target="_blank" rel="noopener noreferrer">Open full screen</a></div>`;
+  // Chat panel only when server says LLM+chat tab are enabled.
+  const chat = (reportId && CONFIG.chatEnabled) ? reportChatPanel(reportId) : '';
   return `<div class="readingmount"><iframe id="${id}" class="reportframe" src="${src}"
-      title="Your reading" loading="lazy"></iframe></div>${toolbar}`;
+      title="Your reading" loading="lazy"></iframe></div>${toolbar}${chat}`;
 }
 function astroReportFrame(r, dailyOpen){
   const open = dailyOpen || reportIsUnlocked(r);
@@ -2206,6 +2296,8 @@ async function loadPublicConfig(){
     if(j.razorpayKeyId) CONFIG.razorpayKeyId = j.razorpayKeyId;
     if(j.turnstileSiteKey) CONFIG.turnstileSiteKey = j.turnstileSiteKey;
     CONFIG.turnstileRequired = !!j.turnstileRequired;
+    CONFIG.llmEnabled = !!j.llmEnabled;
+    CONFIG.chatEnabled = !!j.chatEnabled;
     const adminBtn = $('#adminAuth');
     if(adminBtn) adminBtn.style.display = j.adminLogin === false ? 'none' : '';
     preloadTurnstile();
@@ -2879,17 +2971,26 @@ function loadPayScript(src){
 function mountRazorpayButton(container){
   const btnId = CONFIG.razorpayPaymentButtonId || 'pl_TMzAWfueT93HPY';
   if(!container || !btnId) return false;
-  container.innerHTML = '';
+  container.innerHTML =
+    '<p class="hint" style="margin:0 0 10px;font-weight:600;color:var(--ink)">'
+    + '&#128071; Tap the button below to pay securely</p>'
+    + '<div id="rpButtonWrap" style="min-height:48px;display:flex;'
+    + 'justify-content:center;align-items:center"><span class="spin"></span></div>';
+  const wrap = container.querySelector('#rpButtonWrap');
   const form = document.createElement('form');
   const script = document.createElement('script');
   script.src = 'https://checkout.razorpay.com/v1/payment-button.js';
   script.setAttribute('data-payment_button_id', btnId);
   script.async = true;
+  script.onload = ()=>{ wrap.querySelector('.spin')?.remove(); };
+  script.onerror = ()=>{ wrap.innerHTML = '<span class="hint">Could not load the payment button. '
+    + 'Please refresh and try again.</span>'; };
   form.appendChild(script);
-  container.appendChild(form);
+  wrap.innerHTML = '';
+  wrap.appendChild(form);
   return true;
 }
-async function openRazorpayCheckout(order){
+async function openRazorpayCheckout(order, mountEl){
   await loadPayScript('https://checkout.razorpay.com/v1/checkout.js');
   return new Promise((resolve,reject)=>{
     const rzp = new Razorpay({
@@ -2898,12 +2999,26 @@ async function openRazorpayCheckout(order){
       currency: 'INR',
       name: 'GrahaRekha',
       description: String(order.item || 'Reading').replace(/_/g,' '),
+      theme: { color: '#c9a227' },
       order_id: order.gatewayOrderId,
       prefill: { email: (S.user && S.user.email) || '', name: (S.user && S.user.name) || '' },
       handler: ()=> resolve(),
       modal: { ondismiss: ()=> reject(new Error('Payment cancelled')) }
     });
     rzp.on('payment.failed', ()=> reject(new Error('Payment failed')));
+    // Razorpay's own checkout window normally opens on its own the moment this
+    // runs. On some mobile browsers a popup/blocker or a slow network can
+    // swallow that first open() silently, and the customer is left staring at
+    // an empty modal with no idea what to click. Always leave a visible,
+    // unmistakable button behind so there is never a "click nothing" state.
+    if(mountEl){
+      mountEl.innerHTML =
+        '<p class="hint" style="margin:0 0 10px">A secure Razorpay window should '
+        + 'open in a moment.</p>'
+        + '<button class="btn btn-gold btn-block" type="button" id="rpOpenBtn">'
+        + 'Tap here to pay securely &rarr;</button>';
+      mountEl.querySelector('#rpOpenBtn')?.addEventListener('click', ()=> rzp.open());
+    }
     rzp.open();
   });
 }
@@ -2962,8 +3077,9 @@ async function showPayModal(order, opts){
   pollOrderPaid(order.orderId, finish, statusEl, fetchFn);
   const mount = m.querySelector('#rpPayMount');
   if(order.keyId && order.gatewayOrderId){
+    mount.innerHTML = '<span class="hint"><span class="spin"></span> Loading secure payment window…</span>';
     try{
-      await openRazorpayCheckout(order);
+      await openRazorpayCheckout(order, mount);
       await checkOnce();
     }
     catch(e){ if(e.message !== 'Payment cancelled') toast(e.message || 'Payment failed'); }
@@ -3031,15 +3147,23 @@ async function unlock(){
   }
   const rep = await waitForUnlockedReport(S.readingId);
   if(!rep || !reportIsUnlocked(rep)){
-    toast('Payment received — still unlocking. Wait a moment, then tap “I already paid — check again”.');
+    toast('Payment received — confirming your unlock. This can take up to a couple of minutes; the page will update on its own.');
     renderReading();
+    const rid = S.readingId;
+    watchReportUnlock(rid, (rep2)=> _applyUnlockedPalmReport(rid, rep2), {
+      onTimeout: ()=> toast('Still confirming — if money was debited, tap “I already paid — check again” or email admin@graharekha.co.in with your order id.')
+    });
     return;
   }
+  await _applyUnlockedPalmReport(S.readingId, rep);
+}
+async function _applyUnlockedPalmReport(readingId, rep){
+  if(S.readingId !== readingId) return; // user moved on to another reading meanwhile
   S.reading = Object.assign({}, S.reading||{}, {
-    reportId: S.readingId, links: rep.links, paid: true, meta: rep.meta||{}
+    reportId: readingId, links: rep.links, paid: true, meta: rep.meta||{}
   });
   try{
-    const full = await api('/api/reading/'+S.readingId+'/full');
+    const full = await api('/api/reading/'+readingId+'/full');
     if(full.future) S.reading.future = full.future;
     if(full.links) S.reading.links = full.links;
   }catch(e){}
@@ -3630,7 +3754,6 @@ async function astroPay(item, refId){
         refreshUserProfile().then(()=> astroJob('daily'));
         return;
       }
-      _paySuccessMsg = 'Payment successful — your full report is below.';
       await astroRefreshReports(refId || ASTRO.lastReportId, item);
       return;
     }
@@ -3646,7 +3769,10 @@ async function astroPay(item, refId){
           refreshUserProfile().then(()=> astroJob('daily'));
           return;
         }
-        _paySuccessMsg = 'Payment successful — your full report is below.';
+        // Do NOT set _paySuccessMsg here: Razorpay confirming to the browser
+        // only means the order looks paid, not that our webhook has finished
+        // writing the entitlement. astroRefreshReports sets this itself, and
+        // only once the report is actually confirmed unlocked server-side.
         await astroRefreshReports(refId || ASTRO.lastReportId, item);
       }
     });
@@ -3669,11 +3795,35 @@ function enrichReport(r, kind){
 }
 
 async function astroRefreshReports(refId, item){
+  const rid = refId || ASTRO.lastReportId;
+  const kindMap = { numerology_full:'numerology', palm_full:'palm' };
+  const finish = (r)=>{
+    const kind = kindMap[item] || item || ASTRO.lastKind || r.kind;
+    if(r.reportId) ASTRO.lastReportId = r.reportId;
+    rememberLastAstro(kind, r.reportId);
+    go('astro');
+    const pane = ASTRO_PANE[kind];
+    if(pane) setAstroPane(pane, {clear:false});
+    // Only claim success once the report itself is actually unlocked
+    // server-side — never on the strength of Razorpay's client-side callback
+    // alone. That gap between "Razorpay says paid" and "our webhook wrote the
+    // entitlement" is what left customers staring at a still-locked report
+    // right after a "Payment successful" message.
+    if(reportIsUnlocked(r)){
+      _paySuccessMsg = 'Payment successful — your full report is below.';
+      toast('Your full report is ready');
+    }
+    renderAstroResult(kind, enrichReport(r, kind));
+    $('#astroOut')?.scrollIntoView({behavior:'smooth', block:'start'});
+  };
   try{
-    let r = null;
-    const rid = refId || ASTRO.lastReportId;
-    if(rid){
-      r = await waitForUnlockedReport(rid) || await astroApi('/api/reports/'+rid).catch(()=>null);
+    let r = rid ? await waitForUnlockedReport(rid) : null;
+    if(!r && rid){
+      toast('Payment received — confirming your unlock. This can take up to a couple of minutes; the page will update on its own.');
+      watchReportUnlock(rid, finish, {
+        onTimeout: ()=> toast('Still confirming — if money was debited, contact admin@graharekha.co.in with your order id.')
+      });
+      return;
     }
     if(!r){
       const list = await astroApi('/api/reports');
@@ -3683,16 +3833,7 @@ async function astroRefreshReports(refId, item){
         || list[0];
     }
     if(!r) return;
-    const kindMap = { numerology_full:'numerology', palm_full:'palm' };
-    const kind = kindMap[item] || item || ASTRO.lastKind || r.kind;
-    if(r.reportId) ASTRO.lastReportId = r.reportId;
-    rememberLastAstro(kind, r.reportId);
-    go('astro');
-    const pane = ASTRO_PANE[kind];
-    if(pane) setAstroPane(pane, {clear:false});
-    renderAstroResult(kind, enrichReport(r, kind));
-    toast('Your full report is ready');
-    $('#astroOut')?.scrollIntoView({behavior:'smooth', block:'start'});
+    finish(r);
   }catch(e){ toast(astroErr(e)); }
 }
 

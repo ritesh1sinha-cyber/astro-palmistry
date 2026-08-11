@@ -1,0 +1,137 @@
+[
+  {
+    "confluence_id": "COMMUNICATION_AND_INTERACTION_STRENGTH",
+    "domain": "career",
+    "required_signals": [],
+    "supporting_signals": ["HAND_AIR", "MERCURY_MOUNT_STRONG", "HEAD_LINE_CLEAN", "HEAD_LINE_STRONG"],
+    "contradicting_signals": [],
+    "minimum_score": 7,
+    "modern_manifestations": [
+      "explaining complex things to others",
+      "negotiation",
+      "client interaction",
+      "coordinating teams"
+    ],
+    "claim_level": 2,
+    "templates": [
+      "Communication, explaining ideas and dealing with people may become stronger advantages for you than repetitive isolated work."
+    ]
+  },
+  {
+    "confluence_id": "CAREER_RECOGNITION",
+    "domain": "career",
+    "required_signals": ["FATE_LINE_STRONG"],
+    "supporting_signals": ["APOLLO_MOUNT_STRONG", "JUPITER_MOUNT_STRONG", "FINGER_RING_LONGER_INDEX"],
+    "contradicting_signals": [],
+    "minimum_score": 7,
+    "modern_manifestations": [
+      "professional recognition",
+      "increasing responsibility",
+      "building expertise"
+    ],
+    "claim_level": 2,
+    "templates": [
+      "Your professional path may become stronger as your expertise becomes more visible."
+    ]
+  },
+  {
+    "confluence_id": "DISCIPLINE_AND_RESPONSIBILITY",
+    "domain": "character",
+    "required_signals": [],
+    "supporting_signals": ["HEAD_LINE_JOINED_START", "SATURN_MOUNT_STRONG", "HAND_EARTH"],
+    "contradicting_signals": [],
+    "minimum_score": 6,
+    "modern_manifestations": [
+      "structured routine",
+      "follow-through",
+      "ownership under pressure"
+    ],
+    "claim_level": 2,
+    "templates": [
+      "You may become more structured when responsibility or circumstances demand it."
+    ]
+  },
+  {
+    "confluence_id": "EMOTIONAL_EXPRESSION",
+    "domain": "love",
+    "required_signals": [],
+    "supporting_signals": ["HEART_LINE_CLEAN", "VENUS_MOUNT_STRONG", "HAND_WATER"],
+    "contradicting_signals": [],
+    "minimum_score": 6,
+    "modern_manifestations": [
+      "emotional expression",
+      "warmth in close relationships",
+      "need for closeness"
+    ],
+    "claim_level": 2,
+    "templates": [
+      "Personal relationships may carry more weight in some important decisions."
+    ]
+  },
+  {
+    "confluence_id": "CREATIVE_DISPLAY",
+    "domain": "career",
+    "required_signals": [],
+    "supporting_signals": ["APOLLO_MOUNT_STRONG", "FINGER_RING_LONGER_INDEX", "HAND_FIRE"],
+    "contradicting_signals": [],
+    "minimum_score": 6,
+    "modern_manifestations": [
+      "creative pride",
+      "being known for a capability",
+      "visible contribution"
+    ],
+    "claim_level": 2,
+    "templates": [
+      "Recognition may follow when you build a clear area of competence rather than trying to do everything."
+    ]
+  },
+  {
+    "confluence_id": "AMBITION_AND_LEADERSHIP",
+    "domain": "character",
+    "required_signals": ["FINGER_INDEX_LONGER_RING"],
+    "supporting_signals": ["JUPITER_MOUNT_STRONG", "GRILLE_ON_JUPITER"],
+    "contradicting_signals": [],
+    "minimum_score": 5,
+    "modern_manifestations": [
+      "leadership urge",
+      "desire to be respected",
+      "taking ownership"
+    ],
+    "claim_level": 2,
+    "templates": [
+      "You may feel more engaged when you can lead, influence or be recognized for your contribution."
+    ]
+  },
+  {
+    "confluence_id": "MATERIAL_PROGRESS",
+    "domain": "money",
+    "required_signals": [],
+    "supporting_signals": ["FATE_LINE_STRONG", "JUPITER_MOUNT_STRONG", "MERCURY_MOUNT_STRONG"],
+    "contradicting_signals": [],
+    "minimum_score": 7,
+    "modern_manifestations": [
+      "gradual financial improvement",
+      "professional income",
+      "capability over windfalls"
+    ],
+    "claim_level": 2,
+    "templates": [
+      "Financial progress may be more strongly linked to professional recognition and capability than to sudden windfalls."
+    ]
+  },
+  {
+    "confluence_id": "MIXED_RECOGNITION",
+    "domain": "career",
+    "required_signals": [],
+    "supporting_signals": ["APOLLO_MOUNT_STRONG"],
+    "contradicting_signals": ["APOLLO_MOUNT_STRONG"],
+    "minimum_score": 0,
+    "modern_manifestations": [
+      "enjoying appreciation without seeking attention everywhere"
+    ],
+    "claim_level": 1,
+    "templates": [
+      "Your palm shows mixed signals around recognition. You may enjoy being appreciated for your work, but you may not actively seek attention in every situation."
+    ]
+  }
+]

@@ -159,6 +159,12 @@ def analyze_image_paths(
             blocks_for_conf, active_hand, saraswati_signals=saraswati or None)
 
     results["reference_text"] = build_reference_text(blocks_for_conf if blocks_for_conf else results)
+    try:
+        from palm_api.reading_result import build_reading_result
+        results["reading_result"] = build_reading_result(
+            results, active_hand=active_hand)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[palm] reading_result skipped: {exc}", flush=True)
     return results
 
 
@@ -273,43 +279,78 @@ _ASPECT_STRENGTH_CLASS = {
 
 
 def _render_life_aspects(aspects: Optional[list[dict[str, Any]]]) -> str:
+    """Render the human-correlation layer first; technical evidence stays expandable."""
     if not aspects:
         return ""
+    # Put a compact recognition layer first. This is the quickest way for a
+    # customer to answer: "Does this sound like me?" before reading technical detail.
+    top_items: list[str] = []
+    seen_top: set[str] = set()
+    # Prefer one recognition cue from different life areas before taking a
+    # second cue. This keeps the opening useful rather than making it five
+    # versions of the same personality statement.
+    for a in aspects:
+        cues = a.get("recognize") or []
+        if cues and cues[0] not in seen_top:
+            seen_top.add(cues[0])
+            top_items.append(cues[0])
+        if len(top_items) >= 5:
+            break
+    if len(top_items) < 5:
+        for a in aspects:
+            for item in a.get("recognize") or []:
+                if item not in seen_top:
+                    seen_top.add(item)
+                    top_items.append(item)
+                if len(top_items) >= 5:
+                    break
+            if len(top_items) >= 5:
+                break
+    top_html = ""
+    if top_items:
+        top_html = (
+            '<div class="top-recognition"><h3>5 things you may recognize</h3>'
+            '<p class="note">Use these as a reality check. You do not need every point to fit.</p>'
+            '<ol>' + ''.join(f'<li>{_e(x)}</li>' for x in top_items) + '</ol></div>'
+        )
+
     cards = ""
     for a in aspects:
         scls = _ASPECT_STRENGTH_CLASS.get(a.get("strength", ""), "")
         badge = a.get("strength", "").title()
         rein = a.get("reinforced_count", 0)
         rein_badge = (
-            f'<span class="badge">{rein} on both hands</span>' if rein else ""
+            f'<span class="badge">{rein} signs agree on both hands</span>' if rein else ""
         )
-        cites = ""
-        seen_q: set[str] = set()
+        recognize = "".join(
+            f'<li>{_e(item)}</li>' for item in (a.get("recognize") or [])
+        )
+        recognition_html = ""
+        if recognize:
+            recognition_html = f"""\n  <div class="recognition-box">\n    <strong>{_e(a.get("recognition_title") or "You may recognize this as")}</strong>\n    <ul>{recognize}</ul>\n  </div>"""
+
+        evidence = ""
         for p in a.get("points") or []:
             q = (p.get("quote") or "").strip()
-            if not q or q in seen_q:
-                continue
-            seen_q.add(q)
-            lbl = p.get("book_label") or ""
+            src = p.get("book_label") or ""
             pg = f" p{p['page']}" if p.get("page") else ""
-            mark = " \u2713 both" if p.get("reinforced") else ""
-            cites += (
-                f'<li><span class="quote">&ldquo;{_e(q)}&rdquo;</span>'
-                f'<span class="src">— {_e(lbl)}{_e(pg)}{mark}</span></li>'
-            )
-        cites_html = f'<ul class="aspect-cites">{cites}</ul>' if cites else ""
+            mark = " · both hands" if p.get("reinforced") else ""
+            why = p.get("traditional_meaning") or ""
+            evidence += f"""\n      <div class="evidence-row">\n        <div><strong>{_e(p.get("rule_id", "Palm finding"))}</strong>{_e(mark)}</div>\n        <div class="evidence-meaning">{_e(why)}</div>\n        <div class="evidence-why">Why: {_e(q or (src + pg) or "Palm feature detected")}</div>\n      </div>"""
+        evidence_html = f"""\n  <details class="technical-evidence">\n    <summary>Why Graharekha says this</summary>\n    {evidence}\n  </details>"""
+
         cards += f"""
 <div class="aspect-card {scls}">
   <h3>{_e(a.get('title',''))} <span class="aspect-strength">{_e(badge)}</span> {rein_badge}</h3>
-  <p class="aspect-body">{_e(a.get('summary',''))}</p>
-  <p class="fine">{_e(a.get('strength_note',''))}</p>
-  {cites_html}
+  <p class="aspect-body">{_e(a.get('what_it_means') or a.get('summary',''))}</p>
+  {recognition_html}
+  {evidence_html}
 </div>"""
     return f"""
-<article class="report-card" style="border-left:4px solid var(--magenta)">
-  <h2>Your life, read by confluence</h2>
-  <p class="lead">Like a human palmist, each area below combines several palm signs.
-  Where signs agree — especially across both hands — the reading is stronger.</p>
+<article class="report-card human-correlation">
+  <h2>Does this sound like you?</h2>
+  <p class="lead">The palm signs are translated into everyday situations so you can test the reading against your own experience. A pattern is a possibility to recognize, not a guaranteed event.</p>
+  {top_html}
   {cards}
 </article>"""
 
@@ -490,6 +531,19 @@ h3{font-size:1.02rem;color:var(--heading)}
 .aspect-cites li{margin:.3rem 0;font-size:.82rem}
 .aspect-cites .quote{color:var(--text);font-style:italic}
 .aspect-cites .src{color:var(--magenta);margin-left:.3rem;font-style:normal}
+.top-recognition{background:#fffdf5;border:1px solid var(--border);border-radius:8px;padding:.8rem 1rem;margin:0 0 1rem}
+.top-recognition h3{margin:.1rem 0 .25rem;color:var(--heading)}
+.top-recognition ol{margin:.45rem 0 0 1.35rem;padding:0}
+.top-recognition li{margin:.3rem 0;font-size:.93rem}
+.recognition-box{background:#f8fbff;border:1px solid var(--border);border-radius:7px;padding:.7rem .85rem;margin:.7rem 0}
+.recognition-box strong{color:var(--heading);font-family:system-ui,sans-serif;font-size:.86rem}
+.recognition-box ul{margin:.45rem 0 0 1.1rem;padding:0}
+.recognition-box li{margin:.25rem 0;font-size:.91rem}
+.technical-evidence{margin-top:.7rem;border-top:1px dashed var(--border);padding-top:.55rem}
+.technical-evidence summary{cursor:pointer;color:var(--magenta);font-family:system-ui,sans-serif;font-size:.84rem;font-weight:700}
+.evidence-row{margin:.65rem 0;padding:.55rem .7rem;background:#fbfbfc;border-left:3px solid var(--border);font-size:.82rem}
+.evidence-meaning{margin:.25rem 0;color:var(--text)}
+.evidence-why{color:var(--muted);font-size:.78rem}
 .fine{font-size:.8rem;color:var(--muted);margin:.25rem 0}
 """
 

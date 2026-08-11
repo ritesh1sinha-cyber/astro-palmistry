@@ -102,3 +102,9 @@ def report_keys(report_id: str) -> tuple[str, str]:
     shard = report_id[:2]
     return (f"reports/{shard}/{report_id}/free.html",
             f"reports/{shard}/{report_id}/paid.html")
+
+
+def facts_key(report_id: str) -> str:
+    """Object-store key for the fact-only JSON used by the LLM chat layer."""
+    shard = report_id[:2]
+    return f"reports/{shard}/{report_id}/facts.json"

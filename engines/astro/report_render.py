@@ -66,7 +66,7 @@ def _voice_polish(html: str) -> str:
         return html
 
 
-def _scrub(html: str) -> str:
+def _scrub(html: str, *, allowed_dates: Optional[set] = None) -> str:
     """Last gate before a customer sees anything. Never bypass this.
 
     `no_longevity.scrub` was written for sentences. Run over a whole document it
@@ -92,6 +92,40 @@ def _scrub(html: str) -> str:
     try:
         from astro_voice import concise
         out = concise(out)
+    except Exception:                                                # noqa: BLE001
+        pass
+    try:
+        from qa_checks.grammar_check import fix_grammar
+        out = fix_grammar(out)
+    except Exception:                                                # noqa: BLE001
+        pass
+
+    # P2-4/P2-5: soften any exact month-year that is not backed by one of
+    # this report's own timing windows, then run the consistency linter as
+    # a visible (log-only) gate rather than dead test-only code. Neither
+    # step raises — a false positive here must never take a paid report
+    # down; it is surfaced so it can be fixed at the source.
+    if allowed_dates:
+        try:
+            from qa_checks.date_guard import soften_unvalidated_dates
+            out = soften_unvalidated_dates(out, allowed=allowed_dates)
+        except Exception:                                            # noqa: BLE001
+            pass
+    # Final customer boundary: sanitize known raw-rule/classical fragments
+    # before the consistency check. This is deliberately after all appendices
+    # and renderer output have been assembled.
+    try:
+        from qa_checks.customer_text_sanitizer import sanitize_html_document
+        out = sanitize_html_document(out)
+    except Exception as exc:                                        # noqa: BLE001
+        print(f"[report_render] customer HTML sanitizer failed: {exc}", flush=True)
+
+    try:
+        from qa_checks.report_consistency import validate_report_consistency
+        result = validate_report_consistency(out)
+        if not result.get("ok"):
+            print(f"[report_render] consistency check failed: "
+                  f"{result['failures']}", flush=True)
     except Exception:                                                # noqa: BLE001
         pass
     return out
@@ -188,6 +222,92 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
 
     q_html = ""
 
+    from qa_checks.report_diversity import ReportDiversityGate
+    import report_cards as RC
+    gate = ReportDiversityGate()
+    shared_cards = RC.build_cards(
+        pc, today=today, gate=gate, featured_timing=timing_rows)
+
+    # Timing is now rendered from the same canonical area results used by the
+    # cards/dashboard/Why blocks. The initial best_windows call is only a
+    # source candidate; the canonical result is the source of truth.
+    try:
+        canonical_timing_rows = []
+        for card in shared_cards:
+            cr = (card.confluence or {}).get("canonical_result") or {}
+            canonical_timing_rows.extend(
+                (cr.get("timing") or {}).get("featured_windows") or [])
+        if canonical_timing_rows:
+            import report_timing as RT
+            labels = {a.key: a.label for a in RC.AREAS}
+            timing_html = RT.render(pc, canonical_timing_rows, labels)
+            timing_rows = canonical_timing_rows
+            n_windows = len(timing_rows)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[report_render] canonical timing render failed: {exc}", flush=True)
+
+    # LLM prose layer (facts in → structured prose out). Off unless configured.
+    # Free and Paid share the same canonical truth but use different fact
+    # projections (depth). When the LLM fails QA, humanize fills deterministic
+    # fallback prose — prediction facts never change.
+    free_prose_overlay: dict = {}
+    paid_prose_overlay: dict = {}
+    llm_meta: dict = {"enabled": False}
+    facts_payload: dict = {}
+    try:
+        from llm.facts import build_report_facts, project_for_access
+        from llm.humanize import humanize
+        base_facts = build_report_facts(
+            pc, shared_cards, name=name, access="paid", today=today)
+        paid_facts = project_for_access(base_facts, "paid")
+        free_facts = project_for_access(base_facts, "free")
+        facts_payload = paid_facts.model_dump(mode="json")
+        # One LLM pass on paid-depth facts (rate-limit friendly). Free/paid
+        # HTML still differ via renderer locks; language overlay shares truth.
+        # Generate Free and Paid prose from their own access projections.
+        # Never reuse Paid prose on Free: the Paid facts contain exact dates,
+        # detailed evidence and remedies that the Free model must never see.
+        free_llm = humanize("full_report", free_facts, access="free")
+        paid_llm = humanize("full_report", paid_facts, access="paid")
+        free_prose_overlay = free_llm.get("overlay") or {}
+        paid_prose_overlay = paid_llm.get("overlay") or {}
+        llm_meta = {
+            "enabled": bool(paid_llm.get("enabled") or free_llm.get("enabled")),
+            "stats": paid_llm.get("stats") or {},
+            "free": {
+                "stats": free_llm.get("stats") or {},
+                "fallback_used": bool(free_llm.get("fallback_used")),
+                "run_meta": free_llm.get("run_meta") or {},
+            },
+            "paid": {
+                "stats": paid_llm.get("stats") or {},
+                "fallback_used": bool(paid_llm.get("fallback_used")),
+                "run_meta": paid_llm.get("run_meta") or {},
+            },
+        }
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_render] llm humanize skipped: {exc}", flush=True)
+        free_prose_overlay, paid_prose_overlay = {}, {}
+
+    # Every real date this document is allowed to print: the best-windows
+    # list, every per-card trajectory window, and the running dasha/
+    # antardasha envelope. Anything else that looks like an exact month-year
+    # gets softened by date_guard in _scrub (P2-4).
+    allowed_dates: set = set()
+    try:
+        from qa_checks.date_guard import allowed_month_years
+        window_sources: list = list(timing_rows)
+        for c in shared_cards:
+            window_sources.extend(
+                {"start": t.get("start"), "end": t.get("end")}
+                for t in (c.trajectory or []))
+        vim = pc.get("vimshottari", {}) or {}
+        window_sources.append(vim.get("current_md") or {})
+        window_sources.extend(vim.get("current_md_antardashas") or [])
+        allowed_dates = allowed_month_years(window_sources)
+    except Exception:                                                 # noqa: BLE001
+        allowed_dates = set()
+
     def build(paid: bool) -> str:
         import report_cards as RC
         present_html = ""
@@ -199,7 +319,8 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 print(f"[report_render] present render failed: {exc}", flush=True)
         remedy = _safe(_remedy, pc, name=first, paid=paid, price=price)
         if paid:
-            tail = timing_html + remedy
+            dashboard_html = _safe(_promise_dashboard, shared_cards)
+            tail = dashboard_html + timing_html + remedy
         else:
             tail = (remedy
                     + _locked_preview(price=price, n_areas=len(RC.AREAS),
@@ -209,13 +330,19 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             pc, name=name, price=price, today=today, paid=paid,
             question_html="",
             proof_html=present_html + past_html,
-            timing_html=tail)
-        return _scrub(body)
+            timing_html=tail,
+            cards=shared_cards,
+            prose=paid_prose_overlay if paid else free_prose_overlay,
+            footer_unlock=paid)
+        return _scrub(body, allowed_dates=allowed_dates)
 
     free_html, paid_html = build(False), build(True)
     meta = {
         "design": "cards-v2",
         "price": price, "bundlePrice": bundle_price,
+        "llm": llm_meta,
+        # Internal only — _save_report pops this into object storage as facts.json
+        "_facts": facts_payload,
         "freeSections": ["Your current chapter", "Who your chart says you are",
                          "Your recent past — free and checkable",
                          "What is happening right now",
@@ -232,6 +359,11 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
         "teasers": {},
     }
     return free_html, paid_html, meta
+
+
+def _promise_dashboard(cards: list) -> str:
+    import promise_dashboard as PD
+    return PD.render(cards)
 
 
 def _remedy(pc: dict, *, name: str = "", paid: bool = False,
@@ -321,13 +453,46 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
            asked: str, name: str = "", horary_price: int = 298,
            full_report_price: int = 298,
            vedic_customer: Optional[dict] = None) -> tuple:
-    from horary_answer import build_answer_html
+    from horary_answer import build_answer_html, reconcile
+    prose_overlay: dict = {}
+    llm_meta: dict = {"enabled": False}
+    facts_payload: dict = {}
+    try:
+        from llm.facts import build_horary_facts, project_for_access
+        from llm.humanize import humanize
+        summary_preview = reconcile(verdicts)
+        hfacts_paid = build_horary_facts(
+            question=question, verdicts=verdicts,
+            summary=summary_preview, name=name, access="paid")
+        hfacts_free = project_for_access(hfacts_paid, "free")
+        facts_payload = hfacts_paid.model_dump(mode="json")
+        free_llm = humanize("horary", hfacts_free, access="free")
+        paid_llm = humanize("horary", hfacts_paid, access="paid")
+        prose_overlay = {
+            "free": free_llm.get("overlay") or {},
+            "paid": paid_llm.get("overlay") or {},
+        }
+        llm_meta = {
+            "enabled": bool(paid_llm.get("enabled") or free_llm.get("enabled")),
+            "stats": paid_llm.get("stats") or {},
+            "free": {"stats": free_llm.get("stats") or {},
+                     "fallback_used": bool(free_llm.get("fallback_used"))},
+            "paid": {"stats": paid_llm.get("stats") or {},
+                     "fallback_used": bool(paid_llm.get("fallback_used"))},
+        }
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_render] horary llm skipped: {exc}", flush=True)
+
     common = dict(question=question, verdicts=verdicts,
                   western_judgment=western_judgment, asked=asked, name=name,
                   horary_price=horary_price, full_report_price=full_report_price,
                   vedic_customer=vedic_customer)
-    free_body, _ = build_answer_html(**common, paid=False)
-    paid_body, answer = build_answer_html(**common, paid=True)
+    free_body, _ = build_answer_html(**common, paid=False,
+                                     prose=(prose_overlay.get("free", {})
+                                            if isinstance(prose_overlay, dict) else {}))
+    paid_body, answer = build_answer_html(**common, paid=True,
+                                          prose=(prose_overlay.get("paid", {})
+                                                 if isinstance(prose_overlay, dict) else {}))
 
     # No shell heading: build_answer_html already opens with the question and
     # when it was asked. Passing them again printed the question twice.
@@ -339,6 +504,8 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
                    _scrub(_voice_polish(paid_body)))
     meta = {"design": "cards-v2", "answer": answer, "question": question,
             "asked": asked, "price": horary_price,
+            "llm": llm_meta,
+            "_facts": facts_payload,
             "paidSections": ["The verdict — all four methods combined",
                              "Which planets are in favour and which are working against you",
                              "The timing — dated windows",
@@ -360,8 +527,42 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
 
     result = QA.answer(pc, question, lat=lat, lon=lon, tz=tz, route=route,
                        area=area)
-    free_body = _voice_polish(QA.render(result, name=first, paid=False, price=price))
-    paid_body = _voice_polish(QA.render(result, name=first, paid=True, price=price))
+
+    prose_overlay: dict = {}
+    llm_meta: dict = {"enabled": False}
+    facts_payload: dict = {}
+    try:
+        from llm.facts import build_question_facts, project_for_access
+        from llm.humanize import humanize
+        qfacts_paid = build_question_facts(result, name=name, access="paid")
+        # Keep the original question text for the LLM (answer() stores it).
+        if not qfacts_paid.question:
+            qfacts_paid.question = (question or "")[:280]
+        qfacts_free = project_for_access(qfacts_paid, "free")
+        facts_payload = qfacts_paid.model_dump(mode="json")
+        free_llm = humanize("user_question", qfacts_free, access="free")
+        paid_llm = humanize("user_question", qfacts_paid, access="paid")
+        prose_overlay = {
+            "free": free_llm.get("overlay") or {},
+            "paid": paid_llm.get("overlay") or {},
+        }
+        llm_meta = {
+            "enabled": bool(paid_llm.get("enabled") or free_llm.get("enabled")),
+            "stats": paid_llm.get("stats") or {},
+            "free": {"stats": free_llm.get("stats") or {},
+                     "fallback_used": bool(free_llm.get("fallback_used"))},
+            "paid": {"stats": paid_llm.get("stats") or {},
+                     "fallback_used": bool(paid_llm.get("fallback_used"))},
+        }
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_render] question llm skipped: {exc}", flush=True)
+
+    free_prose = prose_overlay.get("free", {}) if isinstance(prose_overlay, dict) else {}
+    paid_prose = prose_overlay.get("paid", {}) if isinstance(prose_overlay, dict) else {}
+    free_body = _voice_polish(QA.render(
+        result, name=first, paid=False, price=price, prose=free_prose))
+    paid_body = _voice_polish(QA.render(
+        result, name=first, paid=True, price=price, prose=paid_prose))
     try:
         import remedy_block as RB
         rb = RB.build(pc, domain=result.get("area_key", ""), question=question,
@@ -383,6 +584,8 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     meta = {"design": "cards-v2", "answer": answer, "question": question,
             "area": area or result.get("area") or "",
             "price": price,
+            "llm": llm_meta,
+            "_facts": facts_payload,
             "paidSections": ["The verdict — what your chart actually says",
                              "Timing — dated windows when to move",
                              "Watch-out rules for this question",

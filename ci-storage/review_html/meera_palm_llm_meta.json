@@ -1,0 +1,276 @@
+{
+  "design": "cards-v2",
+  "dominantHand": "right",
+  "handType": "air",
+  "photoQuality": "fair",
+  "photoScore": 0.514,
+  "photoAdvice": [],
+  "summary": "Your right hand is read here as the way these qualities are being expressed now; your left hand is treated as the underlying tendency you started with. These areas look similar on both hands, so the reading treats them as relatively stable parts of your life: Life line, Head line, Heart line, Fate line.",
+  "teaser": "The full reading opens the chart working behind all 7 verdicts, 4 dated markings still ahead of you, the line-by-line reading of all 36 numbered points.",
+  "freeSections": [
+    "Both palms, as the engine read them",
+    "What your hands say you are",
+    "Every life area, and which way it leans",
+    "Left hand against right hand",
+    "Your hand, read to today"
+  ],
+  "paidSections": [
+    "Why each life area reads the way it does",
+    "Every dated marking ahead of you",
+    "The line-by-line analysis, both hands",
+    "Mount by mount",
+    "What your special marks mean",
+    "Remedies keyed to your hand"
+  ],
+  "pastCount": 0,
+  "futureCount": 4,
+  "datedAhead": 4,
+  "scores": [
+    {
+      "k": "Vitality",
+      "v": 73
+    },
+    {
+      "k": "Intellect",
+      "v": 83
+    },
+    {
+      "k": "Emotion",
+      "v": 82
+    },
+    {
+      "k": "Fortune",
+      "v": 82
+    }
+  ],
+  "llm": {
+    "enabled": true,
+    "stats": {
+      "accepted": 1,
+      "rejected": 7,
+      "errors": 0
+    }
+  },
+  "_facts": {
+    "kind": "palm",
+    "schema_version": "1.0",
+    "engine_version": "astro-2026.08.11",
+    "report_id": "",
+    "facts_hash": "1a55bf170d0a7e5995060e5f",
+    "first_name": "Meera",
+    "age_band": "adult",
+    "access": "paid",
+    "dominant_hand": "right",
+    "photo_grade": "fair",
+    "aspects": [
+      {
+        "aspect": "character",
+        "direction": "support",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R02_character",
+          "R07_character",
+          "HAND_AIR",
+          "FINGER_INDEX_LONGER_RING",
+          "LIFE_LINE_CLEAN",
+          "HEAD_LINE_CLEAN",
+          "HEART_LINE_CLEAN",
+          "FATE_LINE_CLEAN",
+          "SATURN_MOUNT_STRONG",
+          "MARS_MOUNT_STRONG",
+          "VENUS_MOUNT_STRONG",
+          "TRIDENT_ON_JUPITER"
+        ],
+        "point_ids": [
+          "R02_character",
+          "R07_character"
+        ],
+        "semantic_tags": [],
+        "score": 2.0
+      },
+      {
+        "aspect": "mind",
+        "direction": "mixed",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R12_mind",
+          "R16_mind",
+          "HAND_AIR",
+          "FINGER_INDEX_LONGER_RING",
+          "LIFE_LINE_CLEAN",
+          "HEAD_LINE_CLEAN",
+          "HEART_LINE_CLEAN",
+          "FATE_LINE_CLEAN",
+          "SATURN_MOUNT_STRONG",
+          "MARS_MOUNT_STRONG",
+          "VENUS_MOUNT_STRONG",
+          "TRIDENT_ON_JUPITER"
+        ],
+        "point_ids": [
+          "R12_mind",
+          "R16_mind"
+        ],
+        "semantic_tags": [],
+        "score": 1.0
+      },
+      {
+        "aspect": "love",
+        "direction": "support",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R18_love",
+          "R21_love",
+          "HAND_AIR",
+          "FINGER_INDEX_LONGER_RING",
+          "LIFE_LINE_CLEAN",
+          "HEAD_LINE_CLEAN",
+          "HEART_LINE_CLEAN",
+          "FATE_LINE_CLEAN",
+          "SATURN_MOUNT_STRONG",
+          "MARS_MOUNT_STRONG",
+          "VENUS_MOUNT_STRONG",
+          "TRIDENT_ON_JUPITER"
+        ],
+        "point_ids": [
+          "R18_love",
+          "R21_love"
+        ],
+        "semantic_tags": [],
+        "score": 2.0
+      },
+      {
+        "aspect": "career",
+        "direction": "support",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R25_career",
+          "R28_career",
+          "HAND_AIR",
+          "FINGER_INDEX_LONGER_RING",
+          "LIFE_LINE_CLEAN",
+          "HEAD_LINE_CLEAN",
+          "HEART_LINE_CLEAN",
+          "FATE_LINE_CLEAN",
+          "SATURN_MOUNT_STRONG",
+          "MARS_MOUNT_STRONG",
+          "VENUS_MOUNT_STRONG",
+          "TRIDENT_ON_JUPITER"
+        ],
+        "point_ids": [
+          "R25_career",
+          "R28_career"
+        ],
+        "semantic_tags": [],
+        "score": 2.0
+      },
+      {
+        "aspect": "wealth",
+        "direction": "mixed",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R35_wealth",
+          "R31_wealth",
+          "HAND_AIR",
+          "FINGER_INDEX_LONGER_RING",
+          "LIFE_LINE_CLEAN",
+          "HEAD_LINE_CLEAN",
+          "HEART_LINE_CLEAN",
+          "FATE_LINE_CLEAN",
+          "SATURN_MOUNT_STRONG",
+          "MARS_MOUNT_STRONG",
+          "VENUS_MOUNT_STRONG",
+          "TRIDENT_ON_JUPITER"
+        ],
+        "point_ids": [
+          "R35_wealth",
+          "R31_wealth"
+        ],
+        "semantic_tags": [],
+        "score": 1.0
+      },
+      {
+        "aspect": "health",
+        "direction": "mixed",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R39_health",
+          "HAND_AIR",
+          "FINGER_INDEX_LONGER_RING",
+          "LIFE_LINE_CLEAN",
+          "HEAD_LINE_CLEAN",
+          "HEART_LINE_CLEAN",
+          "FATE_LINE_CLEAN",
+          "SATURN_MOUNT_STRONG",
+          "MARS_MOUNT_STRONG",
+          "VENUS_MOUNT_STRONG",
+          "TRIDENT_ON_JUPITER",
+          "FINGER_RING_LONGER_INDEX"
+        ],
+        "point_ids": [
+          "R39_health"
+        ],
+        "semantic_tags": [],
+        "score": 1.0
+      },
+      {
+        "aspect": "fortune",
+        "direction": "mixed",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R49_fortune",
+          "HAND_AIR",
+          "FINGER_INDEX_LONGER_RING",
+          "LIFE_LINE_CLEAN",
+          "HEAD_LINE_CLEAN",
+          "HEART_LINE_CLEAN",
+          "FATE_LINE_CLEAN",
+          "SATURN_MOUNT_STRONG",
+          "MARS_MOUNT_STRONG",
+          "VENUS_MOUNT_STRONG",
+          "TRIDENT_ON_JUPITER",
+          "FINGER_RING_LONGER_INDEX"
+        ],
+        "point_ids": [
+          "R49_fortune"
+        ],
+        "semantic_tags": [],
+        "score": 0.0
+      }
+    ],
+    "future_windows": [
+      {
+        "age_window": [
+          28,
+          34
+        ],
+        "domain": "life",
+        "confidence": "moderate"
+      },
+      {
+        "age_window": [
+          30,
+          36
+        ],
+        "domain": "life",
+        "confidence": "moderate"
+      },
+      {
+        "age_window": [
+          34,
+          40
+        ],
+        "domain": "life",
+        "confidence": "moderate"
+      },
+      {
+        "age_window": [
+          30,
+          36
+        ],
+        "domain": "life",
+        "confidence": "moderate"
+      }
+    ],
+    "special_mark_ids": []
+  }
+}

@@ -6,6 +6,7 @@ psycopg[binary]==3.2.*
 redis==5.2.*
 fakeredis>=2.26        # embedded queue when REDIS_URL is unset
 pydantic==2.9.*
+openai>=1.40
 google-auth==2.35.*
 boto3==1.35.*
 weasyprint==62.*
