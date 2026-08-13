@@ -142,7 +142,16 @@ _RELATIONAL = re.compile(
     r"\benmity\b|\bhate[sd]?\b|\bdisobedient\b|\bdevoid of\b|"
     r"\bseparated from (?:your|his|her|the) (?:family|wife|husband|children)\b|"
     r"\btrouble[sd]? (?:from|with) (?:your |his |her )?"
-    r"(?:wife|husband|children|father|mother|brother|sister)\b",
+    r"(?:wife|husband|children|father|mother|brother|sister)\b|"
+    r"\b(?:little|no|few|without|loss of) (?:progeny|issue|children)\b",
+    re.I,
+)
+
+# Symptom claims. The report may describe a tendency to guard; it does not tell
+# a reader they have a symptom.
+_SYMPTOM = re.compile(
+    r"\b(?:pain|pains|ache|aching|fever|swelling|infection|wound|bleeding|"
+    r"vomit\w*|nausea|discharge)\b",
     re.I,
 )
 
@@ -162,6 +171,12 @@ _TENSE: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r",\s*will be\b"), ", are"),
     (re.compile(r",\s*will have\b"), ", have"),
     (re.compile(r",\s*will\b"), ", tend to"),
+    # The books also restart after a semicolon with the subject dropped.
+    (re.compile(r";\s*will be\b"), "; you are"),
+    (re.compile(r";\s*will have\b"), "; you have"),
+    (re.compile(r";\s*will\b"), "; you tend to"),
+    # Two "you tend to" clauses in one sentence read as a stammer.
+    (re.compile(r";\s*you tend to\b"), ", and to"),
 ]
 
 _NAKSHATRA_LEAD = re.compile(r"^(?:A|The) child born in (.+?),? will (be|have)\s*", re.I)
@@ -186,7 +201,7 @@ def sentence_ok(sentence: str) -> bool:
         return False
     if _CONDITIONAL.search(s) or _PREAMBLE.search(s) or _THIRD_PARTY_EVENT.search(s):
         return False
-    if _RELATIONAL.search(s):
+    if _RELATIONAL.search(s) or _SYMPTOM.search(s):
         return False
     if not s[0].isupper() or len(_WILL_BE.findall(_SPLICE_HEAD.sub("", s))) > 1:
         return False

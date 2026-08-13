@@ -29,9 +29,11 @@ SECTION_ORDER = [
     "2. Family and Background",
     "3. Career and Professional Nature",
     "4. Relationship and Marriage Indications",
-    "5. What You Are Going Through Currently",
-    "6. Future Predictions",
-    "7. Remedies and Guidance",
+    "5. Health and Vitality",
+    "6. Children — Health, Education and Path",
+    "7. What You Are Going Through Currently",
+    "8. Future Predictions",
+    "9. Remedies and Guidance",
     "Summary",
 ]
 
@@ -74,7 +76,7 @@ def report() -> tuple[str, str, dict]:
 # Structure
 # ---------------------------------------------------------------------------
 
-def test_paid_report_has_all_seven_sections_in_order(report) -> None:
+def test_paid_report_has_every_section_in_order(report) -> None:
     _, paid, _ = report
     body = _body(paid)
     positions = [body.find(f">{title}<") for title in SECTION_ORDER]
@@ -98,7 +100,7 @@ def test_free_is_a_strict_subset_and_offers_the_rest(report) -> None:
     assert len(free) < len(paid)
     free_body = _body(free)
     assert "1. Personality Traits" in free_body
-    assert "6. Future Predictions" not in free_body
+    assert "8. Future Predictions" not in free_body
     assert "The rest of the reading" in free_body
 
 
@@ -146,6 +148,34 @@ def test_dasha_vocabulary_is_not_stripped(report) -> None:
     assert "mahadasha" in text
     assert "antardasha" in text
     assert "nakshatra" in text
+
+
+def test_health_section_names_body_areas_timing_and_a_jaap(report) -> None:
+    _, paid, _ = report
+    text = _text(paid)
+    assert "5. Health and Vitality" in text
+    assert "Maha Mrityunjaya" in text, "the prescribed jaap did not survive"
+    assert re.search(r"6th house of daily health falls in [A-Z][a-z]+", text), \
+        "the health section did not name the 6th house sign"
+    assert re.search(r"(?:asks for care|keep in ordinary routine care)", text)
+
+
+def test_children_section_covers_health_education_and_path(report) -> None:
+    _, paid, _ = report
+    text = _text(paid)
+    assert "6. Children" in text
+    for heading in ("Their health", "Their education", "Their path ahead"):
+        assert heading in text, f"children section is missing {heading}"
+    assert "Santan Gopal" in text
+    assert re.search(r"5th house is the child's own ascendant", text)
+
+
+def test_children_section_makes_no_promise_about_conception(report) -> None:
+    _, paid, _ = report
+    text = _text(paid).lower()
+    for phrase in ("you will conceive", "you will get pregnant", "number of children",
+                   "issueless", "barren"):
+        assert phrase not in text, f"the children section promised or denied a birth: {phrase}"
 
 
 def test_every_stone_gets_a_colour_coded_verdict(report) -> None:
