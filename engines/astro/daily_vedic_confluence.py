@@ -409,7 +409,7 @@ def build_vedic_daily_confluence(
         })
     if ad_boney.get("available"):
         lanes.append({
-            "lane": "Boney D9 cross-check",
+            "lane": "D9 cross-check",
             "signal": boney_lane or ad_boney.get("note", "")[:100],
             "weight": "medium",
         })

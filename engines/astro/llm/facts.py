@@ -13,6 +13,7 @@ import re
 from datetime import date
 from typing import Any, Optional, TypeVar
 
+from .fallback import clean_palm_summary, clip_sentences
 from .schemas import (
     SCHEMA_VERSION,
     CardFacts,
@@ -22,6 +23,7 @@ from .schemas import (
     PalmAspectFacts,
     PalmFacts,
     QuestionFacts,
+    RecentMonthFact,
     ReportFacts,
     WindowFact,
 )
@@ -72,6 +74,91 @@ def _first_name(name: str) -> str:
     return (name or "").strip().split()[0][:40] if (name or "").strip() else ""
 
 
+def _profile_context(pc: dict, today: date) -> tuple[str, Optional[int], str]:
+    meta = pc.get("meta") or {} if isinstance(pc, dict) else {}
+    gender = meta.get("gender", pc.get("gender") if isinstance(pc, dict) else "")
+    g = str(gender or "").strip().lower()
+    if g in ("m", "male", "man", "1"):
+        gender = "male"
+    elif g in ("f", "female", "woman", "2"):
+        gender = "female"
+    else:
+        gender = "unknown"
+    dob = str(meta.get("dob") or "").strip()
+    age_years: Optional[int] = None
+    if dob:
+        try:
+            d = date.fromisoformat(dob[:10])
+            age_years = today.year - d.year - ((today.month, today.day) < (d.month, d.day))
+            if age_years < 0 or age_years > 120:
+                age_years = None
+        except Exception:
+            age_years = None
+    band = "adult"
+    try:
+        from interpretation.life_stage import age_band as _ab
+        band = _ab(pc, today=today) or "adult"
+    except Exception:
+        pass
+    return str(gender), age_years, str(band)
+
+
+QUESTION_LENS = {
+    "profession": "Will my career grow, and when will recognition or a meaningful professional shift become easier?",
+    "money": "Will my financial security improve, and what kind of progress is more realistic for me?",
+    "love": "What does my relationship life look like, and when does it become easier or more settled?",
+    "children": "What does my chart say about children, parenthood and the experience of raising them?",
+    "home": "Will home, family and living circumstances become more settled or change meaningfully?",
+    "health": "Where should I protect my energy and routine, and when are demanding periods more likely?",
+    "learning": "Where can learning, study or skill-building create meaningful growth?",
+    "parents": "What role do parents and family responsibilities play in my life?",
+    "siblings": "What does my relationship with siblings and close family connections look like?",
+    "self": "What is the deeper pattern shaping how I approach life and decisions?",
+    "inner": "What is changing inside me, and where is this period pushing personal growth?",
+    "strengths": "What are the qualities I can rely on most strongly in life?",
+}
+
+# Sentences the sanitizer emits when it has nothing specific to say. They
+# carry no information, and repeating them crowds the real evidence out of
+# the prompt.
+_FILLER_EVIDENCE = re.compile(
+    r"^(?:the chart evidence is summarized|timing evidence is included|"
+    r"(?:birth-chart structure|case-based confirmation|current transit|"
+    r"astrology method|life-pattern cross-check|specialist timing cross-check|"
+    r"modern technique|chart evidence|remedy evidence)\s*[—-]\s*"
+    r"(?:supports|adds caution to|is broadly neutral for) this reading)",
+    re.I,
+)
+
+
+def _dedupe_evidence(items: list[EvidenceFact]) -> list[EvidenceFact]:
+    """Collapse repeats and drop content-free filler.
+
+    The same sentence arriving as both support and caution cancels itself out
+    and crowds the card, so it is kept once under the polarity it appeared
+    with first. The disagreement is not thrown away: the surviving entry is
+    tagged ``contested`` so the model can say the methods differ here.
+    """
+    out: list[EvidenceFact] = []
+    by_key: dict[tuple[str, tuple[str, ...]], EvidenceFact] = {}
+    for ev in items:
+        text = re.sub(r"\s+", " ", (ev.text or "").strip())
+        if text and _FILLER_EVIDENCE.match(text):
+            continue
+        tags = tuple(sorted(set(ev.semantic_tags or [])))
+        if not text and not tags:
+            continue
+        key = (text.lower(), tags)
+        kept = by_key.get(key)
+        if kept is None:
+            by_key[key] = ev
+            out.append(ev)
+            continue
+        if kept.polarity != ev.polarity and "contested" not in kept.semantic_tags:
+            kept.semantic_tags = [*kept.semantic_tags, "contested"][:6]
+    return out
+
+
 def _conf(value: str) -> str:
     v = (value or "").lower().strip()
     if v in ("high", "moderate", "low"):
@@ -109,11 +196,16 @@ def _agreement(value: str) -> str:
 
 
 def _normalize_evidence_text(text: str) -> tuple[str, list[str]]:
-    """Strip raw classical/case-book wording; prefer short semantic tags."""
+    """Return semantic evidence only; raw technique prose is never LLM input."""
     t = (text or "").strip()
     if not t:
         return "", []
-    if _CLASSICAL_RAW.search(t) or len(t) > 160:
+    try:
+        from qa_checks.customer_text_sanitizer import is_customer_safe
+        unsafe = not is_customer_safe(t)
+    except Exception:  # noqa: BLE001
+        unsafe = False
+    if _CLASSICAL_RAW.search(t) or unsafe or len(t) > 160:
         tags: list[str] = []
         low = t.lower()
         if any(x in low for x in ("debt", "money", "financial", "wealth")):
@@ -160,40 +252,107 @@ def _dates_from_windows(*windows: Optional[WindowFact]) -> list[str]:
 
 
 def _public_fact_payload(facts: Any) -> Any:
-    """Return only customer-semantic facts for the LLM/QA boundary.
-
-    Versioning/report hashes are internal metadata and must never be used as
-    grounding tokens. Keeping them in the payload previously allowed the model
-    and validators to see engine years such as 2026 as if they were chart facts.
-    """
+    """Fail-closed allowlist projection for LLM/customer grounding."""
     if hasattr(facts, "model_dump"):
         data = facts.model_dump(mode="json")
     else:
         data = facts
     if not isinstance(data, dict):
         return data
-    data = dict(data)
-    hidden = {
-        "schema_version", "engine_version", "report_id", "facts_hash",
-        "prompt_version", "model_name", "signal_ids", "point_ids",
-        "text_id", "score", "house", "method_id", "allowed_planets",
+
+    allowed_root = {
+        "kind", "first_name", "age_band", "age_years", "gender", "access", "dominant_hand", "photo_grade",
+        "photo_confidence", "special_marks_allowed", "future_timing_allowed",
+        "age_precision", "quality_note", "cards", "dashboard_buckets",
+        "timing_windows", "question", "area", "area_key", "area_label", "intent",
+        "answer_mode", "promise", "activation", "direction", "confidence",
+        "agreement", "evidence", "manifestations", "manifestation_ids",
+        "semantic_tags", "semantic_summary", "windows", "timing",
+        "timing_agreement", "timing_can_create_promise", "action", "remedy", "why",
+        "headline", "backing", "lanes", "primary_lane", "outcome", "conditions",
+        "future_windows", "aspects", "life_stage", "horary", "question_context",
+        "relevant_facts", "status", "activation_status", "promise_status",
+        "best", "nearest", "n_methods", "n_up", "n_down", "support_n", "caution_n",
+        "route", "subject", "label", "contradicted", "favourable",
+        "special_mark_ids", "allowed_dates",
+        "truth_source", "canonical_area_key", "canonical_promise_status",
+        "canonical_activation_status", "canonical_direction", "canonical_confidence",
+        "canonical_agreement", "canonical_evidence", "canonical_manifestations",
+        "canonical_timing",
+        "personality_traits", "phase_direction", "phase_tone", "phase_end",
+        "phase_notes", "recent_months", "hardest_areas", "hardest_area_labels",
+        "life_stage_note", "life_stage_age", "demanding_aspect",
+        "demanding_aspect_label", "remedies_allowed", "remedies",
+        "life_state", "family_notes", "palm_state", "hand_contrast",
     }
-    def clean(obj: Any) -> Any:
+    allowed_nested = {
+        "area", "label", "kind", "status", "activation_status", "confidence",
+        "agreement", "direction", "evidence", "manifestation_ids", "semantic_tags",
+        "semantic_summary", "window", "wealth_sub", "start", "end", "event_type",
+        "source", "score", "support_n", "caution_n", "timing_agreement", "promise",
+        "activation", "timing", "manifestation", "manifestations", "action", "remedy",
+        "remedy_text", "why", "headline", "backing", "summary", "rows", "reason",
+        "reasons", "family", "polarity", "strength", "age_window", "domain", "line",
+        "hand", "meaning", "text", "lanes", "primary_lane", "outcome", "conditions",
+        "relevant_facts", "aspect", "title", "lane", "verdict", "systems",
+        "approved_remedies", "remedy_eligible", "domain", "topic",
+        "question_lens", "prediction_strength", "timing_windows", "outlook_line",
+        "direction_label", "manifests", "recognize",
+        # Current-life-state block and family notes.
+        "chapter_tone", "strongest_theme", "strongest_theme_label", "themes",
+        "emotional_pressure", "decision_pressure", "responsibility",
+        "uncertainty", "domains", "mind_now", "pressure", "support",
+        "contradiction", "experience", "outcome_language_restricted",
+        "likelihood", "is_fact", "relation", "tags", "notes", "method_count",
+        # Current-palm-state block and the two-hand contrast.
+        "confidence_note", "dominant_hand", "steady", "developed", "latent",
+        "developed_traits", "latent_traits",
+    }
+
+    def clean(obj: Any, root: bool = False) -> Any:
         if isinstance(obj, dict):
-            return {
-                k: clean(v) for k, v in obj.items()
-                if k not in hidden
-                and k not in ("method", "systems")  # technical method labels
-            }
+            allow = allowed_root if root else allowed_nested
+            return {k: clean(v) for k, v in obj.items() if k in allow}
         if isinstance(obj, list):
             return [clean(v) for v in obj]
-        return obj
-    return clean(data)
+        if isinstance(obj, str):
+            return obj[:600]
+        if isinstance(obj, (int, float, bool)) or obj is None:
+            return obj
+        return str(obj)[:600]
+
+    return clean(data, root=True)
 
 
 def public_fact_payload(facts: Any) -> Any:
     """Public API used by prompts and validators."""
     return _public_fact_payload(facts)
+
+
+def citable_fact_ids(facts: Any) -> set[str]:
+    """Ids a follow-up answer is allowed to cite for this reading.
+
+    Every field name in the payload counts, plus the explicit ids carried by
+    evidence rows and palm signals. Hand-listing the names meant a chart
+    report and a horary verdict needed different lists, and citing a real
+    field that happened to be missing from the list refused a good answer.
+    """
+    payload = _public_fact_payload(facts)
+    out: set[str] = set()
+
+    def walk(obj: Any) -> None:
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                out.add(str(k))
+                if k in ("text_id", "signal_id", "point_id", "id") and v:
+                    out.add(str(v))
+                walk(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                walk(v)
+
+    walk(payload)
+    return out
 
 
 def facts_cache_key(facts: Any) -> str:
@@ -244,6 +403,7 @@ def project_for_access(facts: T, access: str) -> T:
             c["wealth_sub"] = []
             c["approved_remedies"] = []
             c["remedy_eligible"] = False
+            c["remedy_text"] = ""
             c["evidence"] = list(c.get("evidence") or [])[:2]
             # Teaser timing — keep direction, drop exact dates
             w = c.get("window")
@@ -321,9 +481,35 @@ def project_for_access(facts: T, access: str) -> T:
         if "canonical_evidence" in data:
             data["canonical_evidence"] = list(data.get("canonical_evidence") or [])[:2]
 
-        # Palm: drop future age windows on free
+        # Palm: drop future age windows and remedies on free
         if data.get("future_windows"):
             data["future_windows"] = []
+        if "remedies" in data:
+            data["remedies"] = []
+        if "remedies_allowed" in data:
+            data["remedies_allowed"] = False
+        for a in data.get("aspects") or []:
+            if isinstance(a, dict):
+                a["age_window"] = []
+        # Personality, current phase and recent months are free-section content
+        # (same as the classic free report). Paid depth is per-area timing and
+        # remedies, already stripped from cards above.
+        #
+        # The life-state block is deliberately free: it carries no dates and no
+        # evidence, and it is what shows the reader the reading recognises the
+        # phase they are in before they decide to unlock. Family notes are the
+        # depth behind the paid parents/siblings areas, so they stay paid.
+        if "family_notes" in data:
+            data["family_notes"] = []
+        ls = data.get("life_state")
+        if isinstance(ls, dict):
+            # Free names the themes; the per-area breakdown stays paid.
+            ls["domains"] = list(ls.get("domains") or [])[:3]
+        # The palm block is free for the same reason, and the two-hand contrast
+        # is already part of the free card page.
+        ps = data.get("palm_state")
+        if isinstance(ps, dict):
+            ps["domains"] = list(ps.get("domains") or [])[:3]
 
     cls = type(facts)
     projected = cls.model_validate(data)
@@ -344,12 +530,7 @@ def build_report_facts(
 ) -> ReportFacts:
     """Build ReportFacts from precomputed chart + already-built Card list."""
     today = today or date.today()
-    age_band = "adult"
-    try:
-        from interpretation.life_stage import age_band as _ab
-        age_band = _ab(pc, today=today) or "adult"
-    except Exception:  # noqa: BLE001
-        pass
+    gender, age_years, age_band = _profile_context(pc, today)
 
     card_facts: list[CardFacts] = []
     for c in cards or []:
@@ -424,13 +605,29 @@ def build_report_facts(
                 modern = str(meta.get("modern_meaning") or "").strip()
                 if modern:
                     safe_manifests.append(modern[:120])
-                elif re.fullmatch(r"[a-z0-9_\-]{3,80}", str(m).strip(), re.I):
-                    safe_manifests.append(str(m).replace("_", " ")[:120])
+                # Unknown IDs are deliberately discarded. They are not safe
+                # customer language and must not be paraphrased by the model.
         except Exception:  # noqa: BLE001
-            safe_manifests = [
-                str(m)[:120] for m in manifests
-                if re.fullmatch(r"[a-z0-9_\-]{3,80}", str(m).strip(), re.I)
-            ]
+            safe_manifests = []
+        if not safe_manifests:
+            # Same catalog the renderer falls back to, so the model describes
+            # the manifestations the reader is going to see anyway.
+            try:
+                import area_modules as AM
+                safe_manifests = [
+                    str(m)[:120]
+                    for m in AM.manifestations_for(
+                        area,
+                        promise_status=status,
+                        activation_status=act_status,
+                        age_band=age_band,
+                        limit=3,
+                        pc=pc,
+                    )
+                    or []
+                ]
+            except Exception:  # noqa: BLE001
+                safe_manifests = []
         manifests = safe_manifests[:6]
         semantic_tags = list(cr.get("semantic_tags") or [])[:8]
         if kind == "challenge" and not semantic_tags:
@@ -440,6 +637,8 @@ def build_report_facts(
         w = getattr(c, "window", "") or ""
         if w:
             window = WindowFact(label=str(w)[:120])
+
+        evidence = _dedupe_evidence(evidence)[:6]
 
         score = float(cr.get("score") or promise.get("score") or 0.0)
         conf = _conf(
@@ -486,12 +685,84 @@ def build_report_facts(
             except Exception:  # noqa: BLE001
                 wealth_sub = []
 
+        card_timing: list[WindowFact] = []
+        timing_rows = list((cr.get("timing") or {}).get("featured_windows") or [])
+        if not timing_rows:
+            timing_rows = list((cr.get("timing") or {}).get("strong_windows") or [])
+        if not timing_rows:
+            timing_rows = list((cr.get("timing") or {}).get("validated_windows") or [])
+        seen_card_windows: set[tuple[str, str, str]] = set()
+        for tw in timing_rows[:4]:
+            if not isinstance(tw, dict):
+                continue
+            wk = (str(tw.get("start") or ""), str(tw.get("end") or ""), str(tw.get("event_type") or tw.get("label") or area))
+            if wk in seen_card_windows:
+                continue
+            seen_card_windows.add(wk)
+            card_timing.append(WindowFact(
+                start=_pretty_date(tw.get("start")), end=_pretty_date(tw.get("end")),
+                label=str(tw.get("event_type") or tw.get("label") or area)[:120],
+                event_type=str(tw.get("event_type") or area)[:80],
+                confidence=_conf(tw.get("confidence") or conf),
+                source=str(tw.get("source") or "validated_confluence")[:80],
+                score=float(tw.get("score") or 0.0),
+            ))
         allowed_dates = _dates_from_windows(window)
+        for tw in card_timing:
+            allowed_dates.extend(_dates_from_windows(tw))
+        allowed_dates = list(dict.fromkeys(allowed_dates))[:12]
         blob = " ".join(
             [str(t) for t in support_ev + caution_ev]
             + [str(x) for x in manifests]
         )
         allowed_planets = _planets_from_text(blob)
+
+        # The practical step already approved for this area. Passing it lets a
+        # card carry its own "what helps" line instead of pushing every reader
+        # to one remedy block at the end of the report.
+        approved: list[str] = []
+        for candidate in (getattr(c, "action", ""), getattr(c, "mantra", "")):
+            text = str(candidate or "").strip()
+            if text and text not in approved:
+                try:
+                    from qa_checks.customer_text_sanitizer import is_customer_safe
+                    if not is_customer_safe(text, area=area):
+                        continue
+                except Exception:  # noqa: BLE001
+                    pass
+                approved.append(text[:160])
+
+        outlook_line = ""
+        try:
+            from narration.verdict_phrases import promise_activation_line
+            outlook_line = promise_activation_line(
+                promise_status=status, activation_status=act_status,
+            )[:220]
+        except Exception:  # noqa: BLE001
+            outlook_line = str(getattr(c, "headline", "") or "")[:220]
+        if not outlook_line:
+            outlook_line = str(getattr(c, "headline", "") or "")[:220]
+
+        remedy_text = ""
+        for candidate in (
+            cr.get("remedy"),
+            (cf.get("remedy") if isinstance(cf, dict) else None),
+        ):
+            text = str(candidate or "").strip()
+            if not text:
+                continue
+            try:
+                from qa_checks.customer_text_sanitizer import is_customer_safe
+                if not is_customer_safe(text, area=area):
+                    continue
+            except Exception:  # noqa: BLE001
+                pass
+            if _PLANET_TOKEN.search(text) or _CLASSICAL_RAW.search(text):
+                continue
+            remedy_text = text[:220]
+            break
+        if not remedy_text and approved:
+            remedy_text = approved[0][:220]
 
         card_facts.append(CardFacts(
             area=area,
@@ -500,6 +771,7 @@ def build_report_facts(
             status=status,
             activation_status=act_status,
             confidence=conf,  # type: ignore[arg-type]
+            prediction_strength=status,
             agreement=agreement,  # type: ignore[arg-type]
             direction=direction,  # type: ignore[arg-type]
             score=round(score, 3),
@@ -510,9 +782,16 @@ def build_report_facts(
             manifestation_ids=[str(m)[:80] for m in manifests if m][:6],
             semantic_tags=[str(t)[:60] for t in semantic_tags if t][:8],
             window=window,
+            timing_windows=card_timing,
+            question_lens=QUESTION_LENS.get(area, f"What does your chart say about {getattr(c, 'label', area)}?"),
+            remedy_eligible=bool(approved or remedy_text),
+            approved_remedies=approved[:3],
             wealth_sub=wealth_sub,
             allowed_planets=allowed_planets,
             allowed_dates=allowed_dates,
+            outlook_line=outlook_line,
+            manifestations=[str(m)[:120] for m in manifests if m][:4],
+            remedy_text=remedy_text,
         ))
 
     # IMPORTANT: timing facts must come from the same canonical area results
@@ -552,6 +831,8 @@ def build_report_facts(
             break
 
     buckets: dict[str, list[str]] = {}
+    hardest_areas: list[str] = []
+    hardest_labels: list[str] = []
     try:
         import promise_dashboard as PD
         dash = PD.build(list(cards or [])) or {}
@@ -563,18 +844,166 @@ def build_report_facts(
                 else:
                     out_list.append(str(getattr(i, "area", "") or ""))
             buckets[str(key)] = [x for x in out_list if x]
+        for i in (dash.get("needs_care") or []):
+            area_key = str(getattr(i, "area", "") or (i.get("area") if isinstance(i, dict) else "") or "")
+            label = str(getattr(i, "label", "") or (i.get("label") if isinstance(i, dict) else "") or area_key)
+            if area_key and area_key not in hardest_areas:
+                hardest_areas.append(area_key)
+                hardest_labels.append(label)
     except Exception:  # noqa: BLE001
         buckets = {}
+
+    personality_traits = _personality_traits(pc)
+    phase_direction, phase_tone, phase_end, phase_notes = _phase_facts(pc, today)
+    recent_months = _recent_month_facts(pc, today)
+    # Personality reads thin when it comes from one source. The specialist
+    # engines already describe the same person; personal_life keeps only the
+    # sentences that survive the customer boundary.
+    family_notes: list = []
+    try:
+        from .personal_life import build_personal_life
+        extra_traits, family_notes = build_personal_life(pc, gender=gender)
+        for t in extra_traits:
+            if t not in personality_traits:
+                personality_traits.append(t)
+        personality_traits = personality_traits[:6]
+    except Exception as exc:  # noqa: BLE001
+        print(f"[llm.facts] personal life evidence skipped: {exc}", flush=True)
+    # What may be occupying them now, read off the same canonical cards the
+    # paid areas use, so the two halves of the page cannot disagree.
+    life_state = None
+    try:
+        from .life_state import build_life_state
+        life_state = build_life_state(
+            card_facts, phase_tone=phase_tone, needs_care=hardest_areas)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[llm.facts] life state skipped: {exc}", flush=True)
+    # Ground month/year tokens used in phase and recent-months prose.
+    for ev in recent_months:
+        for d in (ev.start, ev.end):
+            if d and d not in [w.label for w in timing_windows]:
+                pass
+    extra_dates: list[str] = []
+    if phase_end:
+        extra_dates.append(phase_end)
+    for ev in recent_months:
+        for d in (ev.start, ev.end):
+            if d:
+                extra_dates.append(d)
+    # Attach allowed dates onto cards that have none so month validation works
+    # for the whole-report conversational prompt.
+    if extra_dates and card_facts:
+        seed = list(dict.fromkeys(extra_dates))[:12]
+        for cf in card_facts:
+            if not cf.allowed_dates:
+                cf.allowed_dates = list(seed)
 
     facts = ReportFacts(
         first_name=_first_name(name),
         age_band=age_band,
+        age_years=age_years,
+        gender=gender,
         access="paid" if access == "paid" else "free",  # type: ignore[arg-type]
         cards=card_facts,
         dashboard_buckets=buckets,
         timing_windows=timing_windows,
+        personality_traits=personality_traits,
+        phase_direction=_dir(phase_direction),  # type: ignore[arg-type]
+        phase_tone=phase_tone,
+        phase_end=phase_end,
+        phase_notes=phase_notes,
+        recent_months=recent_months,
+        hardest_areas=hardest_areas[:4],
+        hardest_area_labels=hardest_labels[:4],
+        life_state=life_state,
+        family_notes=list(family_notes or []),
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
+
+
+def _personality_traits(pc: dict) -> list[str]:
+    """Trait sentences from confluence.personality — drop planet-name lines."""
+    traits: list[str] = []
+    try:
+        import report_confluence as CF
+        pers = CF.personality(pc) or {}
+        for t in list(pers.get("traits") or [])[:6]:
+            text = str(t or "").strip()
+            if not text:
+                continue
+            # Planet-name lines are blocked by QA; keep only human trait lines.
+            if _PLANET_TOKEN.search(text):
+                continue
+            if re.search(r"\b(?:main astrological influence|carries that in your chart)\b", text, re.I):
+                continue
+            traits.append(text[:180])
+    except Exception:  # noqa: BLE001
+        traits = []
+    return traits[:6]
+
+
+def _phase_facts(pc: dict, today: date) -> tuple[str, str, str, list[str]]:
+    """Current-phase direction, plain tone, end date, and short notes."""
+    direction = "mixed"
+    tone = "mixed"
+    phase_end = ""
+    notes: list[str] = []
+    try:
+        import present_read as PR
+        block = PR.build(pc, today=today) or {}
+        direction = str(block.get("direction") or "mixed")
+        for pred in list(block.get("predictions") or [])[:4]:
+            scenario = str(getattr(pred, "scenario", "") or "").strip()
+            if not scenario:
+                continue
+            # Strip planet / Sanskrit tokens before they reach the LLM.
+            if _PLANET_TOKEN.search(scenario) or _CLASSICAL_RAW.search(scenario):
+                continue
+            notes.append(scenario[:160])
+    except Exception:  # noqa: BLE001
+        pass
+    tone = {
+        "up": "supportive", "support": "supportive",
+        "down": "demanding", "caution": "demanding",
+    }.get(direction, "mixed")
+    try:
+        from report_cards import current_ad
+        ad = current_ad(pc) or {}
+        phase_end = _pretty_date(ad.get("end"))
+    except Exception:  # noqa: BLE001
+        phase_end = ""
+    return direction, tone, phase_end, notes[:4]
+
+
+def _recent_month_facts(pc: dict, today: date) -> list[RecentMonthFact]:
+    """Last ~4 months of checkable past windows for the free trust section."""
+    out: list[RecentMonthFact] = []
+    try:
+        import past_validation as PVH
+        hist = PVH.build(pc, today=today, months=4, max_events=4) or {}
+        for ev in list(hist.get("events") or [])[:4]:
+            if not isinstance(ev, dict):
+                continue
+            headline = str(ev.get("headline") or ev.get("why") or "").strip()
+            if _PLANET_TOKEN.search(headline) or _CLASSICAL_RAW.search(headline):
+                headline = str(ev.get("direction_label") or "A mixed period")[:160]
+            manifests = [
+                str(m)[:120] for m in list(ev.get("manifests") or [])[:3]
+                if str(m).strip() and not _PLANET_TOKEN.search(str(m))
+            ]
+            out.append(RecentMonthFact(
+                start=_pretty_date(ev.get("start")),
+                end=_pretty_date(ev.get("end")),
+                area=str(ev.get("area") or "")[:40],
+                label=str(ev.get("label") or ev.get("area") or "")[:80],
+                direction=str(ev.get("direction") or "mixed")[:20],
+                direction_label=str(ev.get("direction_label") or "")[:40],
+                headline=headline[:220],
+                manifests=manifests,
+            ))
+    except Exception:  # noqa: BLE001
+        out = []
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -645,14 +1074,11 @@ def build_question_facts(
     # used when the topic has no corresponding full-report life area.
     canonical_timing = []
     if canonical:
-        t = canonical.get("timing") or {}
-        source_rows = (
-            list(t.get("featured_windows") or [])
-            or list(t.get("strong_windows") or [])
-            or list(t.get("validated_windows") or [])
-            or list(t.get("opportunity_windows") or [])
-        )
-        for w in source_rows[:6]:
+        # `answer()` has already filtered canonical timing to the user's
+        # requested horizon. Reuse that filtered set; never resurrect the
+        # full-report best window outside the question's timeframe.
+        source_rows = list(result.get("windows") or [])[:6]
+        for w in source_rows:
             wf = _win(w)
             if wf:
                 canonical_timing.append(wf)
@@ -666,21 +1092,14 @@ def build_question_facts(
                 raw_windows.append(wf)
 
     windows = raw_windows[:6]
-    best = _win(canonical.get("timing", {}).get("best_window")) if canonical else None
-    nearest = None
+    best = _win(result.get("best")) if canonical else None
+    nearest = _win(result.get("nearest")) if canonical else None
 
-    if canonical:
-        future = [w for w in windows if not w.start or w.start >= _pretty_date(result.get("start"))]
-        if future:
-            # best_window is authoritative when present; otherwise choose the
-            # first strong/validated canonical window.
-            if best is None:
-                best = future[0]
-            earlier = [w for w in future if w.start and best.start and w.start < best.start]
-            nearest = earlier[0] if earlier else None
-    else:
-        best = _win(result.get("best"))
-        nearest = _win(result.get("nearest"))
+    if canonical and best is None and windows:
+        best = windows[0]
+    if canonical and best is not None and nearest is None:
+        earlier = [w for w in windows if w.start and best.start and w.start < best.start]
+        nearest = earlier[-1] if earlier else None
 
     route = result.get("route") or {}
     if not isinstance(route, dict):
@@ -703,17 +1122,39 @@ def build_question_facts(
             reason = str(row.get("reason") or (reasons[0] if reasons else "")).strip()
             text, tags = _normalize_evidence_text(reason)
             if text or tags:
+                fam_raw = str(row.get("family") or "").lower()
+                fam_map = {
+                    "birth_chart": "natal",
+                    "natal": "natal",
+                    "natal_structure": "natal",
+                    "divisional_confirmation": "divisional",
+                    "divisional": "divisional",
+                    "challenge_confirmation": "divisional",
+                    "traditional_cross_check": "rules",
+                    "classical": "rules",
+                    "rules": "rules",
+                    "palm": "palm",
+                    "horary": "horary",
+                }
+                family = fam_map.get(fam_raw, "other")
                 canonical_evidence.append(EvidenceFact(
-                    family="other",
+                    family=family,  # type: ignore[arg-type]
                     polarity=polarity,
                     text=text,
                     semantic_tags=tags,
                     text_id=_eid("question-canonical", polarity, reason or str(row)),
                 ))
-        canonical_manifests = [
-            str(x)[:120] for x in (canonical.get("manifestation") or [])
-            if str(x).strip()
-        ][:6]
+        canonical_evidence = _dedupe_evidence(canonical_evidence)[:8]
+        try:
+            from interpretation.stage_config import manifestation_metadata
+            canonical_manifests = []
+            for x in (canonical.get("manifestation") or [])[:6]:
+                meta = manifestation_metadata(str(x)) or {}
+                modern = str(meta.get("modern_meaning") or "").strip()
+                if modern:
+                    canonical_manifests.append(modern[:120])
+        except Exception:  # noqa: BLE001
+            canonical_manifests = []
 
     allowed_dates = _dates_from_windows(best, nearest, *windows)
     facts = QuestionFacts(
@@ -800,12 +1241,24 @@ def build_horary_facts(
 # ---------------------------------------------------------------------------
 # Palm
 # ---------------------------------------------------------------------------
+_PALM_STRENGTH_SCORE = {"strong": 86, "moderate": 72, "tentative": 58, "weak": 52}
+_PALM_TITLE = {
+    "character": "Character & Temperament",
+    "mind": "Mind & Intellect",
+    "love": "Relationships & Emotions",
+    "career": "Career & Direction",
+    "wealth": "Money & Resources",
+    "health": "Health & Vitality",
+}
+
+
 def build_palm_facts(
     raw: dict,
     *,
     name: str = "",
     access: str = "free",
     age_band: str = "adult",
+    age_years: Optional[int] = None,
     report_id: str = "",
 ) -> PalmFacts:
     """Build PalmFacts from pipeline raw / reading_result — strip prose."""
@@ -826,9 +1279,16 @@ def build_palm_facts(
         else "wider_window" if photo_grade == "fair"
         else "window"
     ))
+    person = rr.get("person") or {}
+    if age_years is None:
+        try:
+            age_years = int(person.get("age")) if person.get("age") is not None else None
+        except (TypeError, ValueError):
+            age_years = None
 
     aspects: list[PalmAspectFacts] = []
     life_aspects = conf.get("life_aspects") or rr.get("present") or []
+    personality_traits: list[str] = []
     for row in life_aspects:
         if not isinstance(row, dict):
             continue
@@ -854,26 +1314,51 @@ def build_palm_facts(
                 rid = str(p.get("rule_id") or p.get("signal_id") or "")
                 if rid:
                     point_ids.append(rid[:60])
+                    # Rule IDs are provenance only. Do NOT expose raw detector
+                    # morphology/special-mark signal IDs to the LLM.
                     signal_ids.append(rid[:60])
                 tag = str(p.get("semantic_tag") or p.get("tag") or "")
                 if tag:
                     tags.append(tag[:60])
-        for s in (rr.get("canonical_signals") or [])[:20]:
-            if isinstance(s, dict) and s.get("signal_id"):
-                sid = str(s["signal_id"])[:60]
-                if sid not in signal_ids:
-                    signal_ids.append(sid)
-        raw_summary = str(row.get("summary") or row.get("what_it_means") or "").strip()
-        summary, summary_tags = _normalize_evidence_text(raw_summary)
+
+        # IMPORTANT: canonical_signals are detector-level inputs (e.g.
+        # HAND_AIR, TRIDENT_ON_JUPITER). They are not semantic facts and must
+        # never be appended to PalmFacts.signal_ids.
+        raw_summary = str(
+            row.get("semantic_summary")
+            or row.get("what_it_means")
+            or row.get("summary")
+            or ""
+        ).strip()
+
+        # `life_aspects` summary is already customer-safe modern meaning.
+        # Do not run it through the evidence sanitizer: that sanitizer is
+        # intentionally lossy and was previously turning valid summaries into
+        # empty strings + generic tags. The grouping preamble ("Together,
+        # these signs point to…") is engine bookkeeping, not a reading.
+        summary = clip_sentences(clean_palm_summary(raw_summary), 220)
+        if summary and len(personality_traits) < 5 and key in (
+            "character", "mind", "love", "career", "wealth",
+        ):
+            personality_traits.append(clip_sentences(summary, 180))
+        recognize = [
+            str(x)[:120] for x in list(row.get("recognize") or [])[:4]
+            if str(x).strip()
+        ]
+        age_window: list[int] = []
+        title = str(row.get("title") or _PALM_TITLE.get(key, key))[:80]
         aspects.append(PalmAspectFacts(
             aspect=key,
+            title=title,
             direction=direction,  # type: ignore[arg-type]
             strength=strength or "tentative",
             confidence=_conf(row.get("confidence") or "moderate"),  # type: ignore[arg-type]
             signal_ids=signal_ids[:12],
             point_ids=point_ids[:8],
-            semantic_tags=(tags + summary_tags)[:6],
-            semantic_summary=summary[:220],
+            semantic_tags=tags[:6],
+            semantic_summary=summary,
+            recognize=recognize,
+            age_window=age_window,
             score=float(row.get("score") or row.get("reinforced_count") or 0.0),
         ))
 
@@ -887,6 +1372,22 @@ def build_palm_facts(
                 "domain": str(fw.get("domain") or "")[:40],
                 "confidence": str(fw.get("confidence") or "moderate"),
             })
+        # Attach nearest future age window to matching aspects by domain.
+        domain_to_aspect = {
+            "vitality": "health", "mind_decision": "mind",
+            "relationships": "love", "career_direction": "career",
+        }
+        by_key = {a.aspect: a for a in aspects}
+        for fw in future:
+            asp = by_key.get(domain_to_aspect.get(str(fw.get("domain") or ""), ""))
+            if asp is None or asp.age_window:
+                continue
+            aw = fw.get("age_window") or []
+            if isinstance(aw, (list, tuple)) and len(aw) >= 2:
+                try:
+                    asp.age_window = [int(aw[0]), int(aw[1])]
+                except (TypeError, ValueError):
+                    pass
 
     mark_ids = []
     if special_marks_allowed:
@@ -898,9 +1399,63 @@ def build_palm_facts(
             elif isinstance(m, str) and m.strip():
                 mark_ids.append(m.strip()[:60])
 
+    # A blocked photo-quality feature must be removed from every semantic
+    # aspect, not only from the top-level special_mark_ids. Keep detector
+    # output internal, but never expose special-mark provenance to the LLM.
+    if not special_marks_allowed:
+        blocked_tokens = ("trident", "star", "grille", "fish", "triangle", "yav", "special_mark", "mark_")
+        for aspect in aspects:
+            aspect.signal_ids = [sid for sid in aspect.signal_ids
+                                 if not any(tok in sid.lower() for tok in blocked_tokens)]
+            aspect.point_ids = [pid for pid in aspect.point_ids
+                                if not any(tok in pid.lower() for tok in blocked_tokens)]
+
+    # Life stage at current age + demanding aspect (lowest strength).
+    life_stage_note, life_stage_age = _palm_life_stage(raw, dominant, age_years)
+    demanding_aspect = ""
+    demanding_label = ""
+    if aspects:
+        weakest = min(
+            aspects,
+            key=lambda a: (
+                _PALM_STRENGTH_SCORE.get(str(a.strength).lower(), 70),
+                -float(a.score or 0),
+            ),
+        )
+        demanding_aspect = weakest.aspect
+        demanding_label = weakest.title or _PALM_TITLE.get(weakest.aspect, weakest.aspect)
+
+    remedies_allowed = photo_grade == "good"
+    remedies: list[str] = []
+    if remedies_allowed:
+        try:
+            from palm_api.palm_remedies import build_palm_remedies, format_remedy_line
+            dom = raw.get(dominant) or raw.get("right") or raw.get("left") or {}
+            feats = (dom.get("features") or {})
+            for r in (build_palm_remedies(feats) or [])[:4]:
+                line = format_remedy_line(r) if not isinstance(r, str) else str(r)
+                line = str(line or "").strip()
+                if line and not _PLANET_TOKEN.search(line):
+                    remedies.append(line[:160])
+        except Exception:  # noqa: BLE001
+            remedies = []
+
+    # The two-hand contrast and the current-state block are both derived from
+    # material the palm engine already produced, so they cannot disagree with
+    # the life-area cards on the same page.
+    from .palm_state import build_hand_contrast, build_palm_state
+    hand_contrast = build_hand_contrast(conf, dominant_hand=dominant)
+    palm_state = build_palm_state(
+        aspects,
+        contrast=hand_contrast,
+        demanding_aspect=demanding_aspect,
+        photo_grade=photo_grade,
+    )
+
     facts = PalmFacts(
         first_name=_first_name(name),
         age_band=age_band or "adult",
+        age_years=age_years,
         access="paid" if access == "paid" else "free",  # type: ignore[arg-type]
         dominant_hand=dominant,
         photo_grade=photo_grade,
@@ -912,5 +1467,54 @@ def build_palm_facts(
         aspects=aspects,
         future_windows=future,
         special_mark_ids=mark_ids,
+        personality_traits=personality_traits[:6],
+        life_stage_note=life_stage_note,
+        life_stage_age=life_stage_age,
+        demanding_aspect=demanding_aspect,
+        demanding_aspect_label=demanding_label,
+        remedies_allowed=remedies_allowed,
+        remedies=remedies[:4],
+        hand_contrast=hand_contrast,
+        palm_state=palm_state,
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
+
+
+def _palm_life_stage(
+    raw: dict, dominant: str, age_years: Optional[int],
+) -> tuple[str, Optional[int]]:
+    """Nearest dated line marking at the person's current age."""
+    if age_years is None:
+        return "", None
+    dom = raw.get(dominant) or raw.get("right") or raw.get("left") or {}
+    items = dom.get("numbered_checklist") or []
+    best = None
+    best_dist = 10**9
+    for it in items:
+        if not isinstance(it, dict) or it.get("kind") != "line":
+            continue
+        timing = it.get("timing") or {}
+        age = timing.get("estimated_age")
+        if not isinstance(age, int):
+            continue
+        dist = abs(age - age_years)
+        if dist < best_dist:
+            best_dist = dist
+            best = it
+    if best is None:
+        return "", None
+    timing = best.get("timing") or {}
+    age = timing.get("estimated_age")
+    conclusive = best.get("conclusive") or {}
+    text = str(
+        conclusive.get("conclusion")
+        or conclusive.get("verdict")
+        or best.get("title")
+        or ""
+    ).strip()
+    if _PLANET_TOKEN.search(text) or _CLASSICAL_RAW.search(text):
+        title = str(best.get("title") or "your hand").lower()
+        text = f"Around age {age}, {title} enters a meaningful chapter."
+    elif age is not None and "age" not in text.lower():
+        text = f"Around age {age}, {text}"
+    return text[:220], int(age) if isinstance(age, int) else None

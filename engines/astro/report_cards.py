@@ -428,7 +428,9 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
                 pc, area, direction, today=today, gate=gate)
             headline = headline or canonical.get("headline") or CLAIMS.get(
                 (area.key, direction), "")
-            backing = canonical.get("backing") or (evidence[0] if evidence else "")
+            backing = (canonical.get("backing")
+                       or (canonical.get("why") or {}).get("summary")
+                       or "")
             timing = canonical.get("timing") or {}
             windows = timing.get("windows") or []
             window = ""
@@ -1262,6 +1264,18 @@ make much more sense.</p>
                         '<span class="ev-label">How this area changes over time</span>'
                         + ''.join(rows) + '</div>')
 
+            overlay = prose_cards.get(c.area) or {}
+            show_html = ""
+            timing_note_html = ""
+            if isinstance(overlay, dict):
+                shows = [str(x).strip() for x in (overlay.get("how_this_may_show_up") or []) if str(x).strip()]
+                if shows:
+                    show_html = (
+                        '<div class="personal-show"><span class="ev-label">How this may show up in your life</span>'
+                        '<ul>' + ''.join(f'<li>{_e(x)}</li>' for x in shows[:3]) + '</ul></div>')
+                ts = str(overlay.get("timing_summary") or "").strip()
+                if ts:
+                    timing_note_html = f'<p class="personal-timing"><span class="ev-label">Timing</span> {_e(ts)}</p>'
             act = (f'<div class="action"><span class="act-label">{act_label}</span>'
                    f'<p>{_e(c.action)}</p>'
                    + (f'<p class="mantra">{_e(c.mantra)}</p>' if c.mantra else "")
@@ -1279,7 +1293,7 @@ make much more sense.</p>
                 f'<b class="traj-{c.direction}">{_e(expect)}</b>'
                 + (f'<p class="expect-note">{_e(expect_note)}</p>'
                    if expect_note else "")
-                + f'</div>{_confluence_section(c)}{phase}{planet_html}{trajectory_html}{act}{why}')
+                + f'</div>{_confluence_section(c)}{phase}{planet_html}{trajectory_html}{show_html}{timing_note_html}{act}{why}')
         else:
             phase = ('<div class="when locked-inline">'
                      '<span class="lockicon">•</span> Exact dates in the full reading</div>')
@@ -1415,11 +1429,20 @@ make much more sense.</p>
     except Exception:  # noqa: BLE001
         d1_chart_html = ""
 
-    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+    html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{_e(first)} — your reading</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<style>{_STYLE}{_EXTRA}</style></head><body><div class="wrap">
+<style>{_STYLE}{_EXTRA}
+.master-narrative{{background:#fff;border:1px solid var(--line);border-left:4px solid var(--ink);border-radius:14px;padding:18px 20px;margin:24px 0 28px}}
+.master-narrative .ev-label{{margin-bottom:8px}}
+.master-narrative p{{margin:0;font-family:Fraunces,Georgia,serif;font-size:1.05rem;line-height:1.55}}
+.personal-show{{margin:12px 0;padding:12px 14px;background:#fbfaf7;border-radius:10px}}
+.personal-show ul{{margin:8px 0 0;padding-left:18px;font-size:.84rem;color:#3d4250}}
+.personal-show li{{margin:4px 0}}
+.personal-timing{{margin:10px 0 0;font-size:.84rem;color:#3d4250;line-height:1.45}}
+.personal-timing .ev-label{{display:inline;margin-right:6px}}
+</style></head><body><div class="wrap">
 <header>
   <div class="eyebrow">Your reading</div>
   <h1>{_e(first)}, here is what your chart<br/>is doing right now.</h1>
@@ -1442,6 +1465,7 @@ make much more sense.</p>
 
 {proof_html}
 {daily_html}
+{f'<section class="master-narrative"><div class="ev-label">The bigger picture</div><p>{_e((prose.get("master_narrative") or "") if isinstance(prose, dict) else "")}</p></section>' if (isinstance(prose, dict) and (prose.get("master_narrative") or "").strip()) else ""}
 <h3 class="sec">What this period is doing to each part of your life</h3>
 <p class="sec-note">Ordered by how strongly your chart speaks, not by convention.</p>
 {cards_html}
@@ -1456,3 +1480,7 @@ make much more sense.</p>
 <footer>Calculated from your birth details alone · guidance, not a substitute
 for professional advice</footer>
 </div>{_INTERACT}</body></html>"""
+    # Mandatory final customer boundary. No legacy evidence may be appended
+    # after this point; _scrub must remain the final downstream step.
+    from qa_checks.final_customer_boundary import finalize_customer_html
+    return finalize_customer_html(html, strict=True)

@@ -9,34 +9,43 @@ from __future__ import annotations
 
 import json
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Optional
 
 from . import fallback as FB
-from .facts import facts_cache_key, project_for_access
-from .rules import OUT_OF_SCOPE_REFUSAL, prompt_version, system_prompt_for, user_prompt
+from .facts import citable_fact_ids, facts_cache_key, project_for_access
+from .rules import (
+    GENERIC_FACT_IDS,
+    OUT_OF_SCOPE_REFUSAL,
+    chat_user_prompt,
+    prompt_version,
+    system_prompt_for,
+    user_prompt,
+)
 from .schemas import (
     SCHEMA_VERSION,
-    CardProse,
     ChatAnswer,
+    ConversationalAreasProse,
+    ConversationalPalmProse,
+    ConversationalProse,
     HoraryFacts,
     HoraryProse,
     LlmRunMeta,
-    PalmAspectProse,
     PalmFacts,
-    PalmProse,
     QuestionFacts,
     QuestionProse,
     ReportFacts,
-    ReportProse,
 )
 from .validate import (
-    validate_card_prose,
+    mind_now_topic_index,
     validate_chat_answer,
+    validate_conversational_area,
+    validate_family_line,
+    validate_hand_contrast_note,
     validate_horary_prose,
-    validate_palm_prose,
+    validate_mind_now_line,
+    validate_prose_against_facts,
     validate_question_prose,
-    validate_slot,
+    validate_why_now,
 )
 
 MAX_LLM_RETRIES = 2  # Attempt 1 + 1 retry; then deterministic fallback
@@ -112,6 +121,7 @@ def _cache_set(key: str, value: dict) -> None:
             "kind": value.get("kind"),
             "access": value.get("access"),
             "fallback_used": value.get("fallback_used", False),
+            "rejection_reasons": (value.get("stats") or {}).get("rejection_reasons", {}),
         }
         r.setex(f"llm:v2:{key}", ttl, json.dumps(payload, ensure_ascii=False))
     except Exception:  # noqa: BLE001
@@ -146,9 +156,16 @@ def _complete_validated(
     validate_fn: Callable[[Any, Any], list[str]],
     *,
     temperature: float = 0.4,
+    keep_last_on_failure: bool = False,
 ) -> tuple[Any, int, list[str]]:
-    """Return (prose|None, retry_count, last_errors)."""
+    """Return (prose|None, retry_count, last_errors).
+
+    ``keep_last_on_failure`` is for whole-page schemas that are screened slot
+    by slot afterwards: returning the object lets the caller keep the clean
+    paragraphs instead of throwing the page away over one bad sentence.
+    """
     last_errors: list[str] = []
+    last_prose: Any = None
     retries = 0
     for attempt in range(MAX_LLM_RETRIES):
         user = base_user
@@ -164,121 +181,402 @@ def _complete_validated(
         if prose is None:
             last_errors = ["empty_or_model_failure"]
             continue
+        last_prose = prose
         fails = validate_fn(prose, facts) or []
         if not fails:
             return prose, retries, []
         last_errors = list(fails)
+    if keep_last_on_failure and last_prose is not None:
+        return last_prose, retries, last_errors
     return None, retries, last_errors
 
 
-def _card_overlay_dict(prose: CardProse) -> dict[str, Any]:
+def _clip_to_sentence(text: str) -> str:
+    """Drop a trailing fragment left behind by the schema length limit.
+
+    Guided decoding stops at ``max_length`` mid-word, which reaches the reader
+    as a severed sentence. Better to end one sentence early than to publish
+    "with particular emphasis on your".
+    """
+    t = (text or "").strip()
+    if not t or t[-1] in ".!?":
+        return t
+    cut = max(t.rfind(". "), t.rfind("! "), t.rfind("? "))
+    if cut > 40:
+        return t[: cut + 1].strip()
+    # Comma-joined lists ("A, B, C, you benefit when you slow down before
+    # stress accumu") have no sentence break to fall back to, so close on the
+    # last complete clause or word instead of shipping a severed one.
+    cut = t.rfind(", ")
+    if cut > 40:
+        return t[:cut].strip() + "."
+    cut = t.rfind(" ")
+    return (t[:cut].strip() + ".") if cut > 40 else t
+
+
+def _as_sentence(text: str) -> str:
+    """Open and close a fragment so area passages read as prose when joined."""
+    t = _clip_to_sentence(text)
+    if not t:
+        return ""
+    t = t[0].upper() + t[1:]
+    return t if t[-1] in ".!?" else f"{t}."
+
+
+def _conversational_overlay(prose: ConversationalProse, *, access: str) -> dict[str, Any]:
+    areas: dict[str, Any] = {}
+    if access == "paid":
+        for a in list(prose.areas or []):
+            key = str(getattr(a, "area", "") or "").strip()
+            if not key:
+                continue
+            areas[key] = {
+                "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
+                # Models tend to echo the raw window label ("2026-10-31 →
+                # 2027-01-25"); normalise it to a sentence a reader can say.
+                "timing": FB.timing_sentence(getattr(a, "timing", "") or ""),
+                "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
+                "remedy": _as_sentence(getattr(a, "remedy", "") or ""),
+            }
     return {
-        "headline": prose.headline,
-        "summary": prose.summary,
-        "why": prose.summary,
-        "meaning": prose.summary,
-        "how_this_may_show_up": list(prose.how_this_may_show_up or []),
-        "manifestations": list(prose.how_this_may_show_up or []),
-        "what_to_watch": list(prose.what_to_watch or []),
-        "what_helps": list(prose.what_helps or []),
-        "pressure": prose.pressure,
-        "action": prose.action,
-        "timing_summary": prose.timing_summary or "",
+        "conversational": True,
+        "personality": _clip_to_sentence(prose.personality),
+        "current_phase": _clip_to_sentence(prose.current_phase),
+        "recent_months": _clip_to_sentence(prose.recent_months or ""),
+        "hardest_area_note": _clip_to_sentence(prose.hardest_area_note or ""),
+        "mind_now": [_as_sentence(x) for x in list(prose.mind_now or []) if str(x).strip()],
+        "why_now": _clip_to_sentence(prose.why_now or ""),
+        "family_note": (
+            [_as_sentence(x) for x in list(prose.family_note or []) if str(x).strip()]
+            if access == "paid" else []
+        ),
+        "areas": areas,
     }
+
+
+def _conversational_palm_overlay(
+    prose: ConversationalPalmProse, *, access: str,
+) -> dict[str, Any]:
+    areas: dict[str, Any] = {}
+    if access == "paid":
+        for a in list(prose.areas or []):
+            key = str(getattr(a, "aspect", "") or "").strip()
+            if not key:
+                continue
+            areas[key] = {
+                "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
+                "timing": _as_sentence(getattr(a, "timing", "") or ""),
+                "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
+                "remedy": _as_sentence(getattr(a, "remedy", "") or ""),
+            }
+    return {
+        "conversational": True,
+        "personality": _clip_to_sentence(prose.personality),
+        "current_phase": _clip_to_sentence(prose.current_phase),
+        "hardest_area_note": _clip_to_sentence(prose.hardest_area_note or ""),
+        "mind_now": [_as_sentence(x) for x in list(prose.mind_now or []) if str(x).strip()],
+        "why_now": _clip_to_sentence(prose.why_now or ""),
+        "hand_contrast_note": _clip_to_sentence(prose.hand_contrast_note or ""),
+        "areas": areas,
+    }
+
 
 
 # ---------------------------------------------------------------------------
 # Per-tab humanizers
 # ---------------------------------------------------------------------------
 def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
-    overlay: dict[str, Any] = {"cards": {}}
-    stats = {"accepted": 0, "rejected": 0, "errors": 0}
-    fallback_used = False
-    retries_total = 0
-    sys = system_prompt_for("full_report")
+    """The conversational page: one call for free, two for paid.
 
-    def one_card(cf):
-        mini = ReportFacts(
+    Free is one reply and fits comfortably. Paid asks for the opening, the
+    background block and eight life areas against an 8k context, and a model
+    handed all of it at once spends the budget on the opening and returns
+    three areas out of eight. Splitting the paid page into a page call and an
+    areas call costs one extra request and gives each half room to be written.
+    """
+    stats = {"accepted": 0, "rejected": 0, "errors": 0, "rejection_reasons": {}}
+    access = str(getattr(facts, "access", "free") or "free")
+    paid = access == "paid"
+
+    def reject(reason_list: list[str]) -> None:
+        for reason in reason_list or ["unknown_rejection"]:
+            key = str(reason).split(":", 1)[0][:80]
+            stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
+
+    prose, retries, errs = _complete_validated(
+        ConversationalProse,
+        system_prompt_for("full_report"),
+        user_prompt(facts, schema_name="ConversationalProse",
+                    section="page" if paid else "")
+        + (
+            "\nWrite full sentences. current_phase must be 2–4 sentences using "
+            "phase_tone, phase_end and phase_notes — never a single word like "
+            "'supportive'. recent_months must mention each supplied window. "
+            "mind_now needs one hedged line per life_state.mind_now entry and "
+            "why_now needs 2–4 sentences on why this stretch feels as it does. "
+            "family_note needs one line per family_notes entry, in order, each "
+            "naming that relation and using only that entry's own notes. "
+            "first_name is there so you know who you are talking to, not to "
+            "write about them: every field says 'you' and 'your', never the "
+            "reader's name and never she/he. "
+        )
+        + (
+            "Leave areas empty — the life areas are requested separately."
+            if paid else
+            "When access=free, leave areas empty."
+        ),
+        facts,
+        validate_prose_against_facts,
+        keep_last_on_failure=True,
+    )
+    if prose is None:
+        stats["rejected"] += 1
+        reject(errs or ["empty_conversational_prose"])
+        # Do not mark accepted — switch stays on the classic frozen renderer.
+        return FB.conversational_fallback(facts), stats, True, retries
+
+    # Free must never carry paid area detail even if the model returns it.
+    overlay = _conversational_overlay(prose, access=access)
+    overlay["areas"] = _humanize_report_areas(facts, stats) if paid else {}
+    # Per-slot QA. One bad life area must not discard the whole page: drop the
+    # offending slot and let deterministic fact prose fill it.
+    overlay, kept, dropped = _screen_conversational_slots(overlay, facts, stats)
+    overlay = _merge_conversational_facts(overlay, facts, access=access)
+    if not str(overlay.get("personality") or "").strip():
+        stats["rejected"] += 1
+        reject(["empty_conversational_prose"])
+        return FB.conversational_fallback(facts), stats, True, retries
+    stats["accepted"] = max(1, kept)
+    stats["rejected"] += dropped
+    return overlay, stats, dropped > 0 and kept == 0, retries
+
+
+def _humanize_report_areas(facts: Any, stats: dict[str, Any]) -> dict[str, Any]:
+    """The paid life-area passages, asked for on their own card facts.
+
+    A failure here is not a failed page: the merge step fills every missing
+    area from deterministic prose, so the worst case is the reading a reader
+    would have got before the model was switched on.
+    """
+    prose, _retries, errs = _complete_validated(
+        ConversationalAreasProse,
+        system_prompt_for("full_report_areas"),
+        user_prompt(facts, schema_name="ConversationalAreasProse",
+                    section="areas"),
+        facts,
+        lambda p, f: [],  # per-area QA runs slot by slot in the screen step
+        keep_last_on_failure=True,
+    )
+    if prose is None:
+        stats["rejection_reasons"]["areas:empty_or_model_failure"] = (
+            stats["rejection_reasons"].get("areas:empty_or_model_failure", 0) + 1
+        )
+        for reason in errs or []:
+            key = f"areas:{str(reason).split(':', 1)[0]}"[:80]
+            stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
+        return {}
+    out: dict[str, Any] = {}
+    for a in list(prose.areas or []):
+        key = str(getattr(a, "area", "") or "").strip()
+        if not key:
+            continue
+        out[key] = {
+            "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
+            "timing": FB.timing_sentence(getattr(a, "timing", "") or ""),
+            "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
+            "remedy": _as_sentence(getattr(a, "remedy", "") or ""),
+        }
+    return out
+
+
+def _screen_conversational_slots(
+    overlay: dict[str, Any], facts: Any, stats: dict[str, Any],
+) -> tuple[dict[str, Any], int, int]:
+    """Validate each prose slot on its own facts; blank the ones that fail."""
+    from .rules import check_prose
+
+    out = dict(overlay or {})
+    kept = 0
+    dropped = 0
+
+    def note(reason: str) -> None:
+        # Slot plus gate name, dropping any variable tail such as an area key:
+        # "areas.outlook" alone cannot tell an overclaimed promise from leaked
+        # jargon, and those two want opposite fixes.
+        key = ":".join(str(reason).split(":")[:2])[:80]
+        stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
+
+    for key in ("personality", "current_phase", "recent_months", "hardest_area_note",
+                "why_now"):
+        text = str(out.get(key) or "").strip()
+        if not text:
+            continue
+        problems = check_prose(text, facts)
+        if key == "why_now":
+            problems += validate_why_now(text)
+        if problems:
+            dropped += 1
+            for p in problems:
+                note(f"{key}:{p}")
+            out[key] = ""
+        else:
+            kept += 1
+
+    # One bad "on your mind" line must not cost the whole block, and a line
+    # that names a topic the reading never flagged is worse than no line.
+    mind_lines: list[str] = []
+    for line in list(out.get("mind_now") or []):
+        text = str(line or "").strip()
+        if not text:
+            continue
+        problems = check_prose(text, facts)
+        problems += validate_mind_now_line(text, facts)
+        if problems:
+            dropped += 1
+            for p in problems:
+                # Keep the gate name: "mind_now" alone cannot tell an invented
+                # topic from a line that was merely stated too flatly.
+                note(f"mind_now.{p}")
+            continue
+        kept += 1
+        mind_lines.append(text)
+    out["mind_now"] = mind_lines[:3]
+
+    # A misattributed relative is the most checkable error on the page — the
+    # reader knows these people — so a failing line is dropped, not repaired.
+    family_lines: list[str] = []
+    for line in list(out.get("family_note") or []):
+        text = str(line or "").strip()
+        if not text:
+            continue
+        problems = check_prose(text, facts)
+        problems += validate_family_line(text, facts)
+        if problems:
+            dropped += 1
+            for p in problems:
+                note(f"family_note.{p}")
+            continue
+        kept += 1
+        family_lines.append(text)
+    out["family_note"] = family_lines[:4]
+
+    cards = {getattr(c, "area", ""): c for c in (getattr(facts, "cards", None) or [])}
+    areas = dict(out.get("areas") or {})
+    for area, block in list(areas.items()):
+        if not isinstance(block, dict):
+            areas.pop(area, None)
+            continue
+        card = cards.get(area)
+        if card is None:
+            dropped += 1
+            note(f"areas:unknown_area:{area}")
+            areas.pop(area, None)
+            continue
+        mini = _single_card_facts(facts, card)
+        cleaned = {}
+        for field, value in block.items():
+            text = str(value or "").strip()
+            if not text:
+                continue
+            problems = check_prose(text, mini, area=area)
+            problems += validate_conversational_area(field, text, card)
+            if problems:
+                dropped += 1
+                for p in problems:
+                    note(f"areas.{field}:{p}")
+                continue
+            cleaned[field] = text
+            kept += 1
+        areas[area] = cleaned
+    out["areas"] = areas
+    return out, kept, dropped
+
+
+def _single_card_facts(facts: Any, card: Any) -> Any:
+    """Mini ReportFacts holding one card, for per-area grounding checks."""
+    try:
+        return ReportFacts(
             first_name=facts.first_name,
             age_band=facts.age_band,
+            age_years=facts.age_years,
+            gender=facts.gender,
             access=facts.access,
-            cards=[cf],
-            dashboard_buckets={},
-            timing_windows=[],
+            cards=[card],
+            timing_windows=list(card.timing_windows or []),
+            personality_traits=list(facts.personality_traits or []),
+            phase_direction=facts.phase_direction,
+            phase_tone=facts.phase_tone,
+            phase_end=facts.phase_end,
+            phase_notes=list(facts.phase_notes or []),
+            recent_months=list(facts.recent_months or []),
+            hardest_areas=list(facts.hardest_areas or []),
+            hardest_area_labels=list(facts.hardest_area_labels or []),
             schema_version=facts.schema_version,
             engine_version=facts.engine_version,
             report_id=facts.report_id,
             facts_hash=facts.facts_hash,
         )
-        prose, retries, errs = _complete_validated(
-            CardProse, sys,
-            user_prompt(mini, schema_name="CardProse"),
-            mini,
-            lambda p, f: validate_card_prose(p, f),
-        )
-        return cf.area, prose, retries, errs, cf
+    except Exception:  # noqa: BLE001
+        return facts
 
-    cards = list(facts.cards or [])
-    results = []
-    if cards:
-        with ThreadPoolExecutor(max_workers=min(_concurrency(), len(cards))) as pool:
-            futs = {pool.submit(one_card, cf): cf.area for cf in cards}
-            for fut in as_completed(futs):
-                try:
-                    results.append(fut.result())
-                except Exception as exc:  # noqa: BLE001
-                    print(f"[llm] card future failed: {exc}", flush=True)
-                    stats["errors"] += 1
 
-    for area, prose, retries, errs, cf in results:
-        retries_total = max(retries_total, retries)
-        if prose is None:
-            stats["rejected"] += 1
-            overlay["cards"][area] = FB.card_fallback(cf)
-            fallback_used = True
-            if errs:
-                print(f"[llm] card {area} fallback after: {errs[:4]}", flush=True)
-            continue
-        if getattr(prose, "area", "") != area:
-            try:
-                prose.area = area
-            except Exception:  # noqa: BLE001
-                overlay["cards"][area] = FB.card_fallback(cf)
-                fallback_used = True
-                stats["rejected"] += 1
-                continue
-        overlay["cards"][area] = _card_overlay_dict(prose)
-        stats["accepted"] += 1
-
-    # Opening
-    if facts.cards:
-        try:
-            full, r, errs = _complete_validated(
-                ReportProse, sys,
-                user_prompt(facts, schema_name="ReportProse")
-                + "\nFill opening only; cards may be empty.",
-                facts,
-                lambda p, f: validate_slot(getattr(p, "opening", "") or "", f),
-            )
-            retries_total = max(retries_total, r)
-            if full and (full.opening or "").strip() and not errs:
-                overlay["opening"] = full.opening.strip()
-                stats["accepted"] += 1
-            else:
-                fb = FB.report_fallback(facts)
-                overlay["opening"] = fb.get("opening") or ""
-                fallback_used = True
-                stats["rejected"] += 1
-        except Exception:  # noqa: BLE001
-            stats["errors"] += 1
-            fb = FB.report_fallback(facts)
-            overlay.setdefault("opening", fb.get("opening") or "")
-            fallback_used = True
-
-    if not overlay.get("opening"):
-        overlay["opening"] = FB.report_fallback(facts).get("opening") or ""
-
-    return overlay, stats, fallback_used, retries_total
+def _merge_conversational_facts(
+    overlay: dict[str, Any], facts: Any, *, access: str,
+) -> dict[str, Any]:
+    """Fill thin LLM slots from Python facts so the page is never skeletal."""
+    fb = FB.conversational_fallback(facts)
+    out = dict(overlay or {})
+    for key in ("personality", "current_phase", "recent_months", "hardest_area_note",
+                "why_now"):
+        cur = str(out.get(key) or "").strip()
+        # Bare tone words, bare label lists or empty slots → deterministic prose.
+        looks_like_a_sentence = " is " in cur or " are " in cur or "." in cur
+        if len(cur) < 40 or not looks_like_a_sentence or cur.lower() in {
+            "supportive", "mixed", "demanding", "caution",
+        }:
+            if fb.get(key):
+                out[key] = fb[key]
+    # The block is either the model's or Python's, never half of each: a mix of
+    # two voices in three consecutive lines is what reads as machine-written.
+    kept_mind = [str(x).strip() for x in (out.get("mind_now") or []) if str(x).strip()]
+    expected = len(list(getattr(getattr(facts, "life_state", None), "mind_now", None) or []))
+    if len(kept_mind) < expected:
+        kept_mind = list(fb.get("mind_now") or []) or kept_mind
+    out["mind_now"] = kept_mind[:3]
+    # Same rule for the background block, and for the same reason: a page that
+    # covers the father and then goes quiet about the mother reads as an error.
+    kept_family = [str(x).strip() for x in (out.get("family_note") or []) if str(x).strip()]
+    if access == "paid":
+        if len(kept_family) < len(list(getattr(facts, "family_notes", None) or [])):
+            kept_family = list(fb.get("family_note") or []) or kept_family
+        out["family_note"] = kept_family[:4]
+    else:
+        out["family_note"] = []
+    if access == "paid":
+        cards = {getattr(c, "area", ""): c for c in (getattr(facts, "cards", None) or [])}
+        areas = dict(out.get("areas") or {})
+        for area, block in (fb.get("areas") or {}).items():
+            cur = areas.get(area) if isinstance(areas.get(area), dict) else {}
+            merged = dict(block or {})
+            for field in ("outlook", "timing", "manifestation", "remedy"):
+                if str(cur.get(field) or "").strip():
+                    merged[field] = cur[field]
+            # A difficulty must never be published without the step that helps.
+            card = cards.get(area)
+            if card is not None and not str(merged.get("remedy") or "").strip():
+                if FB._area_needs_remedy(card):
+                    merged["remedy"] = FB._area_remedy_sentence(
+                        card, str(getattr(card, "label", "") or area.replace("_", " "))
+                    )
+            if card is not None:
+                label, cls = FB.area_tone(card)
+                merged["tone_label"], merged["tone_class"] = label, cls
+            areas[area] = merged
+        out["areas"] = areas
+    else:
+        out["areas"] = {}
+    out["conversational"] = True
+    return out
 
 
 def _humanize_question(facts: QuestionFacts) -> tuple[dict, dict, bool, int]:
@@ -324,98 +622,183 @@ def _humanize_horary(facts: HoraryFacts) -> tuple[dict, dict, bool, int]:
 
 
 def _humanize_palm(facts: PalmFacts) -> tuple[dict, dict, bool, int]:
-    overlay: dict[str, Any] = {"aspects": {}}
-    stats = {"accepted": 0, "rejected": 0, "errors": 0}
-    fallback_used = False
-    retries_total = 0
-    sys = system_prompt_for("palm")
+    """One ConversationalPalmProse call for the whole palm page."""
+    stats = {"accepted": 0, "rejected": 0, "errors": 0, "rejection_reasons": {}}
+    access = str(getattr(facts, "access", "free") or "free")
 
-    def one(asp):
-        mini = PalmFacts(
-            first_name=facts.first_name,
-            age_band=facts.age_band,
-            access=facts.access,
-            dominant_hand=facts.dominant_hand,
-            photo_grade=facts.photo_grade,
-            photo_confidence=facts.photo_confidence,
-            special_marks_allowed=facts.special_marks_allowed,
-            future_timing_allowed=facts.future_timing_allowed,
-            age_precision=facts.age_precision,
-            quality_note=facts.quality_note,
-            aspects=[asp],
-            future_windows=list(facts.future_windows or []) if facts.future_timing_allowed else [],
-            special_mark_ids=list(facts.special_mark_ids or []) if facts.special_marks_allowed else [],
-            schema_version=facts.schema_version,
-            engine_version=facts.engine_version,
-            report_id=facts.report_id,
-            facts_hash=facts.facts_hash,
-        )
-        prose, retries, errs = _complete_validated(
-            PalmAspectProse, sys,
-            user_prompt(mini, schema_name="PalmAspectProse"),
-            mini,
-            lambda p, f: validate_palm_prose(
-                type("S", (), {"opening": "", "aspects": [p]})(), f
-            ),
-        )
-        return asp.aspect, prose, retries, errs, asp
+    def reject(reason_list: list[str]) -> None:
+        for reason in reason_list or ["unknown_rejection"]:
+            key = str(reason)[:120]
+            stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
 
-    aspects = list(facts.aspects or [])
-    results = []
-    if aspects:
-        with ThreadPoolExecutor(max_workers=min(_concurrency(), len(aspects))) as pool:
-            futs = [pool.submit(one, a) for a in aspects]
-            for fut in as_completed(futs):
-                try:
-                    results.append(fut.result())
-                except Exception:  # noqa: BLE001
-                    stats["errors"] += 1
+    prose, retries, errs = _complete_validated(
+        ConversationalPalmProse,
+        system_prompt_for("palm"),
+        user_prompt(facts, schema_name="ConversationalPalmProse")
+        + (
+            "\nWrite full sentences. current_phase must combine life_stage_note "
+            "with the demanding aspect. mind_now needs one hedged line per "
+            "palm_state.mind_now entry, why_now needs 2–4 sentences on why the "
+            "reading feels as it does, and hand_contrast_note needs 2–3 "
+            "sentences built only from hand_contrast. When access=paid, return "
+            "one areas[] entry for EVERY aspect with outlook, timing, "
+            "manifestation and remedy (remedy only when remedies_allowed)."
+        ),
+        facts,
+        validate_prose_against_facts,
+        keep_last_on_failure=True,
+    )
+    if prose is None:
+        stats["rejected"] += 1
+        reject(errs or ["empty_conversational_palm_prose"])
+        return FB.conversational_palm_fallback(facts), stats, True, retries
 
-    for aspect, prose, retries, errs, asp in results:
-        retries_total = max(retries_total, retries)
-        if prose is None:
-            stats["rejected"] += 1
-            fb = FB.palm_fallback(
-                type("F", (), {
-                    "first_name": facts.first_name,
-                    "aspects": [asp],
-                })()
-            )
-            overlay["aspects"][aspect] = (fb.get("aspects") or {}).get(aspect) or {
-                "headline": f"Your {aspect.replace('_', ' ')} pattern is noted.",
-                "why": "Based on the measured palm signals for this life theme.",
-                "points": [],
-            }
-            fallback_used = True
+    overlay = _conversational_palm_overlay(prose, access=access)
+    if access != "paid":
+        overlay["areas"] = {}
+    overlay, kept, dropped = _screen_palm_slots(overlay, facts, stats)
+    overlay = _merge_conversational_palm_facts(overlay, facts, access=access)
+    if not str(overlay.get("personality") or "").strip():
+        stats["rejected"] += 1
+        reject(["empty_conversational_palm_prose"])
+        return FB.conversational_palm_fallback(facts), stats, True, retries
+    stats["accepted"] = max(1, kept)
+    stats["rejected"] += dropped
+    return overlay, stats, dropped > 0 and kept == 0, retries
+
+
+def _screen_palm_slots(
+    overlay: dict[str, Any], facts: Any, stats: dict[str, Any],
+) -> tuple[dict[str, Any], int, int]:
+    from .rules import check_prose
+
+    out = dict(overlay or {})
+    kept = 0
+    dropped = 0
+
+    def note(reason: str) -> None:
+        key = str(reason)[:120]
+        stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
+
+    for key in ("personality", "current_phase", "hardest_area_note",
+                "why_now", "hand_contrast_note"):
+        text = str(out.get(key) or "").strip()
+        if not text:
             continue
-        overlay["aspects"][aspect] = {
-            "headline": prose.headline,
-            "why": prose.why,
-            "points": list(prose.points or []),
-        }
-        stats["accepted"] += 1
-
-    try:
-        full, r, errs = _complete_validated(
-            PalmProse, sys,
-            user_prompt(facts, schema_name="PalmProse")
-            + "\nFill opening; aspects may be empty.",
-            facts,
-            lambda p, f: validate_slot(getattr(p, "opening", "") or "", f),
-        )
-        retries_total = max(retries_total, r)
-        if full and (full.opening or "").strip() and not errs:
-            overlay["opening"] = full.opening.strip()
-            stats["accepted"] += 1
+        problems = check_prose(text, facts)
+        if key == "why_now":
+            problems += validate_why_now(text)
+        elif key == "hand_contrast_note":
+            problems += validate_hand_contrast_note(text, facts)
+        if problems:
+            dropped += 1
+            for p in problems:
+                note(f"{key}:{p}")
+            out[key] = ""
         else:
-            overlay["opening"] = FB.palm_fallback(facts).get("opening") or ""
-            fallback_used = True
-    except Exception:  # noqa: BLE001
-        stats["errors"] += 1
-        overlay["opening"] = FB.palm_fallback(facts).get("opening") or ""
-        fallback_used = True
+            kept += 1
 
-    return overlay, stats, fallback_used, retries_total
+    # One bad "on your mind" line must not cost the whole block, and a line
+    # naming a theme the hands never showed is worse than no line.
+    mind_lines: list[str] = []
+    seen_topics: set[int] = set()
+    for line in list(out.get("mind_now") or []):
+        text = str(line or "").strip()
+        if not text:
+            continue
+        problems = check_prose(text, facts)
+        problems += validate_mind_now_line(text, facts)
+        topic = mind_now_topic_index(text, facts)
+        if topic is not None and topic in seen_topics:
+            # Three lines about the same theme drop the area that is going
+            # well, which is the half of the block that keeps it a reading
+            # rather than a warning.
+            problems.append("mind_now_repeats_one_topic")
+        if problems:
+            dropped += 1
+            for p in problems:
+                note(f"mind_now:{p}")
+            continue
+        if topic is not None:
+            seen_topics.add(topic)
+        kept += 1
+        mind_lines.append(text)
+    out["mind_now"] = mind_lines[:3]
+
+    areas = dict(out.get("areas") or {})
+    for aspect, block in list(areas.items()):
+        if not isinstance(block, dict):
+            areas.pop(aspect, None)
+            continue
+        cleaned = {}
+        for field, value in block.items():
+            text = str(value or "").strip()
+            if not text:
+                continue
+            problems = check_prose(text, facts, area=aspect)
+            if problems:
+                dropped += 1
+                for p in problems:
+                    note(f"areas.{field}:{p}")
+                continue
+            cleaned[field] = text
+            kept += 1
+        areas[aspect] = cleaned
+    out["areas"] = areas
+    return out, kept, dropped
+
+
+# A paid palm page asks for four fields across eight aspects in one reply, and
+# a model that runs short answers "Positive." — which passes every gate and
+# says nothing. Below these lengths the deterministic line, built from the
+# aspect's own summary, is the better sentence.
+_PALM_AREA_FLOOR = {
+    "outlook": 40, "timing": 20, "manifestation": 25, "remedy": 25,
+}
+
+
+def _merge_conversational_palm_facts(
+    overlay: dict[str, Any], facts: Any, *, access: str,
+) -> dict[str, Any]:
+    fb = FB.conversational_palm_fallback(facts)
+    out = dict(overlay or {})
+    for key in ("personality", "current_phase", "hardest_area_note",
+                "why_now", "hand_contrast_note"):
+        cur = str(out.get(key) or "").strip()
+        if len(cur) < 40:
+            if fb.get(key):
+                out[key] = fb[key]
+    # The block is either the model's or Python's, never half of each: two
+    # voices across three consecutive lines is what reads as machine-written.
+    kept_mind = [str(x).strip() for x in (out.get("mind_now") or []) if str(x).strip()]
+    expected = len(list(getattr(getattr(facts, "palm_state", None), "mind_now", None) or []))
+    if len(kept_mind) < expected:
+        kept_mind = list(fb.get("mind_now") or []) or kept_mind
+    out["mind_now"] = kept_mind[:3]
+    # The care note sits directly under the phase paragraph and just above the
+    # "on your mind" list; repeating either of them reads as a copy-paste slip.
+    note = str(out.get("hardest_area_note") or "").strip()
+    neighbours = [str(out.get("current_phase") or "").strip()]
+    neighbours += [str(x) for x in (out.get("mind_now") or [])]
+    if note and any(
+        text and (note in text or note[:60] in text) for text in neighbours
+    ):
+        out["hardest_area_note"] = fb.get("hardest_area_note") or ""
+    if access == "paid":
+        areas = dict(out.get("areas") or {})
+        for aspect, block in (fb.get("areas") or {}).items():
+            cur = areas.get(aspect) if isinstance(areas.get(aspect), dict) else {}
+            merged = dict(block or {})
+            for field, floor in _PALM_AREA_FLOOR.items():
+                text = str(cur.get(field) or "").strip()
+                if len(text) >= floor:
+                    merged[field] = text
+            areas[aspect] = merged
+        out["areas"] = areas
+    else:
+        out["areas"] = {}
+    out["conversational"] = True
+    return out
 
 
 def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
@@ -435,7 +818,7 @@ def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
     )
     out: dict[str, Any] = {
         "overlay": {},
-        "stats": {"accepted": 0, "rejected": 0, "errors": 0},
+        "stats": {"accepted": 0, "rejected": 0, "errors": 0, "rejection_reasons": {}},
         "enabled": False,
         "kind": kind,
         "access": access_n,
@@ -469,6 +852,7 @@ def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
             "accepted": (cached.get("stats") or {}).get("accepted", 0),
             "rejected": (cached.get("stats") or {}).get("rejected", 0),
             "fallback_used": bool(cached.get("fallback_used")),
+            "rejection_reasons": (cached.get("stats") or {}).get("rejection_reasons", {}),
         }
         return cached
 
@@ -492,13 +876,13 @@ def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
         # Last-resort deterministic fallback so enabled path never blanks
         try:
             if kind == "full_report" and isinstance(facts, ReportFacts):
-                overlay = FB.report_fallback(facts)
+                overlay = FB.conversational_fallback(facts)
             elif kind == "user_question" and isinstance(facts, QuestionFacts):
                 overlay = FB.question_fallback(facts)
             elif kind == "horary" and isinstance(facts, HoraryFacts):
                 overlay = FB.horary_fallback(facts)
             elif kind == "palm" and isinstance(facts, PalmFacts):
-                overlay = FB.palm_fallback(facts)
+                overlay = FB.conversational_palm_fallback(facts)
             else:
                 overlay = {}
             out["overlay"] = overlay
@@ -515,12 +899,15 @@ def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
     meta.accepted = int(stats.get("accepted") or 0)
     meta.rejected = int(stats.get("rejected") or 0)
     meta.errors = int(stats.get("errors") or 0)
+    meta.rejection_reasons = dict(stats.get("rejection_reasons") or {})
 
     out["overlay"] = overlay
     out["stats"] = stats
     out["fallback_used"] = fallback_used
     out["run_meta"] = meta.model_dump()
-    if overlay:
+    # Do not cache fallback/empty runs — a missing client or 429 would
+    # otherwise pin template prose for the rest of the TTL.
+    if overlay and not fallback_used and int(stats.get("accepted") or 0) > 0:
         _cache_set(cache_key, out)
     # Log internal meta only — never render into HTML
     print(
@@ -560,38 +947,29 @@ def humanize_chat(
     # Give the model a compact, explicit list of fact IDs it may cite. The
     # detailed internal IDs stay out of normal prose, but follow-up chat needs
     # traceability for the facts it used.
-    available_fact_ids = {"promise", "activation", "direction", "confidence",
-                          "timing", "manifestation", "action", "remedy", "why"}
+    available_fact_ids = set(GENERIC_FACT_IDS)
     try:
-        raw_facts = facts.model_dump(mode="json") if hasattr(facts, "model_dump") else facts
-        def _ids(obj):
-            if isinstance(obj, dict):
-                for k, v in obj.items():
-                    if k in ("text_id", "signal_id", "point_id", "id") and v:
-                        available_fact_ids.add(str(v))
-                    _ids(v)
-            elif isinstance(obj, list):
-                for v in obj:
-                    _ids(v)
-        _ids(raw_facts)
-    except Exception:
+        available_fact_ids |= citable_fact_ids(facts)
+    except Exception:  # noqa: BLE001
         pass
-    payload = {
-        "facts": facts.model_dump(mode="json") if hasattr(facts, "model_dump") else facts,
-        "available_fact_ids": sorted(available_fact_ids)[:80],
-        "question": (question or "")[:400],
-        "history": hist[-6:],
-    }
     prose, _retries, errs = _complete_validated(
         ChatAnswer,
         system_prompt_for("chat"),
-        user_prompt(payload, schema_name="ChatAnswer"),
+        chat_user_prompt(
+            facts,
+            question,
+            history=hist[-6:],
+            available_fact_ids=sorted(available_fact_ids)[:80],
+        ),
         facts,
         validate_chat_answer,
         temperature=0.3,
     )
     if prose is None:
         result["stats"]["rejected"] = 1
+        # Keep why it was rejected: a refusal the customer sees for a fair
+        # question is a bug, and without the reasons it is invisible in logs.
+        result["stats"]["rejection_reasons"] = list(errs or [])
         result["fallback_used"] = True
         result["answer"] = (
             "I can only speak from the facts already in your reading. "

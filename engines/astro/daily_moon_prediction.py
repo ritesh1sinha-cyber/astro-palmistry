@@ -68,6 +68,16 @@ WEEKDAY_LORD = {
 }
 
 
+def _ordinal_suffix(value: Any) -> str:
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return "th"
+    if 10 <= n % 100 <= 20:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
 def _load_gochar_tables() -> tuple[dict, dict]:
     path = BASE_DIR / "bhardwaj_book_data.json"
     if path.is_file():
@@ -552,7 +562,7 @@ def compute_daily_moon_guide(
         elif h in (aus_tbl.get(pl, [])):
             sav, bv = av_for(sign, pl)
             slow_notes.append(
-                f"{pl} in supportive {h}th-from-natal-Moon ({sign}); SAV {sav}, {pl} BAV {bv}."
+                f"{pl} in supportive {h}{_ordinal_suffix(h)}-from-natal-Moon ({sign}); SAV {sav}, {pl} BAV {bv}."
             )
         elif h in (inaus_tbl.get(pl, [])):
             slow_notes.append(
@@ -740,6 +750,17 @@ def compute_daily_moon_guide(
             "note": (chandra["donts"][0][0] if chandra.get("donts") else ""),
         },
         "natal_moon": {"sign": moon_sign, "nakshatra": moon_nak},
+        # Public daily context used only to explain the already-computed
+        # activated house/significator. No second prediction is calculated.
+        "lagna": lagna,
+        "natal_planets": {
+            str(k): {
+                "sign": (v or {}).get("sign", ""),
+                "house": (v or {}).get("house", ""),
+                "dignity": (v or {}).get("dignity", ""),
+            }
+            for k, v in (pc.get("planets") or {}).items()
+        },
         "gochar": {
             "moon": {"auspicious": moon_aus, "inauspicious": moon_inaus},
             "sun": {"auspicious": sun_aus, "inauspicious": sun_inaus},
@@ -779,7 +800,7 @@ def compute_daily_moon_guide(
             "Ashtakavarga SAV/BAV (rules10)",
             "Ashtakavarga bindus on the transit signs of the running dasha lords (rules10 x Vimshottari)",
             "GK transit+dasha pairing incl. Vim/Jaimini pratyantar (rules11)",
-            "Boney D1-D9 dignity cross-check on period lords (rules45)",
+            "D9 dignity cross-check on period lords (rules45)",
             "Jaimini Chara karakas + SAV on dasha signs (rules6/rules10)",
             "Numerology lucky series (rules23/Woods)",
             "Planet-day colours (rules40/41 GEM_DATA)",

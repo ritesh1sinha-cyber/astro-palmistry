@@ -36,6 +36,8 @@ from __future__ import annotations
 
 import html as _html
 import re
+from copy import deepcopy
+from datetime import date, datetime
 from typing import Any
 
 # --- policy ----------------------------------------------------------------
@@ -300,6 +302,120 @@ CONFIDENCE_SENTENCE = {
 }
 
 
+
+def _parse_asked_date(asked: str) -> date:
+    raw = str(asked or "").strip()
+    for fmt in (
+        "%Y-%m-%d", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S",
+        "%d %b %Y", "%d %B %Y", "%d-%m-%Y", "%d/%m/%Y",
+    ):
+        try:
+            return datetime.strptime(raw[:19], fmt).date()
+        except ValueError:
+            continue
+    return date.today()
+
+
+def _horary_requested_range(question: str, asked: str) -> tuple[date, date] | None:
+    """Return an explicit question horizon; otherwise leave timing untouched."""
+    q = re.sub(r"\s+", " ", str(question or "").lower())
+    base = _parse_asked_date(asked)
+    if re.search(r"\bthis year\b|\bwithin this year\b|\bby year[- ]end\b", q):
+        return date(base.year, 1, 1), date(base.year, 12, 31)
+    m = re.search(r"\bnext\s+(\d{1,2})\s+years?\b", q)
+    if m:
+        n = max(1, min(20, int(m.group(1))))
+        try:
+            end = base.replace(year=base.year + n)
+        except ValueError:
+            end = base.replace(year=base.year + n, month=2, day=28)
+        return base, end
+    if re.search(r"\bnext year\b", q):
+        return base, base.replace(year=base.year + 1)
+    return None
+
+
+def filter_horary_timing_for_question(
+    question: str,
+    asked: str,
+    verdicts: dict,
+    western_judgment: dict,
+    vedic_customer: dict | None = None,
+) -> tuple[dict, dict, dict | None]:
+    """Keep only dated horary triggers that fall inside an explicit question horizon.
+
+    The verdict itself is not recalculated. Only timing candidates shown to the
+    customer/LLM are filtered, so a 2026 question cannot display a 2027 trigger
+    as if it answered the requested period.
+    """
+    horizon = _horary_requested_range(question, asked)
+    if not horizon:
+        return verdicts, western_judgment, vedic_customer
+
+    start, end = horizon
+
+    def as_date(value):
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        raw = str(value or "").strip()
+        for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%d %b %Y", "%d %B %Y"):
+            try:
+                return datetime.strptime(raw[:19], fmt).date()
+            except ValueError:
+                continue
+        return None
+
+    def in_range(d: date | None) -> bool:
+        return d is not None and start <= d <= end
+
+    def filter_value(value, parent_key=""):
+        if isinstance(value, dict):
+            out = {}
+            for k, v in value.items():
+                kl = str(k).lower()
+                if kl in {"timing", "timings", "windows", "timing_windows", "dated_windows", "triggers"} and isinstance(v, (list, tuple)):
+                    out[k] = filter_timing_list(v)
+                else:
+                    out[k] = filter_value(v, kl)
+            return out
+        if isinstance(value, list):
+            return [filter_value(v, parent_key) for v in value]
+        return value
+
+    def filter_timing_list(items):
+        out = []
+        for item in items or []:
+            candidate = item[0] if isinstance(item, (tuple, list)) and item else (
+                item.get("date") or item.get("start") or item.get("when") if isinstance(item, dict) else item
+            )
+            d = as_date(candidate)
+            if d is None:
+                # Keep undated explanatory entries; they are not false dates.
+                out.append(item)
+            elif in_range(d):
+                out.append(item)
+        return out
+
+    filtered_verdicts = filter_value(deepcopy(verdicts))
+    filtered_western = filter_value(deepcopy(western_judgment))
+    filtered_vedic = filter_value(deepcopy(vedic_customer)) if vedic_customer is not None else None
+    if isinstance(filtered_western, dict):
+        timing_items = filtered_western.get("timing") or []
+        if not timing_items:
+            filtered_western["requested_horizon_note"] = (
+                f"No strong dated trigger was identified between "
+                f"{start.strftime('%d %b %Y')} and {end.strftime('%d %b %Y')}."
+            )
+        else:
+            filtered_western["requested_horizon_note"] = (
+                f"At least one dated trigger falls inside the period you asked about "
+                f"({start.strftime('%d %b %Y')} to {end.strftime('%d %b %Y')})."
+            )
+    return filtered_verdicts, filtered_western, filtered_vedic
+
+
 def _subject(question: str) -> str:
     """A short, human restatement so the reader feels heard before judged."""
     q = re.sub(r"\s+", " ", (question or "").strip().rstrip("?")).lower()
@@ -345,9 +461,9 @@ def _technical_lines(j: dict) -> list[str]:
             f"itself is.")
     elif j.get("same_lord"):
         lines.append(
-            "<strong>You and the matter share the same ruling planet.</strong> "
-            "Classically that is a favourable sign on its own — it means the "
-            "outcome is tied to you rather than to somebody else's decision.")
+            "<strong>You and the matter share the same key indicator.</strong> "
+            "That gives the question a more direct connection to you and reduces "
+            "the sense that the outcome depends entirely on someone else's decision.")
 
     perfection = j.get("perfection")
     if isinstance(perfection, dict) and perfection.get("aspect"):
@@ -441,9 +557,14 @@ def _western_plain_block(j: dict, *, paid: bool = True) -> str:
             timing_html = (f"<p class=\"eyebrow\" style=\"margin:10px 0 4px\">Timing</p>"
                            f"<ul class=\"windows\">{items}</ul>")
         else:
-            timing_html = ("<p class=\"eyebrow\" style=\"margin:10px 0 4px\">Timing</p>"
-                           "<p>No single dated window stands out; read this as a "
-                           "process rather than one calendar day.</p>")
+            note = j.get("requested_horizon_note") or (
+                "No single dated window stands out; read this as a process rather "
+                "than one calendar day."
+            )
+            timing_html = (
+                f'<p class="eyebrow" style="margin:10px 0 4px">Timing</p>'
+                f'<p>{_e(note)}</p>'
+            )
     return f"""
 <section class="section western-plain">
   <h2>Western — in plain words</h2>
@@ -465,6 +586,7 @@ def _human_horary_timing_line(text: str) -> str:
     raw = re.sub(r"\bdaśā\b", "period", raw, flags=re.I)
     raw = re.sub(r"\bbhukti\b", "sub-period", raw, flags=re.I)
     raw = re.sub(r"\bRuling-Planet periods\b", "Timing periods", raw, flags=re.I)
+    raw = re.sub(r"\bRuling Planets\b", "key timing indicators", raw, flags=re.I)
     raw = re.sub(r"\bsub-lord\b", "specialist timing factor", raw, flags=re.I)
     return raw
 
@@ -473,9 +595,9 @@ def _vedic_plain_block(vedic_customer: dict, *, paid: bool = True) -> str:
     """Vedic — the three classical systems, each in one line; timing and remedy
     only when paid."""
     vc = vedic_customer or {}
-    systems = [("Jamakkol Prasanam", vc.get("jamakkol")),
-               ("Prashna Kundali", vc.get("prashna")),
-               ("Specialist timing check", vc.get("kp"))]
+    systems = [("Vedic cross-check", vc.get("jamakkol")),
+               ("Traditional question check", vc.get("prashna")),
+               ("Specialist timing cross-check", vc.get("kp"))]
     cls_for = {"YES": "up", "CONDITIONAL": "mixed", "NEUTRAL": "mixed", "NO": "down"}
     word_for = {"YES": "Favourable", "CONDITIONAL": "Conditional", "NEUTRAL": "Neutral", "NO": "Challenging"}
     cards = []
@@ -625,6 +747,12 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
     ``prose`` is an optional LLM overlay: lead, verdict_line, why, action.
     """
     prose = prose or {}
+    # Enforce the requested horizon even when this renderer is called directly
+    # (outside report_render). This keeps a "this year" question from showing
+    # only a next-year trigger.
+    verdicts, western_judgment, vedic_customer = filter_horary_timing_for_question(
+        question, asked, verdicts, western_judgment, vedic_customer
+    )
     r = reconcile(verdicts)
     j = western_judgment or {}
     vc = vedic_customer or (r["vedic"] or {}).get("customer") or {}
@@ -757,4 +885,8 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                "score": r["score"], "contradicted": r["contradicted"],
                "favourable": r["favourable"], "weights": r["weights"],
                "subject": subject}
+    # Horary has its own legacy Western/Vedic prose builders, so make the same
+    # final customer boundary mandatory here as for natal/palm reports.
+    from qa_checks.final_customer_boundary import finalize_customer_html
+    html = finalize_customer_html(html, strict=True)
     return html, summary

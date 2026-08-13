@@ -19,6 +19,15 @@ import re
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
+def _customer_numbered(hand: dict[str, Any]) -> list[dict[str, Any]]:
+    items = list(hand.get("numbered_checklist") or [])
+    q = (hand.get("features") or {}).get("quality") or {}
+    try:
+        from palm_api.quality_gate import filter_special_mark_findings
+        return filter_special_mark_findings(items, q)
+    except Exception:
+        return items
+
 
 class _Req:
     """Duck-type of the old pydantic request, so the lifted code is unchanged."""
@@ -345,12 +354,26 @@ def build_reading(raw: Dict[str, Any], req: "_Req", overlays: Dict[str, str]) ->
             "source": "",
         })
 
-    # 3. special marks + the remedial guidance attached to them
-    marks = [m.get("statement") for m in (conf.get("marks") or []) if m.get("statement")]
+    # 3. special marks + remedial guidance. A fair/poor photo may still have
+    # detector candidates internally, but they must not become customer claims.
+    measurement_quality = (raw.get("reading_result") or {}).get("measurement_quality") or {}
+    special_marks_allowed = bool(
+        measurement_quality.get("special_marks_allowed",
+                               str(measurement_quality.get("photo_grade") or "fair").lower() == "good")
+    )
+    marks = [m.get("statement") for m in (conf.get("marks") or [])
+             if isinstance(m, dict) and m.get("statement")] if special_marks_allowed else []
     if marks:
         future.append({
             "title": "Remedies for your marks", "kind": "remedy",
             "tags": [f"{len(marks)} detected"], "body": devoice(" ".join(marks)), "source": "",
+        })
+    elif not special_marks_allowed:
+        future.append({
+            "title": "Fine markings and remedies", "kind": "remedy",
+            "tags": ["photo confidence gate"],
+            "body": "Fine palm markings are withheld because this photograph does not support reliable interpretation. A clearer image can unlock mark-specific guidance.",
+            "source": "",
         })
 
     # 4. mount-by-mount analysis (palm_api's undated per-mount readings)
@@ -371,6 +394,15 @@ def build_reading(raw: Dict[str, Any], req: "_Req", overlays: Dict[str, str]) ->
                    "body": "Your major lines carry no further dated markings. The full report "
                            "covers the minor lines, mount signs and remedial guidance instead."}]
 
+    quality = (dom.get("features") or {}).get("quality") or {}
+    guidance = (dom.get("features") or {}).get("photo_guidance") or {}
+    special_marks_allowed = bool(
+        (raw.get("reading_result") or {}).get("measurement_quality", {}).get(
+            "special_marks_allowed",
+            str(quality.get("grade") or "fair").lower() == "good"
+        )
+    )
+
     nxt = future_events[0]["age"] if future_events else None
     domains = [f["title"] for f in future if f.get("kind") == "domain"][:4]
     if nxt:
@@ -379,10 +411,9 @@ def build_reading(raw: Dict[str, Any], req: "_Req", overlays: Dict[str, str]) ->
     else:
         teaser = ("Your dated markings on the major lines sit behind you — what the full report opens is "
                   + ", ".join(domains).lower()
-                  + ", your special marks with remedies, and a mount-by-mount analysis.")
-
-    quality = (dom.get("features") or {}).get("quality") or {}
-    guidance = (dom.get("features") or {}).get("photo_guidance") or {}
+                  + (", your special marks with remedies, and a mount-by-mount analysis."
+                     if special_marks_allowed else
+                     ", a mount-by-mount analysis, and photo-quality guidance for fine markings."))
 
     return {
         "readingId": "RD-" + uuid.uuid4().hex[:7].upper(),
@@ -509,7 +540,7 @@ PAID_SECTIONS = [
 ]
 
 
-def _teaser(n_areas: int, n_ahead: int, n_points: int) -> str:
+def _teaser(n_areas: int, n_ahead: int, n_points: int, *, special_marks_allowed: bool = True) -> str:
     """Shown by palmPayCard on the site, so it has to stand on its own.
 
     It used to promise only the dated markings still ahead, which read as an
@@ -522,8 +553,11 @@ def _teaser(n_areas: int, n_ahead: int, n_points: int) -> str:
     if n_points:
         parts.append(f"the line-by-line reading of all {n_points} numbered points")
     if not parts:
+        if special_marks_allowed:
+            return ("The full reading opens the working behind every verdict, your "
+                    "mounts, your marks and the remedies keyed to them.")
         return ("The full reading opens the working behind every verdict, your "
-                "mounts, your marks and the remedies keyed to them.")
+                "mounts, and the detailed reading supported by your photo quality.")
     return "The full reading opens " + ", ".join(parts) + "."
 
 
@@ -549,13 +583,13 @@ def build_palm_html_reading(raw: dict, p: dict, *,
     dom = raw.get(dom_key) or raw.get("right") or raw.get("left") or {}
 
     aspects = conf.get("life_aspects") or []
-    dom_items = dom.get("numbered_checklist") or []
+    dom_items = _customer_numbered(dom)
     dated = [(i.get("timing") or {}).get("estimated_age") for i in dom_items
              if i.get("kind") == "line"]
     dated = [a for a in dated if isinstance(a, int)]
     behind = [a for a in dated if a <= age]
     ahead = [a for a in dated if a > age]
-    n_points = sum(len((raw.get(h) or {}).get("numbered_checklist") or [])
+    n_points = sum(len(_customer_numbered(raw.get(h) or {}))
                    for h in ("left", "right"))
 
     # LLM prose layer — facts in, structured prose out (off unless configured).
@@ -569,7 +603,7 @@ def build_palm_html_reading(raw: dict, p: dict, *,
         eng = Path(__file__).resolve().parents[1] / "engines" / "astro"
         if str(eng) not in sys.path:
             sys.path.insert(0, str(eng))
-        from llm.facts import build_palm_facts, project_for_access
+        from llm.facts import build_palm_facts, project_for_access, public_fact_payload
         from llm.humanize import humanize
         # Ensure reading_result is present for the fact builder.
         if "reading_result" not in raw:
@@ -589,9 +623,9 @@ def build_palm_html_reading(raw: dict, p: dict, *,
         elif age < 25:
             age_band = "young_adult"
         pfacts_paid = build_palm_facts(
-            raw, name=name, access="paid", age_band=age_band)
+            raw, name=name, access="paid", age_band=age_band, age_years=age)
         pfacts_free = project_for_access(pfacts_paid, "free")
-        facts_payload = pfacts_paid.model_dump(mode="json")
+        facts_payload = public_fact_payload(pfacts_paid)
         free_llm = humanize("palm", pfacts_free, access="free")
         paid_llm = humanize("palm", pfacts_paid, access="paid")
         prose_overlay = {
@@ -611,27 +645,54 @@ def build_palm_html_reading(raw: dict, p: dict, *,
 
     common = dict(name=name, age=age, gender=req.gender,
                   dominant=req.dominant, price=price)
-    free_html = _scrub_palm_html(
-        PC.render(raw, paid=False, prose=(prose_overlay.get("free", {})
-                                          if isinstance(prose_overlay, dict) else {}),
-                  **common))
-    paid_html = _scrub_palm_html(
-        PC.render(raw, paid=True, prose=(prose_overlay.get("paid", {})
-                                         if isinstance(prose_overlay, dict) else {}),
-                  **common))
+
+    def _render_palm(paid: bool) -> str:
+        from . import palm_conversational as PConv
+        prose = (prose_overlay.get("paid" if paid else "free", {})
+                 if isinstance(prose_overlay, dict) else {})
+        if not isinstance(prose, dict):
+            prose = {}
+        tier = (llm_meta.get("paid") if paid else llm_meta.get("free")) or {}
+        accepted = int((tier.get("stats") or {}).get("accepted") or 0)
+        use_conversational = (
+            bool(llm_meta.get("enabled"))
+            and accepted > 0
+            and bool(prose.get("conversational"))
+            and bool(str(prose.get("personality") or "").strip())
+        )
+        if use_conversational:
+            return PConv.render(raw, paid=paid, prose=prose, **common)
+        return PC.render(raw, paid=paid, prose=prose, **common)
+
+    free_html = _scrub_palm_html(_render_palm(False))
+    paid_html = _scrub_palm_html(_render_palm(True))
 
     quality = (dom.get("features") or {}).get("quality") or {}
     guidance = (dom.get("features") or {}).get("photo_guidance") or {}
+    special_marks_allowed = bool(
+        (raw.get("reading_result") or {}).get("measurement_quality", {}).get(
+            "special_marks_allowed",
+            str(quality.get("grade") or "fair").lower() == "good",
+        )
+    )
 
     meta = {
-        "design": "cards-v2",
+        "design": (
+            "conversational-v1"
+            if (
+                bool(llm_meta.get("enabled"))
+                and int(((llm_meta.get("paid") or {}).get("stats") or {}).get("accepted") or 0) > 0
+                and bool(((prose_overlay.get("paid") if isinstance(prose_overlay, dict) else {}) or {}).get("conversational"))
+            )
+            else "cards-v2"
+        ),
         "dominantHand": dom_key,
         "handType": ((dom.get("features") or {}).get("morphology") or {}).get("hand_type"),
         "photoQuality": quality.get("grade"),
         "photoScore": quality.get("score"),
         "photoAdvice": guidance.get("suggestions") or [],
         "summary": conf.get("summary", ""),
-        "teaser": _teaser(len(aspects), len(ahead), n_points),
+        "teaser": _teaser(len(aspects), len(ahead), n_points, special_marks_allowed=special_marks_allowed),
         "freeSections": list(FREE_SECTIONS),
         "paidSections": list(PAID_SECTIONS),
         "pastCount": len(behind),

@@ -115,10 +115,28 @@ def _scrub(html: str, *, allowed_dates: Optional[set] = None) -> str:
     # before the consistency check. This is deliberately after all appendices
     # and renderer output have been assembled.
     try:
-        from qa_checks.customer_text_sanitizer import sanitize_html_document
-        out = sanitize_html_document(out)
+        from qa_checks.final_customer_boundary import finalize_customer_html
+        out = finalize_customer_html(out, strict=True)
     except Exception as exc:                                        # noqa: BLE001
-        print(f"[report_render] customer HTML sanitizer failed: {exc}", flush=True)
+        # One last fail-closed pass. If a legacy appendix introduced a raw
+        # fragment after the first sanitizer, sanitize it again and only return
+        # if the visible text is clean.
+        try:
+            from qa_checks.customer_text_sanitizer import sanitize_html_document, validate_customer_text
+            out = sanitize_html_document(out)
+            leaks = validate_customer_text(out)
+            if leaks:
+                raise RuntimeError(f"customer evidence firewall residual leaks: {leaks[:4]}")
+        except Exception as final_exc:                              # noqa: BLE001
+            print(f"[report_render] final customer boundary failed: {final_exc}", flush=True)
+            # Do not ship contaminated customer HTML. Return a minimal safe
+            # document rather than silently logging and continuing.
+            out = (
+                '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>'
+                '<title>Graharekha report</title></head><body>'
+                '<p>The report could not be safely rendered. Please regenerate it.</p>'
+                '</body></html>'
+            )
 
     try:
         from qa_checks.report_consistency import validate_report_consistency
@@ -255,13 +273,13 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
     llm_meta: dict = {"enabled": False}
     facts_payload: dict = {}
     try:
-        from llm.facts import build_report_facts, project_for_access
+        from llm.facts import build_report_facts, project_for_access, public_fact_payload
         from llm.humanize import humanize
         base_facts = build_report_facts(
             pc, shared_cards, name=name, access="paid", today=today)
         paid_facts = project_for_access(base_facts, "paid")
         free_facts = project_for_access(base_facts, "free")
-        facts_payload = paid_facts.model_dump(mode="json")
+        facts_payload = public_fact_payload(paid_facts)
         # One LLM pass on paid-depth facts (rate-limit friendly). Free/paid
         # HTML still differ via renderer locks; language overlay shares truth.
         # Generate Free and Paid prose from their own access projections.
@@ -304,12 +322,52 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
         vim = pc.get("vimshottari", {}) or {}
         window_sources.append(vim.get("current_md") or {})
         window_sources.extend(vim.get("current_md_antardashas") or [])
+        # Conversational free section: phase end + recent-months trust windows.
+        try:
+            from report_cards import current_ad
+            ad = current_ad(pc) or {}
+            window_sources.append({"start": ad.get("start"), "end": ad.get("end")})
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            import past_validation as PVH
+            hist = PVH.build(pc, today=today, months=4, max_events=4) or {}
+            for ev in list(hist.get("events") or [])[:4]:
+                if isinstance(ev, dict):
+                    window_sources.append(
+                        {"start": ev.get("start"), "end": ev.get("end")})
+        except Exception:  # noqa: BLE001
+            pass
         allowed_dates = allowed_month_years(window_sources)
     except Exception:                                                 # noqa: BLE001
         allowed_dates = set()
 
     def build(paid: bool) -> str:
         import report_cards as RC
+        prose = paid_prose_overlay if paid else free_prose_overlay
+        if not isinstance(prose, dict):
+            prose = {}
+        tier = (llm_meta.get("paid") if paid else llm_meta.get("free")) or {}
+        accepted = int((tier.get("stats") or {}).get("accepted") or 0)
+        use_conversational = (
+            bool(llm_meta.get("enabled"))
+            and accepted > 0
+            and bool(prose.get("conversational"))
+            and bool(str(prose.get("personality") or "").strip())
+        )
+        if use_conversational:
+            import report_conversational as RConv
+            # The stones and the practical step are computed, not written, so
+            # the conversational page carries the same block as the classic one
+            # instead of leaving the reading with nothing to act on.
+            body = RConv.render(
+                pc, name=name, price=price, today=today, paid=paid,
+                cards=shared_cards, prose=prose,
+                footer_unlock=(not paid),
+                remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price))
+            return _scrub(body, allowed_dates=allowed_dates)
+
+        # Frozen non-LLM / classic path — untouched when conversational is used.
         present_html = ""
         if present_block is not None:
             try:
@@ -332,13 +390,21 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             proof_html=present_html + past_html,
             timing_html=tail,
             cards=shared_cards,
-            prose=paid_prose_overlay if paid else free_prose_overlay,
-            footer_unlock=paid)
+            prose=prose,
+            footer_unlock=(not paid))  # free view: bottom CTA; paid: none
         return _scrub(body, allowed_dates=allowed_dates)
 
     free_html, paid_html = build(False), build(True)
     meta = {
-        "design": "cards-v2",
+        "design": (
+            "conversational-v1"
+            if (
+                bool(llm_meta.get("enabled"))
+                and int(((llm_meta.get("paid") or {}).get("stats") or {}).get("accepted") or 0) > 0
+                and bool((paid_prose_overlay or {}).get("conversational"))
+            )
+            else "cards-v2"
+        ),
         "price": price, "bundlePrice": bundle_price,
         "llm": llm_meta,
         # Internal only — _save_report pops this into object storage as facts.json
@@ -458,14 +524,14 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
     llm_meta: dict = {"enabled": False}
     facts_payload: dict = {}
     try:
-        from llm.facts import build_horary_facts, project_for_access
+        from llm.facts import build_horary_facts, project_for_access, public_fact_payload
         from llm.humanize import humanize
         summary_preview = reconcile(verdicts)
         hfacts_paid = build_horary_facts(
             question=question, verdicts=verdicts,
             summary=summary_preview, name=name, access="paid")
         hfacts_free = project_for_access(hfacts_paid, "free")
-        facts_payload = hfacts_paid.model_dump(mode="json")
+        facts_payload = public_fact_payload(hfacts_paid)
         free_llm = humanize("horary", hfacts_free, access="free")
         paid_llm = humanize("horary", hfacts_paid, access="paid")
         prose_overlay = {
@@ -532,14 +598,14 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     llm_meta: dict = {"enabled": False}
     facts_payload: dict = {}
     try:
-        from llm.facts import build_question_facts, project_for_access
+        from llm.facts import build_question_facts, project_for_access, public_fact_payload
         from llm.humanize import humanize
         qfacts_paid = build_question_facts(result, name=name, access="paid")
         # Keep the original question text for the LLM (answer() stores it).
         if not qfacts_paid.question:
             qfacts_paid.question = (question or "")[:280]
         qfacts_free = project_for_access(qfacts_paid, "free")
-        facts_payload = qfacts_paid.model_dump(mode="json")
+        facts_payload = public_fact_payload(qfacts_paid)
         free_llm = humanize("user_question", qfacts_free, access="free")
         paid_llm = humanize("user_question", qfacts_paid, access="paid")
         prose_overlay = {
@@ -566,7 +632,7 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     try:
         import remedy_block as RB
         rb = RB.build(pc, domain=result.get("area_key", ""), question=question,
-                      name=first)
+                      name=first, question_scoped=True)
         # Timing is already in the body; remedy closes the paid reading — the
         # two things a person asking a life question actually wants to act on.
         paid_body += RB.render(

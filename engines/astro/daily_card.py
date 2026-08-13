@@ -321,6 +321,119 @@ def _dodont(reading: dict, *, paid: bool) -> str:
 # ---------------------------------------------------------------------------
 # paid blocks
 # ---------------------------------------------------------------------------
+def _personal_moon_focus(reading: dict) -> str:
+    """The subscription-grade daily card: Moon -> houses -> AV -> significator.
+
+    This is deliberately a factual bridge, not a new prediction engine. It
+    exposes the already-computed Moon transit, SAV/BAV and house-lord context
+    in one human-readable block so the daily reading is visibly personal.
+    """
+    moon = reading.get("moon_transit") or {}
+    av = reading.get("ashtakavarga") or {}
+    mav = av.get("moon") or {}
+    if not moon.get("sign"):
+        return ""
+
+    sign = moon.get("sign")
+    h_lagna = moon.get("house_from_lagna")
+    h_moon = moon.get("house_from_moon")
+    sav = mav.get("sav")
+    bav = mav.get("bav")
+    try:
+        sav_i = int(sav) if sav is not None else None
+    except (TypeError, ValueError):
+        sav_i = None
+    try:
+        bav_i = int(bav) if bav is not None else None
+    except (TypeError, ValueError):
+        bav_i = None
+
+    from astro_precompute import SIGN_LORDS, SIGNS
+    from ashtakavarga_analysis import HOUSE_LIFE_THEME
+
+    theme = HOUSE_LIFE_THEME.get(h_lagna, "the life area activated today")
+    lord = ""
+    lord_sign = ""
+    lord_house = ""
+    lord_dignity = ""
+    if isinstance(h_lagna, int) and 1 <= h_lagna <= 12 and sign:
+        try:
+            lagna_sign = str(reading.get("lagna") or "")
+            if lagna_sign and lagna_sign in SIGNS:
+                house_sign = SIGNS[(SIGNS.index(lagna_sign) + h_lagna - 1) % 12]
+                lord = SIGN_LORDS.get(house_sign, "")
+                natal_planet = (reading.get("natal_planets") or {}).get(lord) or {}
+                lord_sign = str(natal_planet.get("sign") or "")
+                lord_house = str(natal_planet.get("house") or "")
+                lord_dignity = str(natal_planet.get("dignity") or "")
+        except Exception:
+            pass
+
+    if sav_i is None:
+        support = "Structural support could not be scored today."
+    elif sav_i < 25:
+        support = "Lower structural support today — treat this area as a watchpoint rather than forcing an outcome."
+    elif sav_i >= 32:
+        support = "Strong structural support today — a small, visible move in this area is easier to carry through."
+    else:
+        support = "Moderate structural support today — steady effort is more useful than forcing a result."
+
+    if bav_i is not None:
+        if bav_i <= 3:
+            moon_signal = f"Moon BAV is {bav_i}/8, so emotional momentum may need more patience."
+        elif bav_i >= 5:
+            moon_signal = f"Moon BAV is {bav_i}/8, giving the Moon a stronger-than-usual channel today."
+        else:
+            moon_signal = f"Moon BAV is {bav_i}/8, giving a mixed but workable signal."
+    else:
+        moon_signal = ""
+
+    lord_line = ""
+    if lord:
+        context = []
+        if lord_sign:
+            context.append(f"natal {lord} in {lord_sign}")
+        if lord_house:
+            context.append(f"{lord_house}{_suffix(lord_house)} house")
+        if lord_dignity:
+            context.append(lord_dignity)
+        detail = " · ".join(context)
+        lord_line = (
+            f'<div class="evidence" style="margin-top:12px">'
+            f'<span class="ev-label">The significator behind this house</span>'
+            f'<p><strong>{_e(lord)}</strong> governs this area'
+            f'{f" ({_e(detail)})" if detail else ""}.</p>'
+            f'<p class="fine">The house signal is refined by the natal condition of its lord; '
+            f'this is why the same Moon transit can feel different for different people.</p>'
+            f'</div>'
+        )
+
+    score_line = " · ".join(
+        x for x in (
+            f"SAV {sav_i}/56" if sav_i is not None else "",
+            f"Moon BAV {bav_i}/8" if bav_i is not None else "",
+        ) if x
+    )
+    from_lagna = f"{h_lagna}{_suffix(h_lagna)} from Ascendant" if isinstance(h_lagna, int) else ""
+    from_moon = f"{h_moon}{_suffix(h_moon)} from natal Moon" if isinstance(h_moon, int) else ""
+
+    return f"""
+<h3 class="sec">Your most personal Moon transit today</h3>
+<p class="sec-note">This is the part generic Moonology cannot see: today's Moon is
+being read against your own houses and Ashtakavarga, then refined by the natal
+lord of the activated house.</p>
+<div class="card" style="border-left:4px solid #7e57c2">
+  <p class="claim"><strong>Moon in {_e(sign)}</strong>
+    {f"· {_e(moon.get('nakshatra'))}" if moon.get('nakshatra') else ""}</p>
+  <p class="fine">{_e(" · ".join(x for x in (from_lagna, from_moon) if x))}</p>
+  <p><strong>Life area:</strong> {_e(theme)}</p>
+  {f'<p class="when"><strong>{_e(score_line)}</strong></p>' if score_line else ''}
+  <p>{_e(support)}</p>
+  {f'<p>{_e(moon_signal)}</p>' if moon_signal else ''}
+  {lord_line}
+</div>"""
+
+
 def _lanes(lanes: List[dict]) -> str:
     """The answer to "why does today read this way"."""
     if not lanes:
@@ -655,12 +768,12 @@ def _extras(reading: dict) -> str:
 
 def _locked_preview(*, price: int, n_lanes: int, md: str, ad: str, pd: str) -> str:
     rows = [
-        ("More direct guidance",
-         "Up to three clear things to do and three things to avoid today."),
+        ("Your personal Moon transit",
+         "Exact transit house, SAV/BAV support and the natal house significator behind today's theme."),
+        ("Your timing stack",
+         "Running dasha/pratyantar and the independent timing lanes that agree or disagree today."),
         ("Best and avoid times",
-         "The most useful windows for action, plus the main period to avoid."),
-        ("One-line technical basis",
-         "A short Moon-transit and dasha line for context — no calculation dump."),
+         "The most useful Choghadiya/Abhijit windows and the main periods to avoid."),
     ]
     items = "".join(
         f'<div class="when locked-inline" style="margin:8px 0">'
@@ -673,7 +786,9 @@ def _locked_preview(*, price: int, n_lanes: int, md: str, ad: str, pd: str) -> s
   <div class="buy">
     <h3>Clearer guidance for today</h3>
     <p>The verdict, your Moon, and your number and colour stay free every day.
-    Subscribe for more practical actions and the best times to use them.</p>
+    Subscribe to see the exact Moon transit house, SAV/BAV support, the natal
+    significator behind it, your running timing stack, and the day's strongest
+    action windows.</p>
     <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>"""
@@ -702,8 +817,20 @@ def render(reading: dict, *, name: str = "", day: Optional[date] = None,
             + _dodont(reading, paid=paid))
 
     if paid:
-        body += (_windows(reading, day, lat, lon, tz)
-                 + _technical_snapshot(reading, len(lanes)))
+        # Paid daily is the full personalization layer: the Moon transit is
+        # tied to the natal house, exact SAV/BAV, house significator, running
+        # dasha and the independent lanes. These are already computed by the
+        # deterministic engine; this renderer does not recalculate them.
+        body += (
+            _personal_moon_focus(reading)
+            + _lanes(lanes)
+            + _dasha(reading)
+            + _ashtakavarga(reading)
+            + _houses(reading)
+            + _windows(reading, day, lat, lon, tz)
+            + _extras(reading)
+            + _technical_snapshot(reading, len(lanes))
+        )
     else:
         body += _locked_preview(price=price, n_lanes=len(lanes),
                                 md=d.get("md", ""), ad=d.get("ad", ""),

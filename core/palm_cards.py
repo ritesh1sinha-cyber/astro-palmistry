@@ -21,6 +21,66 @@ import html as _html
 import re
 from typing import Any, List, Optional
 
+
+def _palm_quality(hand: dict[str, Any]) -> dict[str, Any]:
+    """Return the strongest available photo-quality gate for this hand."""
+    q = dict((hand.get("features") or {}).get("quality") or {})
+    # Some pipeline versions keep the authoritative measurement gate outside
+    # features. Prefer that value when present so a Fair/Poor photo cannot be
+    # re-enabled by a stale hand-level quality object.
+    for source in (hand.get("measurement_quality"), hand.get("quality")):
+        if isinstance(source, dict):
+            q.update(source)
+    return q
+
+
+def _palm_special_marks_allowed(hand: dict[str, Any]) -> bool:
+    """Single renderer-level source of truth for fine-mark visibility.
+
+    Fair/Poor photos are fail-closed. The numbered-point renderer must obey the
+    same gate as the special-mark/remedy cards even if an older detector still
+    emitted a mark candidate.
+    """
+    q = _palm_quality(hand)
+    if "special_marks_allowed" in q:
+        return bool(q.get("special_marks_allowed"))
+    return str(q.get("grade") or q.get("photo_grade") or "").lower() == "good"
+
+
+def _is_special_mark_item(item: dict[str, Any]) -> bool:
+    text = " ".join(str(item.get(k, "")) for k in (
+        "kind", "category", "type", "id", "key", "title", "text", "statement", "finding"
+    )).lower()
+    return any(token in text for token in (
+        "trident", "trishul", "star mark", "grille", "fish mark",
+        "triangle mark", "special_mark", "special mark"
+    ))
+
+
+def _hand_for_customer_filter(raw: dict[str, Any], hand_key: str) -> dict[str, Any]:
+    """Attach the reading-level measurement gate onto a hand before filtering."""
+    hd = dict(raw.get(hand_key) or {})
+    mq = (raw.get("reading_result") or {}).get("measurement_quality") or {}
+    if isinstance(mq, dict) and mq:
+        hd["measurement_quality"] = mq
+    return hd
+
+
+def _filter_customer_numbered(hand: dict[str, Any]) -> list[dict[str, Any]]:
+    items = list(hand.get("numbered_checklist") or [])
+    if _palm_special_marks_allowed(hand):
+        return items
+    quality = _palm_quality(hand)
+    try:
+        from palm_api.quality_gate import filter_special_mark_findings
+        items = filter_special_mark_findings(items, quality)
+    except Exception:
+        pass
+    # Always apply a local fail-closed filter after the shared gate. This
+    # protects against detector versions whose classifier does not recognise a
+    # newly named special mark (e.g. a Trishul item labelled only by title).
+    return [i for i in items if not _is_special_mark_item(i)]
+
 # Palmistry strength is a confidence level, not a direction, so it maps onto the
 # pill colours differently from the chart report's up/down/mixed verdicts.
 STRENGTH_PILL = {"strong": "up", "moderate": "mixed", "tentative": "faint"}
@@ -546,6 +606,25 @@ def _remedies(dom: dict, conf: dict, *, paid: bool = False) -> str:
         return ""
 
     feats = dom.get("features") or {}
+    quality = feats.get("quality") or {}
+    grade = str(quality.get("grade") or "fair").lower()
+    # Fine hand-specific remedies are paid depth and require a good photo.
+    # Fair/poor images may still show the teaser, but must not produce a
+    # concrete gemstone/practice recommendation from uncertain measurements.
+    if grade != "good":
+        if paid:
+            return f"""
+<h3 class="sec">Remedies for your hand</h3>
+<div class="card">
+  <p class="fine">Hand-specific remedies are withheld because this photograph
+  is not clear enough to support fine-detail recommendations. Retake the palm
+  straight-on in bright, even light for a deeper remedy reading.</p>
+</div>"""
+        return """
+<h3 class="sec">Remedies for your hand</h3>
+<p class="sec-note">Only when a classical palm rule applies to something we measured.</p>
+<div class="card"><div class="when locked-inline"><span class="lockicon">&bull;</span>
+Hand-specific remedies are part of the full reading when the photograph supports the underlying measurement.</div></div>"""
     items = build_palm_remedies(feats)
     dos = [format_remedy_line(r) for r in items if r.bucket == "do"][:6]
     donts = [format_remedy_line(r) for r in items if r.bucket == "dont"][:6]
@@ -595,10 +674,10 @@ def _workings(raw: dict) -> str:
     """Every numbered point on both hands — the working the dots refer to."""
     blocks = ""
     for hand in ("right", "left"):
-        hd = raw.get(hand)
-        if not hd:
+        hd = _hand_for_customer_filter(raw, hand)
+        if not (raw.get(hand)):
             continue
-        items = hd.get("numbered_checklist") or []
+        items = _filter_customer_numbered(hd)
         if not items:
             continue
         rows = ""
@@ -715,6 +794,17 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
     conf = raw.get("confluence") or {}
     dom_key = conf.get("dominant_hand") or dominant
     dom = raw.get(dom_key) or raw.get("right") or raw.get("left") or {}
+    # Propagate the authoritative measurement gate into the renderer's hand
+    # object. This keeps Fair/Poor special-mark suppression consistent across
+    # summary cards, numbered points, workings and remedies.
+    dom = dict(dom)
+    dom_features = dict(dom.get("features") or {})
+    dom_quality = dict(dom_features.get("quality") or {})
+    measurement_quality = (raw.get("reading_result") or {}).get("measurement_quality") or {}
+    if isinstance(measurement_quality, dict):
+        dom_quality.update(measurement_quality)
+    dom_features["quality"] = dom_quality
+    dom["features"] = dom_features
 
     aspects = conf.get("life_aspects") or []
     aspects_by_key = {a.get("key"): a for a in aspects}
@@ -724,9 +814,15 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
     # thumb and hand shape have nowhere to go and fall out of both halves.
     dom_items = dom.get("numbered_checklist") or []
     ahead = _ahead(dom_items, age)
-    n_points = sum(len((raw.get(h) or {}).get("numbered_checklist") or [])
-                   for h in ("left", "right"))
-    n_marks = len((dom.get("features") or {}).get("special_marks") or [])
+    # Hand dicts must stay dicts — `_filter_customer_numbered` expects a mapping.
+    # Always merge the reading-level measurement gate so Fair/Poor photos cannot
+    # leak special marks via a stale hand-level quality object.
+    n_points = sum(
+        len(_filter_customer_numbered(_hand_for_customer_filter(raw, h)))
+        for h in ("left", "right")
+    )
+    _special_allowed = _palm_special_marks_allowed(dom)
+    n_marks = len((dom.get("features") or {}).get("special_marks") or []) if _special_allowed else 0
 
     cards = "".join(
         _aspect_card(a, paid=paid, prose=prose_aspects.get(a.get("key") or ""))

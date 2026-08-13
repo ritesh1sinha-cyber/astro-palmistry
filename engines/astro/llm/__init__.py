@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from .fallback import card_fallback, report_fallback
+from .fallback import card_fallback, conversational_fallback, report_fallback
 from .facts import project_for_access, seal_facts
 from .humanize import humanize
 from .schemas import (
     CardProse,
     ChatAnswer,
+    ConversationalPalmProse,
+    ConversationalProse,
     HoraryFacts,
     HoraryProse,
     PalmFacts,
@@ -25,9 +27,12 @@ __all__ = [
     "seal_facts",
     "validate_prose_against_facts",
     "card_fallback",
+    "conversational_fallback",
     "report_fallback",
     "CardProse",
     "ChatAnswer",
+    "ConversationalPalmProse",
+    "ConversationalProse",
     "HoraryFacts",
     "HoraryProse",
     "PalmFacts",

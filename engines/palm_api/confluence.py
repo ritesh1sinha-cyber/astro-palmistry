@@ -238,11 +238,21 @@ def _human_predictions(dom_checklist: list[dict[str, Any]]) -> list[dict[str, An
         if sig in seen:
             continue
         seen.add(sig)
-        age = (it.get("timing") or {}).get("estimated_age")
+        timing = it.get("timing") or {}
+        age = timing.get("estimated_age")
+        line_key = ""
+        title_raw = str(it.get("title") or "").lower()
+        for k in ("life", "head", "heart", "fate"):
+            if k in title_raw:
+                line_key = k
+                break
         out.append({
             "title": it.get("title", "Reading"),
+            "line_key": line_key,
             "age": age,
+            "age_range": timing.get("age_range") or [],
             "text": verdict,
+            "confidence": "moderate",
         })
     return out
 

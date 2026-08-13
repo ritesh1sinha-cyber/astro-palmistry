@@ -56,6 +56,18 @@ _CLASSICAL_RAW = re.compile(
     re.I,
 )
 
+# Technical vote prose is useful to the mathematics layer but is never a
+# semantic customer fact.  Detect the common forms at the canonical boundary
+# so they are replaced by an area-level semantic fallback instead of being
+# merely clipped or rewritten later in HTML.
+_TECHNICAL_RAW = re.compile(
+    r"\b(?:rules?\s+it|house\s+strength\s+\d+(?:\.\d+)?\s+of\s+\d+|"
+    r"sit(?:s|\s+here)|placed\s+in\s+your\s+\d+(?:st|nd|rd|th)|"
+    r"ninth-part\s+chart|birth[- ]chart\s+promise|"
+    r"the\s+(?:classical|confirmation|cross-check|strength-scoring)\s+method)\b",
+    re.I,
+)
+
 
 @dataclass
 class CanonicalEvidence:
@@ -148,7 +160,7 @@ def _normalize_reason_text(
 ) -> str:
     """Never return truncated classical prose — replace, do not clip."""
     raw = str(because or "").strip()
-    if not raw or _CLASSICAL_RAW.search(raw):
+    if not raw or _CLASSICAL_RAW.search(raw) or _TECHNICAL_RAW.search(raw):
         return _safe_fallback(
             method_label=method_label, direction=direction, area=area, seed=raw[:48],
         )

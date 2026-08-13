@@ -257,6 +257,62 @@ def _humanize_daily_opening(text: str) -> str:
     return " ".join(kept).strip()
 
 
+
+def _personal_moon_focus_section(data: dict[str, Any]) -> str:
+    """A subscription-worthy daily card: today's Moon, house support and significator."""
+    f = data.get("personal_moon_focus") or {}
+    if not f:
+        return ""
+    house = f.get("house_from_lagna")
+    sign = f.get("transit_sign") or (data.get("moon_transit") or {}).get("sign", "")
+    theme = f.get("theme") or "this life area"
+    sav = f.get("sav")
+    bav = f.get("moon_bav")
+    lord = f.get("house_lord")
+    band = f.get("support_band", "workable")
+    badge = {
+        "strong": "Strong support",
+        "workable": "Workable support",
+        "watch": "Watchpoint",
+    }.get(band, "Personal focus")
+    cls = {"strong": "light-green", "workable": "light-amber", "watch": "light-red"}.get(band, "light-amber")
+    score_line = ""
+    if sav is not None or bav is not None:
+        from_moon = f.get("house_from_moon")
+        from_moon_line = f' · {_e(_ord(from_moon))} from birth Moon' if from_moon else ""
+        score_line = (
+            f'<p class="when">Sign: <strong>{_e(sign)}</strong> · '
+            f'{_e(_ord(house) if house else "")} house from your Ascendant{from_moon_line} · '
+            f'SAV <strong>{_e(sav)}</strong>/56 · Moon BAV <strong>{_e(bav)}</strong>/8'
+            f'</p>'
+        )
+    lord_line = ""
+    if lord:
+        role = f.get("active_dasha_role") or ""
+        role_plain = {
+            "antardasha": "current timing",
+            "mahadasha": "major timing",
+            "pratyantardasha": "near-term timing",
+        }.get(str(role).strip().lower(), "current timing" if role else "")
+        role_note = f" · {role_plain} lord" if role_plain else ""
+        lord_line = (
+            f'<p class="body"><strong>Your significator:</strong> {_e(lord)}'
+            f'{_e(role_note)}. {_e(f.get("significator_note", ""))}</p>'
+        )
+    return f"""
+  <h2 class="section-h">Your most personal transit today</h2>
+  <div class="card" style="border-left:4px solid var(--accent);margin-bottom:18px">
+    <div class="card-top">
+      <span class="area">Moon in {_e(sign)} · {_e(theme)}</span>
+      <span class="light {cls}">{_e(badge)}</span>
+    </div>
+    {score_line}
+    <p class="claim">{_e(f.get("verdict", ""))}</p>
+    {lord_line}
+    <p class="fine">How to read the score: higher SAV/BAV means the transit has more structural support.
+    Lower support is a caution signal, not a guaranteed negative event; the house lord is the next layer of interpretation.</p>
+  </div>
+"""
 def _today_confluence_section(data: dict[str, Any]) -> str:
     """
     One warm, human lead that pulls every lane together: how the day feels,
@@ -601,6 +657,7 @@ def generate_daily_prediction_html(data: dict[str, Any]) -> str:
   </div>
 
   {_today_confluence_section(data)}
+  {_personal_moon_focus_section(data)}
 
   <div class="note">Everything below is the detailed breakdown behind that read — in plain language, lane by lane.</div>
 

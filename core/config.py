@@ -211,6 +211,11 @@ class Settings:
     llm_max_retries: int = field(default_factory=lambda: _int("LLM_MAX_RETRIES", 2))
     llm_concurrency: int = field(default_factory=lambda: _int("LLM_CONCURRENCY", 4))
     llm_cache_ttl: int = field(default_factory=lambda: _int("LLM_CACHE_TTL", 86400))
+    # 0 leaves the reply length to the endpoint, which caps it at whatever the
+    # context has left after the prompt. Setting a ceiling here is only safe
+    # when it is known to fit that remainder: a request for more than the
+    # model can still hold is refused outright rather than truncated.
+    llm_max_tokens: int = field(default_factory=lambda: _int("LLM_MAX_TOKENS", 0))
     # Comma-separated tab kinds that may call the LLM when enabled.
     llm_tabs: str = field(default_factory=lambda: _cfg(
         "llm_tabs", "LLM_TABS",

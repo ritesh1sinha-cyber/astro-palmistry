@@ -790,22 +790,28 @@ def area_votes(pc: dict, area_key: str, house: int) -> list:
         base += 0.5
     elif lord_house in (6, 8, 12):
         base -= 1
+    classical_direction = "supports" if base > 0.25 else "adds caution to" if base < -0.25 else "gives mixed support to"
     votes.append(Vote(
         "the classical method",
         base,
-        f"{lord} rules it, {dignity.replace('_', ' ')}"
-        + (f", placed in your {_ord(lord_house)}" if lord_house else "")))
+        f"Independent chart structure {classical_direction} this area."))
 
     # 2. Ashtakavarga
     sav = (pc.get("ashtakavarga", {}) or {}).get("sav") or []
     if len(sav) >= house:
         score = sav[house - 1]
+        av_score = 1.2 if score >= 30 else (-1.2 if score <= 25 else 0)
+        av_text = (
+            "Structural support is strong for this life area."
+            if score >= 30 else
+            "Structural support is limited for this life area."
+            if score <= 25 else
+            "Structural support is moderate for this life area."
+        )
         votes.append(Vote(
             "the strength-scoring method",
-            1.2 if score >= 30 else (-1.2 if score <= 25 else 0),
-            f"house strength {score} of 56"
-            + (" — above average" if score >= 30
-               else " — below average" if score <= 25 else " — average")))
+            av_score,
+            av_text))
 
     # 3. The divisional charts — governing varga, cross-check, and D9
     votes.extend(divisional_votes(pc, area_key, lord))

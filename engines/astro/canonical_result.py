@@ -95,6 +95,7 @@ def _timing_summary(windows: list[dict], promise: dict) -> dict[str, Any]:
         "strong_windows": strong,
         "opportunity_windows": opportunities,
         "promise_allows_strong_timing": strong_promise,
+        "timing_agreement": "strong" if strong else ("partial" if opportunities or validated else "insufficient"),
         "timing_can_create_promise": False,
         "best_window": strong[0] if strong else (opportunities[0] if opportunities else None),
     }
@@ -118,18 +119,49 @@ def _normalized_why(confluence: dict, area: str) -> dict[str, Any]:
             label = str(norm.method_label or "Chart evidence")
             if not reason:
                 reason = f"{label} contributes to this reading."
+            # Canonical evidence is the semantic boundary. Reject any legacy
+            # technical fragment that survives a normalizer and replace the
+            # entire reason rather than allowing hybrid prose downstream.
+            if any(token in reason.lower() for token in (
+                "a chart factor connected", "rules it", "house strength",
+                "th lord", "sub-lord", "atmakarak", "karakamsa", "traditional chart check check",
+            )):
+                reason = (
+                    "Independent chart evidence supports this area." if direction == "support" else
+                    "Independent chart evidence adds caution to this area." if direction == "caution" else
+                    "Independent chart evidence is mixed in this area."
+                )
+            row_direction = "support" if direction == "support" else ("caution" if direction == "caution" else "neutral")
+            # Keep only semantic family labels; never carry the raw technique
+            # name into the canonical/customer layer.
+            raw_family = str(getattr(norm, "family", "") or "")
+            family_map = {
+                "natal_structure": "birth_chart",
+                "divisional": "divisional_confirmation",
+                "specialist": "independent_cross_check",
+                "timing": "timing",
+                "transit": "transit",
+                "rules": "traditional_cross_check",
+                "classical": "traditional_cross_check",
+            }
+            family = family_map.get(raw_family, raw_family if raw_family in family_map.values() else "independent_cross_check")
             row = {
                 "label": label,
-                "direction": "support" if direction == "support" else
-                             ("caution" if direction == "caution" else "neutral"),
+                "family": family,
+                "direction": row_direction,
                 "value": float(getattr(vote, "value", 0) or 0),
                 "reasons": [reason],
             }
-            rows.append(row)
-            if row["direction"] == "support":
-                supporting.append(reason)
-            elif row["direction"] == "caution":
-                caution.append(reason)
+            # Deduplicate equivalent semantic evidence. Repeated technique
+            # votes may still affect confluence math, but they should not make
+            # the user/LLM see the same reason multiple times.
+            key = (row_direction, reason.lower())
+            if not any((str(r.get("direction")), str((r.get("reasons") or [""])[0]).lower()) == key for r in rows):
+                rows.append(row)
+                if row_direction == "support":
+                    supporting.append(reason)
+                elif row_direction == "caution":
+                    caution.append(reason)
     except Exception:
         pass
 
@@ -155,7 +187,9 @@ def _normalized_why(confluence: dict, area: str) -> dict[str, Any]:
     return {
         "supporting": supporting[:6],
         "caution": caution[:6],
-        "families": list(confluence.get("families") or []),
+        "families": list(dict.fromkeys(
+            [str(r.get("family") or "") for r in rows if r.get("family")]
+        ))[:8],
         "rows": rows[:8],
         "support": int(confluence.get("support") or
                        sum(1 for r in rows if r["direction"] == "support")),
@@ -168,9 +202,8 @@ def _normalized_why(confluence: dict, area: str) -> dict[str, Any]:
                    "The evidence is mixed in this area."),
         "secondary_confirmations": [
             {
-                "method": str(x.get("method") or ""),
-                "direction": str(x.get("direction") or ""),
-                "strength": str(x.get("strength") or ""),
+                "direction": str(x.get("direction") or "neutral"),
+                "strength": str(x.get("strength") or "moderate"),
             }
             for x in list(confluence.get("secondary_confirmations") or [])[:6]
             if isinstance(x, dict)
@@ -215,6 +248,26 @@ def build_area_result(
     # One normalized evidence object for Why, Paid evidence and ReportFacts.
     why = _normalized_why(confluence, area)
 
+    # Never carry legacy raw proof text into the canonical object. Some older
+    # area engines still return house-lord/classical prose in `proof`; the
+    # canonical result is the firewall between those engines and every
+    # customer/LLM surface.
+    try:
+        from qa_checks.customer_text_sanitizer import sanitize_customer_text
+        safe_headline = sanitize_customer_text(
+            str(current_headline or ""), area=area, direction=direction,
+            method_label="Chart reading", seed=f"headline:{area}:{current_headline[:48]}",
+        ) if current_headline else ""
+        safe_backing = sanitize_customer_text(
+            str(current_backing or ""), area=area, direction=direction,
+            method_label="Chart evidence", seed=f"backing:{area}:{current_backing[:48]}",
+        ) if current_backing else ""
+    except Exception:  # noqa: BLE001
+        safe_headline = ""
+        safe_backing = ""
+    if not safe_backing:
+        safe_backing = str(why.get("summary") or "").strip()
+
     result = {
         "schema": "graharekha.canonical_area_result.v1",
         "area": area,
@@ -231,8 +284,8 @@ def build_area_result(
         "action": action,
         "remedy": remedy,
         "why": why,
-        "headline": current_headline,
-        "backing": current_backing,
+        "headline": safe_headline,
+        "backing": safe_backing,
         # The renderer may use this object for diagnostics, but no downstream
         # consumer is allowed to mutate the prediction fields.
         "immutable_prediction": True,

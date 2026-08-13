@@ -193,9 +193,36 @@ def gen_user_question() -> dict:
     return _write("user_question_off", free, paid, meta, truth_source=truth)
 
 
+def gen_daily() -> dict:
+    """Meera personalized daily Moon card (LLM off)."""
+    print("[daily] ...", flush=True)
+    from astro_precompute import resolve_precompute
+    from daily_moon_prediction import compute_daily_moon_guide
+    import report_render as RD
+
+    s = MEERA
+    pc = resolve_precompute(
+        s["name"], s["dob"], birth_time=s["tob"],
+        latitude=s["lat"], longitude=s["lon"],
+        timezone=s["tz"], place_name=s["place"], gender=s["gender"])
+    target = date(2026, 8, 12)
+    data = compute_daily_moon_guide(
+        pc, target,
+        latitude=s["lat"], longitude=s["lon"], timezone=s["tz"])
+    free, paid, meta = RD.daily(
+        data if isinstance(data, dict) else {},
+        lat=s["lat"], lon=s["lon"], tz=s["tz"], day=target,
+        name=s["name"], price=298, pc=pc)
+    return _write(
+        "daily_off", free, paid, meta,
+        has_personal_focus=("Your most personal Moon transit today" in paid),
+        has_personal_teaser=("Exact transit house, SAV/BAV support" in free),
+    )
+
+
 def main() -> int:
     print("LLM_ENABLED=", os.environ.get("LLM_ENABLED", "<unset>"), flush=True)
-    summary: dict = {"astro": [], "horary": None, "user_question": None}
+    summary: dict = {"astro": [], "horary": None, "user_question": None, "daily": None}
 
     meera = gen_astro(MEERA, "meera_1990-01-15_delhi")
     summary["astro"].append(meera)
@@ -221,6 +248,12 @@ def main() -> int:
         print(f"[user_question] FAILED: {exc}", flush=True)
         summary["user_question"] = {"ok": False, "error": str(exc)}
 
+    try:
+        summary["daily"] = gen_daily()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily] FAILED: {exc}", flush=True)
+        summary["daily"] = {"ok": False, "error": str(exc)}
+
     (OUT / "summary.json").write_text(
         json.dumps(summary, indent=2, default=str), encoding="utf-8")
     print(json.dumps(summary, indent=2, default=str), flush=True)
@@ -229,14 +262,20 @@ def main() -> int:
     for row in summary["astro"]:
         if row.get("llm_enabled"):
             fails.append(f"astro:{row['name']}:llm_on")
-        if row.get("unlock_free", 0) != 1:
+        if row.get("unlock_free", 0) < 1:
             fails.append(f"astro:{row['name']}:unlock={row.get('unlock_free')}")
-    for key in ("horary", "user_question"):
+    for key in ("horary", "user_question", "daily"):
         row = summary.get(key) or {}
         if row.get("ok") is False:
             fails.append(f"{key}:error")
         elif row.get("llm_enabled"):
             fails.append(f"{key}:llm_on")
+        elif key != "daily" and row.get("unlock_free", 0) < 1:
+            fails.append(f"{key}:unlock={row.get('unlock_free')}")
+        elif key == "daily" and not row.get("has_personal_focus"):
+            fails.append("daily:missing_personal_focus")
+        elif key == "daily" and not row.get("has_personal_teaser"):
+            fails.append("daily:missing_personal_teaser")
     if fails:
         print("FAILED:", ", ".join(fails), file=sys.stderr)
         return 1

@@ -19,7 +19,7 @@ from palm_api.confluence import build_confluence
 from palm_api.engine import predict
 from palm_api.reference import build_reference_text
 from palm_api.report_links import enrich_checklist_with_predictions, linked_prediction_count
-from palm_api.quality_gate import apply_quality_gate, apply_checklist_quality_gate
+from palm_api.quality_gate import apply_quality_gate, apply_checklist_quality_gate, filter_special_mark_findings
 from palm_api.rules_builder import load_corpus, save_corpus
 
 _corpus: dict[str, Any] | None = None
@@ -228,9 +228,9 @@ def _img_src(overlay_path: Optional[str], embed: bool) -> str:
 
 
 def _render_checklist(hand_data: dict[str, Any]) -> str:
-    lst = hand_data.get("numbered_checklist") or []
-    missing = hand_data.get("not_detected") or []
     q = hand_data.get("features", {}).get("quality") or {}
+    lst = filter_special_mark_findings(hand_data.get("numbered_checklist") or [], q)
+    missing = hand_data.get("not_detected") or []
     html_out = ""
     if q.get("grade"):
         html_out += f'<p class="note">Photo quality: <strong>{_e(q["grade"])}</strong></p>'
@@ -360,7 +360,7 @@ def _render_life_aspects(aspects: Optional[list[dict[str, Any]]]) -> str:
 </article>"""
 
 
-def _render_confluence(c: Optional[dict[str, Any]]) -> str:
+def _render_confluence(c: Optional[dict[str, Any]], *, special_marks_allowed: bool = True) -> str:
     if not c:
         return ""
     line_items = c.get("lines") or []
@@ -382,9 +382,10 @@ def _render_confluence(c: Optional[dict[str, Any]]) -> str:
             f"<li>{_e(m.get('statement',''))}</li>" for m in c["mounts"]
         ) + "</ul>"
     marks = ""
-    if c.get("marks"):
+    mark_items = c.get("marks") or []
+    if special_marks_allowed and mark_items:
         marks = "<h3>Special marks</h3><ul class=" + '"plain"' + ">" + "".join(
-            f"<li>{_e(m.get('statement',''))}</li>" for m in c["marks"]
+            f"<li>{_e(m.get('statement',''))}</li>" for m in mark_items
         ) + "</ul>"
     pred_parts = []
     for p in c.get("predictions") or []:
@@ -460,7 +461,18 @@ def render_lane_html(
 
     conf = analysis.get("confluence") or {}
     aspects_section = _render_life_aspects(conf.get("life_aspects"))
-    conf_section = _render_confluence(analysis.get("confluence"))
+    # A combined mark is only customer-visible when every source hand is clear
+    # enough to support fine-mark interpretation. One fair/poor hand must not
+    # be overridden by a clear other hand.
+    hand_blocks = [analysis.get(k) for k in ("right", "left") if analysis.get(k)]
+    special_allowed = bool(hand_blocks) and all(
+        bool((b.get("features", {}).get("quality") or {}).get("special_marks_allowed", False))
+        for b in hand_blocks
+    )
+    conf_section = _render_confluence(
+        analysis.get("confluence"),
+        special_marks_allowed=special_allowed,
+    )
 
     # When a combined confluence leads the report, the palm-only sections become
     # the "detailed palmistry" block sitting under their own divider.
@@ -498,10 +510,18 @@ def render_lane_html(
 
     # CSS subset from palm_api index.html
     css = TEMPLATE_CSS
-    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
+    html_doc = f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Palmistry — {_e(client_name)}</title>
 <style>{css}</style></head><body>{body}</body></html>"""
+    # Shared customer boundary: remove any legacy technical fragments that an
+    # optional appendix/overlay may have appended after the quality gate.
+    try:
+        from qa_checks.customer_text_sanitizer import sanitize_html_document
+        html_doc = sanitize_html_document(html_doc)
+    except Exception:
+        pass
+    return html_doc
 
 
 TEMPLATE_CSS = """

@@ -648,7 +648,7 @@ def build_main_question_report(
         from gemstone_remedy import build_remedy_report
         remedy_primary = build_remedy_report(
             primary["pc"], question=question, domain=ctx.domain, intent=ctx.intent,
-            client_name=subject.name,
+            client_name=subject.name, question_scoped=True,
         )
         if rel_result and related and rctx:
             remedy_related = build_remedy_report(

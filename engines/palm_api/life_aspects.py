@@ -373,7 +373,17 @@ def build_life_aspects(
 
     out: list[dict[str, Any]] = []
     for akey, atitle in ASPECTS:
-        matched: list[Rule] = [r for r in RULES if r.aspect == akey and _safe(r.cond, dv)]
+        matched: list[Rule] = []
+        for r in RULES:
+            if r.aspect != akey or not _safe(r.cond, dv):
+                continue
+            # Fair/poor photos may support broad lines/mounts, but fine special
+            # marks are not reliable enough to become life-area evidence.
+            if quality_grade != "good" and re.search(
+                r"\b(trident|star|grille|triangle|square|cross)\b", r.text, re.I
+            ):
+                continue
+            matched.append(r)
         if not matched:
             continue
 

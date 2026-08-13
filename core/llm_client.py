@@ -7,6 +7,7 @@ failure so callers always fall back to deterministic templates.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from typing import Optional, Type, TypeVar
@@ -19,8 +20,28 @@ T = TypeVar("T", bound=BaseModel)
 
 _client = None
 _client_lock = threading.Lock()
+_throttle_lock = threading.Lock()
+_last_llm_call = 0.0
 # Tests inject a stub here; production leaves it None.
 _STUB_COMPLETE = None  # type: ignore[var-annotated]
+
+
+def _throttle() -> None:
+    """Space live LLM calls so a 20 RPM endpoint is not burst-overrun."""
+    try:
+        interval = float(os.environ.get("LLM_MIN_INTERVAL", "0") or 0)
+    except (TypeError, ValueError):
+        interval = 0.0
+    if interval <= 0:
+        return
+    global _last_llm_call
+    with _throttle_lock:
+        wait = interval - (time.time() - _last_llm_call)
+        if wait > 0:
+            print(f"[llm] throttle {wait:.1f}s (LLM_MIN_INTERVAL={interval})",
+                  flush=True)
+            time.sleep(wait)
+        _last_llm_call = time.time()
 
 
 def set_stub(fn) -> None:
@@ -86,15 +107,33 @@ def _parse(schema: Type[T], raw: str) -> Optional[T]:
         # salvage the outermost object
         start, end = text.find("{"), text.rfind("}")
         if start < 0 or end <= start:
+            _log_parse_failure("no JSON object in reply", schema, text)
             return None
         try:
             data = json.loads(text[start:end + 1])
         except json.JSONDecodeError:
+            _log_parse_failure("unparseable JSON", schema, text)
             return None
     try:
         return schema.model_validate(data)
-    except ValidationError:
+    except ValidationError as ve:
+        first = (ve.errors() or [{}])[0]
+        where = ".".join(str(x) for x in (first.get("loc") or ()))
+        _log_parse_failure(f"schema: {where or '?'} {first.get('msg', '')}",
+                           schema, text)
         return None
+
+
+def _log_parse_failure(why: str, schema: Type[T], text: str) -> None:
+    """Say why a reply was thrown away — never what it said.
+
+    Without this the caller only reports "empty_or_model_failure", which reads
+    the same for a dead endpoint, a truncated reply and prose that missed the
+    schema by one field. The reply itself carries the reader's chart, so only
+    its length is logged.
+    """
+    print(f"[llm] {schema.__name__} unusable ({why}); {len(text)} chars",
+          flush=True)
 
 
 def complete_model(
@@ -123,6 +162,7 @@ def complete_model(
     client = _get_client()
     if client is None:
         return None
+    _throttle()
 
     model = S.llm_model or "Qwen/Qwen2.5-7B-Instruct-AWQ"
     messages = [
@@ -132,8 +172,23 @@ def complete_model(
     schema_body = _schema_payload(schema)
     raw_text = ""
 
+    def _content(resp) -> str:
+        """Text of the first choice, or "" when the server sent none.
+
+        A vLLM endpoint under load can answer 200 with ``choices: null``, and
+        indexing that raises inside the repair pass — which then logs as a
+        repair failure and hides the real cause.
+        """
+        choices = getattr(resp, "choices", None) or []
+        if not choices:
+            return ""
+        return (getattr(choices[0].message, "content", "") or "").strip()
+
     def _create(**kwargs):
         """Create with one sleep-retry on HTTP 429 (endpoint is ~20/min)."""
+        limit = int(getattr(S, "llm_max_tokens", 0) or 0)
+        if limit > 0:
+            kwargs.setdefault("max_tokens", limit)
         try:
             return client.chat.completions.create(**kwargs)
         except Exception as exc:  # noqa: BLE001
@@ -142,6 +197,14 @@ def complete_model(
                 print("[llm] rate-limited — sleeping 35s then retrying once",
                       flush=True)
                 time.sleep(35)
+                return client.chat.completions.create(**kwargs)
+            # A configured ceiling that no longer fits behind this prompt is
+            # refused, not truncated. Dropping it lets the endpoint give us
+            # whatever the context has left instead of nothing at all.
+            if "max" in err and "context" in err and "max_tokens" in kwargs:
+                print("[llm] max_tokens does not fit the context — retrying "
+                      "without a ceiling", flush=True)
+                kwargs.pop("max_tokens", None)
                 return client.chat.completions.create(**kwargs)
             raise
 
@@ -156,7 +219,7 @@ def complete_model(
                 "json_schema": schema_body,
             },
         )
-        raw_text = (resp.choices[0].message.content or "").strip()
+        raw_text = _content(resp)
         parsed = _parse(schema, raw_text)
         if parsed is not None:
             return parsed
@@ -171,7 +234,7 @@ def complete_model(
                     temperature=temperature,
                     extra_body={"guided_json": schema.model_json_schema()},
                 )
-                raw_text = (resp.choices[0].message.content or "").strip()
+                raw_text = _content(resp)
                 parsed = _parse(schema, raw_text)
                 if parsed is not None:
                     return parsed
@@ -210,8 +273,8 @@ def complete_model(
                 temperature=0.2,
                 extra_body={"guided_json": schema.model_json_schema()},
             )
-            repaired = (resp.choices[0].message.content or "").strip()
-            return _parse(schema, repaired)
+            repaired = _content(resp)
+            return _parse(schema, repaired) if repaired else None
         except Exception as exc:  # noqa: BLE001
             print(f"[llm] repair failed: {type(exc).__name__}: {exc}", flush=True)
 

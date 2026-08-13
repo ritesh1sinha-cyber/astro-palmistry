@@ -14,12 +14,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # ---------------------------------------------------------------------------
 # Controlled enums (Python owns these; Qwen may express them, never change them)
 # ---------------------------------------------------------------------------
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.2"
 PROMPT_VERSIONS = {
-    "full_report": "REPORT_PROSE_PROMPT_V1",
+    "full_report": "REPORT_CONVERSATIONAL_PROMPT_V1",
+    "full_report_areas": "REPORT_AREAS_PROMPT_V1",
     "user_question": "QUESTION_PROSE_PROMPT_V1",
     "horary": "HORARY_PROSE_PROMPT_V1",
-    "palm": "PALM_PROSE_PROMPT_V1",
+    "palm": "PALM_CONVERSATIONAL_PROMPT_V1",
     "chat": "CHAT_PROSE_PROMPT_V1",
 }
 
@@ -39,6 +40,14 @@ Agreement = Literal["strong", "partial", "weak", "insufficient"]
 Kind = Literal["promise", "challenge"]
 Polarity = Literal["support", "caution"]
 Family = Literal["natal", "divisional", "rules", "palm", "horary", "other"]
+# Banded levels. The life-state block reports bands rather than scores on
+# purpose: a float in the facts grounds its digits for the whole page, which
+# would let prose print numbers the date gate is meant to catch.
+Level = Literal["none", "low", "moderate", "high", "very_high"]
+# "home" is the household itself — the roof they grew up under and the one
+# they keep now. The classical sources describe it alongside the people, and a
+# background block that names three relatives but never the home reads partial.
+Relation = Literal["father", "mother", "siblings", "home"]
 
 AREA_KEYS = (
     "self", "parents", "siblings", "love", "children", "profession",
@@ -78,6 +87,7 @@ class CardFacts(BaseModel):
     status: str = "insufficient_evidence"
     activation_status: str = "inactive"
     confidence: Confidence = "low"
+    prediction_strength: str = "insufficient_evidence"
     agreement: Agreement = "weak"
     direction: Direction = "mixed"
     score: float = 0.0
@@ -88,12 +98,127 @@ class CardFacts(BaseModel):
     manifestation_ids: list[str] = Field(default_factory=list, max_length=6)
     semantic_tags: list[str] = Field(default_factory=list, max_length=8)
     window: Optional[WindowFact] = None
+    timing_windows: list[WindowFact] = Field(default_factory=list, max_length=4)
+    question_lens: str = ""
     # Paid-only fields — stripped by project_for_access("free")
     wealth_sub: list[dict[str, Any]] = Field(default_factory=list)
     remedy_eligible: bool = False
     approved_remedies: list[str] = Field(default_factory=list, max_length=3)
     allowed_planets: list[str] = Field(default_factory=list, max_length=8)
     allowed_dates: list[str] = Field(default_factory=list, max_length=12)
+    # Conversational template — precomputed by Python, expressed by the LLM.
+    outlook_line: str = Field(default="", max_length=220)
+    manifestations: list[str] = Field(default_factory=list, max_length=4)
+    remedy_text: str = Field(default="", max_length=220)
+
+
+class RecentMonthFact(BaseModel):
+    """One dated past window used to build trust in the free section."""
+    model_config = ConfigDict(extra="forbid")
+    start: str = ""
+    end: str = ""
+    area: str = ""
+    label: str = ""
+    direction: str = "mixed"
+    direction_label: str = ""
+    headline: str = Field(default="", max_length=220)
+    manifests: list[str] = Field(default_factory=list, max_length=3)
+
+
+class DomainStateFact(BaseModel):
+    """How live one life area is right now, read off its canonical card."""
+    model_config = ConfigDict(extra="forbid")
+    area: str
+    label: str = ""
+    activation: Level = "none"
+    pressure: Level = "none"
+    support: Level = "none"
+    confidence: Confidence = "low"
+    agreement: Agreement = "weak"
+    contradiction: bool = False
+    # Controlled vocabulary the LLM may express; it must not invent its own.
+    experience: list[str] = Field(default_factory=list, max_length=3)
+    outcome_language_restricted: bool = False
+
+
+class MindTopicFact(BaseModel):
+    """A subject that may be occupying the person — never a stated fact.
+
+    ``is_fact`` stays false so the prose layer and its QA gate both know this
+    is what the chart makes likely to be on their mind, not something the
+    reading knows about their circumstances.
+    """
+    model_config = ConfigDict(extra="forbid")
+    area: str
+    label: str = ""
+    likelihood: Literal["likely", "possible"] = "possible"
+    experience: list[str] = Field(default_factory=list, max_length=3)
+    is_fact: Literal[False] = False
+
+
+class LifeStateFacts(BaseModel):
+    """Current-life-state block for the free trust section."""
+    model_config = ConfigDict(extra="forbid")
+    chapter_tone: Literal["supported", "pressured", "mixed", "steady"] = "mixed"
+    strongest_theme: str = ""
+    strongest_theme_label: str = ""
+    themes: list[str] = Field(default_factory=list, max_length=6)
+    emotional_pressure: Level = "low"
+    decision_pressure: Level = "low"
+    responsibility: Level = "low"
+    uncertainty: Level = "low"
+    domains: list[DomainStateFact] = Field(default_factory=list, max_length=12)
+    mind_now: list[MindTopicFact] = Field(default_factory=list, max_length=3)
+
+
+class HandContrastFacts(BaseModel):
+    """What the two hands say against each other.
+
+    Palmistry's own convention is the trust material here: the non-dominant
+    hand is read as what someone started with and the dominant hand as what
+    they have made of it. Only plain theme and trait words cross this boundary
+    — the engine's mount keys are planet names and stay behind it.
+    """
+    model_config = ConfigDict(extra="forbid")
+    dominant_hand: str = "right"
+    agreement: Literal["high", "partial", "low"] = "partial"
+    steady: list[str] = Field(default_factory=list, max_length=4)
+    developed: list[str] = Field(default_factory=list, max_length=4)
+    latent: list[str] = Field(default_factory=list, max_length=4)
+    developed_traits: list[str] = Field(default_factory=list, max_length=4)
+    latent_traits: list[str] = Field(default_factory=list, max_length=4)
+
+
+class PalmStateFacts(BaseModel):
+    """Current-palm-state block for the free trust section.
+
+    Palmistry has no dasha or transit clock, so nothing here is a period. It
+    describes what the dominant hand expresses now, and every age stays in
+    ``future_windows`` where the existing age gate can see it.
+    """
+    model_config = ConfigDict(extra="forbid")
+    chapter_tone: Literal["supported", "pressured", "mixed", "steady"] = "mixed"
+    themes: list[str] = Field(default_factory=list, max_length=6)
+    emotional_pressure: Level = "low"
+    decision_pressure: Level = "low"
+    uncertainty: Level = "low"
+    domains: list[DomainStateFact] = Field(default_factory=list, max_length=10)
+    mind_now: list[MindTopicFact] = Field(default_factory=list, max_length=3)
+    confidence_note: str = Field(default="", max_length=200)
+
+
+class FamilyNoteFact(BaseModel):
+    """Family texture agreed by more than one classical method.
+
+    Only normalized tags and already-sanitized lines survive here; the raw
+    case-book wording the source engines carry never reaches the LLM.
+    """
+    model_config = ConfigDict(extra="forbid")
+    relation: Relation
+    label: str = ""
+    tags: list[str] = Field(default_factory=list, max_length=6)
+    notes: list[str] = Field(default_factory=list, max_length=3)
+    method_count: int = 0
 
 
 class FactsMeta(BaseModel):
@@ -118,10 +243,23 @@ class ReportFacts(BaseModel):
     facts_hash: str = ""
     first_name: str = Field(default="", max_length=40)
     age_band: str = "adult"
+    age_years: Optional[int] = None
+    gender: str = "unknown"
     access: Literal["free", "paid"] = "free"
     cards: list[CardFacts] = Field(default_factory=list)
     dashboard_buckets: dict[str, list[str]] = Field(default_factory=dict)
     timing_windows: list[WindowFact] = Field(default_factory=list, max_length=8)
+    # Free-section conversational facts (Python-owned, never re-derived by LLM).
+    personality_traits: list[str] = Field(default_factory=list, max_length=6)
+    phase_direction: Direction = "mixed"
+    phase_tone: str = Field(default="", max_length=40)  # supportive / mixed / demanding
+    phase_end: str = ""
+    phase_notes: list[str] = Field(default_factory=list, max_length=4)
+    recent_months: list[RecentMonthFact] = Field(default_factory=list, max_length=4)
+    hardest_areas: list[str] = Field(default_factory=list, max_length=4)
+    hardest_area_labels: list[str] = Field(default_factory=list, max_length=4)
+    life_state: Optional[LifeStateFacts] = None
+    family_notes: list[FamilyNoteFact] = Field(default_factory=list, max_length=4)
 
 
 class QuestionFacts(BaseModel):
@@ -201,6 +339,7 @@ class HoraryFacts(BaseModel):
 class PalmAspectFacts(BaseModel):
     model_config = ConfigDict(extra="forbid")
     aspect: str
+    title: str = ""
     direction: Direction = "mixed"
     strength: str = "tentative"
     confidence: Confidence = "low"
@@ -208,6 +347,8 @@ class PalmAspectFacts(BaseModel):
     point_ids: list[str] = Field(default_factory=list, max_length=8)
     semantic_tags: list[str] = Field(default_factory=list, max_length=6)
     semantic_summary: str = Field(default="", max_length=220)
+    recognize: list[str] = Field(default_factory=list, max_length=4)
+    age_window: list[int] = Field(default_factory=list, max_length=2)
     score: float = 0.0
 
 
@@ -220,6 +361,7 @@ class PalmFacts(BaseModel):
     facts_hash: str = ""
     first_name: str = Field(default="", max_length=40)
     age_band: str = "adult"
+    age_years: Optional[int] = None
     access: Literal["free", "paid"] = "free"
     dominant_hand: str = "right"
     photo_grade: str = "fair"
@@ -231,15 +373,26 @@ class PalmFacts(BaseModel):
     aspects: list[PalmAspectFacts] = Field(default_factory=list)
     future_windows: list[dict[str, Any]] = Field(default_factory=list, max_length=6)
     special_mark_ids: list[str] = Field(default_factory=list, max_length=8)
+    # Conversational free-section facts.
+    personality_traits: list[str] = Field(default_factory=list, max_length=6)
+    life_stage_note: str = Field(default="", max_length=220)
+    life_stage_age: Optional[int] = None
+    demanding_aspect: str = ""
+    demanding_aspect_label: str = ""
+    remedies_allowed: bool = False
+    remedies: list[str] = Field(default_factory=list, max_length=4)
+    hand_contrast: Optional[HandContrastFacts] = None
+    palm_state: Optional[PalmStateFacts] = None
 
 
 # ---------------------------------------------------------------------------
 # Prose models (LLM output — language only, no prediction authority)
 # ---------------------------------------------------------------------------
 class CardProse(BaseModel):
-    """Language-only card prose. Authoritative statuses stay in CardFacts."""
+    """Conversational life-question prose. Authoritative truth stays in CardFacts."""
     model_config = ConfigDict(extra="forbid")
     area: str
+    question_lens: str = Field(default="", max_length=120)
     headline: str = Field(..., min_length=8, max_length=140)
     summary: str = Field(default="", max_length=280)
     how_this_may_show_up: list[str] = Field(default_factory=list, max_length=3)
@@ -301,7 +454,78 @@ class CardProse(BaseModel):
 class ReportProse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     opening: str = Field(default="", max_length=320)
+    master_narrative: str = Field(default="", max_length=520)
     cards: list[CardProse] = Field(default_factory=list, max_length=12)
+
+
+class ConversationalAreaProse(BaseModel):
+    """One life-area paragraph for the compact conversational template."""
+    model_config = ConfigDict(extra="forbid")
+    area: str
+    outlook: str = Field(..., min_length=8, max_length=280)
+    timing: str = Field(default="", max_length=160)
+    manifestation: str = Field(default="", max_length=160)
+    remedy: str = Field(default="", max_length=180)
+
+
+class ConversationalProse(BaseModel):
+    """Whole-page conversational report — one LLM call per access tier."""
+    model_config = ConfigDict(extra="forbid")
+    # Paid pays for depth here: every trait the engines agreed on gets a line,
+    # so the ceiling is a paragraph rather than three sentences.
+    personality: str = Field(..., min_length=8, max_length=900)
+    current_phase: str = Field(..., min_length=8, max_length=320)
+    recent_months: str = Field(default="", max_length=420)
+    hardest_area_note: str = Field(default="", max_length=180)
+    # Free-section trust block: what may be on their mind, and why now.
+    mind_now: list[str] = Field(default_factory=list, max_length=3)
+    why_now: str = Field(default="", max_length=380)
+    # One line per family_notes entry — father, mother, siblings, home.
+    family_note: list[str] = Field(default_factory=list, max_length=4)
+    areas: list[ConversationalAreaProse] = Field(default_factory=list, max_length=10)
+
+    @field_validator("mind_now")
+    @classmethod
+    def _strip_mind_now(cls, v: list[str]) -> list[str]:
+        return [str(x).strip()[:220] for x in (v or []) if str(x).strip()][:3]
+
+    @field_validator("family_note")
+    @classmethod
+    def _strip_family_note(cls, v: list[str]) -> list[str]:
+        return [str(x).strip()[:280] for x in (v or []) if str(x).strip()][:4]
+
+
+class ConversationalAreasProse(BaseModel):
+    """Only the life-area passages — the paid page's second call.
+
+    A paid page is a long reply against an 8k context. Asked for the whole
+    thing at once the model spends its budget on the opening and returns three
+    of eight areas, so the areas are requested on their own with only the card
+    facts in front of them.
+    """
+    model_config = ConfigDict(extra="forbid")
+    areas: list[ConversationalAreaProse] = Field(default_factory=list, max_length=12)
+
+
+class ConversationalPalmAreaProse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    aspect: str
+    outlook: str = Field(..., min_length=8, max_length=240)
+    timing: str = Field(default="", max_length=140)
+    manifestation: str = Field(default="", max_length=140)
+    remedy: str = Field(default="", max_length=160)
+
+
+class ConversationalPalmProse(BaseModel):
+    """Whole-page conversational palm report — one LLM call per access tier."""
+    model_config = ConfigDict(extra="forbid")
+    personality: str = Field(..., min_length=8, max_length=360)
+    current_phase: str = Field(..., min_length=8, max_length=280)
+    hardest_area_note: str = Field(default="", max_length=160)
+    mind_now: list[str] = Field(default_factory=list, max_length=3)
+    why_now: str = Field(default="", max_length=380)
+    hand_contrast_note: str = Field(default="", max_length=380)
+    areas: list[ConversationalPalmAreaProse] = Field(default_factory=list, max_length=8)
 
 
 class QuestionProse(BaseModel):
@@ -355,3 +579,4 @@ class LlmRunMeta(BaseModel):
     accepted: int = 0
     rejected: int = 0
     errors: int = 0
+    rejection_reasons: dict[str, int] = Field(default_factory=dict)

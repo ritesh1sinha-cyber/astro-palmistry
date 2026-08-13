@@ -126,12 +126,13 @@ def _e(t: Any) -> str:
 
 
 def build(pc: dict, *, domain: str = "", question: str = "",
-          name: str = "") -> dict:
+          name: str = "", question_scoped: bool = False) -> dict:
     """Gemstone safety plus the practical action, for one chart."""
     try:
         from gemstone_remedy import build_remedy_report
         rep = build_remedy_report(pc, client_name=name, domain=domain,
-                                  question=question)
+                                  question=question,
+                                  question_scoped=question_scoped)
     except Exception:
         rep = {}
 
@@ -201,18 +202,30 @@ def _stone_row(item: dict, *, paid: bool = False) -> str:
     if paid:
         role_bits = []
         if item.get("role"):
-            role_bits.append(str(item.get("role")))
-        if snap:
-            role_bits.append(
-                f"{snap.get('planet')} in your {_ord(snap.get('house'))} house, "
-                f"{_dig_plain(snap.get('dignity', ''))}")
+            try:
+                from gemstone_remedy import _customer_role_label
+                role_bits.append(_customer_role_label(str(item.get("role"))))
+            except Exception:
+                role_bits.append("Relevant chart indicator")
+        # Never expose the internal house/dignity snapshot. The customer only
+        # needs the semantic planetary role; the canonical evidence layer owns
+        # the technical chart mechanics.
+        if snap.get("planet") and not role_bits:
+            role_bits.append(f"{snap.get('planet')} is relevant to this remedy")
         if role_bits:
             role_html = f'<div class="stone-role">{_e(". ".join(role_bits))}</div>'
         if reasons:
-            why_label = ("Technical reason"
-                         if verdict in ("avoid", "mantra_only") else "Why")
+            why_label = "Why"
+            reason_text = str(reasons[0])
+            try:
+                from qa_checks.customer_text_sanitizer import sanitize_customer_text
+                reason_text = sanitize_customer_text(
+                    reason_text, area="", direction="caution" if verdict in ("avoid", "mantra_only") else "support",
+                    method_label="Remedy evidence", seed=reason_text[:48])
+            except Exception:
+                pass
             why = (f'<div class="stone-why"><b>{why_label}:</b> '
-                   f'{_e(reasons[0])}</div>')
+                   f'{_e(reason_text)}</div>')
     else:
         # Free refusals: keep the verdict, drop lord/house mechanics.
         if verdict in ("avoid", "mantra_only") or reasons:

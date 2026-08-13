@@ -593,6 +593,9 @@ def report_chat(rid: str, body: ChatIn, user: dict = Depends(current_user)):
         answer = (result.get("answer") or refusal).strip()
         out_of_scope = bool(result.get("out_of_scope"))
         used = list(result.get("used_fact_ids") or [])
+        reasons = (result.get("stats") or {}).get("rejection_reasons") or []
+        if reasons:
+            print(f"[chat] {rid} answer rejected by QA: {reasons}", flush=True)
     except Exception as exc:                                          # noqa: BLE001
         print(f"[chat] failed: {type(exc).__name__}: {exc}", flush=True)
         answer = refusal

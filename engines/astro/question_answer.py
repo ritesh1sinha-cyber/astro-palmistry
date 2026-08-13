@@ -45,6 +45,12 @@ class Topic:
 
 
 TOPICS = (
+    Topic("career", "Career growth and direction", "your career improving",
+          houses=(10, 11, 6),
+          significators=("Sun", "Saturn", "Jupiter"),
+          patterns=(r"\bcareer\b", r"\bprofessional\b", r"\bwork\b.*\b(improv|grow|progress|better)\b",
+                    r"\bcareer\b.*\b(improv|grow|progress|better|future)\b"),
+          note="The reading focuses on professional growth, responsibility, recognition and direction rather than assuming a specific job change."),
     Topic("job_change", "A change of job", "a job change",
           houses=(10, 6, 3, 11),
           significators=("Saturn", "Sun", "Mercury"),
@@ -200,7 +206,7 @@ def _topic_by_key(key: str) -> Optional[Topic]:
 # (career + "promotion" → promotion). Never let an unrelated keyword steal
 # the read (children area + bare "house" must not become property).
 _AREA_COMPAT: dict[str, frozenset[str]] = {
-    "career": frozenset({"job_change", "promotion", "business"}),
+    "career": frozenset({"career", "job_change", "promotion", "business"}),
     "promotion": frozenset({"promotion", "job_change"}),
     "business": frozenset({"business", "job_change"}),
     "finance": frozenset({"money"}),
@@ -266,7 +272,7 @@ def classify(question: str, area: str = "") -> Topic:
         if by_house:
             return by_house[0]
         key = {
-            "career": "promotion", "finance": "money", "property": "property",
+            "career": "career", "finance": "money", "property": "property",
             "travel": "foreign", "health": "health", "education": "study",
             "children": "children", "family": "children",
             "marriage": "marriage", "legal": "legal",
@@ -396,6 +402,7 @@ def _canonical_area_for_topic(topic_key: str, area_key: str = "") -> tuple[str, 
     if explicit in _CANONICAL_AREA_HOUSES:
         return explicit, _CANONICAL_AREA_HOUSES[explicit]
     topic_area = {
+        "career": "career",
         "job_change": "career",
         "promotion": "career",
         "business": "career",
@@ -434,20 +441,32 @@ def _build_canonical_question_result(
         return None
 
 
-def _question_windows_from_canonical(canonical: dict, start: date) -> list[dict]:
+def _question_windows_from_canonical(canonical: dict, start: date, years: int = 7) -> list[dict]:
     timing = canonical.get("timing") or {}
-    rows = (
-        list(timing.get("featured_windows") or [])
-        or list(timing.get("strong_windows") or [])
-        or list(timing.get("validated_windows") or [])
-        or list(timing.get("opportunity_windows") or [])
-    )
+    # Do not let an out-of-horizon strong window suppress a validated or
+    # opportunity window that actually falls inside the user's requested period.
+    rows: list[dict] = []
+    seen: set[tuple] = set()
+    for bucket in ("featured_windows", "strong_windows", "validated_windows", "opportunity_windows", "windows"):
+        for w in list(timing.get(bucket) or []):
+            if not isinstance(w, dict):
+                continue
+            key = (str(w.get("start") or ""), str(w.get("end") or ""), str(w.get("event_type") or ""))
+            if key not in seen:
+                seen.add(key)
+                rows.append(w)
     out: list[dict] = []
     for w in rows:
         if not isinstance(w, dict) or not w.get("start"):
             continue
         try:
             if w["start"] < start:
+                continue
+            try:
+                cutoff = start.replace(year=start.year + years)
+            except ValueError:
+                cutoff = start.replace(month=2, day=28, year=start.year + years)
+            if w["start"] > cutoff:
                 continue
         except TypeError:
             pass
@@ -475,12 +494,27 @@ def _question_windows_from_canonical(canonical: dict, start: date) -> list[dict]
 
 # ---------------------------------------------------------------------------
 
+def _requested_horizon_years(question: str, default: int = 7) -> int:
+    """Read an explicit user horizon such as 'next 2 years'."""
+    q = re.sub(r"\s+", " ", (question or "").lower())
+    m = re.search(r"(?:next|coming|within)\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\s+years?", q)
+    if m:
+        raw = m.group(1)
+        words = {"one":1, "two":2, "three":3, "four":4, "five":5,
+                 "six":6, "seven":7, "eight":8, "nine":9, "ten":10}
+        return max(1, min(10, int(raw) if raw.isdigit() else words[raw]))
+    if re.search(r"(?:next|coming|within)\s+(?:one|a)\s+year", q):
+        return 1
+    return max(1, min(10, int(default or 7)))
+
+
 def answer(pc: dict, question: str, *, start: Optional[date] = None,
            years: int = 7, lat: Optional[float] = None,
            lon: Optional[float] = None, tz: float = 5.5,
            route: Any = None, area: str = "") -> dict:
     """Find the windows where this specific thing can actually happen."""
     start = start or date.today()
+    years = _requested_horizon_years(question, years)
     topic = classify(question, area=area)
     import report_confluence as CF
     import report_timing as RT
@@ -507,7 +541,7 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
         area_key = str(canonical.get("area") or area_key)
         promise = dict(canonical.get("promise") or {})
         activation = dict(canonical.get("activation") or {})
-        windows = _question_windows_from_canonical(canonical, start)
+        windows = _question_windows_from_canonical(canonical, start, years=years)
     else:
         promise = CF.area_verdict(pc, area_key, primary)
         promise = CF.merge_semantic_verdict(area_key, promise)
@@ -515,11 +549,12 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
         windows = []
 
     deep: dict = {}
-    try:
-        import deep_evidence as DE
-        deep = DE.for_area(area_key, house=primary)
-    except Exception:  # noqa: BLE001
-        deep = {}
+    if not canonical:
+        try:
+            import deep_evidence as DE
+            deep = DE.for_area(area_key, house=primary)
+        except Exception:  # noqa: BLE001
+            deep = {}
 
     hl = pc.get("house_lords", {}) or {}
     planets = pc.get("planets", {}) or {}
@@ -583,38 +618,15 @@ def answer(pc: dict, question: str, *, start: Optional[date] = None,
         for text in list(why.get("caution") or [])[:1]:
             chart_lines.append(("Watch", str(text)[:220]))
     else:
-        for h in topic.houses:
-            info = hl.get(str(h)) or {}
-            lord = info.get("lord", "")
-            if not lord:
-                continue
-            dig = _human_dignity(str(info.get("lord_dignity") or ""))
-            sits = info.get("lord_house")
-            detail = dig
-            if sits:
-                detail += ", placed in your " + _ord(sits) + " house"
-            if lord in topic.significators:
-                detail += "; also a natural significator for this question"
-            chart_lines.append((_ord(h) + " house — " + lord, detail))
-        for fact in (deep.get("house_facts") or [])[:2]:
-            chart_lines.append(("Your chart", _plain_line(fact)))
-        varga = deep.get("varga") or {}
-        vdiag = (varga.get("diagnosis") or "").strip()
-        if vdiag:
-            vname = (varga.get("name") or varga.get("code") or "Divisional chart").strip()
-            chart_lines.append((vname, _plain_line(vdiag)))
-        for rule in (deep.get("rules_pos") or [])[:2]:
-            chart_lines.append(("Classical rule", _plain_line(rule)))
-        for rule in (deep.get("rules_neg") or [])[:1]:
-            chart_lines.append(("Watch", _plain_line(rule)))
-        if deep.get("transit", {}).get("note"):
-            chart_lines.append(("Sky now", _plain_line(deep["transit"]["note"])))
-        cw = deep.get("current_window") or {}
-        if cw.get("word"):
-            chart_lines.append((
-                "Period outlook",
-                f"{cw.get('period', 'Now')}: {cw.get('word', '')}"
-                + (f" — {cw['reason'][:80]}" if cw.get("reason") else "")))
+        # Fail closed when a canonical area cannot be built. Do not expose the
+        # legacy house-by-house/classical evidence path to the customer.
+        direction = str(promise.get("direction") or "mixed")
+        chart_lines = [
+            ("Chart evidence",
+             "The chart provides supportive evidence around this area." if direction in ("support", "up")
+             else "The chart shows pressure around this area." if direction in ("caution", "down")
+             else "The chart evidence is mixed around this area.")
+        ]
 
     vim_now = CF.vimshottari_at(pc, start)
     yog_now = (CF.yogini_at(pc, start) or {}).get("lord", "")
@@ -749,24 +761,59 @@ def answer_meta(result: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def _human_question_evidence(result: dict) -> list[str]:
-    """Collapse technical house/planet working into customer-level reasons."""
+    """Return only canonical, customer-safe reasons for a question.
+
+    When a full-report CanonicalAreaResult exists, the question tab must not
+    expose the legacy deep-evidence/house-by-house path. That path remains an
+    internal diagnostic only.
+    """
+    canonical = result.get("canonical_result") or {}
+    if isinstance(canonical, dict) and canonical:
+        why = canonical.get("why") or {}
+        rows = list(why.get("rows") or [])
+        out: list[str] = []
+        for row in rows[:4]:
+            if not isinstance(row, dict):
+                continue
+            reasons = row.get("reasons") or []
+            reason = str(row.get("reason") or (reasons[0] if reasons else "")).strip()
+            if not reason:
+                continue
+            try:
+                from qa_checks.customer_text_sanitizer import sanitize_customer_text
+                reason = sanitize_customer_text(
+                    reason, area=str(canonical.get("area") or result.get("area_key") or ""),
+                    direction=str(row.get("direction") or canonical.get("direction") or "mixed"),
+                    method_label=str(row.get("label") or "Chart evidence"),
+                    seed=reason[:48],
+                )
+            except Exception:  # noqa: BLE001
+                pass
+            if reason and reason not in out:
+                out.append(reason)
+        if out:
+            return out[:3]
+        direction = str(canonical.get("direction") or "mixed")
+        area = str(canonical.get("area") or result.get("area_key") or "this area").replace("_", " ")
+        if direction in ("support", "up"):
+            return [f"The chart provides supportive evidence around {area}."]
+        if direction in ("caution", "down"):
+            return [f"The chart shows pressure around {area}."]
+        return [f"The chart is mixed around {area}."]
+
+    # No canonical area exists (for genuinely unsupported topics): retain the
+    # question-specific semantic summary, but never expose raw house/rule text.
     promise = result.get("promise") or {}
     direction = str(promise.get("direction") or "mixed")
-    area = str(result.get("area_key") or "this area")
+    area = str(result.get("area_key") or "this area").replace("_", " ")
     out = []
     if direction in ("up", "support"):
-        out.append(f"The chart provides supportive evidence around {area.replace('_', ' ')}.")
+        out.append(f"The chart provides supportive evidence around {area}.")
     elif direction in ("down", "caution"):
-        out.append(f"The chart shows pressure around {area.replace('_', ' ')}.")
+        out.append(f"The chart shows pressure around {area}.")
     else:
-        out.append(f"The chart is mixed around {area.replace('_', ' ')}.")
-    deep = str(result.get("deep_verdict") or "").strip()
-    if deep:
-        # Keep only a short human sentence; raw house/rule mechanics stay internal.
-        deep = re.sub(r"\b\d{1,2}(?:st|nd|rd|th)?\s+house\b", "this life area", deep, flags=re.I)
-        deep = re.sub(r"\b(?:sub[- ]lord|karakamsa|atmakaraka|nakshatra|varga|lagna|bhava)\b", "specialist chart factors", deep, flags=re.I)
-        deep = re.sub(r"\b(?:dasha|bhukti|yogini|chara|bnn|kp)\b", "timing factors", deep, flags=re.I)
-        out.append(deep[:220])
+        out.append(f"The chart is mixed around {area}.")
+    # Unsupported questions fail closed. Never expose legacy deep verdict text.
     return out[:3]
 
 
@@ -808,7 +855,7 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
         if llm_answer:
             parts.append(f'<div class="qa-promise"><p>{_e(llm_answer)}</p></div>')
         main_pred = "".join(parts)
-    elif pred is not None:
+    elif pred is not None and not result.get("canonical_result"):
         main_pred = pred.html()
     elif isinstance(result.get("canonical_result"), dict) and result.get("canonical_result"):
         cr = result.get("canonical_result") or {}
@@ -843,7 +890,7 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
         f'do inside them are in the paid reading.</p>'
     )
 
-    return """
+    html = """
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {question}</div>
   {route_block}
@@ -857,17 +904,16 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
 
   <div class="qa-window locked">
     <div class="qa-wlabel">The verdict</div>
-    <p class="blurred">Your chart reads XXXXXXX for this question — the straight
-    answer from every method combined.</p>
+    <p class="blurred">The full reading gives the combined verdict from the
+    independent chart methods, including how strongly the evidence agrees.</p>
   </div>
 
   <div class="qa-window locked">
     <div class="qa-wlabel">Timing — when to move</div>
-    <p class="blurred">The strongest window falls between XXXXXXX XXXX and
-    XXXXXXX XXXX, with a nearer partial window before it.</p>
-    <p><b>{n} windows were found and scored across the next {horizon}
-    years.</b> Unlock for every date, which of them your chart actually backs,
-    and the remedy that tips each one your way.</p>
+    <p class="blurred">{timing_teaser}</p>
+    <p><b>{n} validated timing window{window_plural} were found for the
+    requested horizon.</b> Unlock for the exact dates, the evidence behind each
+    window and the practical guidance.</p>
   </div>
 
   <div class="qa-window locked">
@@ -875,6 +921,12 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
     <p class="blurred">What to strengthen or pacify for this question — the
     classical answer tied to the planets that rule it, plus the practical
     step that matters more than any stone.</p>
+  </div>
+
+  <div class="buy">
+    <h3>Unlock the full answer</h3>
+    <p>The verdict, dated timing windows, and the remedy for this question.</p>
+    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>""".format(
         question=_e(result["question"]),
@@ -884,7 +936,15 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
         houses=_e(", ".join(_ord(h) for h in topic.houses)),
         note=_e(_topic_customer_note(topic.key)),
         main_pred=main_pred,
+        timing_teaser=(
+            "No sufficiently strong validated timing window appears within the period you asked about."
+            if not windows else
+            "A validated timing window exists within the period you asked about; the exact dates are part of the full reading."
+        ),
+        window_plural="" if len(windows) == 1 else "s",
         n=len(windows), horizon=result["horizon"], price=price)
+    from qa_checks.final_customer_boundary import finalize_customer_html
+    return finalize_customer_html(html, strict=True)
 
 
 def render(result: dict, *, name: str = "", paid: bool = False,
@@ -900,23 +960,20 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     if not best:
         # Refusing is a real answer. Inventing a date is how this category
         # earned its reputation.
-        house_rows = "".join(
-            f"<li><b>{_e(label)}</b>{' — ' + _e(detail) if detail else ''}</li>"
-            for label, detail in (result.get("chart_lines") or []) if label)
+        evidence_rows = _human_question_evidence(result)
+        house_rows = "".join(f"<li>{_e(x)}</li>" for x in evidence_rows)
         house_block = (
-            f'<div class="evidence"><span class="ev-label">The house and '
-            f'planet behind this</span><ul>{house_rows}</ul></div>'
+            f'<div class="evidence"><span class="ev-label">What the chart supports</span><ul>{house_rows}</ul></div>'
             if house_rows else "")
-        return f"""
+        html = f"""
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
-  <h2 class="qa-verdict">Your chart does not show a clear window for
-  {_e(topic.subject)} in the next {result['horizon']} years.</h2>
-  <p>That is a real finding, not a dodge. The houses that govern this
-  ({', '.join(_ord(h) for h in topic.houses)}) get no strong planetary trigger
-  in that time. Anyone who gives you a date from this chart is guessing.</p>
+  <h2 class="qa-verdict">No sufficiently strong validated window appears for {_e(topic.subject)} in the next {result['horizon']} years.</h2>
+  <p>This does not mean the life area is blocked. It means the canonical timing evidence does not provide a strong window inside the period you asked about.</p>
   {house_block}
 </section>"""
+        from qa_checks.final_customer_boundary import finalize_customer_html
+        return finalize_customer_html(html, strict=True)
 
     intent = _intent(result.get("question", ""))
     direction_word = {"up": "supports", "down": "does not favour",
@@ -937,9 +994,11 @@ def render(result: dict, *, name: str = "", paid: bool = False,
         if promise["direction"] == "down" and not best["strong"]:
             lead = ("This is possible but your chart does not favour it. "
                     "The window below is the best of a weak set.")
-    deep_txt = "" if result.get("canonical_result") else (result.get("deep_verdict") or "").strip()
-    if deep_txt:
-        lead = f"{deep_txt} {lead}"
+    # Never splice legacy deep_verdict prose into customer output. Canonical
+    # evidence/QuestionFacts are the only permitted source for explanation.
+    deep_txt = ""
+    if not result.get("canonical_result") and not lead:
+        lead = "The question is being answered from the available life-area evidence."
 
     def _window_scenario(w: dict) -> str:
         if w.get("strong"):
@@ -1021,14 +1080,10 @@ def render(result: dict, *, name: str = "", paid: bool = False,
         promise_conf = promise.get("agreement", "")
 
     main_pred = ""
-    pred = result.get("prediction")
-    if pred is not None:
-        main_pred = pred.html()
-    elif promise.get("headline"):
-        main_pred = (
-            f'<div class="prediction"><p class="pred-scenario">'
-            f'{_e(promise["headline"])}</p></div>')
-    elif isinstance(result.get("canonical_result"), dict):
+    # Never render the legacy prediction object's raw HTML. CanonicalResult is
+    # the only authoritative prediction surface; unsupported topics get a
+    # semantic fallback instead of a second astrology renderer.
+    if isinstance(result.get("canonical_result"), dict):
         cr = result.get("canonical_result") or {}
         backing = str(cr.get("backing") or "").strip()
         if backing:
@@ -1069,7 +1124,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
         f'<p class="qa-action">{_e(llm_action)}</p>' if llm_action else ""
     )
 
-    return f"""
+    html = f"""
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
   <p class="qa-lede">{_e(lede_txt)}</p>
@@ -1090,3 +1145,5 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   move inside it. The remedy below is what tips those windows your way.</p>
   {upsell}
 </section>"""
+    from qa_checks.final_customer_boundary import finalize_customer_html
+    return finalize_customer_html(html, strict=True)

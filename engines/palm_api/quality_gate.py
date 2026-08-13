@@ -74,11 +74,51 @@ def apply_quality_gate(features: dict[str, Any]) -> dict[str, Any]:
     return feats
 
 
+
+_SPECIAL_MARK_TERMS = (
+    "trident", "trishul", "star mark", "grille", "fish mark",
+    "triangle mark", "cross mark", "square mark", "circle mark",
+    "island mark", "fork mark", "lotus mark", "flag mark",
+)
+
+
+def _is_special_mark_item(item: dict[str, Any]) -> bool:
+    """Identify a numbered finding whose meaning depends on a fine/special mark."""
+    vals = []
+    for key in ("kind", "category", "type", "id", "key", "title", "text", "statement"):
+        v = item.get(key)
+        if v is not None:
+            vals.append(str(v).lower())
+    conc = item.get("conclusive") or {}
+    for key in ("verdict", "conclusion"):
+        v = conc.get(key)
+        if v:
+            vals.append(str(v).lower())
+    blob = " ".join(vals)
+    return (
+        "special_mark" in blob
+        or "special mark" in blob
+        or any(term in blob for term in _SPECIAL_MARK_TERMS)
+        or str(item.get("category") or "").lower() == "marks"
+        or str(item.get("kind") or "").lower() == "mark"
+    )
+
+
+def filter_special_mark_findings(
+    checklist: list[dict[str, Any]], quality: dict[str, Any] | None
+) -> list[dict[str, Any]]:
+    """Remove fine-mark findings whenever the photo policy disallows them."""
+    policy = quality_policy(quality)
+    if policy["special_marks_allowed"]:
+        return list(checklist or [])
+    return [dict(item) for item in (checklist or []) if not _is_special_mark_item(item)]
+
 def apply_checklist_quality_gate(checklist: list[dict[str, Any]], quality: dict[str, Any] | None) -> list[dict[str, Any]]:
     """Apply the same quality contract to numbered findings/timing."""
     policy = quality_policy(quality)
+    source = filter_special_mark_findings(checklist, quality)
     out = []
-    for item in checklist or []:
+    for item in source:
         row = dict(item)
         if not policy["future_timing_allowed"]:
             row["timing"] = None

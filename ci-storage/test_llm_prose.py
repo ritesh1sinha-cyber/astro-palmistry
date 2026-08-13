@@ -193,23 +193,38 @@ def test_humanize_disabled_returns_empty(llm_off):
     assert out["overlay"] == {}
 
 
+GOOD_CONV = {
+    "personality": "Meera, you tend to act when an opportunity is clear.",
+    "current_phase": "Right now the chapter you are in reads as mixed.",
+    "recent_months": "Home has been mostly workable in the recent months.",
+    "hardest_area_note": "The area asking for more care right now is Work & Career.",
+    "areas": [{
+        "area": "profession",
+        "outlook": "Your career theme is supported and currently active.",
+        "timing": "Validated timing windows favour steady effort.",
+        "manifestation": "recognition for steady work",
+        "remedy": "Keep a weekly review habit and move on the openings that fit.",
+    }],
+}
+
+
 def test_humanize_happy_path(llm_on):
     from core.llm_client import set_stub
     from llm.humanize import humanize
-    from llm.schemas import CardProse, ReportProse
+    from llm.schemas import ConversationalProse
 
     def stub(schema, system, user, **kw):
-        if schema is CardProse:
-            return CardProse.model_validate(GOOD_CARD)
-        if schema is ReportProse:
-            return ReportProse(opening="Meera, here is a clear read of your chart.")
+        if schema is ConversationalProse:
+            return ConversationalProse.model_validate(GOOD_CONV)
         return None
 
     set_stub(stub)
     facts = _card_facts()
     out = humanize("full_report", facts, access="paid")
     assert out["enabled"] is True
-    assert "profession" in out["overlay"].get("cards", {})
+    assert out["overlay"].get("conversational") is True
+    assert "act when an opportunity" in out["overlay"].get("personality", "")
+    assert "profession" in out["overlay"].get("areas", {})
     assert out["stats"]["accepted"] >= 1
     assert out.get("fallback_used") is False
 
@@ -223,97 +238,108 @@ def test_humanize_schema_violation_falls_back(llm_on):
 
     set_stub(stub)
     out = humanize("full_report", _card_facts(), access="paid")
-    # Deterministic fallback — prediction path still produces language
-    assert "profession" in out["overlay"].get("cards", {})
+    # Deterministic conversational fallback — accepted stays 0 so the
+    # renderer switch keeps the classic frozen report.
+    assert out["overlay"].get("conversational") is True
+    assert out["overlay"].get("personality")
     assert out["fallback_used"] is True
     assert out["stats"]["rejected"] >= 1
+    assert out["stats"]["accepted"] == 0
 
 
 def test_humanize_fact_drift_rejected(llm_on):
     """Invented planet/date language must fail QA and use deterministic fallback."""
     from core.llm_client import set_stub
     from llm.humanize import humanize
-    from llm.schemas import CardProse
+    from llm.schemas import ConversationalProse
 
     drifted = dict(
-        GOOD_CARD,
-        headline="Jupiter in your 10th house in March 2027 brings promotion.",
-        summary="Saturn mahadasha guarantees wealth.",
+        GOOD_CONV,
+        personality="Jupiter in your 10th house in March 2027 brings promotion.",
+        current_phase="Saturn mahadasha guarantees wealth.",
     )
 
     def stub(schema, system, user, **kw):
-        if schema is CardProse:
-            return CardProse.model_validate(drifted)
+        if schema is ConversationalProse:
+            return ConversationalProse.model_validate(drifted)
         return None
 
     set_stub(stub)
     out = humanize("full_report", _card_facts(), access="paid")
-    card = out["overlay"].get("cards", {}).get("profession") or {}
-    assert card  # fallback present
-    assert "Jupiter" not in (card.get("headline") or "")
-    assert "guarantees" not in (card.get("summary") or card.get("why") or "").lower()
-    assert out["fallback_used"] is True
+    # Bad slots are replaced with deterministic fact prose; clean slots survive.
+    assert out["stats"]["rejected"] >= 1
+    blob = " ".join([
+        out["overlay"].get("personality", ""),
+        out["overlay"].get("current_phase", ""),
+    ])
+    assert "Jupiter" not in blob
+    assert "guarantees" not in blob.lower()
 
 
 def test_humanize_health_unsafe_rejected(llm_on):
     from core.llm_client import set_stub
     from llm.humanize import humanize
-    from llm.schemas import CardProse
+    from llm.schemas import ConversationalProse
 
     unsafe = dict(
-        GOOD_CARD,
-        area="health",
-        headline="You may face diabetes and heart disease soon.",
-        summary="The chart shows organ failure risk.",
-        how_this_may_show_up=["recurring illness"],
-        what_to_watch=[],
-        what_helps=["See a doctor for cancer screening."],
+        GOOD_CONV,
+        personality="You may face diabetes and heart disease soon.",
+        current_phase="The chart shows organ failure risk.",
+        areas=[{
+            "area": "health",
+            "outlook": "You may face diabetes soon.",
+            "timing": "",
+            "manifestation": "recurring illness",
+            "remedy": "See a doctor for cancer screening.",
+        }],
     )
 
     def stub(schema, system, user, **kw):
-        if schema is CardProse:
-            return CardProse.model_validate(unsafe)
+        if schema is ConversationalProse:
+            return ConversationalProse.model_validate(unsafe)
         return None
 
     set_stub(stub)
     facts = _card_facts(area="health", status="strongly_indicated", direction="caution")
     facts.cards[0].kind = "challenge"
     out = humanize("full_report", facts, access="paid")
-    card = out["overlay"].get("cards", {}).get("health") or {}
-    assert card  # deterministic health-safe fallback
+    assert out["stats"]["rejected"] >= 1
     blob = " ".join([
-        card.get("headline", ""),
-        card.get("summary", ""),
-        " ".join(card.get("how_this_may_show_up") or []),
+        out["overlay"].get("personality", ""),
+        out["overlay"].get("current_phase", ""),
+        str((out["overlay"].get("areas") or {}).get("health") or {}),
     ]).lower()
     assert "diabetes" not in blob
     assert "cancer" not in blob
 
 
-@pytest.mark.parametrize("bad_headline,label", [
+@pytest.mark.parametrize("bad_line,label", [
     ("Your spouse will leave in 2028.", "spouse"),
     ("Wear a ruby and chant daily for results.", "remedy"),
     ("You will be debt-ridden and hurt by fire.", "classical"),
     ("Relocate overseas as CEO next year.", "life_event"),
     ("Career success is guaranteed now.", "certainty"),
 ])
-def test_failure_injection_uses_fallback(llm_on, bad_headline, label):
+def test_failure_injection_uses_fallback(llm_on, bad_line, label):
     from core.llm_client import set_stub
     from llm.humanize import humanize
-    from llm.schemas import CardProse
+    from llm.schemas import ConversationalProse
 
-    bad = dict(GOOD_CARD, headline=bad_headline, summary=bad_headline)
+    bad = dict(GOOD_CONV, personality=bad_line, current_phase=bad_line)
 
     def stub(schema, system, user, **kw):
-        if schema is CardProse:
-            return CardProse.model_validate(bad)
+        if schema is ConversationalProse:
+            return ConversationalProse.model_validate(bad)
         return None
 
     set_stub(stub)
     out = humanize("full_report", _card_facts(), access="paid")
-    card = out["overlay"]["cards"]["profession"]
-    assert out["fallback_used"] is True, label
-    assert bad_headline[:20].lower() not in (card.get("headline") or "").lower()
+    assert out["stats"]["rejected"] >= 1, label
+    blob = " ".join([
+        out["overlay"].get("personality") or "",
+        out["overlay"].get("current_phase") or "",
+    ]).lower()
+    assert bad_line[:20].lower() not in blob, label
 
 
 def test_question_and_horary_schemas():
@@ -353,8 +379,260 @@ def test_chat_out_of_scope(llm_on):
     assert out["answer"] == OUT_OF_SCOPE_REFUSAL
 
 
+def test_chat_prompt_actually_carries_the_report_facts(llm_on):
+    """Regression: the chat message used to reach the model as {"question": …}.
+
+    The wrapper dict was passed through the fact allowlist, which dropped
+    facts/history/ids, so every answer was ungrounded model knowledge.
+    """
+    from core.llm_client import set_stub
+    from llm.humanize import humanize_chat
+    from llm.schemas import ChatAnswer
+
+    seen = {}
+
+    def stub(schema, system, user, **kw):
+        seen["user"] = user
+        return ChatAnswer(
+            answer="Your work and career reads as mixed for now.",
+            used_fact_ids=["promise"],
+        )
+
+    set_stub(stub)
+    facts = _card_facts(area="career", status="mixed")
+    facts.cards[0].label = "Work & Career"
+    humanize_chat(
+        facts,
+        "What about my career?",
+        history=[{"role": "user", "content": "Tell me about work"}],
+    )
+    sent = seen["user"]
+    assert "Work & Career" in sent
+    assert "mixed" in sent
+    assert "What about my career?" in sent
+    assert "Tell me about work" in sent
+
+
+def test_chat_answer_cannot_overclaim_a_weak_area():
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _card_facts(area="career", status="insufficient_evidence")
+    facts.cards[0].label = "Work & Career"
+    bad = ChatAnswer(
+        answer="Your Work & Career is strongly supported and success is guaranteed.",
+        used_fact_ids=["promise"],
+    )
+    assert any(e.startswith("chat_overclaim_status") for e in
+               validate_chat_answer(bad, facts))
+    ok = ChatAnswer(
+        answer="Your Work & Career reads as mixed, so steady effort matters most.",
+        used_fact_ids=["promise"],
+    )
+    assert validate_chat_answer(ok, facts) == []
+
+
+def _horary_facts(label="no", favourable=False, contradicted=False):
+    from llm.schemas import HoraryFacts, HoraryLaneFact
+
+    return HoraryFacts(
+        first_name="Meera",
+        access="paid",
+        question="Will I get the job I interviewed for?",
+        subject="job offer",
+        label=label,
+        confidence="moderate",
+        favourable=favourable,
+        contradicted=contradicted,
+        lanes=[HoraryLaneFact(lane="vedic", verdict=label, confidence="moderate")],
+    )
+
+
+def _palm_chat_facts(direction="caution", strength="tentative"):
+    from llm.schemas import PalmAspectFacts, PalmFacts
+
+    return PalmFacts(
+        first_name="Meera",
+        access="paid",
+        age_years=36,
+        aspects=[PalmAspectFacts(
+            aspect="career",
+            title="Work and direction",
+            direction=direction,
+            strength=strength,
+            confidence="low",
+            semantic_summary="The fate line runs light through this stretch.",
+            recognize=["work that changes shape more than once"],
+        )],
+    )
+
+
+def test_chat_grounding_runs_on_facts_loaded_from_storage():
+    """Regression: chat reloads facts.json, so grounding must read dicts.
+
+    Every gate used getattr, which returns nothing for a dict — so on the one
+    path that matters in production, an answer could overclaim freely.
+    """
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _card_facts(area="career", status="insufficient_evidence")
+    facts.cards[0].label = "Work & Career"
+    as_dict = facts.model_dump(mode="json")
+
+    bad = ChatAnswer(
+        answer="Your Work & Career is strongly supported and success is guaranteed.",
+        used_fact_ids=["promise"],
+    )
+    assert any(e.startswith("chat_overclaim_status") for e in
+               validate_chat_answer(bad, as_dict))
+
+
+def test_chat_cannot_reverse_a_horary_verdict():
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _horary_facts(label="no", favourable=False)
+    bad = ChatAnswer(
+        answer="Yes, the job is very likely to come through.",
+        used_fact_ids=["verdict"],
+    )
+    assert "chat_horary_verdict_flip" in validate_chat_answer(bad, facts)
+
+    ok = ChatAnswer(
+        answer="The reading does not favour this one, so keep other options open.",
+        used_fact_ids=["verdict"],
+    )
+    assert validate_chat_answer(ok, facts) == []
+
+
+def test_horary_chat_may_use_the_words_yes_and_no_in_passing():
+    """The flip gate matched a bare yes/no, which refused fair answers."""
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _horary_facts(label="Leaning yes", favourable=True)
+    ok = ChatAnswer(
+        answer=("The reading leans towards a yes on this one. There is no fixed "
+                "date in your reading, so treat it as a lean rather than a promise."),
+        used_fact_ids=["verdict"],
+    )
+    assert validate_chat_answer(ok, facts) == []
+
+
+def test_chat_may_cite_any_field_the_facts_actually_contain():
+    """Live horary answers were refused for citing `favourable`.
+
+    The citable list was hand-written around chart reports, so real fields on
+    a horary or palm reading counted as unknown ids and the whole answer was
+    thrown away.
+    """
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _horary_facts(label="Leaning yes", favourable=True)
+    ok = ChatAnswer(
+        answer="The reading leans towards a yes, with moderate confidence.",
+        used_fact_ids=["favourable", "label", "confidence"],
+    )
+    assert validate_chat_answer(ok, facts) == []
+
+    palm = _palm_chat_facts()
+    ok_palm = ChatAnswer(
+        answer="Your work and direction reads light, so steady effort is the ask.",
+        used_fact_ids=["semantic_summary", "strength"],
+    )
+    assert validate_chat_answer(ok_palm, palm) == []
+
+    bad = ChatAnswer(
+        answer="The reading leans towards a yes.",
+        used_fact_ids=["spouse_promise"],
+    )
+    assert any(e.startswith("chat_unknown_fact_id") for e in
+               validate_chat_answer(bad, facts))
+
+
+def test_chat_speaks_to_the_person_not_about_them_by_name():
+    """A live palm answer said "the aspects of Meera's hand reading".
+
+    The pronoun gate caught she/he but not the reader's own name, which is
+    sitting right there in the facts the model was handed.
+    """
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _palm_chat_facts()
+    bad = ChatAnswer(
+        answer="The mixed strengths in Meera's hand reading point to steady effort.",
+        used_fact_ids=["aspect"],
+    )
+    assert any("third_person_reader" in e for e in validate_chat_answer(bad, facts))
+
+    ok = ChatAnswer(
+        answer="The mixed strengths in your hand reading point to steady effort.",
+        used_fact_ids=["aspect"],
+    )
+    assert validate_chat_answer(ok, facts) == []
+
+
+def test_chat_stays_cautious_when_the_horary_methods_disagreed():
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _horary_facts(label="yes", favourable=True, contradicted=True)
+    bad = ChatAnswer(
+        answer="This is guaranteed to work out for you.",
+        used_fact_ids=["verdict"],
+    )
+    assert "chat_horary_certainty_on_contradicted" in validate_chat_answer(bad, facts)
+
+
+def test_chat_cannot_overclaim_a_tentative_palm_aspect():
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _palm_chat_facts()
+    bad = ChatAnswer(
+        answer="Your work and direction is strongly supported — excellent prospects.",
+        used_fact_ids=["aspect"],
+    )
+    assert any(e.startswith("chat_palm_overclaim") for e in
+               validate_chat_answer(bad, facts))
+
+    ok = ChatAnswer(
+        answer="Your work and direction reads light here, so steady effort is the ask.",
+        used_fact_ids=["aspect"],
+    )
+    assert validate_chat_answer(ok, facts) == []
+
+
+def test_chat_cannot_invent_an_age_from_a_palm_reading():
+    from llm.schemas import ChatAnswer
+    from llm.validate import validate_chat_answer
+
+    facts = _palm_chat_facts()
+    bad = ChatAnswer(
+        answer="This shift arrives at age 42 for you.",
+        used_fact_ids=["aspect"],
+    )
+    assert "palm_unvalidated_age" in validate_chat_answer(bad, facts)
+
+
+def test_palm_facts_persisted_for_chat_carry_no_internal_fields():
+    """Palm stored a raw model dump while every other kind stored the
+    allowlisted payload, so internal engine fields reached facts.json."""
+    from llm.facts import public_fact_payload
+
+    payload = public_fact_payload(_palm_chat_facts())
+    assert payload["kind"] == "palm"
+    assert payload["aspects"][0]["aspect"] == "career"
+    for internal in ("facts_hash", "engine_version", "schema_version", "report_id"):
+        assert internal not in payload
+
+
 def test_facts_builders_roundtrip():
     from llm.facts import build_horary_facts, build_question_facts, build_report_facts
+    from llm.schemas import SCHEMA_VERSION
 
     card = SimpleNamespace(
         area="money", label="Money", direction="up", house=2,
@@ -372,7 +650,7 @@ def test_facts_builders_roundtrip():
     assert rf.cards[0].area == "money"
     assert rf.first_name == "Ramesh"
     assert rf.facts_hash
-    assert rf.schema_version == "1.0"
+    assert rf.schema_version == SCHEMA_VERSION
     assert rf.cards[0].direction == "support"  # up → support
     assert "dob" not in rf.model_dump_json().lower()
 

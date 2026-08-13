@@ -60,6 +60,13 @@ RAZORPAY_PAYMENT_BUTTON_ID=pl_TMzAWfueT93HPY
 # Hostnames: www.graharekha.co.in, graharekha.co.in, localhost
 TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET=
+
+# Conversational prose + paid follow-up chat — see "LLM layer" below.
+LLM_ENABLED=1
+LLM_BASE_URL=
+LLM_API_KEY=
+LLM_MODEL=Qwen/Qwen2.5-7B-Instruct-AWQ
+LLM_TABS=full_report,user_question,horary,palm,chat
 ```
 
 `GOOGLE_CLIENT_ID` is **required for the Google button on production**. Local
@@ -98,6 +105,37 @@ curl -s https://www.graharekha.co.in/api/public-config
 Railway's `DATABASE_URL` arrives as `postgresql://…`, which SQLAlchemy would
 route to psycopg2. The app rewrites it to psycopg3 on startup, so you don't need
 to touch it.
+
+### LLM layer: conversational prose and report chat
+
+The LLM layer is off unless `LLM_ENABLED=1`, `LLM_BASE_URL` and `LLM_API_KEY`
+are all set. `LLM_TABS` then decides which kinds may call it, so
+`LLM_TABS=chat` answers paid follow-up questions while every report keeps the
+deterministic template prose. With the layer off, `/api/public-config` returns
+`chatEnabled:false`, the site hides the chat panel, and the chat endpoints
+return 503.
+
+`LLM_BASE_URL` should be **https**. The API key and the customer's birth
+details cross that connection, and Railway reaches it from the public internet.
+Don't make an endpoint publicly reachable just to satisfy this variable — use a
+TLS-terminated gateway that allow-lists Railway's egress, or a hosted provider.
+
+Nothing else needs deploying: the chat routes are covered by the existing
+`/api/:path*` rewrite in `vercel.json`, `chat_messages` is created by
+`init_schema()` on startup, and each report's `facts.json` is written to
+`LOCAL_STORE` (or S3) beside its HTML, so the volume in step 3 covers it.
+
+Reports generated before the layer existed carry no fact context, so chat on
+them answers 503 until they are regenerated. Verify after deploy with:
+
+```bash
+curl -s https://www.graharekha.co.in/api/public-config
+# chatEnabled should be true
+```
+
+When the model endpoint is unreachable, chat degrades to a short "I can only
+speak from the facts already in your reading" reply rather than an error, so a
+model outage never shows a customer a stack trace.
 
 ## 3. Add a volume
 

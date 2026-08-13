@@ -323,6 +323,7 @@ def build_remedy_report(
     domain: str = "",
     intent: str = "",
     client_name: str = "",
+    question_scoped: bool = False,
 ) -> dict[str, Any]:
     """Full remedy + gemstone dict for one chart."""
     meta = pc.get("meta", {})
@@ -352,15 +353,22 @@ def build_remedy_report(
     # Priority 2: MD lord (duration only if safe)
     if dasha["md_lord"]:
         add(dasha["md_lord"], f"Mahadasha lord", is_md=True, priority=2)
-    # Yoga lords 1/5/9
-    add(h1["lord"], "Lagna lord (H1)", priority=3)
-    add(h5["lord"], "5th lord (children/luck)", priority=4)
-    add(h9["lord"], "9th lord (fortune/dharma)", priority=5)
+    if not question_scoped:
+        # General chart remedy report: retain the broader 1/5/9 and Atmakarak
+        # candidates used by the full report.
+        add(h1["lord"], "Lagna lord (H1)", priority=3)
+        add(h5["lord"], "5th lord (children/luck)", priority=4)
+        add(h9["lord"], "9th lord (fortune/dharma)", priority=5)
 
-    # Atmakarak if present
-    ak = next((k.get("planet") for k in (pc.get("cara_karakas") or {}).get("karakas", []) if k.get("role") == "Atmakarak"), None)
-    if ak:
-        add(ak, "Jaimini Atmakarak", priority=3)
+        ak = next((k.get("planet") for k in (pc.get("cara_karakas") or {}).get("karakas", []) if k.get("role") == "Atmakarak"), None)
+        if ak:
+            add(ak, "Jaimini Atmakarak", priority=3)
+    else:
+        # A follow-up question is not a second full horoscope. Keep remedies
+        # tied to the asked life area: current timing lords + domain-specific
+        # significators only. This prevents a career question from showing
+        # unrelated children/fortune remedies.
+        pass
 
     # Question-specific
     dom = domain or ""
@@ -447,6 +455,24 @@ def _card_verdict_cls(v: str) -> str:
     return {"recommended": "green", "test_required": "amber", "mantra_only": "blue", "avoid": "red"}.get(v, "amber")
 
 
+def _customer_role_label(role: str) -> str:
+    """Translate internal remedy provenance into a human-facing reason."""
+    r = str(role or "").strip().lower()
+    if "antardasha" in r or "mahadasha" in r or "dasha" in r:
+        return "Current timing pattern"
+    if "atmakarak" in r or "karaka" in r:
+        return "Personal chart indicator"
+    if "5th lord" in r:
+        return "Children, creativity and learning indicator"
+    if "9th lord" in r:
+        return "Fortune, guidance and long-term growth indicator"
+    if "lagna lord" in r or "h1 lord" in r:
+        return "Personal direction indicator"
+    if "question theme" in r:
+        return "Question-specific chart indicator"
+    return "Relevant chart indicator"
+
+
 def render_remedy_section_html(report: dict[str, Any], *, compact: bool = False) -> str:
     if not report.get("ok"):
         return ""
@@ -462,7 +488,7 @@ def render_remedy_section_html(report: dict[str, Any], *, compact: bool = False)
         else:
             gem_line = f"YES: {primary} OR budget: {sub}"
         rows += f"""<tr>
-          <td><strong>{_esc(item['planet'])}</strong><br><span class="fine">{_esc(item['role'])}</span></td>
+          <td><strong>{_esc(item['planet'])}</strong><br><span class="fine">{_esc(_customer_role_label(item['role']))}</span></td>
           <td>{_esc(gem_line)}<br>{_esc(g.get('metal',''))}  {_esc(g.get('finger',''))}  {_esc(g.get('day',''))}</td>
           <td>{_esc(item.get('timing_note',''))}</td>
           <td class="dot-g">{'Mandatory 3-day trial' if item['verdict']=='test_required' else 'Wear after trial OK'}</td>
@@ -474,7 +500,7 @@ def render_remedy_section_html(report: dict[str, Any], *, compact: bool = False)
         primary = g.get("gem", "")
         sub = g.get("sub", "")
         strict_rows += f"""<li>
-          <strong>{_esc(item['planet'])}</strong> ({_esc(item['role'])})<br>
+          <strong>{_esc(item['planet'])}</strong> ({_esc(_customer_role_label(item['role']))})<br>
           <span class="fine"><strong>NO gemstone</strong>  do not wear {_esc(primary)} or {_esc(sub)}.<br>
           <strong>Do instead:</strong> {_esc(g.get('mantra',''))}; charity: {_esc(g.get('charity',''))}.<br>
           {_esc(item.get('timing_note',''))}</span>
@@ -486,7 +512,7 @@ def render_remedy_section_html(report: dict[str, Any], *, compact: bool = False)
         primary = g.get("gem", "")
         sub = g.get("sub", "")
         sub_rows += f"""<li>
-          <strong>{_esc(item['planet'])}</strong> ({_esc(item['role'])})<br>
+          <strong>{_esc(item['planet'])}</strong> ({_esc(_customer_role_label(item['role']))})<br>
           <span class="fine"><strong>NO primary gem</strong>  do not wear {_esc(primary)}.<br>
           <strong>Sub-gem optional:</strong> {_esc(sub)}  only after 3-day trial; remove if uncomfortable.<br>
           <strong>Main remedy:</strong> {_esc(g.get('mantra',''))}; charity: {_esc(g.get('charity',''))}.<br>
@@ -499,7 +525,7 @@ def render_remedy_section_html(report: dict[str, Any], *, compact: bool = False)
         primary = g.get("gem", "")
         sub = g.get("sub", "")
         avoid_rows += f"""<li>
-          <strong>{_esc(item['planet'])}</strong> ({_esc(item['role'])})<br>
+          <strong>{_esc(item['planet'])}</strong> ({_esc(_customer_role_label(item['role']))})<br>
           <span class="fine"><strong>NO  do not wear</strong> {_esc(primary)} or {_esc(sub)}.<br>
           {_esc('; '.join(item.get('reasons',[])[:2]))}<br>
           <strong>Use mantra instead:</strong> {_esc(g.get('mantra',''))}</span>
@@ -548,8 +574,8 @@ def render_remedy_section_html(report: dict[str, Any], *, compact: bool = False)
 <h2 class="section-h">Remedies &amp; Gemstones</h2>
 {qblock}
 {legend}
-<p class="body" style="font-size:.9rem;color:var(--muted)">Current dasha: <strong>{_esc(dasha.get('md_lord',''))}{_esc(dasha.get('ad_lord',''))}</strong>
- (AD until {_esc(_fmt_date(dasha.get('ad_end','')))}). Source: {_esc(report.get('sources',''))}.</p>
+<p class="body" style="font-size:.9rem;color:var(--muted)">Current timing pattern: <strong>active life chapter</strong>
+{f"(this phase runs until {_esc(_fmt_date(dasha.get('ad_end','')))})." if dasha.get('ad_end') else "."}</p>
 
 <div class="card green">
   <h3>YES  Gemstones you may wear</h3>
