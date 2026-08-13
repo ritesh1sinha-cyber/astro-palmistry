@@ -117,7 +117,7 @@ def test_check_prose_blocks_guarantee_and_sanskrit():
     facts = _card_facts()
     fails = check_prose("You will get a promotion next year.", facts)
     assert "certainty_escalation" in fails
-    assert any(v.startswith("sanskrit:") for v in check_prose(
+    assert any(v.startswith("invented_astrology_term:") for v in check_prose(
         "Your mahadasha supports this now.", facts))
 
 
@@ -377,6 +377,62 @@ def test_chat_out_of_scope(llm_on):
     out = humanize_chat(_card_facts(), "When will I marry a celebrity?")
     assert out["out_of_scope"] is True
     assert out["answer"] == OUT_OF_SCOPE_REFUSAL
+
+
+def _question_case_facts():
+    from llm.schemas import QuestionFacts, WindowFact
+
+    return QuestionFacts(
+        first_name="Meera",
+        access="paid",
+        question="will i win the case",
+        area_key="legal",
+        direction="support",
+        confidence="low",
+        promise_status="mixed",
+        route={"domain": "legal", "topic": "litigation"},
+        best=WindowFact(start="April 2030", end="May 2032", confidence="low"),
+        windows=[WindowFact(start="April 2030", end="May 2032", confidence="low")],
+        allowed_dates=["April 2030", "May 2032"],
+    )
+
+
+def test_chat_legal_followup_is_not_refused_as_a_new_life_area(llm_on):
+    """Ask-your-chart already answered the case; 'when is the verdict' is that reading."""
+    from core.llm_client import set_stub
+    from llm.humanize import humanize_chat
+    from llm.schemas import ChatAnswer
+
+    def stub(schema, system, user, **kw):
+        return ChatAnswer(
+            answer="You will win the case in 2031 for sure.",
+            used_fact_ids=["timing"],
+        )
+
+    set_stub(stub)
+    out = humanize_chat(_question_case_facts(), "when i can expect verdict")
+    assert out["out_of_scope"] is False
+    assert "April 2030" in out["answer"]
+    assert "May 2032" in out["answer"]
+    assert "life area" not in out["answer"].lower()
+
+
+def test_chat_cannot_mark_the_asked_case_out_of_scope(llm_on):
+    from core.llm_client import set_stub
+    from llm.humanize import humanize_chat
+    from llm.schemas import ChatAnswer
+
+    def stub(schema, system, user, **kw):
+        return ChatAnswer(
+            answer="That is not in this reading.",
+            used_fact_ids=[],
+            out_of_scope=True,
+        )
+
+    set_stub(stub)
+    out = humanize_chat(_question_case_facts(), "am asking about case only")
+    assert out["out_of_scope"] is False
+    assert "April 2030" in out["answer"]
 
 
 def test_chat_prompt_actually_carries_the_report_facts(llm_on):
@@ -696,3 +752,167 @@ def test_fallback_never_invents_dates():
     ))
     assert "202" not in fb.get("headline", "")
     assert "guaranteed" not in fb.get("summary", "").lower()
+
+
+def _facts_with_period(lord="Jupiter", sub="Saturn"):
+    from llm.schemas import VedicContext
+    facts = _card_facts()
+    return facts.model_copy(update={
+        "vedic_context": VedicContext(
+            period_lord=lord,
+            sub_period_lord=sub,
+            mahadasha=lord,
+            antardasha=sub,
+            lagna="Aries",
+            start="2024-01-01",
+            end="2026-10-01",
+            rising_sign="Aries",
+            moon_sign="Leo",
+        ),
+    })
+
+
+def test_check_prose_allows_grounded_vedic_terms():
+    from llm.rules import check_prose
+    facts = _facts_with_period()
+    text = (
+        "You are in a Jupiter mahadasha, with Saturn running the current antardasha. "
+        "This stretch runs through October 2026."
+    )
+    assert check_prose(text, facts) == []
+
+
+def test_check_prose_allows_grounded_planet_and_house():
+    from llm.rules import check_prose
+    from llm.schemas import CardFacts
+    facts = _facts_with_period(lord="Saturn", sub="Jupiter")
+    facts = facts.model_copy(update={
+        "cards": [CardFacts(
+            area="profession", label="Career", status="supported",
+            activation_status="active", house=10,
+            allowed_planets=["Saturn"],
+        )],
+    })
+    text = (
+        "Saturn's influence on the 10th house is making progress more "
+        "responsibility-driven in this period."
+    )
+    assert check_prose(text, facts) == []
+
+
+def test_check_prose_blocks_ungrounded_navamsha():
+    from llm.rules import check_prose
+    facts = _facts_with_period()
+    fails = check_prose("Your Navamsha supports marriage now.", facts)
+    assert any(v.startswith("invented_astrology_term:") for v in fails)
+
+
+def test_check_prose_blocks_wrong_planet():
+    from llm.rules import check_prose
+    facts = _facts_with_period(lord="Jupiter", sub="Moon")
+    fails = check_prose(
+        "You are running a Saturn mahadasha in this period.",
+        facts,
+    )
+    assert "unexpected_planet:saturn" in fails
+
+
+def test_timing_sentence_drops_internal_window_keys():
+    from llm.fallback import timing_sentence
+    assert timing_sentence("children_window") == ""
+    assert timing_sentence("learning_window") == ""
+    assert "May 2024" in timing_sentence("May 2024 to October 2026")
+
+
+def test_area_outlook_keeps_manifestation_words():
+    from llm.fallback import _area_outlook_sentence
+    from llm.schemas import CardFacts
+    card = CardFacts(
+        area="money", label="Money", status="mixed",
+        activation_status="mixed",
+        manifestations=["savings quietly leaking away"],
+    )
+    text = _area_outlook_sentence(card, "Money")
+    assert "leaking" in text.lower() or "savings" in text.lower()
+    assert "neither the chart nor the current phase" not in text.lower()
+
+
+def test_validate_retains_fact_terms_rejects_generic_rewrite():
+    from llm.validate import validate_retains_fact_terms
+    sources = ["savings quietly leaking away", "role expansion"]
+    assert validate_retains_fact_terms(
+        "Steady deliberate effort matters more than waiting for a perfect moment.",
+        sources,
+    ) == ["generic_rewrite_drops_facts"]
+    assert validate_retains_fact_terms(
+        "Money leaks away unless you strengthen savings.",
+        sources,
+    ) == []
+
+
+def test_palm_fallback_scrubs_bodily_claims_and_character_repeat():
+    from llm.fallback import conversational_palm_fallback
+    from llm.schemas import PalmAspectFacts, PalmFacts
+    facts = PalmFacts(
+        first_name="Meera", access="paid",
+        personality_traits=[
+            "Your energy is strongly tied to thinking, conversation and interaction; "
+            "repetitive isolation can leave you mentally flat."
+        ],
+        aspects=[
+            PalmAspectFacts(
+                aspect="character", title="Character & Temperament",
+                semantic_summary=(
+                    "Your energy is strongly tied to thinking, conversation and interaction; "
+                    "repetitive isolation can leave you mentally flat."
+                ),
+                recognize=["you think better by talking things through"],
+            ),
+            PalmAspectFacts(
+                aspect="health", title="Health & Vitality",
+                direction="caution", strength="tentative",
+                semantic_summary=(
+                    "Stress may show up first as changes in digestion, tension or "
+                    "nervous energy, so noticing your body's early signals can be useful."
+                ),
+                recognize=["more attention to routine"],
+            ),
+        ],
+        demanding_aspect="health",
+        demanding_aspect_label="Health & Vitality",
+    )
+    fb = conversational_palm_fallback(facts)
+    char = (fb.get("areas") or {}).get("character") or {}
+    health = (fb.get("areas") or {}).get("health") or {}
+    assert "digestion" not in str(health.get("outlook") or "").lower()
+    personality = str(fb.get("personality") or "")
+    outlook = str(char.get("outlook") or "")
+    assert outlook
+    assert outlook[:80].lower() not in personality.lower()
+
+
+def test_merge_drops_manifestation_that_repeats_remedy():
+    from llm.humanize import _merge_conversational_facts
+    from llm.schemas import CardFacts, ReportFacts
+    card = CardFacts(
+        area="money", label="Money", status="mixed",
+        activation_status="mixed",
+        remedy_text="Use the easier phase to strengthen savings.",
+        manifestations=["savings quietly leaking away"],
+    )
+    facts = ReportFacts(access="paid", cards=[card])
+    overlay = {
+        "personality": "Your nature is consistent across work and home decisions.",
+        "current_phase": "This period pulls two ways at once and asks for patience here.",
+        "areas": {
+            "money": {
+                "outlook": "Money is mixed.",
+                "manifestation": "Use the easier phase to strengthen savings.",
+                "remedy": "Use the easier phase to strengthen savings.",
+            }
+        },
+    }
+    merged = _merge_conversational_facts(overlay, facts, access="paid")
+    money = (merged.get("areas") or {}).get("money") or {}
+    assert money.get("remedy")
+    assert str(money.get("manifestation") or "").strip() == ""

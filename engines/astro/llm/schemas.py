@@ -14,13 +14,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # ---------------------------------------------------------------------------
 # Controlled enums (Python owns these; Qwen may express them, never change them)
 # ---------------------------------------------------------------------------
-SCHEMA_VERSION = "1.2"
+SCHEMA_VERSION = "1.3"
 PROMPT_VERSIONS = {
-    "full_report": "REPORT_CONVERSATIONAL_PROMPT_V1",
-    "full_report_areas": "REPORT_AREAS_PROMPT_V1",
+    "full_report": "REPORT_CONVERSATIONAL_PROMPT_V6_TRANSITION_MAP",
+    "full_report_areas": "REPORT_AREAS_PROMPT_V6_TRANSITION_MAP",
     "user_question": "QUESTION_PROSE_PROMPT_V1",
     "horary": "HORARY_PROSE_PROMPT_V1",
-    "palm": "PALM_CONVERSATIONAL_PROMPT_V1",
+    "palm": "PALM_CONVERSATIONAL_PROMPT_V5",
     "chat": "CHAT_PROSE_PROMPT_V1",
 }
 
@@ -79,6 +79,42 @@ class WindowFact(BaseModel):
     score: float = 0.0
 
 
+class TransitionFact(BaseModel):
+    """One dated life-area transition produced from canonical timing overlap."""
+    model_config = ConfigDict(extra="forbid")
+    start: str = ""
+    end: str = ""
+    area: str = ""
+    direction: Direction = "mixed"
+    phase: str = Field(default="", max_length=100)
+    meaning: str = Field(default="", max_length=220)
+    event_type: str = Field(default="", max_length=100)
+    planet: str = Field(default="", max_length=30)
+    dasha: str = Field(default="", max_length=100)
+    bav: int = 0
+    score: float = 0.0
+    confidence: Confidence = "low"
+    source: str = Field(default="", max_length=100)
+    overlap: list[str] = Field(default_factory=list, max_length=7)
+    drivers: list[str] = Field(default_factory=list, max_length=7)
+    timing_systems: dict[str, Any] = Field(default_factory=dict)
+
+
+class TransitContextFact(BaseModel):
+    """One dated stay of the house ruler or a running dasha lord."""
+    model_config = ConfigDict(extra="forbid")
+    planet: str = Field(default="", max_length=30)
+    role: str = Field(default="", max_length=80)
+    sign: str = Field(default="", max_length=20)
+    house: int = 0
+    start: str = ""
+    end: str = ""
+    bav: int = 0
+    tone: str = Field(default="steady", max_length=20)
+    major: bool = False
+    in_house: bool = False
+
+
 class CardFacts(BaseModel):
     model_config = ConfigDict(extra="forbid")
     area: str
@@ -110,6 +146,8 @@ class CardFacts(BaseModel):
     outlook_line: str = Field(default="", max_length=220)
     manifestations: list[str] = Field(default_factory=list, max_length=4)
     remedy_text: str = Field(default="", max_length=220)
+    transition_map: list["TransitionFact"] = Field(default_factory=list, max_length=6)
+    transit_context: list["TransitContextFact"] = Field(default_factory=list, max_length=14)
 
 
 class RecentMonthFact(BaseModel):
@@ -221,6 +259,27 @@ class FamilyNoteFact(BaseModel):
     method_count: int = 0
 
 
+class VedicContext(BaseModel):
+    """Running period and chart identity the prose is allowed to name.
+
+    Dates are ``start``/``end`` on purpose so ``allowed_dates_from_facts``
+    grounds month and year tokens automatically. The ``mahadasha`` /
+    ``antardasha`` / ``lagna`` field *names* ground those words in the
+    facts payload so QA can accept them when the model uses them.
+    """
+    model_config = ConfigDict(extra="forbid")
+    period_lord: str = Field(default="", max_length=20)
+    sub_period_lord: str = Field(default="", max_length=20)
+    mahadasha: str = Field(default="", max_length=20)
+    antardasha: str = Field(default="", max_length=20)
+    lagna: str = Field(default="", max_length=20)
+    nakshatra: str = Field(default="", max_length=40)
+    start: str = ""
+    end: str = ""
+    rising_sign: str = Field(default="", max_length=20)
+    moon_sign: str = Field(default="", max_length=20)
+
+
 class FactsMeta(BaseModel):
     """Versioning / traceability — never rendered into customer HTML."""
     model_config = ConfigDict(extra="forbid", protected_namespaces=())
@@ -260,6 +319,7 @@ class ReportFacts(BaseModel):
     hardest_area_labels: list[str] = Field(default_factory=list, max_length=4)
     life_state: Optional[LifeStateFacts] = None
     family_notes: list[FamilyNoteFact] = Field(default_factory=list, max_length=4)
+    vedic_context: Optional[VedicContext] = None
 
 
 class QuestionFacts(BaseModel):
@@ -459,22 +519,29 @@ class ReportProse(BaseModel):
 
 
 class ConversationalAreaProse(BaseModel):
-    """One life-area paragraph for the compact conversational template."""
+    """One life-area passage: astrological basis + human interpretation."""
     model_config = ConfigDict(extra="forbid")
     area: str
+    astrological_basis: str = Field(default="", max_length=320)
+    interpretation: str = Field(default="", max_length=360)
     outlook: str = Field(..., min_length=8, max_length=280)
     timing: str = Field(default="", max_length=160)
-    manifestation: str = Field(default="", max_length=160)
+    manifestation: str = Field(default="", max_length=180)
     remedy: str = Field(default="", max_length=180)
+    transition_note: str = Field(default="", max_length=260)
 
 
 class ConversationalProse(BaseModel):
-    """Whole-page conversational report — one LLM call per access tier."""
+    """Whole-page astrologer-style report — one LLM call per access tier."""
     model_config = ConfigDict(extra="forbid")
+    # These two fields force the model to expose the reasoning layer instead
+    # of turning every reading into generic motivational prose.
+    astrological_basis: str = Field(default="", max_length=520)
+    interpretation: str = Field(default="", max_length=520)
     # Paid pays for depth here: every trait the engines agreed on gets a line,
     # so the ceiling is a paragraph rather than three sentences.
     personality: str = Field(..., min_length=8, max_length=900)
-    current_phase: str = Field(..., min_length=8, max_length=320)
+    current_phase: str = Field(..., min_length=8, max_length=360)
     recent_months: str = Field(default="", max_length=420)
     hardest_area_note: str = Field(default="", max_length=180)
     # Free-section trust block: what may be on their mind, and why now.

@@ -1,0 +1,662 @@
+{
+  "design": "cards-v2",
+  "price": 298,
+  "bundlePrice": 298,
+  "llm": {
+    "enabled": true,
+    "stats": {
+      "accepted": 7,
+      "rejected": 2,
+      "errors": 0
+    },
+    "free": {
+      "stats": {
+        "accepted": 6,
+        "rejected": 3,
+        "errors": 0
+      },
+      "fallback_used": true,
+      "run_meta": {
+        "enabled": true,
+        "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+        "prompt_version": "REPORT_PROSE_PROMPT_V1",
+        "facts_hash": "a0e2ed38c3c5229a3d6a9961",
+        "schema_version": "1.0",
+        "retry_count": 1,
+        "fallback_used": true,
+        "accepted": 6,
+        "rejected": 3,
+        "errors": 0
+      }
+    },
+    "paid": {
+      "stats": {
+        "accepted": 7,
+        "rejected": 2,
+        "errors": 0
+      },
+      "fallback_used": true,
+      "run_meta": {
+        "enabled": true,
+        "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+        "prompt_version": "REPORT_PROSE_PROMPT_V1",
+        "facts_hash": "1ad5f8265101242c1030549d",
+        "schema_version": "1.0",
+        "retry_count": 1,
+        "fallback_used": true,
+        "accepted": 7,
+        "rejected": 2,
+        "errors": 0
+      }
+    }
+  },
+  "_facts": {
+    "kind": "full_report",
+    "first_name": "Suresh",
+    "age_band": "adult",
+    "access": "paid",
+    "cards": [
+      {
+        "area": "money",
+        "label": "Money",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "strongly_active",
+        "confidence": "low",
+        "agreement": "strong",
+        "direction": "support",
+        "score": 1.396,
+        "support_n": 6,
+        "caution_n": 0,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Structural support is strong for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Building a steadier financial base.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Gradual improvement in financial position.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Money earned through work, skills or practical activity.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Dec 2028 \u2192 Mar 2029",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [
+          {
+            "status": "strongly_supported",
+            "score": 1.137,
+            "label": "Income"
+          },
+          {
+            "status": "supported",
+            "score": 0.91,
+            "label": "Accumulation & savings"
+          },
+          {
+            "status": "mixed",
+            "score": 0.357,
+            "label": "Business gains"
+          },
+          {
+            "status": "strongly_supported",
+            "score": 1.657,
+            "label": "Sudden gains"
+          }
+        ],
+        "remedy_eligible": false,
+        "approved_remedies": []
+      },
+      {
+        "area": "career",
+        "label": "Work & Career",
+        "kind": "promise",
+        "status": "supported",
+        "activation_status": "strongly_active",
+        "confidence": "high",
+        "agreement": "strong",
+        "direction": "support",
+        "score": 0.789,
+        "support_n": 2,
+        "caution_n": 1,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is limited for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Work, effort or contribution becoming easier for others to notice.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Greater professional responsibility and ownership.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Greater professional responsibility and ownership.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "May 2026 \u2192 Oct 2026",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": []
+      },
+      {
+        "area": "health",
+        "label": "Health & Energy",
+        "kind": "challenge",
+        "status": "strongly_indicated",
+        "activation_status": "weak",
+        "confidence": "moderate",
+        "agreement": "partial",
+        "direction": "caution",
+        "score": -0.642,
+        "support_n": 2,
+        "caution_n": 4,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is moderate for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "The chart shows stronger caution signals than supportive ones, so the emphasis is on consistency rather than alarm.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Small health or wellbeing issues may be harder to ignore during this phase, so consistency matters.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Stress may make you more aware of how closely your emotional state, routine and physical wellbeing are connected.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [
+          "wellbeing_sensitivity",
+          "routine",
+          "recovery"
+        ],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Nov 2027 \u2192 Feb 2028",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": []
+      },
+      {
+        "area": "children",
+        "label": "Children",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "weak",
+        "confidence": "moderate",
+        "agreement": "partial",
+        "direction": "caution",
+        "score": -0.493,
+        "support_n": 1,
+        "caution_n": 2,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is moderate for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Birth-chart structure \u2014 is broadly neutral for this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Point-score method \u2014 adds caution to this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "May 2026 \u2192 Oct 2026",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": []
+      },
+      {
+        "area": "home",
+        "label": "Home & Family",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "active",
+        "confidence": "moderate",
+        "agreement": "partial",
+        "direction": "support",
+        "score": 0.491,
+        "support_n": 2,
+        "caution_n": 1,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is moderate for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Taking responsibility for recurring family or home matters.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Having a steadier home base or household rhythm.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Taking responsibility for recurring family or home matters.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Having a steadier home base or household rhythm.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "2031-02-17",
+          "end": "2031-06-14",
+          "label": "home_window",
+          "event_type": "home_window",
+          "confidence": "moderate",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 0.52
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": []
+      },
+      {
+        "area": "love",
+        "label": "Relationships & Partnership",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": -0.296,
+        "support_n": 2,
+        "caution_n": 3,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Structural support is strong for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Point-score method \u2014 adds caution to this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Gemini: Personality and Characteristics Appearance: Good height and attractive features, witha dual nature that's difficult to understand.\u2026",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Current transit \u2014 adds caution to this reading.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Now \u2192 Jun 2027",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": []
+      },
+      {
+        "area": "inner",
+        "label": "Inner Life",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": -0.106,
+        "support_n": 5,
+        "caution_n": 2,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is limited for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Case-based confirmation \u2014 supports this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Your life opens through Virgo rising Mercury steers the body and first impression in this map.\u2026",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Life-pattern cross-check \u2014 is broadly neutral for this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Specialist timing cross-check \u2014 supports this reading.",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "2026-10-31",
+          "end": "2027-01-25",
+          "label": "inner_window",
+          "event_type": "inner_window",
+          "confidence": "moderate",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 0.19
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": []
+      },
+      {
+        "area": "learning",
+        "label": "Learning & Luck",
+        "kind": "promise",
+        "status": "mixed",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": 0.04,
+        "support_n": 1,
+        "caution_n": 1,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is moderate for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Case-based confirmation \u2014 supports this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "the lunar cycle: Sankata (Rahu) \u2014 the active clocks broadly point the same way",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Aug 2029 \u2192 Oct 2029",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "wealth_sub": [],
+        "remedy_eligible": false,
+        "approved_remedies": []
+      }
+    ],
+    "dashboard_buckets": {},
+    "timing_windows": [
+      {
+        "start": "2031-02-17",
+        "end": "2031-06-14",
+        "label": "home_window",
+        "event_type": "home_window",
+        "confidence": "moderate",
+        "source": "dasha_ashtakavarga_transit_confluence",
+        "score": 0.52
+      },
+      {
+        "start": "2028-02-29",
+        "end": "2028-07-24",
+        "label": "inner_window",
+        "event_type": "inner_window",
+        "confidence": "moderate",
+        "source": "dasha_ashtakavarga_transit_confluence",
+        "score": 0.24
+      }
+    ]
+  },
+  "freeSections": [
+    "Your current chapter",
+    "Who your chart says you are",
+    "Your recent past \u2014 free and checkable",
+    "What is happening right now",
+    "Major life areas",
+    "Gemstones you should not wear"
+  ],
+  "paidSections": [
+    "Why each life area reads the way it does",
+    "Exact dates for every life area",
+    "How this area changes over time",
+    "Planets involved",
+    "Your strongest upcoming windows",
+    "The full period sequence",
+    "What helps, per area",
+    "Remedies and suitable gemstones"
+  ],
+  "teasers": {}
+}

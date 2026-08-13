@@ -107,3 +107,23 @@ def test_build_confluence_sanitizes_reasons() -> None:
     assert "landlord" not in blob
     assert "combination" not in blob
     assert "recognition_tag" not in blob
+
+
+def test_grounded_astrology_survives_finalize_customer_html() -> None:
+    from qa_checks.final_customer_boundary import finalize_customer_html
+    from qa_checks.customer_text_sanitizer import validate_customer_text
+
+    ok = (
+        "<p>You are in a Jupiter mahadasha. Saturn's influence on the 10th "
+        "house is making progress more responsibility-driven.</p>"
+    )
+    out = finalize_customer_html(ok)
+    assert "mahadasha" in out.lower()
+    assert "10th house" in out.lower()
+    assert "saturn" in out.lower()
+    assert not validate_customer_text(out)
+
+    dirty = "<p>The sub-lord and karakamsa strongly support this.</p>"
+    cleaned = finalize_customer_html(dirty)
+    assert "sub-lord" not in cleaned.lower()
+    assert "karakamsa" not in cleaned.lower()

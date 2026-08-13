@@ -20,7 +20,7 @@
         "enabled": false,
         "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
         "prompt_version": "REPORT_PROSE_PROMPT_V1",
-        "facts_hash": "320673793f4bc73891125c99",
+        "facts_hash": "a0e2ed38c3c5229a3d6a9961",
         "schema_version": "1.0",
         "retry_count": 0,
         "fallback_used": false,
@@ -40,7 +40,7 @@
         "enabled": false,
         "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
         "prompt_version": "REPORT_PROSE_PROMPT_V1",
-        "facts_hash": "c81dd75681319e8edfcc949a",
+        "facts_hash": "1ad5f8265101242c1030549d",
         "schema_version": "1.0",
         "retry_count": 0,
         "fallback_used": false,
@@ -52,10 +52,6 @@
   },
   "_facts": {
     "kind": "full_report",
-    "schema_version": "1.0",
-    "engine_version": "astro-2026.08.11-qcanonical-v2",
-    "report_id": "",
-    "facts_hash": "c81dd75681319e8edfcc949a",
     "first_name": "Suresh",
     "age_band": "adult",
     "access": "paid",
@@ -72,49 +68,44 @@
         "score": 1.396,
         "support_n": 6,
         "caution_n": 0,
-        "house": 2,
         "evidence": [
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:be4951c6",
-            "text": "rules it,",
+            "text": "Independent chart structure gives mixed support to this area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:2f1a7790",
-            "text": "house strength 30 of 56 \u2014 above average",
+            "text": "Structural support is strong for this life area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:ddd58dd0",
             "text": "Building a steadier financial base.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:ddd58dd0",
-            "text": "Building a steadier financial base.",
-            "semantic_tags": []
-          },
-          {
-            "family": "other",
-            "polarity": "support",
-            "text_id": "row:support:0f14c210",
             "text": "Gradual improvement in financial position.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:0f14c210",
-            "text": "Gradual improvement in financial position.",
+            "text": "Money earned through work, skills or practical activity.",
             "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
           }
         ],
         "manifestation_ids": [],
@@ -130,36 +121,28 @@
         },
         "wealth_sub": [
           {
-            "key": "income",
             "status": "strongly_supported",
             "score": 1.137,
             "label": "Income"
           },
           {
-            "key": "accumulation",
             "status": "supported",
             "score": 0.91,
             "label": "Accumulation & savings"
           },
           {
-            "key": "business_gains",
             "status": "mixed",
             "score": 0.357,
             "label": "Business gains"
           },
           {
-            "key": "sudden_gains",
             "status": "strongly_supported",
             "score": 1.657,
             "label": "Sudden gains"
           }
         ],
         "remedy_eligible": false,
-        "approved_remedies": [],
-        "allowed_planets": [],
-        "allowed_dates": [
-          "Dec 2028 \u2192 Mar 2029"
-        ]
+        "approved_remedies": []
       },
       {
         "area": "career",
@@ -171,51 +154,46 @@
         "agreement": "strong",
         "direction": "support",
         "score": 0.789,
-        "support_n": 4,
+        "support_n": 2,
         "caution_n": 1,
-        "house": 10,
         "evidence": [
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:be4951c6",
-            "text": "rules it,",
+            "text": "Independent chart structure gives mixed support to this area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:7bf03f87",
-            "text": "house strength 20 of 56 \u2014 below average",
+            "text": "Structural support is limited for this life area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:ba085781",
-            "text": "Jupiter sits here",
+            "text": "Work, effort or contribution becoming easier for others to notice.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:4144c195",
             "text": "Greater professional responsibility and ownership.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:4144c195",
             "text": "Greater professional responsibility and ownership.",
             "semantic_tags": []
           },
           {
             "family": "other",
-            "polarity": "support",
-            "text_id": "row:support:4144c195",
-            "text": "Greater professional responsibility and ownership.",
-            "semantic_tags": []
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
           }
         ],
         "manifestation_ids": [],
@@ -231,13 +209,7 @@
         },
         "wealth_sub": [],
         "remedy_eligible": false,
-        "approved_remedies": [],
-        "allowed_planets": [
-          "Jupiter"
-        ],
-        "allowed_dates": [
-          "May 2026 \u2192 Oct 2026"
-        ]
+        "approved_remedies": []
       },
       {
         "area": "health",
@@ -250,27 +222,23 @@
         "direction": "caution",
         "score": -0.642,
         "support_n": 2,
-        "caution_n": 5,
-        "house": 1,
+        "caution_n": 4,
         "evidence": [
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:be4951c6",
-            "text": "rules it,",
+            "text": "Independent chart structure gives mixed support to this area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:3bfe9a1f",
-            "text": "house strength 29 of 56 \u2014 average",
+            "text": "Structural support is moderate for this life area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:47d6266b",
             "text": "",
             "semantic_tags": [
               "caution_theme"
@@ -279,22 +247,19 @@
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:4ecc3660",
             "text": "The chart shows stronger caution signals than supportive ones, so the emphasis is on consistency rather than alarm.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:75cbcd59",
             "text": "Small health or wellbeing issues may be harder to ignore during this phase, so consistency matters.",
             "semantic_tags": []
           },
           {
             "family": "other",
-            "polarity": "caution",
-            "text_id": "row:caution:4ecc3660",
-            "text": "The chart shows stronger caution signals than supportive ones, so the emphasis is on consistency rather than alarm.",
+            "polarity": "support",
+            "text": "Stress may make you more aware of how closely your emotional state, routine and physical wellbeing are connected.",
             "semantic_tags": []
           }
         ],
@@ -315,11 +280,7 @@
         },
         "wealth_sub": [],
         "remedy_eligible": false,
-        "approved_remedies": [],
-        "allowed_planets": [],
-        "allowed_dates": [
-          "Nov 2027 \u2192 Feb 2028"
-        ]
+        "approved_remedies": []
       },
       {
         "area": "children",
@@ -333,40 +294,34 @@
         "score": -0.493,
         "support_n": 1,
         "caution_n": 2,
-        "house": 5,
         "evidence": [
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:be4951c6",
-            "text": "rules it,",
+            "text": "Independent chart structure gives mixed support to this area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:7e9280f0",
-            "text": "house strength 26 of 56 \u2014 average",
+            "text": "Structural support is moderate for this life area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:c89b6aa8",
-            "text": "Venus, Rahu sit here",
+            "text": "Birth-chart structure \u2014 is broadly neutral for this reading.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:c2831d48",
             "text": "Point-score method \u2014 adds caution to this reading.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:f5c33fe7",
             "text": "",
             "semantic_tags": [
               "caution_theme"
@@ -375,7 +330,6 @@
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:c154570a",
             "text": "",
             "semantic_tags": [
               "caution_theme"
@@ -395,13 +349,7 @@
         },
         "wealth_sub": [],
         "remedy_eligible": false,
-        "approved_remedies": [],
-        "allowed_planets": [
-          "Rahu"
-        ],
-        "allowed_dates": [
-          "May 2026 \u2192 Oct 2026"
-        ]
+        "approved_remedies": []
       },
       {
         "area": "home",
@@ -413,50 +361,43 @@
         "agreement": "partial",
         "direction": "support",
         "score": 0.491,
-        "support_n": 4,
+        "support_n": 2,
         "caution_n": 1,
-        "house": 4,
         "evidence": [
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:be4951c6",
-            "text": "rules it,",
+            "text": "Independent chart structure gives mixed support to this area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:17491d68",
-            "text": "house strength 27 of 56 \u2014 average",
+            "text": "Structural support is moderate for this life area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:bf3d0c3c",
-            "text": "Sun, Mercury, Saturn sit here",
+            "text": "Taking responsibility for recurring family or home matters.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:4c76f037",
             "text": "Having a steadier home base or household rhythm.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:9802797c",
             "text": "Taking responsibility for recurring family or home matters.",
             "semantic_tags": []
           },
           {
             "family": "other",
-            "polarity": "support",
-            "text_id": "row:support:9802797c",
-            "text": "Taking responsibility for recurring family or home matters.",
+            "polarity": "caution",
+            "text": "Having a steadier home base or household rhythm.",
             "semantic_tags": []
           }
         ],
@@ -473,17 +414,7 @@
         },
         "wealth_sub": [],
         "remedy_eligible": false,
-        "approved_remedies": [],
-        "allowed_planets": [
-          "Sun",
-          "Mercury",
-          "Saturn"
-        ],
-        "allowed_dates": [
-          "2031-02-17",
-          "2031-06-14",
-          "home_window"
-        ]
+        "approved_remedies": []
       },
       {
         "area": "love",
@@ -497,40 +428,34 @@
         "score": -0.296,
         "support_n": 2,
         "caution_n": 3,
-        "house": 7,
         "evidence": [
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:be4951c6",
-            "text": "rules it,",
+            "text": "Independent chart structure gives mixed support to this area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:1228f91e",
-            "text": "house strength 38 of 56 \u2014 above average",
+            "text": "Structural support is strong for this life area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:c2831d48",
             "text": "Point-score method \u2014 adds caution to this reading.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:705e9efa",
             "text": "Gemini: Personality and Characteristics Appearance: Good height and attractive features, witha dual nature that's difficult to understand.\u2026",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:d4eb3b39",
             "text": "",
             "semantic_tags": [
               "caution_theme"
@@ -539,7 +464,6 @@
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:3282a3a5",
             "text": "Current transit \u2014 adds caution to this reading.",
             "semantic_tags": []
           }
@@ -557,13 +481,7 @@
         },
         "wealth_sub": [],
         "remedy_eligible": false,
-        "approved_remedies": [],
-        "allowed_planets": [
-          "Rahu"
-        ],
-        "allowed_dates": [
-          "Now \u2192 Jun 2027"
-        ]
+        "approved_remedies": []
       },
       {
         "area": "inner",
@@ -577,47 +495,40 @@
         "score": -0.106,
         "support_n": 5,
         "caution_n": 2,
-        "house": 12,
         "evidence": [
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:be4951c6",
-            "text": "rules it,",
+            "text": "Independent chart structure gives mixed support to this area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:c311a248",
-            "text": "house strength 21 of 56 \u2014 below average",
+            "text": "Structural support is limited for this life area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:d1d6308c",
             "text": "Case-based confirmation \u2014 supports this reading.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:def2c8d0",
             "text": "Your life opens through Virgo rising Mercury steers the body and first impression in this map.\u2026",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:f3de21a4",
             "text": "Life-pattern cross-check \u2014 is broadly neutral for this reading.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:ec380a18",
             "text": "Specialist timing cross-check \u2014 supports this reading.",
             "semantic_tags": []
           }
@@ -635,15 +546,7 @@
         },
         "wealth_sub": [],
         "remedy_eligible": false,
-        "approved_remedies": [],
-        "allowed_planets": [
-          "Mercury"
-        ],
-        "allowed_dates": [
-          "2026-10-31",
-          "2027-01-25",
-          "inner_window"
-        ]
+        "approved_remedies": []
       },
       {
         "area": "learning",
@@ -657,33 +560,28 @@
         "score": 0.04,
         "support_n": 1,
         "caution_n": 1,
-        "house": 9,
         "evidence": [
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:be4951c6",
-            "text": "rules it,",
+            "text": "Independent chart structure gives mixed support to this area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:7e9280f0",
-            "text": "house strength 26 of 56 \u2014 average",
+            "text": "Structural support is moderate for this life area.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "support",
-            "text_id": "row:support:d1d6308c",
             "text": "Case-based confirmation \u2014 supports this reading.",
             "semantic_tags": []
           },
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:d4eb3b39",
             "text": "",
             "semantic_tags": [
               "caution_theme"
@@ -692,7 +590,6 @@
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:c154570a",
             "text": "",
             "semantic_tags": [
               "caution_theme"
@@ -701,7 +598,6 @@
           {
             "family": "other",
             "polarity": "caution",
-            "text_id": "row:caution:7c0e971e",
             "text": "the lunar cycle: Sankata (Rahu) \u2014 the active clocks broadly point the same way",
             "semantic_tags": []
           }
@@ -719,32 +615,10 @@
         },
         "wealth_sub": [],
         "remedy_eligible": false,
-        "approved_remedies": [],
-        "allowed_planets": [
-          "Rahu"
-        ],
-        "allowed_dates": [
-          "Aug 2029 \u2192 Oct 2029"
-        ]
+        "approved_remedies": []
       }
     ],
-    "dashboard_buckets": {
-      "strongest": [
-        "money",
-        "career",
-        "home"
-      ],
-      "currently_activated": [],
-      "promised_not_active": [
-        "children",
-        "love",
-        "inner",
-        "learning"
-      ],
-      "needs_care": [
-        "health"
-      ]
-    },
+    "dashboard_buckets": {},
     "timing_windows": [
       {
         "start": "2031-02-17",

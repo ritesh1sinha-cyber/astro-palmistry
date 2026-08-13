@@ -17,6 +17,7 @@ from .rules import (
     GENERIC_FACT_IDS,
     OUT_OF_SCOPE_REFUSAL,
     chat_user_prompt,
+    followup_is_on_asked_topic,
     prompt_version,
     system_prompt_for,
     user_prompt,
@@ -45,7 +46,9 @@ from .validate import (
     validate_mind_now_line,
     validate_prose_against_facts,
     validate_question_prose,
+    validate_retains_fact_terms,
     validate_why_now,
+    area_fact_terms,
 )
 
 MAX_LLM_RETRIES = 2  # Attempt 1 + 1 retry; then deterministic fallback
@@ -231,25 +234,27 @@ def _conversational_overlay(prose: ConversationalProse, *, access: str) -> dict[
             if not key:
                 continue
             areas[key] = {
+                "astrological_basis": _as_sentence(getattr(a, "astrological_basis", "") or ""),
+                "interpretation": _as_sentence(getattr(a, "interpretation", "") or ""),
                 "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
                 # Models tend to echo the raw window label ("2026-10-31 →
                 # 2027-01-25"); normalise it to a sentence a reader can say.
                 "timing": FB.timing_sentence(getattr(a, "timing", "") or ""),
                 "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
                 "remedy": _as_sentence(getattr(a, "remedy", "") or ""),
+                "transition_note": _as_sentence(getattr(a, "transition_note", "") or ""),
             }
     return {
         "conversational": True,
+        "astrological_basis": _clip_to_sentence(prose.astrological_basis or ""),
+        "interpretation": _clip_to_sentence(prose.interpretation or ""),
         "personality": _clip_to_sentence(prose.personality),
         "current_phase": _clip_to_sentence(prose.current_phase),
         "recent_months": _clip_to_sentence(prose.recent_months or ""),
         "hardest_area_note": _clip_to_sentence(prose.hardest_area_note or ""),
         "mind_now": [_as_sentence(x) for x in list(prose.mind_now or []) if str(x).strip()],
         "why_now": _clip_to_sentence(prose.why_now or ""),
-        "family_note": (
-            [_as_sentence(x) for x in list(prose.family_note or []) if str(x).strip()]
-            if access == "paid" else []
-        ),
+        "family_note": [_as_sentence(x) for x in list(prose.family_note or []) if str(x).strip()][:4],
         "areas": areas,
     }
 
@@ -309,11 +314,11 @@ def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
         user_prompt(facts, schema_name="ConversationalProse",
                     section="page" if paid else "")
         + (
-            "\nWrite full sentences. current_phase must be 2–4 sentences using "
+            "\nWrite in the voice of a practising Vedic astrologer. astrological_basis must name the supplied chart factors and briefly explain their astrological significance; interpretation must connect those factors to lived experience rather than philosophy. current_phase must be 2–4 sentences using "
             "phase_tone, phase_end and phase_notes — never a single word like "
             "'supportive'. recent_months must mention each supplied window. "
             "mind_now needs one hedged line per life_state.mind_now entry and "
-            "why_now needs 2–4 sentences on why this stretch feels as it does. "
+            "why_now needs 2–4 sentences explaining the supplied astrological reason this stretch feels as it does and how that can manifest. "
             "family_note needs one line per family_notes entry, in order, each "
             "naming that relation and using only that entry's own notes. "
             "first_name is there so you know who you are talking to, not to "
@@ -381,6 +386,8 @@ def _humanize_report_areas(facts: Any, stats: dict[str, Any]) -> dict[str, Any]:
         if not key:
             continue
         out[key] = {
+            "astrological_basis": _as_sentence(getattr(a, "astrological_basis", "") or ""),
+            "interpretation": _as_sentence(getattr(a, "interpretation", "") or ""),
             "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
             "timing": FB.timing_sentence(getattr(a, "timing", "") or ""),
             "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
@@ -406,7 +413,8 @@ def _screen_conversational_slots(
         key = ":".join(str(reason).split(":")[:2])[:80]
         stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
 
-    for key in ("personality", "current_phase", "recent_months", "hardest_area_note",
+    for key in ("astrological_basis", "interpretation", "personality",
+                "current_phase", "recent_months", "hardest_area_note",
                 "why_now"):
         text = str(out.get(key) or "").strip()
         if not text:
@@ -480,6 +488,8 @@ def _screen_conversational_slots(
                 continue
             problems = check_prose(text, mini, area=area)
             problems += validate_conversational_area(field, text, card)
+            if field in ("outlook", "manifestation"):
+                problems += validate_retains_fact_terms(text, area_fact_terms(card))
             if problems:
                 dropped += 1
                 for p in problems:
@@ -515,6 +525,7 @@ def _single_card_facts(facts: Any, card: Any) -> Any:
             engine_version=facts.engine_version,
             report_id=facts.report_id,
             facts_hash=facts.facts_hash,
+            vedic_context=getattr(facts, "vedic_context", None),
         )
     except Exception:  # noqa: BLE001
         return facts
@@ -526,7 +537,8 @@ def _merge_conversational_facts(
     """Fill thin LLM slots from Python facts so the page is never skeletal."""
     fb = FB.conversational_fallback(facts)
     out = dict(overlay or {})
-    for key in ("personality", "current_phase", "recent_months", "hardest_area_note",
+    for key in ("astrological_basis", "interpretation", "personality",
+                "current_phase", "recent_months", "hardest_area_note",
                 "why_now"):
         cur = str(out.get(key) or "").strip()
         # Bare tone words, bare label lists or empty slots → deterministic prose.
@@ -546,19 +558,26 @@ def _merge_conversational_facts(
     # Same rule for the background block, and for the same reason: a page that
     # covers the father and then goes quiet about the mother reads as an error.
     kept_family = [str(x).strip() for x in (out.get("family_note") or []) if str(x).strip()]
+    expected_family = len(list(getattr(facts, "family_notes", None) or []))
     if access == "paid":
-        if len(kept_family) < len(list(getattr(facts, "family_notes", None) or [])):
+        if len(kept_family) < expected_family:
             kept_family = list(fb.get("family_note") or []) or kept_family
         out["family_note"] = kept_family[:4]
     else:
-        out["family_note"] = []
+        # Free keeps a small family/home teaser. The deeper family reading is
+        # still access-controlled by the renderer, but silently deleting the
+        # whole block makes About You feel incomplete.
+        if len(kept_family) < min(2, expected_family):
+            kept_family = list(fb.get("family_note") or []) or kept_family
+        out["family_note"] = kept_family[:2]
     if access == "paid":
         cards = {getattr(c, "area", ""): c for c in (getattr(facts, "cards", None) or [])}
         areas = dict(out.get("areas") or {})
         for area, block in (fb.get("areas") or {}).items():
             cur = areas.get(area) if isinstance(areas.get(area), dict) else {}
             merged = dict(block or {})
-            for field in ("outlook", "timing", "manifestation", "remedy"):
+            for field in ("astrological_basis", "interpretation", "outlook",
+                          "timing", "manifestation", "remedy", "transition_note"):
                 if str(cur.get(field) or "").strip():
                     merged[field] = cur[field]
             # A difficulty must never be published without the step that helps.
@@ -571,7 +590,7 @@ def _merge_conversational_facts(
             if card is not None:
                 label, cls = FB.area_tone(card)
                 merged["tone_label"], merged["tone_class"] = label, cls
-            areas[area] = merged
+            areas[area] = _drop_repeated_remedy(merged)
         out["areas"] = areas
     else:
         out["areas"] = {}
@@ -726,16 +745,23 @@ def _screen_palm_slots(
     out["mind_now"] = mind_lines[:3]
 
     areas = dict(out.get("areas") or {})
+    aspects = {
+        str(getattr(a, "aspect", "") or ""): a
+        for a in (getattr(facts, "aspects", None) or [])
+    }
     for aspect, block in list(areas.items()):
         if not isinstance(block, dict):
             areas.pop(aspect, None)
             continue
         cleaned = {}
+        card = aspects.get(aspect)
         for field, value in block.items():
             text = str(value or "").strip()
             if not text:
                 continue
             problems = check_prose(text, facts, area=aspect)
+            if field in ("outlook", "manifestation") and card is not None:
+                problems += validate_retains_fact_terms(text, area_fact_terms(card))
             if problems:
                 dropped += 1
                 for p in problems:
@@ -755,6 +781,19 @@ def _screen_palm_slots(
 _PALM_AREA_FLOOR = {
     "outlook": 40, "timing": 20, "manifestation": 25, "remedy": 25,
 }
+
+
+def _drop_repeated_remedy(block: dict[str, Any]) -> dict[str, Any]:
+    """If manifestation merely repeats the remedy, keep the remedy only."""
+    out = dict(block or {})
+    rem = str(out.get("remedy") or "").strip()
+    man = str(out.get("manifestation") or "").strip()
+    if rem and man:
+        r_l = rem.lower().rstrip(".")
+        m_l = man.lower().rstrip(".")
+        if m_l == r_l or r_l in m_l or m_l in r_l:
+            out["manifestation"] = ""
+    return out
 
 
 def _merge_conversational_palm_facts(
@@ -784,6 +823,7 @@ def _merge_conversational_palm_facts(
         text and (note in text or note[:60] in text) for text in neighbours
     ):
         out["hardest_area_note"] = fb.get("hardest_area_note") or ""
+    personality = str(out.get("personality") or "").strip()
     if access == "paid":
         areas = dict(out.get("areas") or {})
         for aspect, block in (fb.get("areas") or {}).items():
@@ -793,7 +833,14 @@ def _merge_conversational_palm_facts(
                 text = str(cur.get(field) or "").strip()
                 if len(text) >= floor:
                     merged[field] = text
-            areas[aspect] = merged
+            if aspect == "character":
+                outlook = str(merged.get("outlook") or "").strip()
+                if outlook and personality:
+                    if outlook[:80].lower() in personality.lower() or personality[:80].lower() in outlook.lower():
+                        fb_outlook = str((fb.get("areas") or {}).get("character", {}).get("outlook") or "")
+                        if fb_outlook and fb_outlook[:80].lower() not in personality.lower():
+                            merged["outlook"] = fb_outlook
+            areas[aspect] = _drop_repeated_remedy(merged)
         out["areas"] = areas
     else:
         out["areas"] = {}
@@ -965,18 +1012,35 @@ def humanize_chat(
         validate_chat_answer,
         temperature=0.3,
     )
+    on_topic = followup_is_on_asked_topic(facts, question)
     if prose is None:
         result["stats"]["rejected"] = 1
         # Keep why it was rejected: a refusal the customer sees for a fair
         # question is a bug, and without the reasons it is invisible in logs.
         result["stats"]["rejection_reasons"] = list(errs or [])
         result["fallback_used"] = True
+        if on_topic:
+            result["answer"] = FB.question_chat_fallback(facts)
+            result["out_of_scope"] = False
+            result["used_fact_ids"] = ["question", "direction", "timing"]
+            return result
         result["answer"] = (
             "I can only speak from the facts already in your reading. "
             "Please ask about a life area or timing window shown there."
         )
         return result
     if prose.out_of_scope:
+        # The model treats "the case / the verdict" as a new topic because
+        # the prompt used to describe every non-palm/horary reading as a
+        # life-area chart. This report is that question; answer from facts.
+        if on_topic:
+            result["answer"] = FB.question_chat_fallback(facts)
+            result["out_of_scope"] = False
+            result["used_fact_ids"] = ["question", "direction", "timing"]
+            result["fallback_used"] = True
+            result["stats"]["rejected"] = 1
+            result["stats"]["rejection_reasons"] = ["false_out_of_scope_on_asked_topic"]
+            return result
         result["answer"] = OUT_OF_SCOPE_REFUSAL
         result["out_of_scope"] = True
         result["stats"]["accepted"] = 1

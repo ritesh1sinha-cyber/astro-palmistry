@@ -163,6 +163,8 @@ class Card:
     agreement: str = ""            # confidence chip, not method counts
     planets: list = field(default_factory=list)
     trajectory: list = field(default_factory=list)
+    transition_map: list = field(default_factory=list)
+    transit_context: list = field(default_factory=list)
     confluence: dict = field(default_factory=dict)
     locked: bool = False           # kept for callers that still gate whole cards
 
@@ -464,6 +466,7 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
             confluence = attach_result_to_confluence(
                 (verdict or {}).get("confluence") or {}, canonical)
             sort_score = abs(float(canonical.get("score") or score)) + (1 if live else 0)
+            timing_rows_for_map = list(windows)
         else:
             # Legacy fallback when canonical_result is unavailable.
             headline = _manifest_card_headline(
@@ -487,10 +490,12 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
                 except Exception:  # noqa: BLE001
                     remedy = ""
             trajectory = []
+            timing_rows_for_map = []
             try:
                 import report_timing as RT
                 rows = RT.windows_for_area(
                     pc, area.key, area.house, start=today, years=5)
+                timing_rows_for_map = list(rows)
                 for r in rows:
                     if not r.get("start"):
                         continue
@@ -520,6 +525,33 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
                           or _build_confluence(area.key, area.house, pc))
             sort_score = abs(score) + (1 if live else 0)
 
+        # A card whose canonical result carried no dated window would print a
+        # bare "Timing" line and no map at all, which is exactly the flat date
+        # range the map replaces. The timing engine still has rows for it.
+        if not timing_rows_for_map:
+            try:
+                import report_timing as RT
+                for horizon in (5, 8):
+                    timing_rows_for_map = list(RT.windows_for_area(
+                        pc, area.key, area.house, start=today, years=horizon))
+                    if timing_rows_for_map:
+                        break
+            except Exception:  # noqa: BLE001
+                timing_rows_for_map = []
+
+        transition_map = []
+        transit_context = []
+        try:
+            from life_area_transition import build_context_transits, build_transition_map
+            transition_map = build_transition_map(
+                pc, area.key, list(timing_rows_for_map), limit=6)
+            transit_context = build_context_transits(
+                pc, area.house, today=today, years=3,
+                md_lord=md_lord, ad_lord=ad_lord)
+        except Exception:  # noqa: BLE001
+            transition_map = transition_map or []
+            transit_context = []
+
         # Current MD/AD plus any Jupiter/Saturn transit on this area's house.
         planets_involved = []
         for p in (md_lord, ad_lord):
@@ -548,6 +580,8 @@ def build_cards(pc: dict, *, today: Optional[date] = None,
             mantra="",
             agreement=agreement,
             planets=planets_involved, trajectory=trajectory,
+            transition_map=transition_map,
+            transit_context=transit_context,
             confluence=confluence,
         )
         cards.append((sort_score, card))

@@ -385,6 +385,45 @@ def h_full_report(user: dict, p: dict) -> dict:
     return saved
 
 
+def h_classical_report(user: dict, p: dict) -> dict:
+    """Classical Vedic Report — the traditional seven-section reading.
+
+    Deliberately separate from `h_full_report`: no lanes, no confluence and no
+    LLM. The chart facts go straight to the book corpora and out through the
+    classical boundary, which is what keeps the traditional grammar intact.
+    """
+    # The horizon scan embeds the book corpus. torch is not in the default
+    # worker image, so install the lexical stand-in the same way the flagship
+    # report does rather than fail outright.
+    try:
+        import semantic_fallback
+        semantic_fallback.install()
+    except Exception:                                    # never block a report
+        pass
+
+    from classical_report import classical_report
+
+    chart = get_or_create_chart(user["id"], p)
+    pc = precompute_for(chart)
+
+    free_html, paid_html, meta = classical_report(
+        pc,
+        name=chart.get("person_name") or "Seeker",
+        dob=str(chart["dob"]),
+        tob=str(chart["tob"]),
+        place=chart.get("place") or "",
+        price=S.price("classical_report") // 100,
+        bundle_price=S.price("bundle_all") // 100,
+    )
+
+    paid = entitled(user["id"], "classical_report", chart["id"])
+    saved = _save_report(user["id"], chart["id"], "classical_report",
+                         free_html, paid_html, meta, paid)
+    saved["chartId"] = chart["id"]
+    saved["price"] = meta["price"]
+    return saved
+
+
 def h_horary(user: dict, p: dict) -> dict:
     # Question → house / topic. Optional life-area dropdown pins the domain.
     area = ""
@@ -777,6 +816,7 @@ HANDLERS = {
     "chart_summary": h_chart_summary,
     "numerology": h_numerology,
     "full_report": h_full_report,
+    "classical_report": h_classical_report,
     "user_question": h_user_question,
     "horary": h_horary,
     "daily": h_daily,

@@ -456,6 +456,13 @@ def _kp_plain_text(kp: dict) -> str:
     }[kp["label"]]
 
 
+def _step_icon(i: int) -> str:
+    """Circled step number. The card grows an extra step whenever the chart
+    has classical notes to add, so a fixed seven-glyph string ran off the end
+    and took the whole horary report down with it."""
+    return chr(0x2460 + i) if 0 <= i < 20 else str(i + 1)
+
+
 def _jamakkol_card(data: dict, jam: dict) -> str:
     jk = data["jamakkol"]
     kav = jk["kavippu"]
@@ -473,7 +480,7 @@ def _jamakkol_card(data: dict, jam: dict) -> str:
     if conj:
         steps.append(f"<strong>Kavippu conjunct {', '.join(conj)}</strong> — these planets colour the outcome.")
     steps_html = "".join(
-        f"<li><span class='step-icon'>{'①②③④⑤⑥⑦'[i]}</span><span>{s}</span></li>"
+        f"<li><span class='step-icon'>{_step_icon(i)}</span><span>{s}</span></li>"
         for i, s in enumerate(steps))
     kh = jam["kavippu_house"]
     kav_cls = "good" if kh == 11 else ("bad" if kh in (6, 8, 12) else "mixed")
@@ -516,7 +523,7 @@ def _prashna_card(data: dict, pra: dict) -> str:
     if pra.get("notes"):
         steps.append("<strong>Classical notes:</strong> " + "; ".join(html.escape(n) for n in pra["notes"][:4]))
     steps_html = "".join(
-        f"<li><span class='step-icon'>{'①②③④⑤⑥⑦'[i]}</span><span>{s}</span></li>"
+        f"<li><span class='step-icon'>{_step_icon(i)}</span><span>{s}</span></li>"
         for i, s in enumerate(steps))
     tl_cls = {"FAVORABLE": "good", "DENYING": "bad"}.get(pra["tl_status"], "mixed")
     facts = (
@@ -555,7 +562,7 @@ def _kp_card(data: dict, kp: dict) -> str:
            else f"The sub-lord {sub} is not among the Ruling Planets."),
     ]
     steps_html = "".join(
-        f"<li><span class='step-icon'>{'①②③④⑤⑥⑦'[i]}</span><span>{s}</span></li>"
+        f"<li><span class='step-icon'>{_step_icon(i)}</span><span>{s}</span></li>"
         for i, s in enumerate(steps))
     facts = (
         _fact("KP Lagna sub-lord", sub)

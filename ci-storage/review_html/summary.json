@@ -2,46 +2,55 @@
   "astro": [
     {
       "name": "meera_1990-01-15_delhi",
-      "free_bytes": 83655,
-      "paid_bytes": 103291,
+      "free_bytes": 84563,
+      "paid_bytes": 101103,
       "llm_enabled": false,
-      "unlock_free": 1
+      "unlock_free": 2
     },
     {
       "name": "ramesh_1986-03-08_delhi",
-      "free_bytes": 84451,
-      "paid_bytes": 102909,
+      "free_bytes": 84093,
+      "paid_bytes": 99122,
       "llm_enabled": false,
-      "unlock_free": 1
+      "unlock_free": 2
     },
     {
       "name": "suresh_1990-01-12_delhi",
-      "free_bytes": 83413,
-      "paid_bytes": 103025,
+      "free_bytes": 83727,
+      "paid_bytes": 100704,
       "llm_enabled": false,
-      "unlock_free": 1
+      "unlock_free": 2
     },
     {
       "name": "gyanesh_2012-01-01_hyderabad",
-      "free_bytes": 62325,
-      "paid_bytes": 74816,
+      "free_bytes": 62563,
+      "paid_bytes": 72145,
       "llm_enabled": false,
-      "unlock_free": 1
+      "unlock_free": 2
     }
   ],
   "horary": {
     "name": "horary_off",
-    "free_bytes": 37715,
-    "paid_bytes": 38776,
+    "free_bytes": 37604,
+    "paid_bytes": 38711,
     "llm_enabled": false,
     "unlock_free": 1
   },
   "user_question": {
     "name": "user_question_off",
-    "free_bytes": 36225,
-    "paid_bytes": 39089,
+    "free_bytes": 36392,
+    "paid_bytes": 38239,
     "llm_enabled": false,
-    "unlock_free": 0,
+    "unlock_free": 1,
     "truth_source": "full_report_canonical"
+  },
+  "daily": {
+    "name": "daily_off",
+    "free_bytes": 37389,
+    "paid_bytes": 45560,
+    "llm_enabled": false,
+    "unlock_free": 1,
+    "has_personal_focus": true,
+    "has_personal_teaser": true
   }
 }

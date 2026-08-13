@@ -87,7 +87,8 @@ def _stat(kind: str) -> str:    return f"stat:{kind}"
 def _rate(uid: str) -> str:     return f"rate:{uid}"
 
 # kinds that get their own concurrency budget; everything else shares "*"
-GROUPS = {"full_report": "heavy", "btr": "heavy", "palm": "palm"}
+GROUPS = {"full_report": "heavy", "classical_report": "heavy", "btr": "heavy",
+          "palm": "palm"}
 
 
 def group_of(kind: str) -> str:
@@ -308,7 +309,8 @@ def finish(job: dict, *, result: Any = None, error: str = "") -> None:
 # ---------------------------------------------------------------------------
 # measured durations → honest ETAs
 # ---------------------------------------------------------------------------
-DEFAULTS = {"full_report": 150.0, "btr": 90.0, "palm": 12.0, "horary": 8.0,
+DEFAULTS = {"full_report": 150.0, "classical_report": 90.0,
+            "btr": 90.0, "palm": 12.0, "horary": 8.0,
             "user_question": 25.0, "kundali_match": 10.0, "numerology": 3.0, "daily": 4.0,
             "chart_summary": 2.0, "muhurat": 4.0, "future_event": 20.0}
 

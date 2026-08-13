@@ -41,17 +41,12 @@
   },
   "_facts": {
     "kind": "horary",
-    "schema_version": "1.0",
-    "engine_version": "astro-2026.08.11-qcanonical-v2",
-    "report_id": "",
-    "facts_hash": "78e3b409cd817b6cf44aa4f6",
     "first_name": "Meera",
     "access": "paid",
     "question": "Will this job offer come through this year?",
     "subject": "",
     "label": "Leaning yes",
     "confidence": "moderate",
-    "score": 0.252,
     "contradicted": false,
     "favourable": true,
     "lanes": [

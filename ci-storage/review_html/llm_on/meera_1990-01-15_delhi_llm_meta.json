@@ -1,0 +1,812 @@
+{
+  "design": "conversational-v1",
+  "price": 298,
+  "bundlePrice": 298,
+  "llm": {
+    "enabled": true,
+    "stats": {
+      "accepted": 29,
+      "rejected": 4,
+      "errors": 0,
+      "rejection_reasons": {
+        "recent_months": 1,
+        "hardest_area_note": 1,
+        "areas.outlook": 2
+      }
+    },
+    "free": {
+      "stats": {
+        "accepted": 4,
+        "rejected": 0,
+        "errors": 0,
+        "rejection_reasons": {}
+      },
+      "fallback_used": false,
+      "run_meta": {
+        "enabled": true,
+        "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+        "prompt_version": "REPORT_CONVERSATIONAL_PROMPT_V1-69932efc",
+        "facts_hash": "a4cd7520a1e8ab2c2725613e",
+        "schema_version": "1.2",
+        "retry_count": 1,
+        "fallback_used": false,
+        "accepted": 4,
+        "rejected": 0,
+        "errors": 0,
+        "rejection_reasons": {}
+      }
+    },
+    "paid": {
+      "stats": {
+        "accepted": 29,
+        "rejected": 4,
+        "errors": 0,
+        "rejection_reasons": {
+          "recent_months": 1,
+          "hardest_area_note": 1,
+          "areas.outlook": 2
+        }
+      },
+      "fallback_used": false,
+      "run_meta": {
+        "enabled": true,
+        "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+        "prompt_version": "REPORT_CONVERSATIONAL_PROMPT_V1-69932efc",
+        "facts_hash": "8ef9765dfd9157394aac3f10",
+        "schema_version": "1.2",
+        "retry_count": 1,
+        "fallback_used": false,
+        "accepted": 29,
+        "rejected": 4,
+        "errors": 0,
+        "rejection_reasons": {
+          "recent_months": 1,
+          "hardest_area_note": 1,
+          "areas.outlook": 2
+        }
+      }
+    }
+  },
+  "_facts": {
+    "kind": "full_report",
+    "first_name": "Meera",
+    "age_band": "adult",
+    "age_years": 36,
+    "gender": "unknown",
+    "access": "paid",
+    "cards": [
+      {
+        "area": "career",
+        "label": "Work & Career",
+        "kind": "promise",
+        "status": "insufficient_evidence",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "prediction_strength": "insufficient_evidence",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": -0.288,
+        "support_n": 2,
+        "caution_n": 3,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is limited for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Greater professional responsibility and ownership.",
+            "semantic_tags": [
+              "contested"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Taking on greater responsibility, ownership or follow-through.",
+            "semantic_tags": [
+              "contested"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "May 2024 \u2192 Oct 2026",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "timing_windows": [],
+        "question_lens": "What does your chart say about Work & Career?",
+        "wealth_sub": [],
+        "remedy_eligible": true,
+        "approved_remedies": [
+          "Use this window to show your work, ask for the responsibility you want, and follow important conversations in writing."
+        ],
+        "outlook_line": "Neither the underlying chart nor the current period give strong support here; steady, deliberate effort matters more than waiting for the right moment.",
+        "manifestations": [],
+        "remedy_text": "Use this window to show your work, ask for the responsibility you want, and follow important conversations in writing."
+      },
+      {
+        "area": "health",
+        "label": "Health & Energy",
+        "kind": "challenge",
+        "status": "strongly_indicated",
+        "activation_status": "active",
+        "confidence": "moderate",
+        "prediction_strength": "strongly_indicated",
+        "agreement": "partial",
+        "direction": "support",
+        "score": 0.654,
+        "support_n": 3,
+        "caution_n": 3,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Structural support is strong for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Stress may make you more aware of how closely your emotional state, routine and physical wellbeing are connected.",
+            "semantic_tags": [
+              "contested"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "This period calls for more attention to routine, rest and preventive care.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Consistency, rest and timely follow-up may be particularly important during demanding periods.",
+            "semantic_tags": [
+              "contested"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [
+          "wellbeing_sensitivity",
+          "routine",
+          "recovery"
+        ],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Jun 2027 \u2192 Oct 2027",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "timing_windows": [],
+        "question_lens": "Where should I protect my energy and routine, and when are demanding periods more likely?",
+        "wealth_sub": [],
+        "remedy_eligible": true,
+        "approved_remedies": [
+          "Use the stronger phase to build the routines that keep your energy steady, rather than assuming you can always push harder."
+        ],
+        "outlook_line": "The area is part of your chart's real potential, and the current period is actively supporting it \u2014 this is a genuine opportunity window.",
+        "manifestations": [],
+        "remedy_text": "Use the stronger phase to build the routines that keep your energy steady, rather than assuming you can always push harder."
+      },
+      {
+        "area": "money",
+        "label": "Money",
+        "kind": "promise",
+        "status": "mixed",
+        "activation_status": "strongly_active",
+        "confidence": "high",
+        "prediction_strength": "mixed",
+        "agreement": "strong",
+        "direction": "support",
+        "score": 0.595,
+        "support_n": 4,
+        "caution_n": 1,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Structural support is strong for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Building a steadier financial base.",
+            "semantic_tags": [
+              "contested"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Gradual improvement in financial position.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Money earned through work, skills or practical activity.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "The running period reads mixed \u2014 good and testing patches for this area \u2014 Wealth \u2014 Mixed. Antar-lord Jupiter (supports).",
+            "semantic_tags": []
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Aug 2029 \u2192 Oct 2029",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "timing_windows": [],
+        "question_lens": "Will my financial security improve, and what kind of progress is more realistic for me?",
+        "wealth_sub": [
+          {
+            "status": "mixed",
+            "score": 0.13,
+            "label": "Income"
+          },
+          {
+            "status": "mixed",
+            "score": 0.13,
+            "label": "Accumulation & savings"
+          },
+          {
+            "status": "insufficient_evidence",
+            "score": 0.52,
+            "label": "Business gains"
+          },
+          {
+            "status": "mixed",
+            "score": 0.357,
+            "label": "Sudden gains"
+          }
+        ],
+        "remedy_eligible": true,
+        "approved_remedies": [
+          "Use the easier phase to strengthen savings and reduce money that quietly leaks away."
+        ],
+        "outlook_line": "An opportunity may become active now, but timing is stronger than the underlying promise \u2014 treat it as a chance to evaluate carefully rather than a guaranteed outcome.",
+        "manifestations": [],
+        "remedy_text": "Use the easier phase to strengthen savings and reduce money that quietly leaks away."
+      },
+      {
+        "area": "children",
+        "label": "Children",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "strongly_active",
+        "confidence": "high",
+        "prediction_strength": "strongly_supported",
+        "agreement": "strong",
+        "direction": "support",
+        "score": 0.577,
+        "support_n": 5,
+        "caution_n": 1,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is moderate for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "For knowledge, creativity and authorship, 5th from KL (Aquarius) holds Jupiter. Jupiter: Jupiter in 5th from KL: wisdom, Vedas, good acts.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          }
+        ],
+        "manifestation_ids": [
+          "parenthood or family expansion where timing also qualifies",
+          "a stronger bond with an existing child",
+          "family responsibility growing in a positive way"
+        ],
+        "semantic_tags": [],
+        "window": {
+          "start": "2026-10-31",
+          "end": "2027-01-25",
+          "label": "children_window",
+          "event_type": "children_window",
+          "confidence": "moderate",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 0.66
+        },
+        "timing_windows": [
+          {
+            "start": "2026-10-31",
+            "end": "2027-01-25",
+            "label": "children_window",
+            "event_type": "children_window",
+            "confidence": "moderate",
+            "source": "dasha_ashtakavarga_transit_confluence",
+            "score": 0.66
+          },
+          {
+            "start": "2027-06-26",
+            "end": "2027-11-27",
+            "label": "children_window",
+            "event_type": "children_window",
+            "confidence": "moderate",
+            "source": "dasha_ashtakavarga_transit_confluence",
+            "score": 0.57
+          },
+          {
+            "start": "2028-02-29",
+            "end": "2028-07-24",
+            "label": "children_window",
+            "event_type": "children_window",
+            "confidence": "moderate",
+            "source": "dasha_ashtakavarga_transit_confluence",
+            "score": 0.61
+          }
+        ],
+        "question_lens": "What does my chart say about children, parenthood and the experience of raising them?",
+        "wealth_sub": [],
+        "remedy_eligible": true,
+        "approved_remedies": [
+          "Encourage progress without rushing it. Consistency will help more than pressure."
+        ],
+        "outlook_line": "The area is part of your chart's real potential, and the current period is actively supporting it \u2014 this is a genuine opportunity window.",
+        "manifestations": [
+          "parenthood or family expansion where timing also qualifies",
+          "a stronger bond with an existing child",
+          "family responsibility growing in a positive way"
+        ],
+        "remedy_text": "Encourage progress without rushing it. Consistency will help more than pressure."
+      },
+      {
+        "area": "love",
+        "label": "Relationships & Partnership",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "active",
+        "confidence": "moderate",
+        "prediction_strength": "strongly_supported",
+        "agreement": "partial",
+        "direction": "support",
+        "score": 0.493,
+        "support_n": 4,
+        "caution_n": 1,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Structural support is strong for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Point-score method \u2014 supports this reading.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Dec 2028 \u2192 Mar 2029",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "timing_windows": [],
+        "question_lens": "What does my relationship life look like, and when does it become easier or more settled?",
+        "wealth_sub": [],
+        "remedy_eligible": true,
+        "approved_remedies": [
+          "Use the warmer phase to have the conversation you have been postponing and make time for the relationship."
+        ],
+        "outlook_line": "The area is part of your chart's real potential, and the current period is actively supporting it \u2014 this is a genuine opportunity window.",
+        "manifestations": [],
+        "remedy_text": "Use the warmer phase to have the conversation you have been postponing and make time for the relationship."
+      },
+      {
+        "area": "home",
+        "label": "Home & Family",
+        "kind": "promise",
+        "status": "insufficient_evidence",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "prediction_strength": "insufficient_evidence",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": 0.217,
+        "support_n": 2,
+        "caution_n": 3,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is limited for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Taking responsibility for recurring family or home matters.",
+            "semantic_tags": [
+              "contested"
+            ]
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Having a steadier home base or household rhythm.",
+            "semantic_tags": [
+              "contested"
+            ]
+          }
+        ],
+        "manifestation_ids": [
+          "patience needed with domestic or property matters"
+        ],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Now \u2192 Oct 2026",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "timing_windows": [],
+        "question_lens": "Will home, family and living circumstances become more settled or change meaningfully?",
+        "wealth_sub": [],
+        "remedy_eligible": true,
+        "approved_remedies": [
+          "Use the stable phase to settle recurring home matters and strengthen your family routine."
+        ],
+        "outlook_line": "Neither the underlying chart nor the current period give strong support here; steady, deliberate effort matters more than waiting for the right moment.",
+        "manifestations": [
+          "patience needed with domestic or property matters"
+        ],
+        "remedy_text": "Use the stable phase to settle recurring home matters and strengthen your family routine."
+      },
+      {
+        "area": "inner",
+        "label": "Inner Life",
+        "kind": "promise",
+        "status": "mixed",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "prediction_strength": "mixed",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": -0.13,
+        "support_n": 6,
+        "caution_n": 2,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is limited for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "Your life opens through Aries rising Mars steers the body and first impression in this map. Aries is the first sign of Zodiac and belongs to head in our body.\u2026",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "",
+          "end": "",
+          "label": "Now \u2192 Jun 2027",
+          "event_type": "",
+          "confidence": "low",
+          "source": "",
+          "score": 0.0
+        },
+        "timing_windows": [],
+        "question_lens": "What is changing inside me, and where is this period pushing personal growth?",
+        "wealth_sub": [],
+        "remedy_eligible": true,
+        "approved_remedies": [
+          "Use the quieter phase for reflection, learning or spiritual practice instead of forcing every answer."
+        ],
+        "outlook_line": "Both the underlying chart and the current period are mixed on this area, so results are likely to be partial rather than one-sided.",
+        "manifestations": [],
+        "remedy_text": "Use the quieter phase for reflection, learning or spiritual practice instead of forcing every answer."
+      },
+      {
+        "area": "learning",
+        "label": "Learning & Luck",
+        "kind": "promise",
+        "status": "strongly_supported",
+        "activation_status": "mixed",
+        "confidence": "low",
+        "prediction_strength": "strongly_supported",
+        "agreement": "weak",
+        "direction": "mixed",
+        "score": 0.026,
+        "support_n": 3,
+        "caution_n": 2,
+        "evidence": [
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Independent chart structure gives mixed support to this area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "caution",
+            "text": "Structural support is limited for this life area.",
+            "semantic_tags": []
+          },
+          {
+            "family": "other",
+            "polarity": "support",
+            "text": "",
+            "semantic_tags": [
+              "caution_theme",
+              "contested"
+            ]
+          }
+        ],
+        "manifestation_ids": [],
+        "semantic_tags": [],
+        "window": {
+          "start": "2031-02-17",
+          "end": "2031-06-14",
+          "label": "learning_window",
+          "event_type": "learning_window",
+          "confidence": "high",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 0.73
+        },
+        "timing_windows": [
+          {
+            "start": "2031-02-17",
+            "end": "2031-06-14",
+            "label": "learning_window",
+            "event_type": "learning_window",
+            "confidence": "high",
+            "source": "dasha_ashtakavarga_transit_confluence",
+            "score": 0.73
+          }
+        ],
+        "question_lens": "Where can learning, study or skill-building create meaningful growth?",
+        "wealth_sub": [],
+        "remedy_eligible": true,
+        "approved_remedies": [
+          "Use the opening to learn something useful and apply it immediately instead of only collecting information."
+        ],
+        "outlook_line": "The underlying promise is supported, but the current phase carries more caution than certainty.",
+        "manifestations": [],
+        "remedy_text": "Use the opening to learn something useful and apply it immediately instead of only collecting information."
+      }
+    ],
+    "dashboard_buckets": {},
+    "timing_windows": [
+      {
+        "start": "2026-10-31",
+        "end": "2027-01-25",
+        "label": "children_window",
+        "event_type": "children_window",
+        "confidence": "moderate",
+        "source": "dasha_ashtakavarga_transit_confluence",
+        "score": 0.66
+      },
+      {
+        "start": "2027-06-26",
+        "end": "2027-11-27",
+        "label": "children_window",
+        "event_type": "children_window",
+        "confidence": "moderate",
+        "source": "dasha_ashtakavarga_transit_confluence",
+        "score": 0.57
+      },
+      {
+        "start": "2028-02-29",
+        "end": "2028-07-24",
+        "label": "children_window",
+        "event_type": "children_window",
+        "confidence": "moderate",
+        "source": "dasha_ashtakavarga_transit_confluence",
+        "score": 0.61
+      },
+      {
+        "start": "2031-02-17",
+        "end": "2031-06-14",
+        "label": "learning_window",
+        "event_type": "learning_window",
+        "confidence": "high",
+        "source": "dasha_ashtakavarga_transit_confluence",
+        "score": 0.73
+      }
+    ],
+    "personality_traits": [
+      "You tend to act quickly when you see an opportunity, sometimes before everyone around you is ready.",
+      "Recognition matters to you, especially when you've carried a difficult responsibility for a long time.",
+      "A recurring theme in your life is learning which battles deserve your energy \u2014 and which ones are better left alone."
+    ],
+    "phase_direction": "support",
+    "phase_tone": "supportive",
+    "phase_end": "2026-10-11",
+    "phase_notes": [
+      "Home and family matters may be taking more of your attention than usual. Give important decisions time to settle rather than forcing an immediate outcome. The p",
+      "You may feel a stronger need to step back, rest or simplify what you are carrying. This is a period for clearing unfinished matters rather than adding unnecessa"
+    ],
+    "recent_months": [
+      {
+        "start": "2026-04-14",
+        "end": "2026-08-12",
+        "area": "inner",
+        "label": "Inner Life",
+        "direction": "mixed",
+        "direction_label": "Mixed period",
+        "headline": "You may feel pulled between commitments and the need for personal space.",
+        "manifests": [
+          "questioning what deserves your energy"
+        ]
+      },
+      {
+        "start": "2026-04-14",
+        "end": "2026-06-02",
+        "area": "learning",
+        "label": "Learning & Luck",
+        "direction": "mixed",
+        "direction_label": "Mixed period",
+        "headline": "This phase rewards structured learning. Revisiting difficult material or working with a good mentor can produce better results than trying to move quickly.",
+        "manifests": [
+          "having to revisit it or wait for the right guidance"
+        ]
+      },
+      {
+        "start": "2026-06-02",
+        "end": "2026-08-12",
+        "area": "home",
+        "label": "Home & Family",
+        "direction": "mixed",
+        "direction_label": "Mixed period",
+        "headline": "Home is mostly workable, but one recurring responsibility may still pull attention.",
+        "manifests": [
+          "family responsibility staying on your mind"
+        ]
+      }
+    ],
+    "hardest_areas": [
+      "career",
+      "health",
+      "home"
+    ],
+    "hardest_area_labels": [
+      "Work & Career",
+      "Health & Energy",
+      "Home & Family"
+    ]
+  },
+  "freeSections": [
+    "Your current chapter",
+    "Who your chart says you are",
+    "Your recent past \u2014 free and checkable",
+    "What is happening right now",
+    "Major life areas",
+    "Gemstones you should not wear"
+  ],
+  "paidSections": [
+    "Why each life area reads the way it does",
+    "Exact dates for every life area",
+    "How this area changes over time",
+    "Planets involved",
+    "Your strongest upcoming windows",
+    "The full period sequence",
+    "What helps, per area",
+    "Remedies and suitable gemstones"
+  ],
+  "teasers": {}
+}

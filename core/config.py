@@ -159,6 +159,7 @@ class Settings:
         # All paid unlocks are ₹298 to match the fixed Razorpay payment button.
         "palm_full":      _int("PRICE_PALM", 29800),
         "full_report":    _int("PRICE_REPORT", 29800),
+        "classical_report": _int("PRICE_CLASSICAL_REPORT", 29800),
         "horary":         _int("PRICE_HORARY", 29800),
         "user_question":  _int("PRICE_QUESTION", 29800),
         "future_event":   _int("PRICE_TIMING", 29800),

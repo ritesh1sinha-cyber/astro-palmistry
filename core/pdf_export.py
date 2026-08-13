@@ -93,6 +93,7 @@ def html_to_pdf(html: str, *, base_url: Optional[str] = None) -> bytes:
 KIND_LABELS = {
     "palm": "Palm reading",
     "full_report": "Full report",
+    "classical_report": "Classical Vedic report",
     "horary": "Horary",
     "user_question": "Ask your chart",
     "numerology": "Numerology",

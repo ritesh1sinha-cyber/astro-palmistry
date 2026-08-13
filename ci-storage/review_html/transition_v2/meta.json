@@ -1,0 +1,1258 @@
+{
+  "full": {
+    "design": "conversational-v1",
+    "price": 298,
+    "bundlePrice": 298,
+    "llm": {
+      "enabled": true,
+      "stats": {
+        "accepted": 43,
+        "rejected": 8,
+        "errors": 0,
+        "rejection_reasons": {
+          "why_now:why_now_recites_fact_fields": 1,
+          "family_note.family_note_single_method_stated_flatly": 2,
+          "areas.manifestation:generic_rewrite_drops_facts": 5
+        }
+      },
+      "free": {
+        "stats": {
+          "accepted": 11,
+          "rejected": 0,
+          "errors": 0,
+          "rejection_reasons": {}
+        },
+        "fallback_used": false,
+        "run_meta": {
+          "enabled": true,
+          "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+          "prompt_version": "REPORT_CONVERSATIONAL_PROMPT_V6_TRANSITION_MAP-7f90baee",
+          "facts_hash": "6567181a92b3d303cb8768a8",
+          "schema_version": "1.3",
+          "retry_count": 0,
+          "fallback_used": false,
+          "accepted": 11,
+          "rejected": 0,
+          "errors": 0,
+          "rejection_reasons": {}
+        }
+      },
+      "paid": {
+        "stats": {
+          "accepted": 43,
+          "rejected": 8,
+          "errors": 0,
+          "rejection_reasons": {
+            "why_now:why_now_recites_fact_fields": 1,
+            "family_note.family_note_single_method_stated_flatly": 2,
+            "areas.manifestation:generic_rewrite_drops_facts": 5
+          }
+        },
+        "fallback_used": false,
+        "run_meta": {
+          "enabled": true,
+          "model_name": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+          "prompt_version": "REPORT_CONVERSATIONAL_PROMPT_V6_TRANSITION_MAP-7f90baee",
+          "facts_hash": "8290a8f9cdb3845820cc2097",
+          "schema_version": "1.3",
+          "retry_count": 0,
+          "fallback_used": false,
+          "accepted": 43,
+          "rejected": 8,
+          "errors": 0,
+          "rejection_reasons": {
+            "why_now:why_now_recites_fact_fields": 1,
+            "family_note.family_note_single_method_stated_flatly": 2,
+            "areas.manifestation:generic_rewrite_drops_facts": 5
+          }
+        }
+      }
+    },
+    "_facts": {
+      "kind": "full_report",
+      "first_name": "Meera",
+      "age_band": "adult",
+      "age_years": 36,
+      "gender": "male",
+      "access": "paid",
+      "cards": [
+        {
+          "area": "career",
+          "label": "Work & Career",
+          "kind": "promise",
+          "status": "insufficient_evidence",
+          "activation_status": "mixed",
+          "confidence": "low",
+          "prediction_strength": "insufficient_evidence",
+          "agreement": "weak",
+          "direction": "mixed",
+          "score": -0.288,
+          "support_n": 2,
+          "caution_n": 3,
+          "house": 10,
+          "evidence": [
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Independent chart structure gives mixed support to this area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Structural support is limited for this life area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Greater professional responsibility and ownership.",
+              "semantic_tags": [
+                "contested"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Taking on greater responsibility, ownership or follow-through.",
+              "semantic_tags": [
+                "contested"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "The running period reads mixed \u2014 good and testing patches for this area \u2014 Profession \u2014 Mixed. Maha-lord Rahu (strains); Chara-lord Sun (strains).",
+              "semantic_tags": []
+            }
+          ],
+          "manifestation_ids": [],
+          "semantic_tags": [],
+          "window": {
+            "start": "",
+            "end": "",
+            "label": "May 2024 \u2192 Oct 2026",
+            "event_type": "",
+            "confidence": "low",
+            "source": "",
+            "score": 0.0
+          },
+          "timing_windows": [],
+          "question_lens": "What does your chart say about Work & Career?",
+          "wealth_sub": [],
+          "remedy_eligible": true,
+          "approved_remedies": [
+            "Use this window to show your work, ask for the responsibility you want, and follow important conversations in writing."
+          ],
+          "allowed_planets": [
+            "Rahu",
+            "Jupiter"
+          ],
+          "outlook_line": "Neither the underlying chart nor the current period give strong support here; steady, deliberate effort matters more than waiting for the right moment.",
+          "manifestations": [],
+          "remedy_text": "Use this window to show your work, ask for the responsibility you want, and follow important conversations in writing."
+        },
+        {
+          "area": "health",
+          "label": "Health & Energy",
+          "kind": "challenge",
+          "status": "strongly_indicated",
+          "activation_status": "inactive",
+          "confidence": "low",
+          "prediction_strength": "strongly_indicated",
+          "agreement": "partial",
+          "direction": "mixed",
+          "score": 0.654,
+          "support_n": 3,
+          "caution_n": 3,
+          "house": 1,
+          "evidence": [
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Independent chart structure gives mixed support to this area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Structural support is strong for this life area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Stress may make you more aware of how closely your emotional state, routine and physical wellbeing are connected.",
+              "semantic_tags": [
+                "contested"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "",
+              "semantic_tags": [
+                "caution_theme"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "This period calls for more attention to routine, rest and preventive care.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Consistency, rest and timely follow-up may be particularly important during demanding periods.",
+              "semantic_tags": [
+                "contested"
+              ]
+            }
+          ],
+          "manifestation_ids": [],
+          "semantic_tags": [
+            "wellbeing_sensitivity",
+            "routine",
+            "recovery"
+          ],
+          "window": {
+            "start": "",
+            "end": "",
+            "label": "Jun 2027 \u2192 Oct 2027",
+            "event_type": "",
+            "confidence": "low",
+            "source": "",
+            "score": 0.0
+          },
+          "timing_windows": [],
+          "question_lens": "Where should I protect my energy and routine, and when are demanding periods more likely?",
+          "wealth_sub": [],
+          "remedy_eligible": true,
+          "approved_remedies": [
+            "Use the stronger phase to build the routines that keep your energy steady, rather than assuming you can always push harder."
+          ],
+          "allowed_planets": [
+            "Jupiter",
+            "Rahu"
+          ],
+          "outlook_line": "The area is part of your chart's potential, but this is not the strongest phase to expect major results right now.",
+          "manifestations": [],
+          "remedy_text": "Use the stronger phase to build the routines that keep your energy steady, rather than assuming you can always push harder."
+        },
+        {
+          "area": "money",
+          "label": "Money",
+          "kind": "promise",
+          "status": "mixed",
+          "activation_status": "inactive",
+          "confidence": "low",
+          "prediction_strength": "mixed",
+          "agreement": "strong",
+          "direction": "down",
+          "score": 0.595,
+          "support_n": 4,
+          "caution_n": 1,
+          "house": 2,
+          "evidence": [
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Independent chart structure gives mixed support to this area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Structural support is strong for this life area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Building a steadier financial base.",
+              "semantic_tags": [
+                "contested"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Gradual improvement in financial position.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Money earned through work, skills or practical activity.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "The running period reads mixed \u2014 good and testing patches for this area \u2014 Wealth \u2014 Mixed. Antar-lord Jupiter (supports).",
+              "semantic_tags": []
+            }
+          ],
+          "manifestation_ids": [],
+          "semantic_tags": [],
+          "window": {
+            "start": "",
+            "end": "",
+            "label": "Aug 2029 \u2192 Oct 2029",
+            "event_type": "",
+            "confidence": "low",
+            "source": "",
+            "score": 0.0
+          },
+          "timing_windows": [],
+          "question_lens": "Will my financial security improve, and what kind of progress is more realistic for me?",
+          "wealth_sub": [
+            {
+              "status": "mixed",
+              "score": 0.13,
+              "label": "Income"
+            },
+            {
+              "status": "mixed",
+              "score": 0.13,
+              "label": "Accumulation & savings"
+            },
+            {
+              "status": "insufficient_evidence",
+              "score": 0.52,
+              "label": "Business gains"
+            },
+            {
+              "status": "mixed",
+              "score": 0.357,
+              "label": "Sudden gains"
+            }
+          ],
+          "remedy_eligible": true,
+          "approved_remedies": [
+            "Use the easier phase to strengthen savings and reduce money that quietly leaks away."
+          ],
+          "allowed_planets": [
+            "Rahu",
+            "Jupiter"
+          ],
+          "outlook_line": "Both the underlying promise and the current activation are modest here, so this is a lower-priority area for now.",
+          "manifestations": [],
+          "remedy_text": "Use the easier phase to strengthen savings and reduce money that quietly leaks away."
+        },
+        {
+          "area": "children",
+          "label": "Children",
+          "kind": "promise",
+          "status": "strongly_supported",
+          "activation_status": "inactive",
+          "confidence": "moderate",
+          "prediction_strength": "strongly_supported",
+          "agreement": "strong",
+          "direction": "up",
+          "score": 0.577,
+          "support_n": 5,
+          "caution_n": 1,
+          "house": 5,
+          "evidence": [
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Independent chart structure gives mixed support to this area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Structural support is moderate for this life area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "For knowledge, creativity and authorship, 5th from KL (Aquarius) holds Jupiter. Jupiter: Jupiter in 5th from KL: wisdom, Vedas, good acts.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "",
+              "semantic_tags": [
+                "caution_theme"
+              ]
+            }
+          ],
+          "manifestation_ids": [
+            "parenthood or family expansion where timing also qualifies",
+            "a stronger bond with an existing child",
+            "family responsibility growing in a positive way"
+          ],
+          "semantic_tags": [],
+          "window": {
+            "start": "2026-10-31",
+            "end": "2027-01-25",
+            "label": "children_window",
+            "event_type": "children_window",
+            "confidence": "moderate",
+            "source": "dasha_ashtakavarga_transit_confluence",
+            "score": 0.66
+          },
+          "timing_windows": [
+            {
+              "start": "2026-10-31",
+              "end": "2027-01-25",
+              "label": "children_window",
+              "event_type": "children_window",
+              "confidence": "moderate",
+              "source": "dasha_ashtakavarga_transit_confluence",
+              "score": 0.66
+            },
+            {
+              "start": "2027-06-26",
+              "end": "2027-11-27",
+              "label": "children_window",
+              "event_type": "children_window",
+              "confidence": "moderate",
+              "source": "dasha_ashtakavarga_transit_confluence",
+              "score": 0.57
+            },
+            {
+              "start": "2028-02-29",
+              "end": "2028-07-24",
+              "label": "children_window",
+              "event_type": "children_window",
+              "confidence": "moderate",
+              "source": "dasha_ashtakavarga_transit_confluence",
+              "score": 0.61
+            }
+          ],
+          "question_lens": "What does my chart say about children, parenthood and the experience of raising them?",
+          "wealth_sub": [],
+          "remedy_eligible": true,
+          "approved_remedies": [
+            "Encourage progress without rushing it. Consistency will help more than pressure."
+          ],
+          "allowed_planets": [
+            "Jupiter",
+            "Rahu"
+          ],
+          "outlook_line": "The area is part of your chart's potential, but this is not the strongest phase to expect major results right now.",
+          "manifestations": [
+            "parenthood or family expansion where timing also qualifies",
+            "a stronger bond with an existing child",
+            "family responsibility growing in a positive way"
+          ],
+          "remedy_text": "Encourage progress without rushing it. Consistency will help more than pressure."
+        },
+        {
+          "area": "love",
+          "label": "Relationships & Partnership",
+          "kind": "promise",
+          "status": "strongly_supported",
+          "activation_status": "inactive",
+          "confidence": "moderate",
+          "prediction_strength": "strongly_supported",
+          "agreement": "partial",
+          "direction": "mixed",
+          "score": 0.493,
+          "support_n": 4,
+          "caution_n": 1,
+          "house": 7,
+          "evidence": [
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Independent chart structure gives mixed support to this area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Structural support is strong for this life area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Point-score method \u2014 supports this reading.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "",
+              "semantic_tags": [
+                "caution_theme"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "The running period reads mixed \u2014 good and testing patches for this area \u2014 Marriage \u2014 Mixed. Antar-lord Jupiter (supports); Chara-lord Sun (strains).",
+              "semantic_tags": []
+            }
+          ],
+          "manifestation_ids": [],
+          "semantic_tags": [],
+          "window": {
+            "start": "",
+            "end": "",
+            "label": "Dec 2028 \u2192 Mar 2029",
+            "event_type": "",
+            "confidence": "low",
+            "source": "",
+            "score": 0.0
+          },
+          "timing_windows": [],
+          "question_lens": "What does my relationship life look like, and when does it become easier or more settled?",
+          "wealth_sub": [],
+          "remedy_eligible": true,
+          "approved_remedies": [
+            "Use the warmer phase to have the conversation you have been postponing and make time for the relationship."
+          ],
+          "allowed_planets": [
+            "Rahu",
+            "Jupiter"
+          ],
+          "outlook_line": "The area is part of your chart's potential, but this is not the strongest phase to expect major results right now.",
+          "manifestations": [],
+          "remedy_text": "Use the warmer phase to have the conversation you have been postponing and make time for the relationship."
+        },
+        {
+          "area": "home",
+          "label": "Home & Family",
+          "kind": "promise",
+          "status": "insufficient_evidence",
+          "activation_status": "mixed",
+          "confidence": "low",
+          "prediction_strength": "insufficient_evidence",
+          "agreement": "weak",
+          "direction": "down",
+          "score": 0.217,
+          "support_n": 2,
+          "caution_n": 3,
+          "house": 4,
+          "evidence": [
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Independent chart structure gives mixed support to this area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Structural support is limited for this life area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Taking responsibility for recurring family or home matters.",
+              "semantic_tags": [
+                "contested"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Having a steadier home base or household rhythm.",
+              "semantic_tags": [
+                "contested"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "The running period reads mixed \u2014 good and testing patches for this area \u2014 Home \u2014 Mixed. Yogini-lord Mars (strains); Jupiter transits the 4th (boost).",
+              "semantic_tags": []
+            }
+          ],
+          "manifestation_ids": [
+            "patience needed with domestic or property matters"
+          ],
+          "semantic_tags": [],
+          "window": {
+            "start": "",
+            "end": "",
+            "label": "Now \u2192 Oct 2026",
+            "event_type": "",
+            "confidence": "low",
+            "source": "",
+            "score": 0.0
+          },
+          "timing_windows": [],
+          "question_lens": "Will home, family and living circumstances become more settled or change meaningfully?",
+          "wealth_sub": [],
+          "remedy_eligible": true,
+          "approved_remedies": [
+            "Use the stable phase to settle recurring home matters and strengthen your family routine."
+          ],
+          "allowed_planets": [
+            "Rahu",
+            "Jupiter"
+          ],
+          "outlook_line": "Neither the underlying chart nor the current period give strong support here; steady, deliberate effort matters more than waiting for the right moment.",
+          "manifestations": [
+            "patience needed with domestic or property matters"
+          ],
+          "remedy_text": "Use the stable phase to settle recurring home matters and strengthen your family routine."
+        },
+        {
+          "area": "inner",
+          "label": "Inner Life",
+          "kind": "promise",
+          "status": "mixed",
+          "activation_status": "mixed",
+          "confidence": "low",
+          "prediction_strength": "mixed",
+          "agreement": "weak",
+          "direction": "down",
+          "score": -0.13,
+          "support_n": 6,
+          "caution_n": 2,
+          "house": 12,
+          "evidence": [
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Independent chart structure gives mixed support to this area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Structural support is limited for this life area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "Your life opens through Aries rising Mars steers the body and first impression in this map. Aries is the first sign of Zodiac and belongs to head in our body.\u2026",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "",
+              "semantic_tags": [
+                "caution_theme"
+              ]
+            }
+          ],
+          "manifestation_ids": [],
+          "semantic_tags": [],
+          "window": {
+            "start": "",
+            "end": "",
+            "label": "Now \u2192 Jun 2027",
+            "event_type": "",
+            "confidence": "low",
+            "source": "",
+            "score": 0.0
+          },
+          "timing_windows": [],
+          "question_lens": "What is changing inside me, and where is this period pushing personal growth?",
+          "wealth_sub": [],
+          "remedy_eligible": true,
+          "approved_remedies": [
+            "Use the quieter phase for reflection, learning or spiritual practice instead of forcing every answer."
+          ],
+          "allowed_planets": [
+            "Mars",
+            "Rahu",
+            "Jupiter"
+          ],
+          "outlook_line": "Both the underlying chart and the current period are mixed on this area, so results are likely to be partial rather than one-sided.",
+          "manifestations": [],
+          "remedy_text": "Use the quieter phase for reflection, learning or spiritual practice instead of forcing every answer."
+        },
+        {
+          "area": "learning",
+          "label": "Learning & Luck",
+          "kind": "promise",
+          "status": "strongly_supported",
+          "activation_status": "mixed",
+          "confidence": "high",
+          "prediction_strength": "strongly_supported",
+          "agreement": "weak",
+          "direction": "up",
+          "score": 0.026,
+          "support_n": 3,
+          "caution_n": 2,
+          "house": 9,
+          "evidence": [
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Independent chart structure gives mixed support to this area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "Structural support is limited for this life area.",
+              "semantic_tags": []
+            },
+            {
+              "family": "other",
+              "polarity": "support",
+              "text": "",
+              "semantic_tags": [
+                "caution_theme"
+              ]
+            },
+            {
+              "family": "other",
+              "polarity": "caution",
+              "text": "The running period reads mixed \u2014 good and testing patches for this area \u2014 Education \u2014 Mixed. Antar-lord Jupiter (supports); Chara-lord Sun (strains).",
+              "semantic_tags": []
+            }
+          ],
+          "manifestation_ids": [],
+          "semantic_tags": [],
+          "window": {
+            "start": "2031-02-17",
+            "end": "2031-06-14",
+            "label": "learning_window",
+            "event_type": "learning_window",
+            "confidence": "high",
+            "source": "dasha_ashtakavarga_transit_confluence",
+            "score": 0.73
+          },
+          "timing_windows": [
+            {
+              "start": "2031-02-17",
+              "end": "2031-06-14",
+              "label": "learning_window",
+              "event_type": "learning_window",
+              "confidence": "high",
+              "source": "dasha_ashtakavarga_transit_confluence",
+              "score": 0.73
+            }
+          ],
+          "question_lens": "Where can learning, study or skill-building create meaningful growth?",
+          "wealth_sub": [],
+          "remedy_eligible": true,
+          "approved_remedies": [
+            "Use the opening to learn something useful and apply it immediately instead of only collecting information."
+          ],
+          "allowed_planets": [
+            "Rahu",
+            "Jupiter"
+          ],
+          "outlook_line": "The underlying promise is supported, but the current phase carries more caution than certainty.",
+          "manifestations": [],
+          "remedy_text": "Use the opening to learn something useful and apply it immediately instead of only collecting information."
+        }
+      ],
+      "dashboard_buckets": {},
+      "timing_windows": [
+        {
+          "start": "2026-10-31",
+          "end": "2027-01-25",
+          "label": "children_window",
+          "event_type": "children_window",
+          "confidence": "moderate",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 0.66
+        },
+        {
+          "start": "2027-06-26",
+          "end": "2027-11-27",
+          "label": "children_window",
+          "event_type": "children_window",
+          "confidence": "moderate",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 0.57
+        },
+        {
+          "start": "2028-02-29",
+          "end": "2028-07-24",
+          "label": "children_window",
+          "event_type": "children_window",
+          "confidence": "moderate",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 0.61
+        },
+        {
+          "start": "2031-02-17",
+          "end": "2031-06-14",
+          "label": "learning_window",
+          "event_type": "learning_window",
+          "confidence": "high",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": 0.73
+        }
+      ],
+      "personality_traits": [
+        "You tend to act quickly when you see an opportunity, sometimes before everyone around you is ready.",
+        "Recognition matters to you, especially when you've carried a difficult responsibility for a long time.",
+        "A recurring theme in your life is learning which battles deserve your energy \u2014 and which ones are better left alone."
+      ],
+      "phase_direction": "support",
+      "phase_tone": "supportive",
+      "phase_end": "2026-10-11",
+      "phase_notes": [
+        "You are in a Rahu\u2013Jupiter stretch. Doors open partway. Ask someone senior to speak for you. Sponsorship matters now. This is a supportive chapter.",
+        "Home and family matters may be taking more of your attention than usual. Give important decisions time to settle rather than forcing an immediate outcome. The p",
+        "You may feel a stronger need to step back, rest or simplify what you are carrying. This is a period for clearing unfinished matters rather than adding unnecessa",
+        "Your work is stronger than the recognition you are receiving right now. Steady visibility matters more than sudden changes. Your career chart is well-built for "
+      ],
+      "recent_months": [
+        {
+          "start": "2026-04-15",
+          "end": "2026-08-13",
+          "area": "inner",
+          "label": "Inner Life",
+          "direction": "mixed",
+          "direction_label": "Mixed period",
+          "headline": "You may feel pulled between commitments and the need for personal space.",
+          "manifests": [
+            "questioning what deserves your energy"
+          ]
+        },
+        {
+          "start": "2026-04-15",
+          "end": "2026-06-02",
+          "area": "learning",
+          "label": "Learning & Luck",
+          "direction": "mixed",
+          "direction_label": "Mixed period",
+          "headline": "This phase rewards structured learning. Revisiting difficult material or working with a good mentor can produce better results than trying to move quickly.",
+          "manifests": [
+            "having to revisit it or wait for the right guidance"
+          ]
+        },
+        {
+          "start": "2026-06-02",
+          "end": "2026-08-13",
+          "area": "home",
+          "label": "Home & Family",
+          "direction": "mixed",
+          "direction_label": "Mixed period",
+          "headline": "Home is mostly workable, but one recurring responsibility may still pull attention.",
+          "manifests": [
+            "family responsibility staying on your mind"
+          ]
+        }
+      ],
+      "hardest_areas": [
+        "career",
+        "health",
+        "home"
+      ],
+      "hardest_area_labels": [
+        "Work & Career",
+        "Health & Energy",
+        "Home & Family"
+      ],
+      "life_state": {
+        "chapter_tone": "mixed",
+        "strongest_theme": "learning",
+        "strongest_theme_label": "Learning & Luck",
+        "themes": [
+          "inner_change",
+          "mixed_signals"
+        ],
+        "emotional_pressure": "moderate",
+        "decision_pressure": "moderate",
+        "responsibility": "moderate",
+        "uncertainty": "high",
+        "domains": [
+          {
+            "area": "learning",
+            "label": "Learning & Luck",
+            "activation": "moderate",
+            "pressure": "low",
+            "support": "high",
+            "confidence": "high",
+            "agreement": "weak",
+            "contradiction": true,
+            "experience": [
+              "progress that asks for sustained effort"
+            ],
+            "outcome_language_restricted": false
+          },
+          {
+            "area": "career",
+            "label": "Work & Career",
+            "activation": "moderate",
+            "pressure": "moderate",
+            "support": "none",
+            "confidence": "low",
+            "agreement": "weak",
+            "contradiction": true,
+            "experience": [
+              "progress alongside responsibility",
+              "wanting change while protecting stability"
+            ],
+            "outcome_language_restricted": false
+          },
+          {
+            "area": "home",
+            "label": "Home & Family",
+            "activation": "moderate",
+            "pressure": "moderate",
+            "support": "none",
+            "confidence": "low",
+            "agreement": "weak",
+            "contradiction": true,
+            "experience": [
+              "home decisions alongside practical limits"
+            ],
+            "outcome_language_restricted": false
+          },
+          {
+            "area": "inner",
+            "label": "Inner Life",
+            "activation": "moderate",
+            "pressure": "low",
+            "support": "moderate",
+            "confidence": "low",
+            "agreement": "weak",
+            "contradiction": true,
+            "experience": [
+              "reassessment rather than a simple good or bad phase"
+            ],
+            "outcome_language_restricted": false
+          },
+          {
+            "area": "health",
+            "label": "Health & Energy",
+            "activation": "none",
+            "pressure": "moderate",
+            "support": "none",
+            "confidence": "low",
+            "agreement": "partial",
+            "contradiction": false,
+            "experience": [
+              "more attention to routine",
+              "concern about your own wellbeing",
+              "the need for rest and consistency"
+            ],
+            "outcome_language_restricted": true
+          },
+          {
+            "area": "children",
+            "label": "Children",
+            "activation": "none",
+            "pressure": "none",
+            "support": "moderate",
+            "confidence": "moderate",
+            "agreement": "strong",
+            "contradiction": false,
+            "experience": [
+              "growth at home",
+              "support around children"
+            ],
+            "outcome_language_restricted": true
+          },
+          {
+            "area": "love",
+            "label": "Relationships & Partnership",
+            "activation": "none",
+            "pressure": "none",
+            "support": "moderate",
+            "confidence": "moderate",
+            "agreement": "partial",
+            "contradiction": false,
+            "experience": [
+              "closer connection",
+              "more goodwill than there has been",
+              "steadier footing"
+            ],
+            "outcome_language_restricted": false
+          },
+          {
+            "area": "money",
+            "label": "Money",
+            "activation": "none",
+            "pressure": "none",
+            "support": "low",
+            "confidence": "low",
+            "agreement": "strong",
+            "contradiction": false,
+            "experience": [
+              "improving cash flow",
+              "a chance to strengthen savings"
+            ],
+            "outcome_language_restricted": false
+          }
+        ],
+        "mind_now": [
+          {
+            "area": "career",
+            "label": "Work & Career",
+            "likelihood": "possible",
+            "experience": [
+              "progress alongside responsibility",
+              "wanting change while protecting stability"
+            ],
+            "is_fact": false
+          },
+          {
+            "area": "home",
+            "label": "Home & Family",
+            "likelihood": "possible",
+            "experience": [
+              "home decisions alongside practical limits"
+            ],
+            "is_fact": false
+          }
+        ]
+      },
+      "family_notes": [
+        {
+          "relation": "father",
+          "label": "Father",
+          "tags": [
+            "authority_and_discipline",
+            "duty_and_responsibility"
+          ],
+          "notes": [
+            "Your father reads as principled, institution-facing, and duty-heavy - someone who respected rules, reform, or public responsibility more than glamour."
+          ],
+          "method_count": 1
+        },
+        {
+          "relation": "mother",
+          "label": "Mother",
+          "tags": [
+            "authority_and_discipline",
+            "practical_support"
+          ],
+          "notes": [
+            "Your mother is practical, detail-conscious, and emotionally grounding - care shown through service, order, and quiet competence rather than dramatic display.",
+            "The mother is authoritative and rules the family."
+          ],
+          "method_count": 2
+        },
+        {
+          "relation": "siblings",
+          "label": "Siblings",
+          "tags": [
+            "elder_influence"
+          ],
+          "notes": [
+            "That pattern usually means you are the youngest or among the last-born - several elder presences shaped the home before your turn."
+          ],
+          "method_count": 1
+        },
+        {
+          "relation": "home",
+          "label": "The home you come from",
+          "tags": [
+            "duty_and_responsibility"
+          ],
+          "notes": [
+            "Home and identity were shaped early - you learned responsibility before ease."
+          ],
+          "method_count": 1
+        }
+      ],
+      "vedic_context": {
+        "period_lord": "Rahu",
+        "sub_period_lord": "Jupiter",
+        "mahadasha": "Rahu",
+        "antardasha": "Jupiter",
+        "lagna": "Aries",
+        "nakshatra": "Purva Phalguni",
+        "start": "2024-05-17",
+        "end": "2026-10-11",
+        "rising_sign": "Aries",
+        "moon_sign": "Leo"
+      }
+    },
+    "freeSections": [
+      "Your current chapter",
+      "Who your chart says you are",
+      "Your recent past \u2014 free and checkable",
+      "What is happening right now",
+      "Major life areas",
+      "Gemstones you should not wear"
+    ],
+    "paidSections": [
+      "Why each life area reads the way it does",
+      "Exact dates for every life area",
+      "How this area changes over time",
+      "Planets involved",
+      "Your strongest upcoming windows",
+      "The full period sequence",
+      "What helps, per area",
+      "Remedies and suitable gemstones"
+    ],
+    "teasers": {}
+  },
+  "question": {
+    "design": "cards-v2",
+    "answer": {
+      "label": "Yes, but the timing is narrower than you would like.",
+      "confidence": "low",
+      "direction": "mixed",
+      "best_from": "August 2026",
+      "best_to": "October 2026"
+    },
+    "question": "Will I buy a house?",
+    "area": "",
+    "price": 298,
+    "llm": {
+      "enabled": true,
+      "stats": {
+        "accepted": 1,
+        "rejected": 0,
+        "errors": 0
+      },
+      "free": {
+        "stats": {
+          "accepted": 1,
+          "rejected": 0,
+          "errors": 0
+        },
+        "fallback_used": false
+      },
+      "paid": {
+        "stats": {
+          "accepted": 1,
+          "rejected": 0,
+          "errors": 0
+        },
+        "fallback_used": false
+      }
+    },
+    "_facts": {
+      "kind": "user_question",
+      "first_name": "Meera",
+      "age_band": "adult",
+      "access": "paid",
+      "question": "Will I buy a house?",
+      "area_key": "home",
+      "direction": "mixed",
+      "confidence": "low",
+      "promise_status": "insufficient_evidence",
+      "activation_status": "mixed",
+      "n_methods": 8,
+      "n_up": 2,
+      "n_down": 3,
+      "route": {
+        "domain": "property",
+        "topic": "finance"
+      },
+      "best": {
+        "start": "2026-08-13",
+        "end": "2026-10-31",
+        "label": "Rahu\u2013Jupiter \u00b7 Dhanya (Jupiter) \u00b7 Leo\u2013Sagittarius (Sun\u2013Jupiter) \u00b7 Rahu good \u00b7 Jupiter neutral",
+        "event_type": "home_opportunity_window",
+        "confidence": "low",
+        "source": "dasha_ashtakavarga_transit_confluence",
+        "score": -0.05
+      },
+      "nearest": null,
+      "windows": [
+        {
+          "start": "2026-08-13",
+          "end": "2026-10-31",
+          "label": "Rahu\u2013Jupiter \u00b7 Dhanya (Jupiter) \u00b7 Leo\u2013Sagittarius (Sun\u2013Jupiter) \u00b7 Rahu good \u00b7 Jupiter neutral",
+          "event_type": "home_opportunity_window",
+          "confidence": "low",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": -0.05
+        },
+        {
+          "start": "2027-01-25",
+          "end": "2027-06-26",
+          "label": "Rahu\u2013Saturn \u00b7 Dhanya (Jupiter) \u00b7 Leo\u2013Capricorn (Sun\u2013Saturn) \u00b7 Rahu good \u00b7 Saturn good",
+          "event_type": "home_opportunity_window",
+          "confidence": "low",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": -0.09
+        }
+      ],
+      "support_n": 2,
+      "caution_n": 3,
+      "manifestation_ids": [],
+      "allowed_dates": [
+        "2026-08-13",
+        "2026-10-31",
+        "Rahu\u2013Jupiter \u00b7 Dhanya (Jupiter) \u00b7 Leo\u2013Sa",
+        "Rahu\u2013Jupiter \u00b7 Dhanya (Jupiter) \u00b7 Leo\u2013Sa",
+        "2027-01-25",
+        "2027-06-26",
+        "Rahu\u2013Saturn \u00b7 Dhanya (Jupiter) \u00b7 Leo\u2013Cap"
+      ],
+      "truth_source": "full_report_canonical",
+      "canonical_area_key": "home",
+      "canonical_promise_status": "insufficient_evidence",
+      "canonical_activation_status": "mixed",
+      "canonical_direction": "mixed",
+      "canonical_confidence": "low",
+      "canonical_agreement": "weak",
+      "canonical_evidence": [
+        {
+          "family": "natal",
+          "polarity": "caution",
+          "text": "Independent chart structure gives mixed support to this area.",
+          "semantic_tags": []
+        },
+        {
+          "family": "natal",
+          "polarity": "caution",
+          "text": "Structural support is limited for this life area.",
+          "semantic_tags": []
+        },
+        {
+          "family": "natal",
+          "polarity": "caution",
+          "text": "Taking responsibility for recurring family or home matters.",
+          "semantic_tags": [
+            "contested"
+          ]
+        },
+        {
+          "family": "other",
+          "polarity": "caution",
+          "text": "Having a steadier home base or household rhythm.",
+          "semantic_tags": [
+            "contested"
+          ]
+        },
+        {
+          "family": "other",
+          "polarity": "caution",
+          "text": "The running period reads mixed \u2014 good and testing patches for this area \u2014 Home \u2014 Mixed. Yogini-lord Mars (strains); Jupiter transits the 4th (boost).",
+          "semantic_tags": []
+        }
+      ],
+      "canonical_manifestations": [],
+      "canonical_timing": [
+        {
+          "start": "2026-08-13",
+          "end": "2026-10-31",
+          "label": "Rahu\u2013Jupiter \u00b7 Dhanya (Jupiter) \u00b7 Leo\u2013Sagittarius (Sun\u2013Jupiter) \u00b7 Rahu good \u00b7 Jupiter neutral",
+          "event_type": "home_opportunity_window",
+          "confidence": "low",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": -0.05
+        },
+        {
+          "start": "2027-01-25",
+          "end": "2027-06-26",
+          "label": "Rahu\u2013Saturn \u00b7 Dhanya (Jupiter) \u00b7 Leo\u2013Capricorn (Sun\u2013Saturn) \u00b7 Rahu good \u00b7 Saturn good",
+          "event_type": "home_opportunity_window",
+          "confidence": "low",
+          "source": "dasha_ashtakavarga_transit_confluence",
+          "score": -0.09
+        }
+      ],
+      "timing_can_create_promise": false
+    },
+    "paidSections": [
+      "The verdict \u2014 what your chart actually says",
+      "Timing \u2014 dated windows when to move",
+      "Watch-out rules for this question",
+      "Chart-targeted remedy"
+    ],
+    "teasers": {}
+  }
+}

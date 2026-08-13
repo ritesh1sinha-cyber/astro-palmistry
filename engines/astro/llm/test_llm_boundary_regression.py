@@ -109,7 +109,8 @@ def test_raw_astrology_technical_language_is_rejected():
     errors = validate_prose_against_facts(Prose(), facts)
     # Field-prefixed errors from check_prose_fields (e.g. verdict_line:classical_raw)
     assert any(
-        e.startswith("sanskrit:") or ":sanskrit:" in e or e.endswith("classical_raw")
+        e.startswith("invented_astrology_term:") or ":invented_astrology_term:" in e
+        or e.startswith("sanskrit:") or ":sanskrit:" in e or e.endswith("classical_raw")
         or e == "classical_raw"
         for e in errors
     )

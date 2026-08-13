@@ -21,22 +21,22 @@ def _status_phrase(status: str, *, kind: str = "promise") -> str:
             "insufficient_evidence": "not strongly indicated from the available evidence",
         }.get(s, "mixed")
     return {
-        "strongly_supported": "strongly supported",
-        "supported": "supported",
-        "mixed": "mixed",
-        "weak": "not strongly supported",
-        "insufficient_evidence": "not strongly established from the available evidence",
+        "strongly_supported": "a real promise in this chart",
+        "supported": "promised in this chart",
+        "mixed": "mixed — neither a clear yes nor a clear no",
+        "weak": "not a strong promise in this chart",
+        "insufficient_evidence": "not clearly promised from the available evidence",
     }.get(s, "mixed")
 
 
 def _activation_phrase(status: str) -> str:
     return {
-        "strongly_active": "strongly active",
-        "active": "active",
-        "mixed": "mixed",
-        "weak": "only lightly active",
-        "inactive": "not strongly active right now",
-        "insufficient_evidence": "unclear in the current phase",
+        "strongly_active": "this period is lighting it up",
+        "active": "this period is touching it",
+        "mixed": "this period is mixed on it",
+        "weak": "this period is only lightly touching it",
+        "inactive": "this period is not lighting it up yet",
+        "insufficient_evidence": "this period is unclear on it",
     }.get((status or "").lower(), "mixed")
 
 
@@ -131,6 +131,9 @@ def _readable_window_label(label: str) -> str:
     text = str(label or "").strip()
     if not text:
         return ""
+    # Internal keys like children_window must never reach the reader.
+    if re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", text, re.I):
+        return ""
     text = re.sub(r"\s*(?:→|->|–|—)\s*", " to ", text)
     abbrev = {name[:3].lower(): name for name in _MONTH_NAMES}
 
@@ -174,6 +177,8 @@ def timing_sentence(text: Any) -> str:
         return ""
     # Already a sentence written by the model.
     if raw.endswith(".") and " " in raw and not re.match(r"^[\d A-Za-z]+ to ", raw):
+        if re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+\.", raw, re.I):
+            return ""
         return _readable_window_label(raw)
     body = _readable_window_label(raw)
     body = re.sub(
@@ -255,6 +260,18 @@ def area_tone(card: Any) -> tuple[str, str]:
     return ("Mixed", "mixed")
 
 
+def _first_manifest(card: Any) -> str:
+    for src in (
+        getattr(card, "manifestations", None) or [],
+        getattr(card, "manifestation_ids", None) or [],
+    ):
+        for item in src:
+            text = str(item or "").strip().rstrip(".")
+            if text:
+                return text
+    return ""
+
+
 def _area_outlook_sentence(card: Any, area_name: str) -> str:
     """Plain-language situation line, graded by promise and activation."""
     status = str(getattr(card, "status", "") or "").lower()
@@ -263,37 +280,39 @@ def _area_outlook_sentence(card: Any, area_name: str) -> str:
     subject = area_name.lower()
     supported = status in ("strongly_supported", "supported")
     active = activation in ("strongly_active", "active")
+    how = ""
+    first = _first_manifest(card)
+    if first:
+        how = f" Day to day this shows as {first[0].lower() + first[1:]}."
 
     if kind == "challenge" or subject.startswith("health"):
         if active:
             return (
-                f"Your {subject} is the part of the reading that asks for attention now — "
-                f"the current phase keeps this theme live, so the useful response is "
-                f"consistency rather than worry."
+                f"{area_name} needs looking after in this stretch — do not push "
+                f"as if tiredness will sort itself out. Keep the routine regular.{how}"
             )
         return (
-            f"Your {subject} is steady enough at the moment, and the sensible aim is to "
-            f"protect that rather than test it."
+            f"{area_name} is steady enough at the moment. Protect that; do not "
+            f"test it.{how}"
         )
     if supported and active:
         return (
-            f"Your {subject} has real backing in the chart, and the current phase is "
-            f"actively supporting it — this is a genuine opening rather than a hope."
+            f"{area_name} is promised in this chart, and the present period is "
+            f"lighting it up. This is the time to move, not to wait.{how}"
         )
     if supported and not active:
         return (
-            f"Your {subject} carries genuine promise, but the current phase is not yet "
-            f"lighting it up, so this is a stretch for preparation rather than a push."
+            f"{area_name} is promised, but this period is not lighting it up yet. "
+            f"Prepare; do not force a result the stretch is not offering.{how}"
         )
     if status in ("weak", "insufficient_evidence"):
         return (
-            f"Your {subject} is not strongly established in the chart, so treat progress "
-            f"here as something you build steadily rather than something that arrives."
+            f"{area_name} is not a strong promise in this chart. Do not wait for "
+            f"a door to open on its own — build it the slow way.{how}"
         )
     return (
-        f"Your {subject} reads as mixed: neither the chart nor the current phase gives "
-        f"strong backing, so steady, deliberate effort matters more than waiting for a "
-        f"perfect moment."
+        f"{area_name} is mixed in this chart — neither a clear yes nor a clear no. "
+        f"Do not force a big step here before the stretch turns.{how}"
     )
 
 
@@ -322,12 +341,132 @@ def _area_remedy_sentence(card: Any, area_name: str) -> str:
     subject = area_name.lower()
     if str(getattr(card, "kind", "") or "").lower() == "challenge" or subject.startswith("health"):
         return (
-            "Keep your routine simple, protect recovery time, and respond early when "
-            "something needs attention rather than waiting for it to build."
+            "Keep rest, food and working hours regular. Do not wait until the "
+            "tiredness has already piled up before you change the routine."
         )
     return (
-        f"Do the groundwork for {subject} now — small, consistent steps put you in "
-        f"position when the stronger stretch arrives."
+        f"Do the groundwork for {subject} now. Small, consistent steps put you "
+        f"in position when this stretch turns — do not wait for a perfect moment."
+    )
+
+
+def _ord(n: int) -> str:
+    if 10 <= (n % 100) <= 20:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
+def _vedic_period_line(facts: Any) -> str:
+    """Name the running period the way an astrologer would, or empty."""
+    vc = getattr(facts, "vedic_context", None)
+    if vc is None and isinstance(facts, dict):
+        vc = facts.get("vedic_context")
+    if isinstance(vc, dict):
+        lord = str(vc.get("period_lord") or vc.get("mahadasha") or "").strip()
+        sub = str(vc.get("sub_period_lord") or vc.get("antardasha") or "").strip()
+        lagna = str(vc.get("lagna") or vc.get("rising_sign") or "").strip()
+        moon = str(vc.get("moon_sign") or "").strip()
+        nak = str(vc.get("nakshatra") or "").strip()
+        end_raw = vc.get("end") or ""
+    else:
+        lord = str(getattr(vc, "period_lord", "") or getattr(vc, "mahadasha", "") or "").strip() if vc is not None else ""
+        sub = str(getattr(vc, "sub_period_lord", "") or getattr(vc, "antardasha", "") or "").strip() if vc is not None else ""
+        lagna = str(getattr(vc, "lagna", "") or getattr(vc, "rising_sign", "") or "").strip() if vc is not None else ""
+        moon = str(getattr(vc, "moon_sign", "") or "").strip() if vc is not None else ""
+        nak = str(getattr(vc, "nakshatra", "") or "").strip() if vc is not None else ""
+        end_raw = getattr(vc, "end", "") if vc is not None else ""
+    bits: list[str] = []
+    if lagna and moon:
+        moon_bit = f"Moon in {moon}" + (f" ({nak})" if nak else "")
+        bits.append(f"This chart is read from {lagna} lagna, with the {moon_bit}.")
+    elif lagna:
+        bits.append(f"This chart is read from {lagna} lagna.")
+    if lord:
+        line = f"You are in a {lord} mahadasha"
+        if sub and sub.lower() != lord.lower():
+            line += f", with {sub} running the current antardasha"
+        end = _month_year(end_raw)
+        if end:
+            line += f". This stretch runs through {end}"
+        bits.append(line + ".")
+    return " ".join(bits)
+
+
+def _area_basis_sentence(card: Any, facts: Any, area_name: str) -> str:
+    """Name the chart factor behind this area, or empty."""
+    planets = [str(p).strip() for p in (getattr(card, "allowed_planets", None) or []) if str(p).strip()]
+    house = 0
+    try:
+        house = int(getattr(card, "house", 0) or 0)
+    except (TypeError, ValueError):
+        house = 0
+    vc = getattr(facts, "vedic_context", None)
+    lord = ""
+    sub = ""
+    if vc is not None:
+        lord = str(getattr(vc, "period_lord", "") or "").strip()
+        sub = str(getattr(vc, "sub_period_lord", "") or "").strip()
+    planet = next((p for p in planets if p.lower() not in {lord.lower(), sub.lower()}), "") or (
+        planets[0] if planets else ""
+    ) or lord
+    subject = area_name.lower()
+    if planet and house:
+        return (
+            f"{planet}'s influence on the {house}{_ord(house)} house is the "
+            f"chart factor behind {subject} in this period."
+        )
+    if planet and lord and planet.lower() != lord.lower():
+        return (
+            f"{planet} is involved here, and the running {lord} mahadasha "
+            f"is the period shaping {subject} now."
+        )
+    if lord:
+        return (
+            f"The running {lord} mahadasha is the period shaping {subject} now."
+        )
+    if planet:
+        return (
+            f"{planet} is the chart factor behind {subject} in this period."
+        )
+    return ""
+
+
+def _area_interpretation_sentence(card: Any, area_name: str) -> str:
+    """Translate promise/activation into how the area lives, without hiding the astrology."""
+    status = str(getattr(card, "status", "") or "").lower()
+    activation = str(getattr(card, "activation_status", "") or "").lower()
+    kind = str(getattr(card, "kind", "promise") or "promise").lower()
+    subject = area_name.lower()
+    first = _first_manifest(card)
+    how = f" That can show as {first[0].lower() + first[1:]}." if first else ""
+    if kind == "challenge" or subject.startswith("health"):
+        if activation in ("strongly_active", "active"):
+            return (
+                f"That combination increases the load on {subject}: "
+                f"responsibility and recovery both ask more of you.{how}"
+            )
+        return (
+            f"The pattern is present but not loudly lit. Protect {subject} "
+            f"rather than testing it.{how}"
+        )
+    if status in ("strongly_supported", "supported") and activation in ("strongly_active", "active"):
+        return (
+            f"The chart supports advancement here, and the present period is "
+            f"lighting it up — progress comes through a clearer role, not an overnight change.{how}"
+        )
+    if status in ("strongly_supported", "supported"):
+        return (
+            f"The underlying chart supports {subject}, but this period is a "
+            f"consolidation stretch: structure first, recognition after.{how}"
+        )
+    if status in ("weak", "insufficient_evidence"):
+        return (
+            f"The chart does not give {subject} a strong natal promise, so this "
+            f"period cannot create what is not already there.{how}"
+        )
+    return (
+        f"The indications for {subject} pull two ways, so results here tend "
+        f"to be partial rather than one-sided.{how}"
     )
 
 
@@ -339,28 +478,42 @@ def conversational_fallback(facts: Any) -> dict[str, Any]:
         personality = " ".join(traits[:4])
     else:
         personality = (
-            f"{name}, your chart describes a clear personal style that shows up across work, "
-            f"relationships and the way you make decisions."
+            f"{name}, your nature is consistent — it shows in how you work, how you "
+            f"deal with people, and how you decide. The period you are in lights that "
+            f"nature up or tests it; it does not change it."
             if name else
-            "Your chart describes a clear personal style that shows up across work, "
-            "relationships and the way you make decisions."
+            "Your nature is consistent — it shows in how you work, how you deal with "
+            "people, and how you decide. The period you are in lights that nature up "
+            "or tests it; it does not change it."
         )
     tone = str(getattr(facts, "phase_tone", "") or "mixed")
     phase_end = str(getattr(facts, "phase_end", "") or "").strip()
     notes = [str(n).strip() for n in (getattr(facts, "phase_notes", None) or []) if str(n).strip()]
     tone_line = {
-        "supportive": "Right now the chapter you are in is broadly supportive — effort tends to land more cleanly than it has in tougher stretches.",
-        "demanding": "Right now the chapter you are in is more demanding — progress still comes, but it asks for steadier effort and fewer shortcuts.",
-        "mixed": "Right now the chapter you are in is mixed — some parts of life open more easily while others need patience.",
-    }.get(tone, "Right now the chapter you are in is mixed — some parts of life open more easily while others need patience.")
-    current_phase = tone_line
-    # An ISO date here reaches the page as "through 2026-" once the date scrub
-    # has taken the day and month it could not vouch for.
-    phase_end_said = _month_year(phase_end)
-    if phase_end_said:
-        current_phase += f" This stretch runs through {phase_end_said}."
-    if notes:
-        current_phase = (current_phase + " " + " ".join(notes[:2])).strip()
+        "supportive": (
+            "This is a period that gives more than it takes. Move on what is already "
+            "opening; do not sit on a decision the chart is already backing."
+        ),
+        "demanding": (
+            "This is not a stretch that rewards forcing. Progress still comes, but "
+            "it asks for steadier effort — do not take the big shortcut."
+        ),
+        "mixed": (
+            "This period pulls two ways at once. One part of life opens while another "
+            "asks for patience. Do not read it as simply good or bad."
+        ),
+    }.get(tone, (
+        "This period pulls two ways at once. One part of life opens while another "
+        "asks for patience. Do not read it as simply good or bad."
+    ))
+    current_phase = " ".join(notes[:2]).strip() if notes else tone_line
+    basis = _vedic_period_line(facts)
+    if not current_phase:
+        current_phase = tone_line
+    if not basis:
+        phase_end_said = _month_year(phase_end)
+        if phase_end_said and phase_end_said.lower() not in current_phase.lower():
+            current_phase += f" This stretch runs through {phase_end_said}."
 
     recent_bits = []
     for i, ev in enumerate(list(getattr(facts, "recent_months", None) or [])[:3]):
@@ -407,6 +560,8 @@ def conversational_fallback(facts: Any) -> dict[str, Any]:
                 continue
             area_name = str(getattr(c, "label", "") or area.replace("_", " "))
             outlook = _area_outlook_sentence(c, area_name)
+            area_basis = _area_basis_sentence(c, facts, area_name)
+            interp = _area_interpretation_sentence(c, area_name)
             timing = timing_sentence(_window_phrase(c))
             manifests = list(
                 getattr(c, "manifestations", None)
@@ -416,24 +571,38 @@ def conversational_fallback(facts: Any) -> dict[str, Any]:
             manifestation = ""
             if manifests:
                 first = str(manifests[0]).strip().rstrip(".")
-                manifestation = f"In practice this tends to show up as {first[0].lower() + first[1:]}."
+                if first and first.lower() not in outlook.lower():
+                    manifestation = f"In practice this shows as {first[0].lower() + first[1:]}."
             remedy = ""
             if _area_needs_remedy(c) or getattr(c, "remedy_text", ""):
                 remedy = _area_remedy_sentence(c, area_name)
+            transition_note = ""
+            transition_map = list(getattr(c, "transition_map", None) or [])
+            if transition_map:
+                from life_area_transition import field_of
+                first_transition = transition_map[0]
+                transition_note = str(field_of(first_transition, "meaning") or "").strip()
+                if len(transition_map) > 1:
+                    transition_note += " The tone can change again as the next overlap window arrives."
             tone_label, tone_class = area_tone(c)
             areas[area] = {
+                "astrological_basis": area_basis[:320],
+                "interpretation": interp[:360],
                 "outlook": outlook[:280],
                 "timing": timing[:160],
                 "manifestation": manifestation[:160],
                 "remedy": remedy[:180],
+                "transition_note": transition_note[:260],
                 "tone_label": tone_label,
                 "tone_class": tone_class,
             }
     mind_now, why_now = _life_state_prose(getattr(facts, "life_state", None))
     return {
         "conversational": True,
+        "astrological_basis": clip_sentences(basis, 520),
+        "interpretation": clip_sentences(tone_line, 520),
         "personality": clip_sentences(personality, 900),
-        "current_phase": current_phase[:320],
+        "current_phase": clip_sentences(current_phase, 360),
         "recent_months": recent_months,
         "hardest_area_note": hardest_note[:180],
         "mind_now": mind_now,
@@ -499,21 +668,22 @@ def _family_prose(family_notes: Any) -> list[str]:
 
 _CHAPTER_TONE_LINE = {
     "supported": (
-        "This stretch reads as more supportive than not, which is usually why "
-        "it feels like the moment to move rather than wait."
+        "This is a period that gives more than it takes, which is usually why "
+        "it feels like the moment to move rather than wait. Do not sit on a "
+        "decision the chart is already backing."
     ),
     "pressured": (
-        "This stretch asks more of you than it gives back straight away, which "
-        "is usually why it feels heavier than the work alone would explain."
+        "This stretch asks more of you than it gives back straight away. Do not "
+        "force the big decision until it eases — protect your energy first."
     ),
     "mixed": (
-        "This stretch pulls in two directions at once — part of life opens "
-        "while another part asks for patience — which is usually why it feels "
-        "harder to read than a simple good or bad phase."
+        "This period pulls two ways at once — part of life opens while another "
+        "part asks for patience. Do not read it as simply good or bad, and do "
+        "not commit where the two directions disagree."
     ),
     "steady": (
-        "This stretch is steadier than it is dramatic, which is usually why it "
-        "feels more like gradual adjustment than a turning point."
+        "This stretch is for settling, not for turning the page. Keep what is "
+        "working and do not chase a dramatic change the period is not offering."
     ),
 }
 
@@ -543,13 +713,13 @@ def _life_state_prose(life_state: Any) -> tuple[list[str], str]:
         else:
             subject = ""
         if not subject:
-            lines.append(f"{head}: this {lead} be taking more of your attention than usual.")
+            lines.append(f"If {head.lower()} has been on your mind, this {lead} be the theme this period keeps bringing back.")
         elif i == 0:
-            lines.append(f"{head}: {subject} {lead} be part of your days right now.")
+            lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be sitting with you now.")
         elif i == 1:
-            lines.append(f"{head}: you {lead} also be sitting with {subject}.")
+            lines.append(f"If {head.lower()} has been on your mind, you {lead} also be carrying {subject}.")
         else:
-            lines.append(f"{head}: {subject} {lead} be somewhere in the background too.")
+            lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be in the background too.")
 
     tone = str(getattr(life_state, "chapter_tone", "") or "mixed")
     why = _CHAPTER_TONE_LINE.get(tone, _CHAPTER_TONE_LINE["mixed"])
@@ -562,8 +732,8 @@ def _life_state_prose(life_state: Any) -> tuple[list[str], str]:
         )
     if decision in ("high", "very_high"):
         why += (
-            " Practical decisions are carrying more weight than usual, which "
-            "is tiring in a way that rest alone does not fix."
+            " Practical decisions are carrying more weight than usual. Do not "
+            "take the biggest one until this stretch settles."
         )
     if str(getattr(life_state, "uncertainty", "") or "") == "high":
         why += (
@@ -577,13 +747,22 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
     name = getattr(facts, "first_name", "") or ""
     traits = [str(t).strip() for t in (getattr(facts, "personality_traits", None) or []) if str(t).strip()]
     personality = " ".join(traits[:3]) if traits else (
-        f"{name}, your hands show a consistent personal style across temperament, mind and work."
+        f"{name}, your hands show a nature that holds across temperament, mind and work. "
+        f"That nature does not change with a season; it is what you keep bringing."
         if name else
-        "Your hands show a consistent personal style across temperament, mind and work."
+        "Your hands show a nature that holds across temperament, mind and work. "
+        "That nature does not change with a season; it is what you keep bringing."
     )
     stage = str(getattr(facts, "life_stage_note", "") or "").strip()
+    if stage and stage[-1] not in ".!?":
+        cut = max(stage.rfind(". "), stage.rfind("—"), stage.rfind(" - "))
+        if cut > 40:
+            stage = stage[: cut + 1].strip()
     demanding = str(getattr(facts, "demanding_aspect_label", "") or "").strip()
-    current_phase = stage or "Your hands point to a life stage that rewards steadiness over haste."
+    current_phase = stage or (
+        "Your hands point to a life stage that rewards steadiness. Do not rush "
+        "what they are asking you to look after."
+    )
     hardest = f"The area asking for more care right now is {demanding}." if demanding else ""
 
     areas = {}
@@ -607,16 +786,49 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
             outlook = clean_palm_summary(summary) or (
                 f"Your hands read as steady on {title.lower()}."
             )
+            try:
+                from .rules import scrub_palm_bodily
+                outlook = scrub_palm_bodily(outlook)
+            except Exception:  # noqa: BLE001
+                pass
+            recognize = list(getattr(a, "recognize", None) or [])
+            if not outlook:
+                if recognize:
+                    first = str(recognize[0]).strip().rstrip(".")
+                    outlook = (
+                        f"Your hands keep bringing this back: "
+                        f"{first[0].lower() + first[1:]}."
+                    )
+                else:
+                    outlook = f"Your hands read as steady on {title.lower()}."
+            if key == "character" and personality:
+                if outlook[:80].lower() in personality.lower():
+                    if recognize:
+                        first = str(recognize[0]).strip().rstrip(".")
+                        outlook = (
+                            f"This is the temperament your hands keep showing: "
+                            f"{first[0].lower() + first[1:]}."
+                        )
+                    else:
+                        outlook = (
+                            "Your nature is consistent — the same temperament "
+                            "shows in how you deal with people and how you decide."
+                        )
             if demanding:
                 outlook = (
                     f"{outlook} This is one of the areas your hands ask you to look after "
                     f"rather than push."
                 )
-            recognize = list(getattr(a, "recognize", None) or [])
             manifestation = ""
             if recognize:
                 first = str(recognize[0]).strip().rstrip(".")
-                manifestation = f"In daily life this shows up as {first[0].lower() + first[1:]}."
+                try:
+                    from .rules import scrub_palm_bodily
+                    first = scrub_palm_bodily(first).rstrip(".")
+                except Exception:  # noqa: BLE001
+                    pass
+                if first and first.lower() not in outlook.lower():
+                    manifestation = f"In daily life this shows as {first[0].lower() + first[1:]}."
             aw = list(getattr(a, "age_window", None) or [])
             timing = ""
             if len(aw) >= 2:
@@ -627,8 +839,8 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
                 remedy = remedy if remedy.endswith(".") else f"{remedy}."
             elif demanding:
                 remedy = (
-                    "Keep your rest, food and working rhythm regular — this area responds "
-                    "more to steady habits than to sudden effort."
+                    "Keep rest, food and working hours regular — this area "
+                    "responds to steady habits, not to sudden effort."
                 )
             areas[key] = {
                 "outlook": clip_sentences(outlook, 320),
@@ -654,22 +866,20 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
 
 _PALM_TONE_LINE = {
     "supported": (
-        "Taken together your hands read as more supportive than not, which is "
-        "usually why this feels like a time to act rather than wait."
+        "Taken together your hands read as more supportive than not. This is "
+        "a time to act on what they already show — do not wait for a clearer sign."
     ),
     "pressured": (
-        "Taken together your hands read as asking more of you than they give "
-        "back straight away, which is usually why it feels heavier than the "
-        "work alone would explain."
+        "Taken together your hands ask more of you than they give back straight "
+        "away. Do not push the tired area; look after it first."
     ),
     "mixed": (
-        "Your hands pull in two directions at once — part of life reads open "
-        "while another part asks for patience — which is usually why this "
-        "stretch is harder to read than a simple good or bad phase."
+        "Your hands pull two ways at once — part of life reads open while "
+        "another part asks for patience. Do not treat this as simply good or bad."
     ),
     "steady": (
-        "Your hands read as steadier than they are dramatic, which is usually "
-        "why this feels like gradual adjustment rather than a turning point."
+        "Your hands read as steadier than they are dramatic. This is a stretch "
+        "for settling, not for turning the page."
     ),
 }
 
@@ -698,13 +908,13 @@ def _palm_state_prose(palm_state: Any) -> tuple[list[str], str]:
         else:
             subject = ""
         if not subject:
-            lines.append(f"{head}: this {lead} be taking more of your attention than usual.")
+            lines.append(f"If {head.lower()} has been on your mind, this {lead} be the theme your hands keep bringing back.")
         elif i == 0:
-            lines.append(f"{head}: {subject} {lead} be part of your days right now.")
+            lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be sitting with you now.")
         elif i == 1:
-            lines.append(f"{head}: you {lead} also be sitting with {subject}.")
+            lines.append(f"If {head.lower()} has been on your mind, you {lead} also be carrying {subject}.")
         else:
-            lines.append(f"{head}: {subject} {lead} be somewhere in the background too.")
+            lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be in the background too.")
 
     tone = str(getattr(palm_state, "chapter_tone", "") or "mixed")
     why = _PALM_TONE_LINE.get(tone, _PALM_TONE_LINE["mixed"])
@@ -818,6 +1028,67 @@ def question_fallback(facts: Any) -> dict[str, Any]:
         "timing": timing[:220],
         "action": "Prepare within the validated windows rather than forcing a date.",
     }
+
+
+def _fact_window(payload: dict) -> tuple[str, str]:
+    best = payload.get("best") if isinstance(payload.get("best"), dict) else {}
+    start = str(best.get("start") or "").strip()
+    end = str(best.get("end") or "").strip()
+    if start or end:
+        return start, end
+    for key in ("windows", "canonical_timing"):
+        rows = payload.get(key) or []
+        if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+            start = str(rows[0].get("start") or "").strip()
+            end = str(rows[0].get("end") or "").strip()
+            if start or end:
+                return start, end
+    return "", ""
+
+
+def question_chat_fallback(facts: Any) -> str:
+    """Restate this Ask-your-chart reading when the model answer fails QA.
+
+    The customer asked a follow-up about the same case/question. Pretending
+    that is out of scope is worse than a short deterministic recap of the
+    lean and the window already on the page.
+    """
+    from .facts import public_fact_payload
+
+    payload = public_fact_payload(facts) or {}
+    if not isinstance(payload, dict):
+        payload = {}
+    direction = str(
+        payload.get("direction") or payload.get("canonical_direction") or "mixed"
+    ).lower()
+    conf = str(payload.get("confidence") or "low") or "low"
+    status = str(payload.get("promise_status") or "").lower()
+    lean = {
+        "support": "leans in your favour",
+        "up": "leans in your favour",
+        "caution": "leans with caution",
+        "down": "leans with caution",
+        "mixed": "is mixed",
+        "neutral": "is mixed",
+    }.get(direction, "is mixed")
+    if status in ("weak", "insufficient_evidence"):
+        line = (
+            f"The reading on the question you asked does not make a "
+            f"high-confidence claim. It currently {lean}, at {conf} confidence."
+        )
+    else:
+        line = (
+            f"The reading on the question you asked {lean}, "
+            f"at {conf} confidence."
+        )
+    start, end = _fact_window(payload)
+    if start and end:
+        line += f" The strongest window already named is {start} to {end}."
+    elif start or end:
+        line += f" The strongest window already named is {start or end}."
+    else:
+        line += " This report did not name a specific window for it."
+    return line[:600]
 
 
 def horary_fallback(facts: Any) -> dict[str, Any]:

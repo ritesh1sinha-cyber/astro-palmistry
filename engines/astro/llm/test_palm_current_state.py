@@ -447,6 +447,9 @@ def test_the_free_page_renders_both_new_sections():
     facts = _palm_facts()
     html = PC.render({"confluence": _confluence()}, name="Meera", paid=False,
                      prose=conversational_palm_fallback(facts))
-    assert "What may be on your mind right now" in html
+    # The "on your mind" lines now sit inside the current-phase section rather
+    # than under a heading of their own, but they keep the same guard: a hand
+    # shows what is likely, never what is happening.
+    assert "Where your hands place you now" in html
     assert "what you have made of it" in html
-    assert "not things we know about your life" in html
+    assert "read from the palm, not known about your life" in html

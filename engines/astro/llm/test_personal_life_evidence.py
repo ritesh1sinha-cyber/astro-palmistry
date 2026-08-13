@@ -78,13 +78,32 @@ def test_family_notes_are_paid_depth():
     from llm.facts import project_for_access
     from llm.schemas import FamilyNoteFact, ReportFacts
 
-    facts = ReportFacts(access="paid", family_notes=[FamilyNoteFact(
-        relation="mother", label="Mother", tags=["practical_support"],
-        notes=["Your mother is practical and emotionally grounding."],
-        method_count=2,
-    )])
-    assert project_for_access(facts, "paid").family_notes
-    assert project_for_access(facts, "free").family_notes == []
+    facts = ReportFacts(access="paid", family_notes=[
+        FamilyNoteFact(
+            relation="father", label="Father", tags=["authority_and_discipline"],
+            notes=["Your father reads as principled and duty-heavy."],
+            method_count=1,
+        ),
+        FamilyNoteFact(
+            relation="mother", label="Mother", tags=["practical_support"],
+            notes=["Your mother is practical and emotionally grounding."],
+            method_count=2,
+        ),
+        FamilyNoteFact(
+            relation="siblings", label="Siblings", tags=["independence"],
+            notes=["Your siblings show an independent streak."],
+            method_count=1,
+        ),
+        FamilyNoteFact(
+            relation="home", label="Home", tags=["responsibility"],
+            notes=["The home valued responsibility before ease."],
+            method_count=1,
+        ),
+    ])
+    paid = project_for_access(facts, "paid").family_notes
+    free = project_for_access(facts, "free").family_notes
+    assert [n.relation for n in paid] == ["father", "mother", "siblings", "home"]
+    assert [n.relation for n in free] == ["father", "mother"]
 
 
 def test_family_tags_stay_inside_the_closed_vocabulary():
@@ -196,9 +215,12 @@ def test_python_writes_the_block_when_the_model_is_off():
         assert validate_family_line(line, facts) == []
 
 
-def test_free_never_shows_the_background_block():
+def test_free_shows_only_the_family_teaser():
     from llm.fallback import conversational_fallback
     from llm.facts import project_for_access
 
     free = project_for_access(_facts_with_family(), "free")
-    assert conversational_fallback(free).get("family_note") == []
+    lines = conversational_fallback(free).get("family_note") or []
+    assert len(lines) == 2
+    blob = " ".join(lines).lower()
+    assert "father" in blob and "mother" in blob

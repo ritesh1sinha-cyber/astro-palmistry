@@ -826,6 +826,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <div id="astroMain" style="display:none">
   <div class="subnav" id="astroNav">
    <button data-a="report"  aria-current="true">Full report</button>
+   <button data-a="classical">Classical Vedic</button>
    <button data-a="horary">Horary</button>
    <button data-a="question">Ask your chart</button>
    <button data-a="daily">Daily reading</button>
@@ -898,6 +899,39 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
     </div>
     <button class="btn btn-gold btn-block" onclick="astroJob('full_report')">Generate my report — free half</button>
     <p class="hint" style="text-align:center">Takes 1–3 minutes. We'll show queue position and a live ETA.</p>
+   </div>
+  </div>
+
+  <!-- pane: classical vedic report -->
+  <div class="apane" id="ap-classical" style="display:none">
+   <div class="card">
+    <span class="admin-gen-stat" data-stat-kind="classical_report"></span>
+    <div class="eyebrow">The traditional reading</div>
+    <h3 style="font-size:24px;margin:8px 0 10px">Written the way a Vedic astrologer writes.</h3>
+    <p class="hint" style="margin:0 0 14px">Seven sections, read straight from the classical
+     texts. Every line names the house, lord or planet it rests on.</p>
+    <div class="grid g2">
+     <div>
+      <b style="font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)">Free</b>
+      <ul class="bullets" style="margin-top:10px">
+       <li>Your ascendant, Moon sign, nakshatra and running dasha</li>
+       <li>Personality traits, from the lagna and birth star</li>
+       <li>Family and background</li>
+      </ul>
+     </div>
+     <div>
+      <b style="font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)">Full reading · ₹298</b>
+      <ul class="bullets" style="margin-top:10px">
+       <li>Career and professional nature</li>
+       <li>Relationship and marriage indications</li>
+       <li>What you are going through in the current dasha</li>
+       <li>Dated predictions: next 6 months, 12 months, 2–3 years</li>
+       <li>Remedies planet by planet — mantra, charity, conduct, gemstone</li>
+      </ul>
+     </div>
+    </div>
+    <button class="btn btn-gold btn-block" onclick="astroJob('classical_report')">Generate my classical reading — free part</button>
+    <p class="hint" style="text-align:center">Takes 1–2 minutes. We'll show queue position and a live ETA.</p>
    </div>
   </div>
 
@@ -1442,7 +1476,7 @@ const CONFIG = {
   jobStuckSec:      480,  // offer retry / cancel after this many seconds
   // --- astrology module ---
   liveApi:          true, // false = self-contained demo with sample data
-  astroPrices:      { full_report:298, horary:298, user_question:298, future_event:298,
+  astroPrices:      { full_report:298, classical_report:298, horary:298, user_question:298, future_event:298,
                       kundali_match:298, muhurat:298, subscription:298,
                       numerology_full:298, btr:298, palm_full:298 }
 };
@@ -1523,12 +1557,14 @@ function syncAstroGate(){
 }
 
 const ASTRO_PANE = {
-  full_report:'report', horary:'horary', user_question:'question', daily:'daily',
+  full_report:'report', classical_report:'classical', horary:'horary',
+  user_question:'question', daily:'daily',
   numerology:'numero', kundali_match:'match', muhurat:'muhurat', btr:'btr'
 };
 const KIND_UI = {
   palm:{label:'Palm reading', view:'read'},
   full_report:{label:'Full report', view:'astro', pane:'report'},
+  classical_report:{label:'Classical Vedic report', view:'astro', pane:'classical'},
   horary:{label:'Horary', view:'astro', pane:'horary'},
   user_question:{label:'Ask your chart', view:'astro', pane:'question'},
   daily:{label:'Daily reading', view:'astro', pane:'daily'},
@@ -3415,8 +3451,8 @@ function wireFormPersist(){
 }
 function paneForKind(kind){
   return ({
-    full_report:'report', chart_summary:'report', numerology:'numero',
-    horary:'horary', daily:'daily', kundali_match:'match',
+    full_report:'report', classical_report:'classical', chart_summary:'report',
+    numerology:'numero', horary:'horary', daily:'daily', kundali_match:'match',
     muhurat:'muhurat', btr:'btr'
   })[kind] || 'report';
 }
@@ -3998,6 +4034,29 @@ function renderAstroResult(kind, r){
         <p class="hint">${(m.freeSections||[]).map(esc).join(' · ')}</p>
         ${astroReportFrame(r)}</div>` +
       astroPayCard('full_report', r.price, r.reportId, m.paidSections, m.teasers);
+    return;
+  }
+  if(kind === 'classical_report'){
+    const m = r.meta || {};
+    const line = [m.lagna && (m.lagna+' ascendant'), m.moonSign && ('Moon in '+m.moonSign),
+                  m.nakshatra, m.mahadasha && (m.mahadasha+' mahadasha')]
+                 .filter(Boolean).map(esc).join(' · ');
+    if(reportIsUnlocked(r)){
+      out.innerHTML = banner + `<div class="card"><div class="eyebrow">Classical reading · unlocked</div>
+        <h3 style="font-size:24px;margin:8px 0 6px">Your classical Vedic report</h3>
+        <p class="hint">${line}</p>
+        ${astroReportFrame(r)}</div>`;
+      return;
+    }
+    out.innerHTML = banner + `<div class="card"><div class="eyebrow">Free — your chart, personality and family</div>
+        <h3 style="font-size:24px;margin:8px 0 6px">Your classical Vedic report</h3>
+        <p class="hint">${line}</p>
+        ${astroReportFrame(r)}</div>` +
+      astroPayCard('classical_report', r.price, r.reportId,
+        ['Career and professional nature', 'Relationship and marriage indications',
+         'What you are going through currently',
+         'Future predictions — 6 months, 12 months, 2–3 years',
+         'Remedies planet by planet']);
     return;
   }
   if(kind === 'user_question'){

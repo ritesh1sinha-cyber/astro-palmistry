@@ -1,0 +1,32 @@
+{
+  "astro": [
+    {
+      "ok": false,
+      "error": "name 'free_prose_overlay' is not defined",
+      "name": "meera"
+    },
+    {
+      "name": "meera_1990-01-15_delhi_llm",
+      "free_bytes": 36270,
+      "paid_bytes": 41006,
+      "llm_enabled": true,
+      "unlock_free": 1,
+      "accepted": 29,
+      "rejected": 4,
+      "fallback_used": false
+    }
+  ],
+  "horary": null,
+  "user_question": {
+    "name": "user_question_llm",
+    "free_bytes": 36571,
+    "paid_bytes": 38239,
+    "llm_enabled": true,
+    "unlock_free": 1,
+    "accepted": 1,
+    "rejected": 0,
+    "fallback_used": false,
+    "truth_source": "full_report_canonical"
+  },
+  "daily": null
+}

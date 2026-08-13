@@ -249,6 +249,57 @@ def validate_conversational_area(field: str, text: str, card: Any) -> list[str]:
     return []
 
 
+_GENERIC_FACT_WORDS = frozenset({
+    "and", "the", "your", "you", "life", "this", "that", "with", "from",
+    "area", "part", "chart", "phase", "period", "stretch", "current",
+    "tends", "show", "shows", "showing", "may", "might", "could", "than",
+    "more", "rather", "effort", "steady", "mixed", "support", "backing",
+    "strong", "strongly", "supported", "active", "promise", "promised",
+    "opening", "window", "timing", "routine", "energy", "attention",
+    "reading", "theme", "tends", "into", "about", "when", "then", "them",
+    "have", "been", "being", "does", "doing", "will", "just", "also",
+    "here", "there", "what", "which", "their", "they", "them",
+})
+
+
+def validate_retains_fact_terms(text: str, source_terms: Iterable[str]) -> list[str]:
+    """Reject prose that dissolves the card's own words into generic advice.
+
+    An outlook that never touches the manifestation or summary the engine
+    supplied is how a specific reading becomes a counsellor paragraph.
+    """
+    t = (text or "").strip()
+    if not t:
+        return []
+    sources: set[str] = set()
+    for src in source_terms or []:
+        for word in re.findall(r"[a-z]{4,}", str(src).lower()):
+            if word not in _STOP_WORDS and word not in _GENERIC_FACT_WORDS:
+                sources.add(word)
+    if not sources:
+        return []
+    words = {w for w in re.findall(r"[a-z]{4,}", t.lower())}
+    if not (words & sources):
+        return ["generic_rewrite_drops_facts"]
+    return []
+
+
+def area_fact_terms(card: Any) -> list[str]:
+    """Words the area prose is supposed to keep."""
+    if card is None:
+        return []
+    out: list[str] = []
+    for key in ("semantic_summary", "outlook_line"):
+        val = _fget(card, key) or ""
+        if val:
+            out.append(str(val))
+    for key in ("manifestations", "manifestation_ids", "recognize", "semantic_tags"):
+        for item in _fget(card, key) or []:
+            if item:
+                out.append(str(item))
+    return out
+
+
 _HEDGE = re.compile(
     r"\b(?:may|might|could|can|if|tends?|often|usually|perhaps|likely)\b", re.I,
 )

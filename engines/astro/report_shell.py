@@ -20,6 +20,8 @@ for exactly that reason.
 from __future__ import annotations
 
 import html as _html
+import re as _re
+import unicodedata as _ud
 from typing import Any
 
 #: The shared stylesheet. Extracted verbatim from report_cards' original
@@ -617,8 +619,270 @@ def esc(t: Any) -> str:
     return _html.escape(str(t or ""))
 
 
+# ---------------------------------------------------------------------------
+# section navigation
+# ---------------------------------------------------------------------------
+#: Reports run long — a paid chart reading is a dozen screens on a phone — and
+#: until now the only way to reach the section you paid for was to scroll past
+#: everything else. The nav is built from the headings already in the document
+#: rather than declared per renderer, so every report gains it at once and none
+#: of them can forget to update it.
+SECTION_NAV_CSS = """
+.secnav{--nav-w:210px}
+.secnav ol{list-style:none;margin:0;padding:0}
+.secnav a{display:block;text-decoration:none;color:var(--muted);font-size:.78rem;
+line-height:1.35;padding:7px 10px;border-radius:8px;border-left:2px solid transparent}
+.secnav a:hover{color:var(--ink);background:#f1efea}
+.secnav a.here{color:var(--ink);background:#fff;border-left-color:var(--mixed);
+font-weight:600}
+.secnav .navlbl{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;
+font-weight:700;color:var(--muted);padding:0 10px 8px}
+.secnav li.lvl2 a{padding-left:22px;font-size:.74rem;color:#8b909c}
+.secnav li.lvl2 a:hover,.secnav li.lvl2 a.here{color:var(--ink)}
+@media(min-width:1080px){
+  .secnav{position:fixed;top:0;left:50%;margin-left:-560px;width:var(--nav-w);
+  max-height:100vh;overflow-y:auto;padding:44px 0 40px;z-index:20}
+  .secnav::-webkit-scrollbar{width:6px}
+  .secnav::-webkit-scrollbar-thumb{background:#e0ded8;border-radius:99px}
+}
+@media(max-width:1079px){
+  .secnav{position:sticky;top:0;z-index:30;background:rgba(251,250,248,.94);
+  backdrop-filter:blur(6px);border-bottom:1px solid var(--line);
+  margin:0 -20px 4px;padding:8px 0}
+  .secnav .navlbl{display:none}
+  .secnav ol{display:flex;gap:6px;overflow-x:auto;padding:0 16px;
+  scrollbar-width:none}
+  .secnav ol::-webkit-scrollbar{display:none}
+  .secnav li{flex:0 0 auto}
+  .secnav a{white-space:nowrap;border-left:0;border-bottom:2px solid transparent;
+  border-radius:0;padding:6px 4px;font-size:.75rem}
+  .secnav li.lvl2 a{padding-left:4px}
+  .secnav a.here{background:none;border-bottom-color:var(--mixed)}
+}
+@media print{.secnav{display:none}}
+[id^="sec-"]{scroll-margin-top:64px}
+"""
+
+SECTION_NAV_JS = """
+<script>
+(function(){
+  var nav = document.querySelector('.secnav');
+  if(!nav || !('IntersectionObserver' in window)) return;
+  var links = {};
+  Array.prototype.forEach.call(nav.querySelectorAll('a[href^="#"]'), function(a){
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  var seen = [];
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      var id = en.target.id;
+      var at = seen.indexOf(id);
+      if(en.isIntersecting){ if(at < 0) seen.push(id); }
+      else if(at >= 0){ seen.splice(at, 1); }
+    });
+    if(!seen.length) return;
+    var top = null;
+    Object.keys(links).forEach(function(id){
+      if(seen.indexOf(id) >= 0 && top === null) top = id;
+    });
+    Object.keys(links).forEach(function(id){
+      links[id].classList.toggle('here', id === top);
+    });
+    var cur = links[top];
+    if(cur && nav.scrollWidth > nav.clientWidth){
+      cur.scrollIntoView({block:'nearest', inline:'nearest'});
+    }
+  }, {rootMargin: '-64px 0px -70% 0px'});
+  Object.keys(links).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) io.observe(el);
+  });
+})();
+</script>
+"""
+
+#: Headings that name a section a reader would jump to. `h3.sec` is the card
+#: reports' section heading; `h2` is the conversational one.
+_NAV_HEADING = _re.compile(r"<(h2|h3)\b([^>]*)>(.*?)</\1>", _re.S | _re.I)
+#: A life-area card is the destination most readers are actually looking for —
+#: they bought the report for the career answer, not for the section above it.
+_NAV_AREA = _re.compile(
+    r'<article\b([^>]*\bclass="[^"]*\bcard\b[^"]*"[^>]*)>\s*'
+    r'<div class="card-top">\s*<span class="area">(.*?)</span>',
+    _re.S | _re.I)
+#: Several reports label the section above the heading rather than in it.
+#: "ABOUT YOU" is a better rail entry than the sentence it introduces.
+_NAV_KICKER = _re.compile(
+    r'<div class="[^"]*section-kicker[^"]*">([^<]{2,40})</div>\s*$', _re.I)
+#: A few long-standing sections title themselves with a plain <h3> or a small
+#: caps label rather than a section heading. They are destinations all the
+#: same, so they are named here rather than by loosening the heading rule —
+#: `.ev-label` alone appears dozens of times inside cards.
+_NAV_SECTION = _re.compile(
+    r'<section\b([^>]*\bclass="[^"]*\b'
+    r'(?:remedy-card|proof|present-current|locked-preview|top-recognition)'
+    r'\b[^"]*"[^>]*)>',
+    _re.I)
+_NAV_SECTION_TITLE = _re.compile(
+    r'<h3\b[^>]*>(.*?)</h3>|<div class="[^"]*\bev-label\b[^"]*">([^<]{2,60})</div>',
+    _re.S | _re.I)
+_DETAILS_BLOCK = _re.compile(r"<details\b.*?</details>", _re.S | _re.I)
+_HAS_CLASS_SEC = _re.compile(r'class\s*=\s*["\'][^"\']*\bsec\b', _re.I)
+_HAS_ID = _re.compile(r'\bid\s*=\s*["\']([^"\']+)["\']', _re.I)
+#: A heading may carry its own rail label when the full wording is too long to
+#: sit in 210px: <h2 data-nav="Special marks">The special marks…</h2>
+_NAV_OVERRIDE = _re.compile(r'\bdata-nav\s*=\s*["\']([^"\']+)["\']', _re.I)
+
+
+def _nav_slug(text: str, taken: set[str]) -> str:
+    plain = _ud.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    base = _re.sub(r"[^a-z0-9]+", "-", plain.lower()).strip("-")[:34] or "part"
+    slug = f"sec-{base}"
+    n = 2
+    while slug in taken:
+        slug = f"sec-{base}-{n}"
+        n += 1
+    taken.add(slug)
+    return slug
+
+
+def _nav_label(inner: str) -> str:
+    text = _html.unescape(_re.sub(r"<[^>]+>", " ", inner))
+    text = _re.sub(r"\s+", " ", text).strip(" .·—-")
+    # Long headings are written to be read in place, not in a 210px rail.
+    if len(text) > 30:
+        cut = text[:30].rsplit(" ", 1)[0]
+        text = (cut or text[:30]).rstrip(",;:") + "…"
+    return text
+
+
+def build_section_nav(body: str, *, label: str = "In this reading") -> tuple[str, str]:
+    """Return ``(body_with_ids, nav_html)`` for a report body fragment.
+
+    Headings inside ``<details>`` are skipped: those are the workings a reader
+    opens from where they already are, not destinations.
+    """
+    if not body:
+        return body, ""
+    skip = [m.span() for m in _DETAILS_BLOCK.finditer(body)]
+
+    def _inside_details(pos: int) -> bool:
+        return any(start <= pos < end for start, end in skip)
+
+    taken: set[str] = set(_re.findall(r'\bid\s*=\s*["\']([^"\']+)["\']', body))
+
+    # (position, end of the open tag, open tag text, label, depth)
+    found: list[tuple[int, int, str, str, str, int]] = []
+
+    for m in _NAV_HEADING.finditer(body):
+        tag, attrs = m.group(1).lower(), m.group(2)
+        if _inside_details(m.start()):
+            continue
+        if tag == "h3" and not _HAS_CLASS_SEC.search(attrs):
+            continue
+        override = _NAV_OVERRIDE.search(attrs)
+        if override:
+            text = _html.unescape(override.group(1))
+        else:
+            kicker = _NAV_KICKER.search(body[max(0, m.start() - 320):m.start()])
+            text = (_nav_label(kicker.group(1)).capitalize() if kicker
+                    else _nav_label(m.group(3)))
+        if not text:
+            continue
+        open_end = m.start() + len(f"<{tag}{attrs}>")
+        found.append((m.start(), open_end, tag, attrs, text, 1))
+
+    for m in _NAV_AREA.finditer(body):
+        if _inside_details(m.start()):
+            continue
+        text = _nav_label(m.group(2))
+        if not text:
+            continue
+        open_end = m.start() + len(f"<article{m.group(1)}>")
+        found.append((m.start(), open_end, "article", m.group(1), text, 2))
+
+    for m in _NAV_SECTION.finditer(body):
+        if _inside_details(m.start()):
+            continue
+        title = _NAV_SECTION_TITLE.search(body[m.end():m.end() + 500])
+        if not title:
+            continue
+        text = _nav_label(title.group(1) or title.group(2) or "")
+        if not text:
+            continue
+        open_end = m.start() + len(f"<section{m.group(1)}>")
+        found.append((m.start(), open_end, "section", m.group(1), text, 1))
+
+    found.sort(key=lambda item: item[0])
+
+    entries: list[tuple[str, str, int]] = []
+    out: list[str] = []
+    cursor = 0
+    labelled: set[str] = set()
+    for start, open_end, tag, attrs, text, depth in found:
+        if start < cursor:
+            continue
+        # A named section and the heading inside it carry the same words, and
+        # the rail would offer the reader the same destination twice. The
+        # section wins because its anchor sits above the heading.
+        if text.lower() in labelled:
+            continue
+        labelled.add(text.lower())
+        existing = _HAS_ID.search(attrs)
+        if existing:
+            anchor = existing.group(1)
+            open_tag = f"<{tag}{attrs}>"
+        else:
+            anchor = _nav_slug(text, taken)
+            open_tag = f'<{tag}{attrs} id="{anchor}">'
+        entries.append((anchor, text, depth))
+        out.append(body[cursor:start])
+        out.append(open_tag)
+        cursor = open_end
+    out.append(body[cursor:])
+
+    # Two links is a heading, not a table of contents.
+    if len(entries) < 3:
+        return body, ""
+
+    items = "".join(
+        f'<li class="lvl{d}"><a href="#{esc(a)}">{esc(t)}</a></li>'
+        for a, t, d in entries)
+    nav = (f'<nav class="secnav" aria-label="Report sections">'
+           f'<div class="navlbl">{esc(label)}</div><ol>{items}</ol></nav>')
+    return "".join(out), nav
+
+
+def inject_section_nav(doc: str, *, label: str = "In this reading") -> str:
+    """Add the section rail to a finished HTML document.
+
+    Runs on the assembled document so reports that build their own shell get the
+    same rail as the ones that call `page()`, and so it lands after the customer
+    sanitizers rather than being scrubbed by them.
+    """
+    if not doc or "secnav" in doc:
+        return doc
+    match = _re.search(r"(<body[^>]*>)(.*)(</body>)", doc, _re.S | _re.I)
+    if not match:
+        return doc
+    open_tag, body, close_tag = match.groups()
+    new_body, nav = build_section_nav(body, label=label)
+    if not nav:
+        return doc
+    style = f"<style>{SECTION_NAV_CSS}</style>"
+    if not _re.search(r"</head>", doc, _re.I):
+        nav = style + nav
+        style = ""
+    out = (doc[:match.start()]
+           + open_tag + nav + new_body + SECTION_NAV_JS + close_tag
+           + doc[match.end():])
+    if style:
+        out = _re.sub(r"</head>", style + "</head>", out, count=1, flags=_re.I)
+    return out
+
+
 def page(title: str, body: str, *, eyebrow: str = "", heading: str = "",
-         sub: str = "", disclaimer: bool = True) -> str:
+         sub: str = "", disclaimer: bool = True, nav: bool = True) -> str:
     """Wrap a fragment in the standard report document."""
     head = ""
     if eyebrow or heading or sub:
@@ -635,8 +899,13 @@ def page(title: str, body: str, *, eyebrow: str = "", heading: str = "",
                 "Not a substitute for medical, legal, financial or "
                 "psychological advice. We never estimate anyone's remaining "
                 "years. GrahaRekha · graharekha.co.in</footer>")
-    return (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>'
-            f'<meta name="viewport" content="width=device-width,initial-scale=1"/>'
-            f"<title>{esc(title)}</title>{FONTS}"
-            f"<style>{STYLE}{EXTRA}</style></head><body>"
-            f'<div class="wrap">{head}{body}{foot}</div>{INTERACT}</body></html>')
+    rail = ""
+    if nav:
+        body, rail = build_section_nav(body)
+    doc = (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>'
+           f'<meta name="viewport" content="width=device-width,initial-scale=1"/>'
+           f"<title>{esc(title)}</title>{FONTS}"
+           f"<style>{STYLE}{EXTRA}{SECTION_NAV_CSS if rail else ''}</style>"
+           f"</head><body>{rail}"
+           f'<div class="wrap">{head}{body}{foot}</div>{INTERACT}')
+    return doc + (SECTION_NAV_JS if rail else "") + "</body></html>"

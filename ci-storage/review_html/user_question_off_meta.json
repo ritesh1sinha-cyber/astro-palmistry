@@ -1,7 +1,7 @@
 {
   "design": "cards-v2",
   "answer": {
-    "label": "No clear window for a job change in the next 7 years",
+    "label": "No clear window for your career improving in the next 2 years",
     "confidence": "moderate",
     "direction": "mixed"
   },
@@ -34,10 +34,6 @@
   },
   "_facts": {
     "kind": "user_question",
-    "schema_version": "1.0",
-    "engine_version": "astro-2026.08.11-qcanonical-v2",
-    "report_id": "",
-    "facts_hash": "754f08ca8a7d0fa6a540832e",
     "first_name": "Meera",
     "age_band": "adult",
     "access": "paid",
@@ -48,20 +44,18 @@
     "promise_status": "insufficient_evidence",
     "activation_status": "mixed",
     "n_methods": 8,
-    "n_up": 3,
+    "n_up": 2,
     "n_down": 3,
     "route": {
       "domain": "career",
-      "primary_house": 10,
       "topic": "career"
     },
     "best": null,
     "nearest": null,
     "windows": [],
-    "support_n": 3,
+    "support_n": 2,
     "caution_n": 3,
     "manifestation_ids": [],
-    "allowed_planets": [],
     "allowed_dates": [],
     "truth_source": "full_report_canonical",
     "canonical_area_key": "career",
@@ -72,60 +66,54 @@
     "canonical_agreement": "weak",
     "canonical_evidence": [
       {
-        "family": "other",
+        "family": "natal",
         "polarity": "caution",
-        "text_id": "question-canonical:caution:be4951c6",
-        "text": "rules it,",
+        "text": "Independent chart structure gives mixed support to this area.",
         "semantic_tags": []
       },
       {
-        "family": "other",
+        "family": "natal",
         "polarity": "caution",
-        "text_id": "question-canonical:caution:f0ec8be9",
-        "text": "house strength 24 of 56 \u2014 below average",
+        "text": "Structural support is limited for this life area.",
         "semantic_tags": []
       },
       {
-        "family": "other",
+        "family": "natal",
         "polarity": "caution",
-        "text_id": "question-canonical:caution:38581be7",
-        "text": "Sun, Venus, Rahu sit here",
+        "text": "Greater professional responsibility and ownership.",
         "semantic_tags": []
       },
       {
         "family": "other",
         "polarity": "support",
-        "text_id": "question-canonical:support:a3c8a4a0",
         "text": "Taking on greater responsibility, ownership or follow-through.",
         "semantic_tags": []
       },
       {
         "family": "other",
         "polarity": "support",
-        "text_id": "question-canonical:support:4144c195",
         "text": "Greater professional responsibility and ownership.",
         "semantic_tags": []
       },
       {
-        "family": "other",
-        "polarity": "support",
-        "text_id": "question-canonical:support:4144c195",
+        "family": "rules",
+        "polarity": "caution",
         "text": "Greater professional responsibility and ownership.",
         "semantic_tags": []
       },
       {
         "family": "other",
         "polarity": "caution",
-        "text_id": "question-canonical:caution:4144c195",
-        "text": "Greater professional responsibility and ownership.",
-        "semantic_tags": []
-      },
-      {
-        "family": "other",
-        "polarity": "caution",
-        "text_id": "question-canonical:caution:a3c8a4a0",
         "text": "Taking on greater responsibility, ownership or follow-through.",
         "semantic_tags": []
+      },
+      {
+        "family": "other",
+        "polarity": "caution",
+        "text": "",
+        "semantic_tags": [
+          "caution_theme"
+        ]
       }
     ],
     "canonical_manifestations": [],

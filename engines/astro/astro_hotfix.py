@@ -71,10 +71,21 @@ def _patch_module(name: str, path: str, replacements: list[tuple[str, str]]) -> 
 
 
 def horary_glyph_fix():
-    """Return a patched vedic_horary_report module (see docstring, item 1)."""
+    """Return a vedic_horary_report module with the glyph bug fixed.
+
+    The recommended one-line fix now lives in the engine itself, so the usual
+    answer is the real module. The in-memory patch stays for the case where an
+    older engine file is deployed alongside this one — and `_patch_module`
+    still raises if neither the fix nor the patch target is there, because a
+    silent miss ships half a horary product.
+    """
+    path = _locate("vedic_horary_report")
+    if "_step_icon(i)" in open(path, encoding="utf-8").read():
+        import importlib
+        return importlib.import_module("vedic_horary_report")
     glyphs = "".join(chr(9312 + i) for i in range(7))          # ①..⑦
     return _patch_module(
-        "vedic_horary_report_patched", _locate("vedic_horary_report"),
+        "vedic_horary_report_patched", path,
         [(f"'{glyphs}'[i]", "(chr(9312 + i) if i < 20 else str(i + 1))")],
     )
 

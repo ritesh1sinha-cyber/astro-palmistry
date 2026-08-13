@@ -116,7 +116,7 @@ NAKSHATRA_SNIPPETS = {
 YOGA_HUMAN = {
     "Panchmahapurusha - Malavya": (
         "Malavya Yoga (Venus in a power angle) adds grace, comfort, vehicles, fine taste, "
-        "and a attractive, harmonious partner when other factors agree."
+        "and an attractive, harmonious partner when other factors agree."
     ),
     "Amla Yoga": (
         "Amla Yoga (benefics in the 10th from lagna) supports fame, royal favour, "

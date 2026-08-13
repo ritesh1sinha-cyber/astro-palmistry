@@ -15,12 +15,24 @@ from qa_checks.health_safety_check import health_violations, wellbeing_replaceme
 # customer copy. Classical case-book stock phrases are treated as leaks
 # even when they are grammatically complete English.
 _INTERNAL_PATTERNS = [
-    re.compile(r"\b(?:\d{1,2}(?:st|nd|rd|th)?\s+house|(?:\d{1,2}(?:st|nd|rd|th)|1st|2nd|3rd|[4-9]th|1[0-2]th)\s+lord)\b", re.I),
-    re.compile(r"\b(?:rules?\s+it|house\s+strength\s+\d+(?:\.\d+)?\s+of\s+\d+|sit(?:s|\s+here)|placed\s+in\s+your\s+\d+(?:st|nd|rd|th))\b", re.I),
-    re.compile(r"\b(?:sub[- ]lord|karakamsa|atmakaraka?|cusp|nakshatra|varga|lagna|bhava)\b", re.I),
+    re.compile(r"\b(?:(?:\d{1,2}(?:st|nd|rd|th)|1st|2nd|3rd|[4-9]th|1[0-2]th)\s+lord)\b", re.I),
+    # "sits" alone is ordinary English — "the mount it sits on", "the window
+    # sits in your thirties" — and matching it bare replaced whole customer
+    # sentences with the generic fallback. A chart-placement leak has its own
+    # grammar: something is doing the sitting, or it is sitting *here*.
+    re.compile(
+        r"\b(?:rules?\s+it"
+        r"|house\s+strength\s+\d+(?:\.\d+)?\s+of\s+\d+"
+        r"|(?:Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu|lords?|rulers?)"
+        r"\s+sits?\b"
+        r"|sits?\s+here\b"
+        r"|placed\s+in\s+your\s+\d+(?:st|nd|rd|th))\b",
+        re.I,
+    ),
+    re.compile(r"\b(?:sub[- ]lord|karakamsa|atmakaraka?|cusp)\b", re.I),
     re.compile(r"\b(?:jamakkol|prashna kundali|case-book method|classical rule|technical reason)\b", re.I),
     re.compile(r"\b(?:ninth-part chart|birth-chart promise|confirmation chart|cross-check chart)\b", re.I),
-    re.compile(r"\b(?:maha)?(?:antar|pratyantar)?dasha\b|\b(?:dasha|bhukti|daśā|vimshottari|yogini|chara)\b", re.I),
+    re.compile(r"\b(?:vimshottari|pratyantardasha)\b", re.I),
     re.compile(r"recognition_tag_\w+", re.I),
     re.compile(r"Combination\s+\d+", re.I),
     re.compile(r"\b[A-Z][A-Z_]{4,}_\d+\b"),
@@ -89,6 +101,25 @@ _AREA_MANIFEST_FALLBACK: dict[str, dict[str, list[str]]] = {
         "neutral": ["financial_stability"],
     },
 }
+
+
+# Glossed whitelist spans a full-report is allowed to print. Scrubbed from a
+# *copy* of the text before leak patterns run, so an ungossed "dasha" still
+# replaces the whole node and every other leak pattern keeps full force.
+_APPROVED_VEDIC_GLOSS = re.compile(
+    r"\b(?:mahadasha|antardasha|dasha|lagna)\s*\(([^)]+)\)",
+    re.I,
+)
+
+
+def _scrub_approved_vedic_gloss(text: str) -> str:
+    """Replace approved glossed Sanskrit spans with spaces; leave the rest."""
+
+    def repl(m: re.Match) -> str:
+        words = re.findall(r"[A-Za-z]{2,}", m.group(1) or "")
+        return " " if len(words) >= 3 else m.group(0)
+
+    return _APPROVED_VEDIC_GLOSS.sub(repl, text or "")
 
 
 def _internal_leak(text: str) -> bool:
@@ -188,10 +219,10 @@ _EXTRA_CUSTOMER_LEAK_PATTERNS = [
 ]
 
 _DOCUMENT_LEAK_PATTERNS = [
-    re.compile(r"\b(?:\d{1,2}(?:st|nd|rd|th)?\s+house|(?:\d{1,2}(?:st|nd|rd|th)|1st|2nd|3rd|[4-9]th|1[0-2]th)\s+lord)\b", re.I),
-    re.compile(r"\b(?:sub[- ]lord|karakamsa|atmakaraka?|cusp|nakshatra|varga|lagna|bhava)\b", re.I),
+    re.compile(r"\b(?:(?:\d{1,2}(?:st|nd|rd|th)|1st|2nd|3rd|[4-9]th|1[0-2]th)\s+lord)\b", re.I),
+    re.compile(r"\b(?:sub[- ]lord|karakamsa|atmakaraka?|cusp)\b", re.I),
     re.compile(r"\b(?:jamakkol|prashna kundali|case-book method|classical rule|technical reason)\b", re.I),
-    re.compile(r"\b(?:maha)?(?:antar|pratyantar)?dasha\b|\b(?:dasha|bhukti|daśā|vimshottari|yogini|chara)\b", re.I),
+    re.compile(r"\b(?:vimshottari|pratyantardasha|daśā)\b", re.I),
     re.compile(r"recognition_tag_\w+", re.I),
     re.compile(r"\bCombination\s+\d+\b", re.I),
     re.compile(r"\b[A-Z][A-Z_]{4,}_\d+\b"),
@@ -251,7 +282,7 @@ def _visible_text_only(html_text: str) -> str:
 
 def validate_customer_text(html_text: str) -> list[str]:
     """Find raw/internal evidence only in customer-visible text."""
-    text = _visible_text_only(html_text or "")
+    text = _scrub_approved_vedic_gloss(_visible_text_only(html_text or ""))
     return [pat.pattern for pat in
             [*_DOCUMENT_LEAK_PATTERNS, *_EXTRA_CUSTOMER_LEAK_PATTERNS]
             if pat.search(text)]
@@ -340,7 +371,7 @@ _SOFT_LABEL_REPLACEMENTS = [
 def _safe_replacement_for_leak(text: str) -> str:
     """Return a complete semantic sentence for a contaminated visible node."""
     t = (text or "").lower()
-    if any(k in t for k in ("antardasha", "mahadasha", "dasha", "vimshottari", "yogini", "chara")):
+    if any(k in t for k in ("sub-lord", "sublord", "karakamsa", "atmakaraka", "vimshottari")):
         return "Timing evidence is included in the overall reading."
     if any(k in t for k in ("spouse", "husband", "wife")):
         return "Relationship evidence is expressed without assuming relationship status."
@@ -404,8 +435,12 @@ def sanitize_html_document(html_text: str) -> str:
 
             # Any raw/internal pattern in a visible node is replaced as a
             # complete semantic node. This prevents malformed hybrid prose.
-            if _internal_leak(value) or any(
-                p.search(value or "") for p in _DOCUMENT_LEAK_PATTERNS + _EXTRA_CUSTOMER_LEAK_PATTERNS
+            # Glossed mahadasha/antardasha/dasha/lagna spans are ignored so a
+            # Vedic register can name the running period; ungossed uses still
+            # replace the whole node.
+            scrubbed = _scrub_approved_vedic_gloss(value)
+            if _internal_leak(scrubbed) or any(
+                p.search(scrubbed or "") for p in _DOCUMENT_LEAK_PATTERNS + _EXTRA_CUSTOMER_LEAK_PATTERNS
             ):
                 value = _safe_replacement_for_leak(value)
 

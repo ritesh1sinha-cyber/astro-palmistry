@@ -1,0 +1,300 @@
+{
+  "design": "conversational-v1",
+  "dominantHand": "right",
+  "handType": "air",
+  "photoQuality": "fair",
+  "photoScore": 0.514,
+  "photoAdvice": [],
+  "summary": "Your right hand is read here as the way these qualities are being expressed now; your left hand is treated as the underlying tendency you started with. These areas look similar on both hands, so the reading treats them as relatively stable parts of your life: Life line, Head line, Heart line, Fate line.",
+  "teaser": "The full reading opens the chart working behind all 6 verdicts, 4 dated markings still ahead of you, the line-by-line reading of all 35 numbered points.",
+  "freeSections": [
+    "Both palms, as the engine read them",
+    "What your hands say you are",
+    "Every life area, and which way it leans",
+    "Left hand against right hand",
+    "Your hand, read to today"
+  ],
+  "paidSections": [
+    "Why each life area reads the way it does",
+    "Every dated marking ahead of you",
+    "The line-by-line analysis, both hands",
+    "Mount by mount",
+    "What your special marks mean",
+    "Remedies keyed to your hand"
+  ],
+  "pastCount": 0,
+  "futureCount": 4,
+  "datedAhead": 4,
+  "scores": [
+    {
+      "k": "Vitality",
+      "v": 73
+    },
+    {
+      "k": "Intellect",
+      "v": 78
+    },
+    {
+      "k": "Emotion",
+      "v": 77
+    },
+    {
+      "k": "Fortune",
+      "v": 77
+    }
+  ],
+  "llm": {
+    "enabled": true,
+    "stats": {
+      "accepted": 19,
+      "rejected": 0,
+      "errors": 0,
+      "rejection_reasons": {}
+    },
+    "free": {
+      "stats": {
+        "accepted": 3,
+        "rejected": 0,
+        "errors": 0,
+        "rejection_reasons": {}
+      },
+      "fallback_used": false
+    },
+    "paid": {
+      "stats": {
+        "accepted": 19,
+        "rejected": 0,
+        "errors": 0,
+        "rejection_reasons": {}
+      },
+      "fallback_used": false
+    }
+  },
+  "_facts": {
+    "kind": "palm",
+    "schema_version": "1.2",
+    "engine_version": "astro-2026.08.11-qcanonical-v2",
+    "report_id": "",
+    "facts_hash": "778bc73c08acab5062e50edc",
+    "first_name": "Meera",
+    "age_band": "adult",
+    "age_years": 30,
+    "access": "paid",
+    "dominant_hand": "right",
+    "photo_grade": "fair",
+    "photo_confidence": "moderate",
+    "special_marks_allowed": false,
+    "future_timing_allowed": true,
+    "age_precision": "wider_window",
+    "quality_note": "Fine marks are withheld; line timing is presented as a wider age window.",
+    "aspects": [
+      {
+        "aspect": "character",
+        "title": "Character & Temperament",
+        "direction": "mixed",
+        "strength": "moderate",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R02_character",
+          "R07_character"
+        ],
+        "point_ids": [
+          "R02_character",
+          "R07_character"
+        ],
+        "semantic_tags": [],
+        "semantic_summary": "Your energy is strongly tied to thinking, conversation and interaction; repetitive isolation can leave you mentally flat. You tend to be open with time, help or resources when you feel comfortable with people.",
+        "recognize": [
+          "you think better by talking things through",
+          "people or ideas quickly re-energize you",
+          "long stretches of repetitive work can feel draining",
+          "you help without keeping a strict scorecard"
+        ],
+        "age_window": [],
+        "score": 2.0
+      },
+      {
+        "aspect": "mind",
+        "title": "Mind & Intellect",
+        "direction": "mixed",
+        "strength": "moderate",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R12_mind",
+          "R16_mind"
+        ],
+        "point_ids": [
+          "R12_mind",
+          "R16_mind"
+        ],
+        "semantic_tags": [],
+        "semantic_summary": "Your confidence may have developed gradually, with family expectations or the need for reassurance influencing earlier choices.",
+        "recognize": [
+          "family opinion mattered strongly in earlier decisions",
+          "you wanted reassurance before major steps",
+          "confidence grew through experience rather than appearing all at once",
+          "you can explain an idea in a way people understand"
+        ],
+        "age_window": [
+          27,
+          36
+        ],
+        "score": 1.0
+      },
+      {
+        "aspect": "love",
+        "title": "Relationships & Emotions",
+        "direction": "mixed",
+        "strength": "moderate",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R18_love",
+          "R21_love"
+        ],
+        "point_ids": [
+          "R18_love",
+          "R21_love"
+        ],
+        "semantic_tags": [],
+        "semantic_summary": "When you trust someone, you may invest deeply and expect warmth and effort to be mutual. You may experience close relationships intensely and do best when the emotional environment is steady rather than unpredictable.",
+        "recognize": [
+          "you show care through involvement and presence",
+          "one-sided effort hurts more than open disagreement",
+          "you value affection that is returned",
+          "small changes in a relationship can affect you strongly"
+        ],
+        "age_window": [
+          31,
+          39
+        ],
+        "score": 2.0
+      },
+      {
+        "aspect": "career",
+        "title": "Career & Destiny",
+        "direction": "mixed",
+        "strength": "moderate",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R25_career",
+          "R28_career"
+        ],
+        "point_ids": [
+          "R25_career",
+          "R28_career"
+        ],
+        "semantic_tags": [],
+        "semantic_summary": "You may do better professionally when you build depth and credibility over time rather than changing direction simply because progress feels slow.",
+        "recognize": [
+          "experience has become an advantage over time",
+          "you prefer mastering a role before moving on",
+          "consistency has helped your professional position",
+          "you notice when good work goes unrecognized"
+        ],
+        "age_window": [
+          27,
+          36
+        ],
+        "score": 2.0
+      },
+      {
+        "aspect": "wealth",
+        "title": "Wealth & Fortune",
+        "direction": "mixed",
+        "strength": "moderate",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R35_wealth",
+          "R31_wealth"
+        ],
+        "point_ids": [
+          "R35_wealth",
+          "R31_wealth"
+        ],
+        "semantic_tags": [],
+        "semantic_summary": "Career standing and financial reward may reinforce each other: building a strong professional position can improve the resources that follow.",
+        "recognize": [
+          "financial progress followed professional recognition",
+          "your earning power grew with experience or status",
+          "career reputation has affected money opportunities",
+          "your income improves when your expertise is visible"
+        ],
+        "age_window": [],
+        "score": 1.0
+      },
+      {
+        "aspect": "health",
+        "title": "Health & Vitality",
+        "direction": "mixed",
+        "strength": "tentative",
+        "confidence": "moderate",
+        "signal_ids": [
+          "R39_health"
+        ],
+        "point_ids": [
+          "R39_health"
+        ],
+        "semantic_tags": [],
+        "semantic_summary": "Stress may show up first as changes in digestion, tension or nervous energy, so noticing your body's early signals can be useful.",
+        "recognize": [
+          "stress changes how your body feels",
+          "busy periods affect appetite, digestion or tension",
+          "you benefit when you slow down before stress accumulates"
+        ],
+        "age_window": [
+          27,
+          36
+        ],
+        "score": 1.0
+      }
+    ],
+    "future_windows": [
+      {
+        "age_window": [
+          27,
+          36
+        ],
+        "domain": "vitality",
+        "confidence": "moderate"
+      },
+      {
+        "age_window": [
+          27,
+          36
+        ],
+        "domain": "mind_decision",
+        "confidence": "moderate"
+      },
+      {
+        "age_window": [
+          31,
+          39
+        ],
+        "domain": "relationships",
+        "confidence": "moderate"
+      },
+      {
+        "age_window": [
+          27,
+          36
+        ],
+        "domain": "career_direction",
+        "confidence": "moderate"
+      }
+    ],
+    "special_mark_ids": [],
+    "personality_traits": [
+      "Your energy is strongly tied to thinking, conversation and interaction; repetitive isolation can leave you mentally flat.",
+      "Your confidence may have developed gradually, with family expectations or the need for reassurance influencing earlier choices.",
+      "When you trust someone, you may invest deeply and expect warmth and effort to be mutual.",
+      "You may do better professionally when you build depth and credibility over time rather than changing direction simply because progress feels slow.",
+      "Career standing and financial reward may reinforce each other: building a strong professional position can improve the resources that follow."
+    ],
+    "life_stage_note": "Your life line is moderate in depth \u2014 your energy may respond noticeably to sleep, routine and lifestyle balance. Your life line rises from the inner thumb pad \u2014 courageous vitality; you may face competitive tests. Aroun",
+    "life_stage_age": 31,
+    "demanding_aspect": "health",
+    "demanding_aspect_label": "Health & Vitality",
+    "remedies_allowed": false,
+    "remedies": []
+  }
+}

@@ -146,6 +146,15 @@ def _scrub(html: str, *, allowed_dates: Optional[set] = None) -> str:
                   f"{result['failures']}", flush=True)
     except Exception:                                                # noqa: BLE001
         pass
+
+    # The section rail goes on last, after every sanitizer. Adding it earlier
+    # would put a <nav> full of heading text through scrubbers that rewrite
+    # prose, and the rail is navigation, not prose.
+    try:
+        import report_shell as RS
+        out = RS.inject_section_nav(out)
+    except Exception:                                                # noqa: BLE001
+        pass
     return out
 
 
@@ -272,6 +281,8 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
     paid_prose_overlay: dict = {}
     llm_meta: dict = {"enabled": False}
     facts_payload: dict = {}
+    paid_facts = None
+    free_facts = None
     try:
         from llm.facts import build_report_facts, project_for_access, public_fact_payload
         from llm.humanize import humanize
@@ -319,6 +330,24 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             window_sources.extend(
                 {"start": t.get("start"), "end": t.get("end")}
                 for t in (c.trajectory or []))
+            for node in list(getattr(c, "transition_map", None) or []):
+                if isinstance(node, dict):
+                    window_sources.append(
+                        {"start": node.get("start"), "end": node.get("end")})
+                else:
+                    window_sources.append({
+                        "start": getattr(node, "start", None),
+                        "end": getattr(node, "end", None),
+                    })
+            for row in list(getattr(c, "transit_context", None) or []):
+                if isinstance(row, dict):
+                    window_sources.append(
+                        {"start": row.get("start"), "end": row.get("end")})
+                else:
+                    window_sources.append({
+                        "start": getattr(row, "start", None),
+                        "end": getattr(row, "end", None),
+                    })
         vim = pc.get("vimshottari", {}) or {}
         window_sources.append(vim.get("current_md") or {})
         window_sources.extend(vim.get("current_md_antardashas") or [])
@@ -360,9 +389,14 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             # The stones and the practical step are computed, not written, so
             # the conversational page carries the same block as the classic one
             # instead of leaving the reading with nothing to act on.
+            fact_cards = []
+            if paid and paid_facts is not None:
+                fact_cards = list(getattr(paid_facts, "cards", None) or [])
+            elif (not paid) and free_facts is not None:
+                fact_cards = list(getattr(free_facts, "cards", None) or [])
             body = RConv.render(
                 pc, name=name, price=price, today=today, paid=paid,
-                cards=shared_cards, prose=prose,
+                cards=fact_cards or shared_cards, prose=prose,
                 footer_unlock=(not paid),
                 remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price))
             return _scrub(body, allowed_dates=allowed_dates)
@@ -628,7 +662,7 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     free_body = _voice_polish(QA.render(
         result, name=first, paid=False, price=price, prose=free_prose))
     paid_body = _voice_polish(QA.render(
-        result, name=first, paid=True, price=price, prose=paid_prose))
+        result, name=first, paid=True, price=price, prose=paid_prose, pc=pc))
     try:
         import remedy_block as RB
         rb = RB.build(pc, domain=result.get("area_key", ""), question=question,

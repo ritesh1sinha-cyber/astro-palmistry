@@ -33,7 +33,8 @@ def test_conversational_fallback_has_required_free_fields():
     out = conversational_fallback(facts)
     assert out["conversational"] is True
     assert "act quickly" in out["personality"]
-    assert "mixed" in out["current_phase"].lower()
+    assert "two ways" in out["current_phase"].lower() or "patience" in out["current_phase"].lower()
+    assert "october 2026" in out["current_phase"].lower()
     assert out["recent_months"]
     assert "Work & Career" in out["hardest_area_note"]
     assert out["areas"] == {}  # free has no area detail
@@ -62,7 +63,8 @@ def test_conversational_fallback_paid_includes_areas():
     assert "work & career" in career["outlook"].lower()
     assert "November 2027" in career["timing"]
     assert "February 2028" in career["timing"]
-    assert "greater responsibility" in career["manifestation"].lower()
+    blob = (career["outlook"] + " " + career["manifestation"]).lower()
+    assert "greater responsibility" in blob
     assert career["remedy"] == "Ask one senior person to speak for you."
 
 
@@ -204,8 +206,8 @@ def test_conversational_render_has_unlock_on_free():
     )
     assert 'data-unlock="1"' in html
     assert "Who you are" in html
-    assert "Where you are now" in html
-    assert "Each part of your life" not in html
+    assert "Where life is putting its weight right now" in html
+    assert "Each important part of your life" not in html
 
 
 def test_palm_conversational_render_paid_areas():
@@ -243,6 +245,8 @@ def test_palm_conversational_render_paid_areas():
         "left": {},
     }
     html = palm_render(raw, name="Meera", age=30, paid=True, prose=prose)
-    assert "Who you are" in html
+    # The personality paragraph now opens the section that shows the hand it
+    # was read from, rather than standing alone under "Who you are".
+    assert "The hand itself" in html
     assert "Each part of your life" in html
     assert "Career" in html

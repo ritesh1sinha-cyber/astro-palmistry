@@ -92,8 +92,29 @@ def test_prompt_version_tracks_the_prompt_text():
         rules._prompt_extra = original
 
     assert before != after
-    assert before.startswith("PALM_CONVERSATIONAL_PROMPT_V1-")
+    assert before.startswith("PALM_CONVERSATIONAL_PROMPT_V5-")
     assert rules.prompt_version("palm") == before
+
+
+def test_a_palm_reading_is_briefed_as_a_palmist_not_an_astrologer():
+    """The palm prose used to be written on top of the Vedic astrologer prompt,
+    so the model read pages about naming the Lagna and the Mahadasha and a few
+    lines about being a palmist. It obeyed the longer half.
+    """
+    from llm import rules
+
+    palm = rules.system_prompt_for("palm")
+    assert palm.startswith("You are an experienced palmist")
+    for astrology_only in ("Lagna", "Mahadasha", "Nakshatra", "Ashtakavarga",
+                           "D9/D10", "gemstones"):
+        assert astrology_only not in palm, astrology_only
+    # The palmist's own vocabulary has to survive, or the reading has nothing
+    # to read from.
+    for palm_word in ("life, head, heart and fate lines", "Mount of Luna",
+                      "girdle of Venus"):
+        assert palm_word in palm, palm_word
+    assert rules.system_prompt_for("full_report").startswith(
+        "You are an experienced Vedic astrologer")
 
 
 def _career_facts():

@@ -25,6 +25,9 @@ from .schemas import (
     QuestionFacts,
     RecentMonthFact,
     ReportFacts,
+    TransitContextFact,
+    TransitionFact,
+    VedicContext,
     WindowFact,
 )
 
@@ -60,6 +63,18 @@ T = TypeVar("T")
 def _eid(family: str, polarity: str, text: str) -> str:
     h = hashlib.sha1((text or "").encode("utf-8", "ignore")).hexdigest()[:8]
     return f"{family}:{polarity}:{h}"
+
+
+def _as_date(v: Any) -> Optional[date]:
+    if isinstance(v, date):
+        return v
+    text = str(v or "").strip()[:10]
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
 
 
 def _pretty_date(v: Any) -> str:
@@ -284,6 +299,7 @@ def _public_fact_payload(facts: Any) -> Any:
         "life_stage_note", "life_stage_age", "demanding_aspect",
         "demanding_aspect_label", "remedies_allowed", "remedies",
         "life_state", "family_notes", "palm_state", "hand_contrast",
+        "vedic_context",
     }
     allowed_nested = {
         "area", "label", "kind", "status", "activation_status", "confidence",
@@ -307,6 +323,9 @@ def _public_fact_payload(facts: Any) -> Any:
         # Current-palm-state block and the two-hand contrast.
         "confidence_note", "dominant_hand", "steady", "developed", "latent",
         "developed_traits", "latent_traits",
+        "period_lord", "sub_period_lord", "rising_sign", "moon_sign",
+        "mahadasha", "antardasha", "lagna", "nakshatra",
+        "house", "allowed_planets",
     }
 
     def clean(obj: Any, root: bool = False) -> Any:
@@ -418,6 +437,8 @@ def project_for_access(facts: T, access: str) -> T:
                     "score": float(w.get("score") or 0.0),
                 }
             c["allowed_dates"] = []
+            c["transition_map"] = []
+            c["transit_context"] = []
         # Report-level windows: labels only
         teased = []
         for w in data.get("timing_windows") or []:
@@ -497,10 +518,19 @@ def project_for_access(facts: T, access: str) -> T:
         #
         # The life-state block is deliberately free: it carries no dates and no
         # evidence, and it is what shows the reader the reading recognises the
-        # phase they are in before they decide to unlock. Family notes are the
-        # depth behind the paid parents/siblings areas, so they stay paid.
+        # phase they are in before they decide to unlock. Father and mother
+        # stay as a free teaser; siblings and home stay paid depth.
         if "family_notes" in data:
-            data["family_notes"] = []
+            teaser = []
+            for note in list(data.get("family_notes") or []):
+                rel = (
+                    str(note.get("relation") or "")
+                    if isinstance(note, dict)
+                    else str(getattr(note, "relation", "") or "")
+                )
+                if rel in ("father", "mother") and len(teaser) < 2:
+                    teaser.append(note)
+            data["family_notes"] = teaser
         ls = data.get("life_state")
         if isinstance(ls, dict):
             # Free names the themes; the per-area breakdown stays paid.
@@ -707,6 +737,21 @@ def build_report_facts(
                 source=str(tw.get("source") or "validated_confluence")[:80],
                 score=float(tw.get("score") or 0.0),
             ))
+        # An area can read "active" from the running period while every dated
+        # window on the card still sits years out. When that happens the dates
+        # decide the wording: "Active now" printed above "Dec 2028" is the
+        # fastest way to lose a reader.
+        if act_status in ("active", "strongly_active"):
+            dated: list[Any] = list(getattr(c, "transition_map", None) or [])
+            if not dated:
+                dated = [tw for tw in timing_rows[:6] if isinstance(tw, dict)]
+            try:
+                from life_area_transition import window_state
+                if window_state(dated, today=today).get("state") == "upcoming":
+                    act_status = "inactive"
+            except Exception:  # noqa: BLE001
+                pass
+
         allowed_dates = _dates_from_windows(window)
         for tw in card_timing:
             allowed_dates.extend(_dates_from_windows(tw))
@@ -764,6 +809,35 @@ def build_report_facts(
         if not remedy_text and approved:
             remedy_text = approved[0][:220]
 
+        transition_map = []
+        raw_map = list(getattr(c, "transition_map", None) or [])
+        for row in raw_map[:6]:
+            if hasattr(row, "model_dump"):
+                row = row.model_dump()
+            if isinstance(row, dict):
+                payload = dict(row)
+                conf = str(payload.get("confidence") or "low").lower()
+                if conf not in ("high", "moderate", "low"):
+                    payload["confidence"] = "high" if "high" in conf else "low"
+                direction = str(payload.get("direction") or "mixed")
+                if direction not in ("support", "caution", "mixed", "neutral", "up", "down"):
+                    payload["direction"] = "mixed"
+                try:
+                    transition_map.append(TransitionFact.model_validate(payload))
+                except Exception:
+                    continue
+
+        transit_context = []
+        for row in list(getattr(c, "transit_context", None) or [])[:14]:
+            if hasattr(row, "model_dump"):
+                row = row.model_dump()
+            if not isinstance(row, dict):
+                continue
+            try:
+                transit_context.append(TransitContextFact.model_validate(dict(row)))
+            except Exception:
+                continue
+
         card_facts.append(CardFacts(
             area=area,
             label=str(getattr(c, "label", "") or area),
@@ -792,6 +866,8 @@ def build_report_facts(
             outlook_line=outlook_line,
             manifestations=[str(m)[:120] for m in manifests if m][:4],
             remedy_text=remedy_text,
+            transition_map=transition_map,
+            transit_context=transit_context,
         ))
 
     # IMPORTANT: timing facts must come from the same canonical area results
@@ -898,6 +974,15 @@ def build_report_facts(
             if not cf.allowed_dates:
                 cf.allowed_dates = list(seed)
 
+    vedic = _vedic_context(pc)
+    lords = [x for x in (vedic.period_lord, vedic.sub_period_lord) if x]
+    for cf in card_facts:
+        planets = list(cf.allowed_planets or [])
+        for lord in lords:
+            if lord not in planets:
+                planets.append(lord)
+        cf.allowed_planets = planets[:8]
+
     facts = ReportFacts(
         first_name=_first_name(name),
         age_band=age_band,
@@ -917,8 +1002,54 @@ def build_report_facts(
         hardest_area_labels=hardest_labels[:4],
         life_state=life_state,
         family_notes=list(family_notes or []),
+        vedic_context=vedic,
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
+
+
+def _vedic_context(pc: dict) -> VedicContext:
+    """Running mahadasha / antardasha plus rising and Moon sign.
+
+    Identity, not paid timing: the same facts already print as
+    ``Aries rising · Moon in Leo`` and feed ``phase_end``. Kept free-tier.
+    """
+    vim = pc.get("vimshottari") or {} if isinstance(pc, dict) else {}
+    if not isinstance(vim, dict):
+        vim = {}
+    md = vim.get("current_md") or {}
+    if not isinstance(md, dict):
+        md = {}
+    ad: dict = {}
+    for row in vim.get("current_md_antardashas") or []:
+        if isinstance(row, dict) and str(row.get("status") or "") == "current":
+            ad = row
+            break
+    lagna = pc.get("lagna") or {} if isinstance(pc, dict) else {}
+    rising = ""
+    if isinstance(lagna, dict):
+        rising = str(lagna.get("sign") or "").strip()
+    moon = (pc.get("planets") or {}).get("Moon") if isinstance(pc, dict) else None
+    moon_sign = ""
+    nakshatra = ""
+    if isinstance(moon, dict):
+        moon_sign = str(moon.get("sign") or "").strip()
+        nakshatra = str(
+            moon.get("nakshatra") or moon.get("nak") or moon.get("naksatra") or ""
+        ).strip()
+    lord = str(md.get("md_lord") or "").strip()[:20]
+    sub = str(ad.get("ad_lord") or "").strip()[:20]
+    return VedicContext(
+        period_lord=lord,
+        sub_period_lord=sub,
+        mahadasha=lord,
+        antardasha=sub,
+        lagna=rising[:20],
+        nakshatra=nakshatra[:40],
+        start=_pretty_date(ad.get("start") or md.get("start")),
+        end=_pretty_date(ad.get("end") or md.get("end")),
+        rising_sign=rising[:20],
+        moon_sign=moon_sign[:20],
+    )
 
 
 def _personality_traits(pc: dict) -> list[str]:
@@ -956,8 +1087,7 @@ def _phase_facts(pc: dict, today: date) -> tuple[str, str, str, list[str]]:
             scenario = str(getattr(pred, "scenario", "") or "").strip()
             if not scenario:
                 continue
-            # Strip planet / Sanskrit tokens before they reach the LLM.
-            if _PLANET_TOKEN.search(scenario) or _CLASSICAL_RAW.search(scenario):
+            if _CLASSICAL_RAW.search(scenario):
                 continue
             notes.append(scenario[:160])
     except Exception:  # noqa: BLE001

@@ -947,8 +947,92 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
     return finalize_customer_html(html, strict=True)
 
 
+#: The best-scoring window is not always a good one. Calling it "Strongest
+#: window" directly above a map that draws the same months as pressure made
+#: the page argue with itself, and the reader believes the picture.
+_BEST_WINDOW_LABEL = {
+    "up": "Strongest window",
+    "down": "Best window available",
+    "mixed": "Best window available",
+}
+
+
+def _window_tone(w: dict) -> str:
+    """The tone the transition map will give this window, decided once here.
+
+    Mirrors the direction rule in ``life_area_transition.build_transition_map``
+    so the heading above the map and the bands inside it cannot disagree.
+    """
+    if w.get("strong") or w.get("aligned"):
+        return "up"
+    try:
+        bav = int(float(w.get("bav") or 0))
+    except (TypeError, ValueError):
+        bav = 0
+    if (w.get("dasha_dir") == "down" or w.get("dasha") == "down"
+            or w.get("promise") == "down" or bav <= 3):
+        return "down"
+    return "mixed"
+
+
+def _question_transition_html(result: dict, pc: Optional[dict]) -> str:
+    """The same dated transition map the life-area cards use, for a question.
+
+    A question answer that only names one window hides the shape of the
+    period around it — when the tone changes, and which ruler or period lord
+    is behind each change.
+    """
+    if not isinstance(pc, dict) or not pc:
+        return ""
+    rows = []
+    for w in list(result.get("windows") or [])[:6]:
+        if not isinstance(w, dict) or not (w.get("start") or w.get("end")):
+            continue
+        row = dict(w)
+        row.setdefault("aligned", bool(w.get("strong")))
+        row.setdefault("dasha", w.get("dasha_dir") or "mixed")
+        rows.append(row)
+    if not rows:
+        return ""
+    try:
+        from life_area_transition import build_context_transits, build_transition_map
+        from report_conversational import render_transition_map
+    except Exception:  # noqa: BLE001
+        return ""
+    area_key = str(result.get("area_key") or "")
+    topic = result.get("topic")
+    house = 0
+    houses = list(getattr(topic, "houses", None) or [])
+    if houses:
+        house = int(houses[0] or 0)
+    start = result.get("start") or date.today()
+    nodes = build_transition_map(pc, area_key, rows, limit=6)
+    if not nodes:
+        return ""
+    context = []
+    try:
+        import report_confluence as CF
+        vim = CF.vimshottari_at(pc, start) or {}
+        context = build_context_transits(
+            pc, house, today=start, years=3,
+            md_lord=str(vim.get("md") or ""), ad_lord=str(vim.get("ad") or ""))
+    except Exception:  # noqa: BLE001
+        context = []
+    return render_transition_map(
+        pc, nodes, area=area_key, context=context, today=start, with_css=True,
+        kicker="Transition map for this question",
+        heading="How the answer changes across the window",
+        intro=(
+            "The answer is not one flat stretch. Each marker below is a dated "
+            "change of tone, taken from the same period and transit evidence "
+            "used above."
+        ),
+    )
+
+
 def render(result: dict, *, name: str = "", paid: bool = False,
-           price: int = 1499, prose: Optional[dict] = None) -> str:
+           price: int = 1499, prose: Optional[dict] = None,
+           pc: Optional[dict] = None) -> str:
     if not paid:
         return render_free(result, name=name, price=price, prose=prose)
     prose = prose or {}
@@ -976,8 +1060,11 @@ def render(result: dict, *, name: str = "", paid: bool = False,
         return finalize_customer_html(html, strict=True)
 
     intent = _intent(result.get("question", ""))
+    # A canonical promise does not always carry a direction key; the answer
+    # must not 500 because of it.
+    promise_direction = str(promise.get("direction") or "mixed")
     direction_word = {"up": "supports", "down": "does not favour",
-                       "mixed": "is mixed on"}.get(promise["direction"], "is mixed on")
+                      "mixed": "is mixed on"}.get(promise_direction, "is mixed on")
 
     if intent in ("how", "general"):
         # "How is my 5th house" is not a yes/no question — answering it with
@@ -991,7 +1078,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
                 if best["strong"] else
                 "Yes, but the timing is narrower than you would like.")
         promise_heading = "Does your chart even offer this?"
-        if promise["direction"] == "down" and not best["strong"]:
+        if promise_direction == "down" and not best["strong"]:
             lead = ("This is possible but your chart does not favour it. "
                     "The window below is the best of a weak set.")
     # Never splice legacy deep_verdict prose into customer output. Canonical
@@ -1022,6 +1109,9 @@ def render(result: dict, *, name: str = "", paid: bool = False,
             parts.append("The timing is mixed and should be treated as an opportunity rather than a guarantee.")
         if w.get("period_hits"):
             parts.append("The active period also connects with the matter being asked about.")
+        if _window_tone(w) == "down":
+            parts.append("The map below draws these same months as pressure: "
+                         "this is the best window on offer, not an easy one.")
         return " ".join(parts)
 
 
@@ -1037,7 +1127,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     blocks = ""
     if nearest and nearest["start"] < best["start"]:
         blocks += window_block(nearest, "Soonest possible window")
-    blocks += window_block(best, "Strongest window")
+    blocks += window_block(best, _BEST_WINDOW_LABEL[_window_tone(best)])
     if nearest and nearest["start"] > best["start"]:
         blocks += window_block(nearest, "Next window after that")
 
@@ -1115,10 +1205,13 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     lede_txt = llm_opening or (
         f"{who + ', ' if who else ''}here is the straight answer, then the chart behind it."
     )
+    # "Where the period and the sky agree" promises a favourable window, which
+    # is wrong whenever the best one on offer runs under pressure.
     timing_note = (
         f'<p class="sec-note">{_e(llm_timing)}</p>' if llm_timing else
-        '<p class="sec-note">These are the windows where the period and the sky agree '
-        'with the houses that own this question.</p>'
+        '<p class="sec-note">These are the windows where the period and the sky '
+        'both touch the houses that own this question — the moments when the '
+        'matter is live, whether the tone is easy or demanding.</p>'
     )
     action_note = (
         f'<p class="qa-action">{_e(llm_action)}</p>' if llm_action else ""
@@ -1131,13 +1224,14 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   <h2 class="qa-verdict">{_e(lead)}</h2>
   {main_pred}
   <p class="qa-promise"><b>{_e(promise_heading)}</b>
-  {_e(topic.label)} reads <b>{_e(promise['direction'])}</b> in your chart —
+  {_e(topic.label)} reads <b>{_e(promise_direction)}</b> in your chart —
   {_e(promise_conf)}. {_e(_topic_customer_note(topic.key))}</p>
   {now_line}
   {house_block}
   <h3 class="sec">Timing — when to move</h3>
   {timing_note}
   {blocks}
+  {_question_transition_html(result, pc)}
   {gap_note}
   {action_note}
   <p class="qa-caveat">Timing is a window, not a date. What the chart says is

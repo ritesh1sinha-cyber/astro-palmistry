@@ -1,0 +1,31 @@
+{
+  "design": "classical-v1",
+  "price": 298,
+  "bundlePrice": 298,
+  "lagna": "Aries",
+  "moonSign": "Leo",
+  "nakshatra": "Purva Phalguni",
+  "mahadasha": "Rahu",
+  "antardasha": "Jupiter",
+  "freeSections": [
+    "details",
+    "personality",
+    "family"
+  ],
+  "paidSections": [
+    "details",
+    "personality",
+    "family",
+    "career",
+    "marriage",
+    "currently",
+    "future",
+    "remedies",
+    "summary"
+  ],
+  "horizons": [
+    "next_6_months",
+    "next_12_months",
+    "next_2_3_years"
+  ]
+}

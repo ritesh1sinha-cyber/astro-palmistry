@@ -6,7 +6,7 @@
   "photoScore": 0.514,
   "photoAdvice": [],
   "summary": "Your right hand is read here as the way these qualities are being expressed now; your left hand is treated as the underlying tendency you started with. These areas look similar on both hands, so the reading treats them as relatively stable parts of your life: Life line, Head line, Heart line, Fate line.",
-  "teaser": "The full reading opens the chart working behind all 6 verdicts, 4 dated markings still ahead of you, the line-by-line reading of all 36 numbered points.",
+  "teaser": "The full reading opens the chart working behind all 6 verdicts, 4 dated markings still ahead of you, the line-by-line reading of all 35 numbered points.",
   "freeSections": [
     "Both palms, as the engine read them",
     "What your hands say you are",
@@ -72,7 +72,7 @@
     "schema_version": "1.0",
     "engine_version": "astro-2026.08.11-qcanonical-v2",
     "report_id": "",
-    "facts_hash": "cbe5fd2824f1fbaa6a4a2a87",
+    "facts_hash": "01b438e7c5274912634a8316",
     "first_name": "Meera",
     "age_band": "adult",
     "access": "paid",
@@ -91,26 +91,14 @@
         "confidence": "moderate",
         "signal_ids": [
           "R02_character",
-          "R07_character",
-          "HAND_AIR",
-          "FINGER_INDEX_LONGER_RING",
-          "LIFE_LINE_CLEAN",
-          "HEAD_LINE_CLEAN",
-          "HEART_LINE_CLEAN",
-          "FATE_LINE_CLEAN",
-          "SATURN_MOUNT_STRONG",
-          "MARS_MOUNT_STRONG",
-          "VENUS_MOUNT_STRONG",
-          "TRIDENT_ON_JUPITER"
+          "R07_character"
         ],
         "point_ids": [
           "R02_character",
           "R07_character"
         ],
-        "semantic_tags": [
-          "caution_theme"
-        ],
-        "semantic_summary": "",
+        "semantic_tags": [],
+        "semantic_summary": "Together, these signs point to two related parts of your temperament: Your energy is strongly tied to thinking, conversation and interaction; repetitive isolation can leave you mentally flat. You tend to be open with tim",
         "score": 2.0
       },
       {
@@ -120,26 +108,14 @@
         "confidence": "moderate",
         "signal_ids": [
           "R12_mind",
-          "R16_mind",
-          "HAND_AIR",
-          "FINGER_INDEX_LONGER_RING",
-          "LIFE_LINE_CLEAN",
-          "HEAD_LINE_CLEAN",
-          "HEART_LINE_CLEAN",
-          "FATE_LINE_CLEAN",
-          "SATURN_MOUNT_STRONG",
-          "MARS_MOUNT_STRONG",
-          "VENUS_MOUNT_STRONG",
-          "TRIDENT_ON_JUPITER"
+          "R16_mind"
         ],
         "point_ids": [
           "R12_mind",
           "R16_mind"
         ],
-        "semantic_tags": [
-          "caution_theme"
-        ],
-        "semantic_summary": "",
+        "semantic_tags": [],
+        "semantic_summary": "Together, these signs point to two related parts of how you think and decide: Your confidence may have developed gradually, with family expectations or the need for reassurance influencing earlier choices. Communication,",
         "score": 1.0
       },
       {
@@ -149,26 +125,14 @@
         "confidence": "moderate",
         "signal_ids": [
           "R18_love",
-          "R21_love",
-          "HAND_AIR",
-          "FINGER_INDEX_LONGER_RING",
-          "LIFE_LINE_CLEAN",
-          "HEAD_LINE_CLEAN",
-          "HEART_LINE_CLEAN",
-          "FATE_LINE_CLEAN",
-          "SATURN_MOUNT_STRONG",
-          "MARS_MOUNT_STRONG",
-          "VENUS_MOUNT_STRONG",
-          "TRIDENT_ON_JUPITER"
+          "R21_love"
         ],
         "point_ids": [
           "R18_love",
           "R21_love"
         ],
-        "semantic_tags": [
-          "caution_theme"
-        ],
-        "semantic_summary": "",
+        "semantic_tags": [],
+        "semantic_summary": "Together, these signs point to two related parts of your emotional life: When you trust someone, you may invest deeply and expect warmth and effort to be mutual. You may experience close relationships intensely and do be",
         "score": 2.0
       },
       {
@@ -178,26 +142,14 @@
         "confidence": "moderate",
         "signal_ids": [
           "R25_career",
-          "R28_career",
-          "HAND_AIR",
-          "FINGER_INDEX_LONGER_RING",
-          "LIFE_LINE_CLEAN",
-          "HEAD_LINE_CLEAN",
-          "HEART_LINE_CLEAN",
-          "FATE_LINE_CLEAN",
-          "SATURN_MOUNT_STRONG",
-          "MARS_MOUNT_STRONG",
-          "VENUS_MOUNT_STRONG",
-          "TRIDENT_ON_JUPITER"
+          "R28_career"
         ],
         "point_ids": [
           "R25_career",
           "R28_career"
         ],
-        "semantic_tags": [
-          "caution_theme"
-        ],
-        "semantic_summary": "",
+        "semantic_tags": [],
+        "semantic_summary": "Together, these signs point to two related parts of your work life: You may do better professionally when you build depth and credibility over time rather than changing direction simply because progress feels slow. Being",
         "score": 2.0
       },
       {
@@ -207,26 +159,14 @@
         "confidence": "moderate",
         "signal_ids": [
           "R35_wealth",
-          "R31_wealth",
-          "HAND_AIR",
-          "FINGER_INDEX_LONGER_RING",
-          "LIFE_LINE_CLEAN",
-          "HEAD_LINE_CLEAN",
-          "HEART_LINE_CLEAN",
-          "FATE_LINE_CLEAN",
-          "SATURN_MOUNT_STRONG",
-          "MARS_MOUNT_STRONG",
-          "VENUS_MOUNT_STRONG",
-          "TRIDENT_ON_JUPITER"
+          "R31_wealth"
         ],
         "point_ids": [
           "R35_wealth",
           "R31_wealth"
         ],
-        "semantic_tags": [
-          "financial_pressure"
-        ],
-        "semantic_summary": "",
+        "semantic_tags": [],
+        "semantic_summary": "Together, these signs point to two related parts of how you build security: Career standing and financial reward may reinforce each other: building a strong professional position can improve the resources that follow. Yo",
         "score": 1.0
       },
       {
@@ -235,18 +175,7 @@
         "strength": "tentative",
         "confidence": "moderate",
         "signal_ids": [
-          "R39_health",
-          "HAND_AIR",
-          "FINGER_INDEX_LONGER_RING",
-          "LIFE_LINE_CLEAN",
-          "HEAD_LINE_CLEAN",
-          "HEART_LINE_CLEAN",
-          "FATE_LINE_CLEAN",
-          "SATURN_MOUNT_STRONG",
-          "MARS_MOUNT_STRONG",
-          "VENUS_MOUNT_STRONG",
-          "TRIDENT_ON_JUPITER",
-          "FINGER_RING_LONGER_INDEX"
+          "R39_health"
         ],
         "point_ids": [
           "R39_health"
@@ -259,34 +188,34 @@
     "future_windows": [
       {
         "age_window": [
-          28,
-          34
-        ],
-        "domain": "life",
-        "confidence": "moderate"
-      },
-      {
-        "age_window": [
-          30,
+          27,
           36
         ],
-        "domain": "life",
+        "domain": "vitality",
         "confidence": "moderate"
       },
       {
         "age_window": [
-          34,
-          40
-        ],
-        "domain": "life",
-        "confidence": "moderate"
-      },
-      {
-        "age_window": [
-          30,
+          27,
           36
         ],
-        "domain": "life",
+        "domain": "mind_decision",
+        "confidence": "moderate"
+      },
+      {
+        "age_window": [
+          31,
+          39
+        ],
+        "domain": "relationships",
+        "confidence": "moderate"
+      },
+      {
+        "age_window": [
+          27,
+          36
+        ],
+        "domain": "career_direction",
         "confidence": "moderate"
       }
     ],

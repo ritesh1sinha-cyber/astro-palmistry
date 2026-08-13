@@ -13,7 +13,7 @@ from report_cards import _build_confluence, _confluence_label
 
 def test_confluence_label_humanizes_core_methods():
     assert _confluence_label("the classical method") == "Birth chart"
-    assert _confluence_label("the confirmation chart") == "D9 confirmation"
+    assert _confluence_label("the confirmation chart") == "Relationship divisional confirmation"
     assert _confluence_label("slow transits") == "Transit analysis"
 
 

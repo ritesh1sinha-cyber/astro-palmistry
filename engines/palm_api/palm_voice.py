@@ -7,16 +7,17 @@ import re
 from dataclasses import dataclass
 from typing import Any, Optional
 
-# Plain names for anatomy (customer-facing)
+# The mount keeps its own name, with the place on the hand attached so the
+# reader can put a finger on it without already knowing palmistry.
 MOUNT_PLAIN = {
-    "jupiter": "the pad below your index finger",
-    "saturn": "the pad below your middle finger",
-    "apollo": "the pad below your ring finger",
-    "sun": "the pad below your ring finger",
-    "mercury": "the pad below your little finger",
-    "venus": "the fleshy base of your thumb",
-    "moon": "the lower outer edge of your palm",
-    "mars": "the inner and outer pads at the thumb root",
+    "jupiter": "the Mount of Jupiter, under your index finger",
+    "saturn": "the Mount of Saturn, under your middle finger",
+    "apollo": "the Mount of Apollo, under your ring finger",
+    "sun": "the Mount of Apollo, under your ring finger",
+    "mercury": "the Mount of Mercury, under your little finger",
+    "venus": "the Mount of Venus, the ball of your thumb",
+    "moon": "the Mount of Luna, the outer edge of your palm",
+    "mars": "the Mars pads, either side of your palm at thumb height",
 }
 
 LINE_PLAIN = {
@@ -34,19 +35,16 @@ BANNED_PREFIXES = (
     r"Looking inside this specific chart:\s*",
 )
 
+# Mount and girdle names used to be stripped here. They are the palmist's own
+# vocabulary, and deleting them left holes mid-sentence ("On your you have a
+# trident") while making the reading sound like a machine describing pads of
+# skin. What stays banned is the astrology lane bleeding into a palm reading:
+# a hand has no ascendant, and a reader who came for their palm should not be
+# told about triplicities.
 BANNED_PHRASES = (
-    "Mount of Jupiter",
-    "Mount of Saturn",
-    "Mount of Sun",
-    "Mount of Mercury",
-    "Mount of Venus",
-    "Mount of Moon",
-    "Girdle of Venus",
-    "phalange",
     "triplicity",
     "weekday-born",
     "lunar half",
-    "triplicity",
     "ascendant",
     "chart-from-palm",
 )
@@ -161,7 +159,10 @@ def format_line_verdict(key: str, age: Optional[int], props: dict) -> PalmPredic
 
 def format_mount_verdict(key: str, level: str, meaning: str) -> PalmPrediction:
     plain = _mount_name(key)
-    scenario = meaning or f"{plain.capitalize()} reads as {level or 'average'}."
+    # .capitalize() would lowercase the mount's own name; only the first letter
+    # of the sentence should move.
+    opening = plain[:1].upper() + plain[1:]
+    scenario = meaning or f"{opening} reads as {level or 'average'}."
     scenario = polish_prose(scenario)
     if not scenario.endswith("."):
         scenario += "."
