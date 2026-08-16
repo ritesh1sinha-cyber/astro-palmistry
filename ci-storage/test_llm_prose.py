@@ -379,6 +379,56 @@ def test_chat_out_of_scope(llm_on):
     assert out["answer"] == OUT_OF_SCOPE_REFUSAL
 
 
+def test_palm_chat_job_change_is_not_refused(llm_on):
+    """A palm follow-up naming a life area the reading shows is that reading.
+
+    The old gate only accepted user_question / horary, so a valid career
+    question on a palm report fell through to the canned refusal whenever the
+    model answer failed QA.
+    """
+    from core.llm_client import set_stub
+    from llm.humanize import humanize_chat
+    from llm.schemas import ChatAnswer
+
+    def stub(schema, system, user, **kw):
+        return ChatAnswer(
+            answer="You will definitely change jobs in June for sure.",
+            used_fact_ids=["semantic_summary"],
+        )
+
+    set_stub(stub)
+    out = humanize_chat(_palm_chat_facts(), "is there a job change seen in near future")
+    assert out["out_of_scope"] is False
+    assert "life area" not in out["answer"].lower()
+    assert "fate line" in out["answer"].lower()
+
+
+def test_palm_chat_thumb_question_is_on_topic():
+    from llm.rules import followup_is_on_asked_topic
+
+    assert followup_is_on_asked_topic(
+        _palm_chat_facts(), "what is seen from my thumb length"
+    ) is True
+
+
+def test_palm_chat_out_of_scope_stays_refused(llm_on):
+    """A palm follow-up about something the hand can't show stays refused."""
+    from core.llm_client import set_stub
+    from llm.humanize import humanize_chat
+    from llm.schemas import ChatAnswer
+
+    def stub(schema, system, user, **kw):
+        return ChatAnswer(
+            answer="The stars align for a lottery win.",
+            used_fact_ids=[],
+            out_of_scope=True,
+        )
+
+    set_stub(stub)
+    out = humanize_chat(_palm_chat_facts(), "what is my lottery number")
+    assert out["out_of_scope"] is True
+
+
 def _question_case_facts():
     from llm.schemas import QuestionFacts, WindowFact
 

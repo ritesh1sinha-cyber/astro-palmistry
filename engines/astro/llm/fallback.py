@@ -1091,6 +1091,95 @@ def question_chat_fallback(facts: Any) -> str:
     return line[:600]
 
 
+def palm_chat_fallback(facts: Any, question: str) -> str:
+    """Deterministic palm follow-up answer when the model answer fails QA.
+
+    The palm reading is the whole hand, so a follow-up that names a life area
+    in the reading — or the hand itself — deserves a grounded answer, not a
+    refusal. Uses the same aspect vocabulary as the on-topic gate.
+    """
+    from .facts import public_fact_payload
+    from .rules import palm_aspect_for_question
+
+    payload = public_fact_payload(facts) or {}
+    if not isinstance(payload, dict):
+        payload = {}
+    q = (question or "").strip().lower()
+    matched = palm_aspect_for_question(payload, q) if q else None
+    if matched is not None:
+        return _palm_aspect_chat_answer(matched)
+    return _palm_whole_hand_chat_answer(payload)
+
+
+def _palm_aspect_chat_answer(a: dict) -> str:
+    title = str(a.get("title") or a.get("aspect") or "").replace("_", " ").strip()
+    summary = clean_palm_summary(str(a.get("semantic_summary") or "")).strip()
+    direction = str(a.get("direction") or "mixed").lower()
+    strength = str(a.get("strength") or "tentative").lower()
+    recognize = [str(r).strip() for r in (a.get("recognize") or []) if str(r).strip()]
+    window = list(a.get("age_window") or []) if isinstance(a.get("age_window"), list) else []
+    parts = []
+    if summary:
+        parts.append(f"On {title.lower()}, your palm reads: {summary}")
+    else:
+        lean = {
+            "support": "leans in your favour",
+            "caution": "leans with caution",
+            "mixed": "is mixed",
+            "neutral": "is mixed",
+        }.get(direction, "is mixed")
+        parts.append(f"On {title.lower()}, your palm {lean}.")
+    if recognize:
+        first = str(recognize[0]).strip().rstrip(".")
+        if first and first.lower() not in " ".join(parts).lower():
+            parts.append(f"In daily life this shows as {first[0].lower() + first[1:]}.")
+    if len(window) >= 2:
+        try:
+            parts.append(
+                f"This theme is most noticeable around ages "
+                f"{int(window[0])} to {int(window[1])}."
+            )
+        except (TypeError, ValueError):  # noqa: BLE001
+            pass
+    if direction in ("caution", "mixed", "down") or strength in ("tentative", "weak"):
+        parts.append("Treat it as a tendency to work with, not a fixed outcome.")
+    text = " ".join(parts)
+    try:
+        from .rules import scrub_palm_bodily
+        text = scrub_palm_bodily(text)
+    except Exception:  # noqa: BLE001
+        pass
+    return clip_sentences(text, 600)
+
+
+def _palm_whole_hand_chat_answer(payload: dict) -> str:
+    name = str(payload.get("first_name") or "").strip()
+    hc = payload.get("hand_contrast")
+    ps = payload.get("palm_state")
+    themes = []
+    if isinstance(ps, dict):
+        themes = [str(t).strip() for t in (ps.get("themes") or []) if str(t).strip()]
+    steady = []
+    if isinstance(hc, dict):
+        steady = [str(t).strip() for t in (hc.get("steady") or []) if str(t).strip()]
+    parts = []
+    if name:
+        parts.append(f"{name}, your palm reading covers the whole hand.")
+    else:
+        parts.append("Your palm reading covers the whole hand.")
+    if themes:
+        parts.append("Right now it points to: " + "; ".join(themes[:3]) + ".")
+    if steady:
+        parts.append("The steady thread is: " + "; ".join(steady[:3]) + ".")
+    if not themes and not steady:
+        parts.append(
+            "Ask about a life area shown in the reading — career, love, health, "
+            "money, mind, character, travel or fortune — and I can read what "
+            "the hand shows."
+        )
+    return clip_sentences(" ".join(parts), 600)
+
+
 def horary_fallback(facts: Any) -> dict[str, Any]:
     label = getattr(facts, "label", "Genuinely open") or "Genuinely open"
     conf = getattr(facts, "confidence", "moderate") or "moderate"

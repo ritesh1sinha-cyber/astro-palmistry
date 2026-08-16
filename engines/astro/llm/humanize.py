@@ -1013,6 +1013,9 @@ def humanize_chat(
         temperature=0.3,
     )
     on_topic = followup_is_on_asked_topic(facts, question)
+    is_palm = str(
+        facts.get("kind") if isinstance(facts, dict) else getattr(facts, "kind", "")
+    ) == "palm"
     if prose is None:
         result["stats"]["rejected"] = 1
         # Keep why it was rejected: a refusal the customer sees for a fair
@@ -1020,7 +1023,10 @@ def humanize_chat(
         result["stats"]["rejection_reasons"] = list(errs or [])
         result["fallback_used"] = True
         if on_topic:
-            result["answer"] = FB.question_chat_fallback(facts)
+            if is_palm:
+                result["answer"] = FB.palm_chat_fallback(facts, question)
+            else:
+                result["answer"] = FB.question_chat_fallback(facts)
             result["out_of_scope"] = False
             result["used_fact_ids"] = ["question", "direction", "timing"]
             return result
@@ -1034,7 +1040,10 @@ def humanize_chat(
         # the prompt used to describe every non-palm/horary reading as a
         # life-area chart. This report is that question; answer from facts.
         if on_topic:
-            result["answer"] = FB.question_chat_fallback(facts)
+            if is_palm:
+                result["answer"] = FB.palm_chat_fallback(facts, question)
+            else:
+                result["answer"] = FB.question_chat_fallback(facts)
             result["out_of_scope"] = False
             result["used_fact_ids"] = ["question", "direction", "timing"]
             result["fallback_used"] = True

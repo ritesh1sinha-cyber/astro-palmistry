@@ -657,6 +657,83 @@ def _names_the_reader(text: str, facts: Any) -> bool:
     return bool(re.search(rf"\b{esc}\s+(?:{verbs})\b", text, re.I))
 
 
+# Palm aspect keys to the everyday words that name them. A palm follow-up is
+# still about the reading when it points at one of the life areas the hand
+# shows, so these feed both the on-topic gate and the deterministic chat
+# fallback.
+_PALM_ASPECT_WORDS = {
+    "character": frozenset({
+        "character", "temperament", "nature", "personality", "self", "will",
+    }),
+    "mind": frozenset({
+        "mind", "intellect", "thinking", "thought", "decision", "decisions",
+        "focus", "memory",
+    }),
+    "love": frozenset({
+        "love", "marriage", "marry", "married", "wedding", "spouse", "husband",
+        "wife", "partner", "relationship",
+    }),
+    "career": frozenset({
+        "career", "job", "work", "promotion", "business", "profession",
+        "office", "job change",
+    }),
+    "wealth": frozenset({
+        "money", "wealth", "income", "salary", "finance", "financial", "loan",
+        "debt", "rich",
+    }),
+    "health": frozenset({
+        "health", "energy", "vitality", "wellbeing", "illness", "routine",
+        "recovery", "fitness",
+    }),
+    "travel": frozenset({
+        "travel", "change", "move", "moving", "imagination", "shift", "journey",
+    }),
+    "fortune": frozenset({
+        "fortune", "luck", "opportunity", "success", "destiny", "direction",
+    }),
+}
+
+# Words that point at the hand itself, not a life area. The palm reading is
+# the whole hand, so these are always about the reading.
+_PALM_FEATURE_WORDS = frozenset({
+    "thumb", "finger", "fingers", "fingertip", "fingernail", "palm", "hand",
+    "hands", "line", "lines", "life line", "head line", "heart line",
+    "fate line", "mount", "mounts", "crease", "creases", "nails", "wrist",
+    "fingerprint",
+})
+
+
+def palm_aspect_for_question(payload: Any, q: str) -> Optional[dict]:
+    """Which palm aspect a follow-up question asks about, or None.
+
+    ``payload`` is the projected public facts (the ``aspects`` list), and
+    ``q`` is the lowercased question. Matching runs on the aspect keys actually
+    present so an aspect the reading never reported can't be cited. When the
+    question could name two areas ("job change" touches work and change), the
+    aspect with the most word matches wins.
+    """
+    aspects = payload.get("aspects") if isinstance(payload, dict) else None
+    if not isinstance(aspects, list):
+        return None
+    best: Optional[dict] = None
+    best_score = 0
+    for a in aspects:
+        if not isinstance(a, dict):
+            continue
+        key = str(a.get("aspect") or "").lower()
+        title = str(a.get("title") or "").lower()
+        words = set(_PALM_ASPECT_WORDS.get(key, frozenset()))
+        words.add(key)
+        words.add(key.replace("_", " "))
+        if title:
+            words.add(title)
+        score = sum(1 for w in words if len(w) >= 3 and w in q)
+        if score > best_score:
+            best = a
+            best_score = score
+    return best
+
+
 # A user-question / horary report is about one asked matter. Everyday words
 # for that matter are restatement, not invention — "verdict" on a case
 # question, "hearing" on a lawsuit. Full-report and palm stay empty so the
@@ -730,14 +807,24 @@ def asked_topic_terms(facts: Any) -> set[str]:
 
 
 def followup_is_on_asked_topic(facts: Any, question: str) -> bool:
-    """True when a follow-up is still about this one-question reading."""
+    """True when a follow-up is still about this reading."""
     payload = public_fact_payload(facts) if facts is not None else {}
     if not isinstance(payload, dict):
         return False
-    if str(payload.get("kind") or "") not in ("user_question", "horary"):
-        return False
+    kind = str(payload.get("kind") or "")
     q = (question or "").strip().lower()
     if not q:
+        return False
+    if kind == "palm":
+        # The palm reading is the whole hand: a follow-up about a life area
+        # it shows, about the hand itself, or about a timing window is still
+        # this reading, never a new matter.
+        if _FOLLOWUP_TIMING.search(q):
+            return True
+        if any(re.search(rf"\b{re.escape(w)}\b", q) for w in _PALM_FEATURE_WORDS if len(w) >= 4):
+            return True
+        return palm_aspect_for_question(payload, q) is not None
+    if kind not in ("user_question", "horary"):
         return False
     asked = asked_topic_terms(facts)
     if any(re.search(rf"\b{re.escape(term)}\b", q) for term in asked if len(term) >= 4):
