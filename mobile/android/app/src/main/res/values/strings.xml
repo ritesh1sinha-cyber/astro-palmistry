@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GrahaRekha</string>
+    <string name="pick_palm_photo">Choose a palm photo</string>
+    <string name="take_photo">Take a photo</string>
+    <string name="no_app_for_link">No app on this phone can open that link.</string>
+    <string name="camera_needed">Camera access is needed to photograph your palm.</string>
+    <string name="download_started">Saving to Downloads…</string>
+    <string name="download_failed">That file could not be saved.</string>
+</resources>

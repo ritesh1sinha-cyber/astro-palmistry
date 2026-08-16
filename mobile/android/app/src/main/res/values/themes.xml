@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The site is a light editorial design with no dark variant, so the app is
+         pinned to light rather than following the system and half-inverting. -->
+    <style name="Theme.GrahaRekha" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/gold</item>
+        <item name="colorPrimaryDark">@color/paper</item>
+        <item name="colorAccent">@color/gold</item>
+        <item name="android:windowBackground">@color/paper</item>
+        <item name="android:statusBarColor">@color/paper</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/ink</item>
+    </style>
+</resources>

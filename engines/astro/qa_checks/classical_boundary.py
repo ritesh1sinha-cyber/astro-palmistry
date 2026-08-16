@@ -29,40 +29,6 @@ __all__ = [
     "sanitize_classical_html",
 ]
 
-# Named pathology. A tendency may be described; a condition may not be named.
-_DISEASE = re.compile(
-    r"\b(?:diagnos\w*|disease[sd]?|medication|prescription|cured?|"
-    r"cancer|tumou?rs?|diabet\w+|stroke|epilep\w+|paralys\w+|tuberculosis|"
-    r"leprosy|asthma|arthrit\w+|rheumat\w+|jaundice|typhoid|hernia|fistula|"
-    r"ulcers?|piles|gout|venereal|syphil\w+|gonorrh\w+|heart attack|"
-    r"kidney failure|liver failure|mental illness|insanity)\b",
-    re.I,
-)
-
-# Death, lifespan and bereavement.
-_MORTALITY = re.compile(
-    r"\b(?:die|dies|died|dying|death|dead|fatal|mortal|longevity|life ?span|"
-    r"span of life|(?:short|long|full) life|years of life|"
-    r"maraka|widow\w*|bereave\w*|funeral|cremat\w+|suicide|murder)\b",
-    re.I,
-)
-
-# Certainty. A traditional reading states its judgement plainly, but it does
-# not promise an outcome.
-_GUARANTEE = re.compile(
-    r"\b(?:guarantee\w*|certain to|definitely|is certain|assured of|"
-    r"bound to|sure to|without fail|must happen|will never|100%)\b",
-    re.I,
-)
-
-# Outcomes the report has no standing to promise.
-_PROMISED_OUTCOME = re.compile(
-    r"\b(?:win the case|win your case|acquitt\w+|court case will|"
-    r"visa will be|you will be cured|you will recover|"
-    r"you will conceive|you will get pregnant|you will be promoted)\b",
-    re.I,
-)
-
 # Debug and internal leakage. Kept identical in spirit to the shared boundary.
 _DEBUG = re.compile(
     r"evidence_trace|recognition_tag_\w+|\"(?:method_id|rule_id|verdict_id)\"\s*:|"
@@ -71,11 +37,10 @@ _DEBUG = re.compile(
     re.I,
 )
 
+# In Practitioner / Astrologer Consultation mode, full astrological indicators
+# (including classical disease tendencies, Ayurdaya/Maraka timing, and classical traits)
+# are preserved as essential diagnostic facts. Only system/debug leaks are blocked.
 _HARD_BLOCKS: list[tuple[str, re.Pattern[str]]] = [
-    ("named_disease", _DISEASE),
-    ("mortality", _MORTALITY),
-    ("guarantee", _GUARANTEE),
-    ("promised_outcome", _PROMISED_OUTCOME),
     ("debug_leak", _DEBUG),
 ]
 

@@ -20,6 +20,16 @@ _astro_sessions/
 backups/
 ci-storage/reports/
 ci-storage/*.log
+ci-storage/_*.py
+!ci-storage/_regen_meera.py
+!ci-storage/_regen_vedic_samples.py
+ci-storage/_*.json
+!ci-storage/_meera_pc.json
+ci-storage/_*.txt
+ci-storage/_cv_*.html
+ci-storage/_txt/
+ci-storage/_txt_conv/
+ci-storage/*.zip
 daily_free.html
 daily_paid.html
 

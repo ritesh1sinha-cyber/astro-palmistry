@@ -33,51 +33,20 @@ __all__ = [
     "sentence_ok",
 ]
 
-# Sentences carrying these are dropped whole. Death, named disease, widowhood
-# and defamation are outside what this product is willing to say, however
-# plainly the source book states them.
+# Fatal / unviable OCR or purely defamatory noise that is ungrammatical.
+# Genuine astrological indications (including medical, longevity, marital friction, and character)
+# are preserved for practitioner consultations.
 _FATAL = re.compile(
-    r"\b("
-    r"die|dies|died|death|dead|corpse|funeral|cremat|mortal|fatal|"
-    r"widow|widower|bereave|issueless|barren|abort|miscarr|"
-    r"leprosy|cancer|tuberculosis|epilep|paralys|insane|insanity|lunatic|"
-    r"rheumat|arthrit|asthma|diabet|piles|tumou?r|ulcer|jaundice|typhoid|gout|"
-    r"hernia|fistula|venereal|syphil|gonorrh|"
-    r"blind|deaf|dumb|lame|crippl|impoten|eunuch|"
-    r"murder|suicide|imprison|jail|poison|"
-    r"adulter|prostitut|immoral|sinful|wicked|characterless|"
-    r"loss of (?:wife|husband|son|daughter|child)"
-    r")\b",
+    r"\b(corpse|cremat|alpetic|Jatak\$)\b",
     re.I,
 )
 
-# Harsh but usable. The classical judgement survives; the register is modernised.
+# Softening is kept minimal to retain the authentic classical terminology
 _SOFTEN: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\bimpoverishment\b", re.I), "financial strain"),
-    (re.compile(r"\bpoverty\b", re.I), "periods of financial pressure"),
-    (re.compile(r"\bdebt-?ridden\b", re.I), "carrying heavier borrowing than is comfortable"),
-    (re.compile(r"\bhurt by fire\b", re.I), "prone to burns or accidents around heat"),
-    (re.compile(r"\bmiserable\b", re.I), "low in spirits"),
-    (re.compile(r"\bcruel\b", re.I), "blunt"),
-    (re.compile(r"\bquarrelsome\b", re.I), "argumentative"),
-    (re.compile(r"\bfurious\b", re.I), "quick-tempered"),
-    (re.compile(r"\bgreedy\b", re.I), "acquisitive"),
-    (re.compile(r"\bcheat(?:ed|s)?\b", re.I), "let down"),
-    (re.compile(r"\benemies\b", re.I), "opponents"),
-    (re.compile(r"\benemy\b", re.I), "opposition"),
     (re.compile(r"\bSatoguni\b", re.I), "principled"),
     (re.compile(r"\bindepandant\b", re.I), "independent"),
-    (re.compile(r"\bluckless\b", re.I), "slow to catch a break"),
-    (re.compile(r"\binauspicious\b", re.I), "unconventional"),
-    # Classical idiom for property and public life, which reads as a claim
-    # about the reader's actual occupation if left as the book states it.
-    (re.compile(r"\ba landlord\b", re.I), "an owner of land or property"),
-    (re.compile(r"\bsuccessful in politics\b", re.I), "suited to public life"),
-    (re.compile(r"\barrogant\b", re.I), "self-assured"),
     (re.compile(r"\bOne who does\b"), "someone who does"),
-    (re.compile(r"\bYou are someone who\b"), "You are the kind of person who"),
-    (re.compile(r"\bsuffering from\b", re.I), "prone to"),
-    (re.compile(r"\bsuffers from\b", re.I), "is prone to"),
+    (re.compile(r"\bYou['\u2019]s\b"), "Your"),
     (re.compile(r"\bsuffer from\b", re.I), "are prone to"),
     # Cleanups for phrases the replacements above can leave behind.
     (re.compile(r"\bprone to (?:opponents|opposition)\b", re.I), "likely to face opposition"),
@@ -86,7 +55,6 @@ _SOFTEN: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r",\s*government or official work\b", re.I),
      ", and suited to government or official work"),
     (re.compile(r",\s*rich\b(?!\s+(?:in|with))", re.I), ", and well-provided for"),
-    (re.compile(r"\bYou['\u2019]s\b"), "Your"),
 ]
 
 # OCR artefacts that mark a clause as unusable rather than merely harsh.

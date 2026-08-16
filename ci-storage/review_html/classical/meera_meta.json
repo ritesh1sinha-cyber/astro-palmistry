@@ -1,5 +1,5 @@
 {
-  "design": "classical-v1",
+  "design": "classical-v3-practitioner",
   "price": 298,
   "bundlePrice": 298,
   "lagna": "Aries",
@@ -22,6 +22,7 @@
     "children",
     "currently",
     "future",
+    "confluence",
     "remedies",
     "summary"
   ],

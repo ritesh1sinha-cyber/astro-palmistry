@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same palette as the site's :root, so the system bars do not sit on the
+         page as a different colour scheme. -->
+    <color name="paper">#F7F5F0</color>
+    <color name="ink">#16181D</color>
+    <color name="gold">#C9A227</color>
+    <color name="white">#FFFFFF</color>
+</resources>

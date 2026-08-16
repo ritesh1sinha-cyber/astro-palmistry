@@ -826,7 +826,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <div id="astroMain" style="display:none">
   <div class="subnav" id="astroNav">
    <button data-a="report"  aria-current="true">Full report</button>
-   <button data-a="classical">Classical Vedic</button>
+   <button data-a="classical" id="subnavClassical" hidden style="display:none">Classical Vedic</button>
    <button data-a="horary">Horary</button>
    <button data-a="question">Ask your chart</button>
    <button data-a="daily">Daily reading</button>
@@ -1733,7 +1733,7 @@ function paintReportsNav(){
 function paintAnalysisNav(){
   // Admin only — never show on home or for promocode / Google / signed-out.
   const show = isAdmin();
-  ['navAnalysis','mobAnalysis'].forEach(id=>{
+  ['navAnalysis','mobAnalysis','subnavClassical'].forEach(id=>{
     const el=$('#'+id);
     if(!el) return;
     el.style.display = show ? '' : 'none';
@@ -1802,6 +1802,12 @@ async function loadAdminAnalysis(){
         <p class="hint" style="margin:8px 0 12px">Approximate SPA traffic — useful for scaling, not unique visitors.</p>
         <table class="analysis-table"><thead><tr><th>Page</th><th class="num">Views</th></tr></thead>
         <tbody>${viewRows}</tbody></table>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="eyebrow">Practitioner & Astrologer Tools</div>
+        <h3 style="font-size:18px;margin:6px 0 8px">Classical Vedic Report (Consultation Brief)</h3>
+        <p class="hint" style="margin:0 0 12px">Access the 9-engine classical consultation brief with unfiltered medical, longevity and multi-method confluence readings.</p>
+        <button class="btn btn-gold btn-sm" type="button" onclick="go('astro');setAstroPane('classical');">Open Classical Vedic Engine</button>
       </div>
       <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" type="button" onclick="loadAdminAnalysis()">Refresh</button></div>`;
   }catch(e){
@@ -3326,6 +3332,10 @@ window.addEventListener('message', (e)=>{
 
 function setAstroPane(pane, {clear=true}={}){
   if(!pane) return;
+  if(pane === 'classical' && !isAdmin()){
+    toast('Classical Vedic report is admin only');
+    pane = 'report';
+  }
   ASTRO.pane = pane;
   $$('#astroNav button').forEach(x=>x.setAttribute('aria-current', x.dataset.a===pane));
   $$('.apane').forEach(p=>p.style.display = (p.id === 'ap-'+pane) ? '' : 'none');

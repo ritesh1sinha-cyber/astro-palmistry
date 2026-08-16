@@ -20,6 +20,7 @@ from typing import Any, Optional
 
 import classical_timing as CT
 import classical_voice as CV
+import classical_confluence as CC
 import report_shell as RS
 from bhardwaj_prose import LAGNA_HUMAN, NAKSHATRA_SNIPPETS, YOGA_HUMAN
 from qa_checks.classical_boundary import (
@@ -92,6 +93,13 @@ _CSS = """
 .cv-stone{margin:.45rem 0 .1rem;padding:.5rem .7rem;border-left:4px solid;border-radius:6px}
 .cv-stone.yes{border-color:#1e8449;background:#eefaf1;color:#14532d}
 .cv-stone.no{border-color:#c0392b;background:#fdf0ee;color:#7d241a}
+.cv-conf{width:100%;border-collapse:collapse;margin:1rem 0 1.25rem;font-size:.83rem}
+.cv-conf th,.cv-conf td{border-bottom:1px solid #eadfce;padding:.55rem .4rem;text-align:center}
+.cv-conf th:first-child{text-align:left;white-space:nowrap}
+.cv-cell{display:inline-block;border-radius:999px;padding:.17rem .42rem;font-size:.72rem;font-weight:700}
+.cv-cell.yes{background:#e8f6ec;color:#176b3a}.cv-cell.no{background:#fbe9e7;color:#a52c21}
+.cv-cell.even{background:#fff5d8;color:#8a5a00}.cv-cell.dated{background:#e7f2fb;color:#185e8b}
+.cv-cell.none{color:#92877b;background:#f4f1ed}.cv-methods{margin:.7rem 0}.cv-methods summary{cursor:pointer;color:#76522c;font-weight:700}
 .cv-flag{font-weight:700;font-size:.76rem;letter-spacing:.05em;text-transform:uppercase;
   margin-right:.35rem}
 """
@@ -207,7 +215,7 @@ def _lord_bullet(chart: BhardwajChart, house: int, label: str, *, domain: str) -
 # --------------------------------------------------------------------------
 
 def _client_details(chart: BhardwajChart, *, name: str, dob: str, tob: str,
-                    place: str) -> str:
+                    place: str, longevity_data: Optional[dict] = None) -> str:
     current_ad = next((a for a in chart.antars if a.get("status") == "current"), {})
     dasha = f"{chart.cur_md.get('md_lord', '')} Mahadasha"
     if current_ad.get("ad_lord"):
@@ -218,23 +226,44 @@ def _client_details(chart: BhardwajChart, *, name: str, dob: str, tob: str,
         ("Time of Birth", tob),
         ("Place of Birth", place),
         ("Ascendant / Lagna", f"{chart.lagna} ({_lord_of(chart, 1)} lord)"),
-        ("Moon Sign / Rashi", chart.moon_sign),
+        ("Moon Sign / Rashi", f"{chart.moon_sign}"),
         ("Nakshatra", chart.moon_nak),
         ("Current Dasha", dasha),
     ]
+    if longevity_data:
+        marakas = longevity_data.get("maraka_lords", [])
+        if marakas:
+            names = []
+            for m in marakas:
+                if isinstance(m, dict):
+                    val = m.get("lord") or m.get("planet") or ""
+                    if val and val not in names:
+                        names.append(str(val))
+                elif isinstance(m, str) and m and not m.startswith("{"):
+                    if m not in names:
+                        names.append(m)
+            if names:
+                rows.append(("Maraka Significators", ", ".join(names) + " (2nd & 7th lords)"))
+        if longevity_data.get("tier"):
+            rows.append(("Ayurdaya / Longevity", str(longevity_data["tier"])))
+
     body = "".join(
         f"<dt>{_e(k)}</dt><dd>{_e(v)}</dd>" for k, v in rows if str(v or "").strip()
     )
     return (
         '<section class="card"><h3 class="sec">Client Details</h3>'
+        '<div style="background:#fff8e7;border-left:4px solid #b78103;padding:0.6rem 0.8rem;margin-bottom:1rem;font-size:0.88rem;color:#5a4100;">'
+        '<b>Practitioner Consultation Brief:</b> This report compiles unfiltered classical readings across 9 traditional Jyotish systems '
+        '(Bhardwaj, BNN Nadi, Mehta Modern, KP, Jaimini, Goel Medical, Ayurdaya, Ashtakavarga, and RTVD). All traditional indications, '
+        'medical vulnerabilities, and planetary afflictions are retained without censorship for professional astrological consultation.'
+        '</div>'
         f'<dl class="cv-detail">{body}</dl>'
-        '<p class="sec-note">Every prediction below is read from these positions '
-        'using the classical texts, and names the chart factor it rests on.</p>'
+        '<p class="sec-note">Every indication below is traced directly to classical Shastra principles, multi-engine cross-verification, and planetary dashas.</p>'
         "</section>"
     )
 
 
-def _personality(chart: BhardwajChart) -> str:
+def _personality(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items: list[str] = []
     lagna_lord = _lord_of(chart, 1)
 
@@ -299,6 +328,10 @@ def _personality(chart: BhardwajChart) -> str:
         items.append(CV.bullet(yoga_labels[index], yoga["name"],
                                YOGA_HUMAN[yoga["name"]]))
 
+    note = _consensus_note("personality", evidence or {})
+    if note:
+        items.append(note)
+
     close = (
         f"Taken together, {chart.lagna} rising with a {chart.moon_sign} Moon gives a person "
         "who is capable and self-directed. The work is to stay steady when the chart's "
@@ -307,7 +340,7 @@ def _personality(chart: BhardwajChart) -> str:
     return _section("1. Personality Traits", items, close)
 
 
-def _family(chart: BhardwajChart) -> str:
+def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items: list[str] = []
 
     bullet = _lord_bullet(chart, 2, "Family values and speech", domain="finance")
@@ -357,6 +390,10 @@ def _family(chart: BhardwajChart) -> str:
                 "sense of standing slightly apart from the family even while remaining loyal",
             ))
 
+    note = _consensus_note("family", evidence or {}, life_area="home")
+    if note:
+        items.append(note)
+
     close = (
         "The family background has shaped a person who carries responsibility early and "
         "values stability. Where the chart shows friction, patience with elders works better "
@@ -365,7 +402,7 @@ def _family(chart: BhardwajChart) -> str:
     return _section("2. Family and Background", items, close)
 
 
-def _career(chart: BhardwajChart) -> str:
+def _career(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items: list[str] = []
     tenth_lord = _lord_of(chart, 10)
 
@@ -420,6 +457,9 @@ def _career(chart: BhardwajChart) -> str:
         f"build the field that {tenth_lord} naturally rules, and let seniority accumulate; "
         "the chart supports steady rise more than sudden jumps",
     ))
+    note = _consensus_note("career", evidence or {})
+    if note:
+        items.append(note)
 
     close = (
         "Success in this chart is built rather than gifted. Skill, visibility and patience "
@@ -428,7 +468,7 @@ def _career(chart: BhardwajChart) -> str:
     return _section("3. Career and Professional Nature", items, close)
 
 
-def _marriage(chart: BhardwajChart) -> str:
+def _marriage(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items: list[str] = []
     seventh_lord = _lord_of(chart, 7)
     lord_in, book = _lord_book(chart, 7, domain="marriage")
@@ -469,6 +509,10 @@ def _marriage(chart: BhardwajChart) -> str:
             "the classical reading is a partner who is educated, advisory or steadying, and "
             "elders who help rather than obstruct",
         ))
+    note = _consensus_note("marriage", evidence or {}, label="What the chart confirms",
+                           life_area="love")
+    if note:
+        items.append(note)
 
     mars_house = _house_of(chart, "Mars")
     if mars_house in (1, 4, 7, 8, 12):
@@ -588,7 +632,7 @@ def _care_planet(chart: BhardwajChart) -> str:
     return _lord_of(chart, 6) or _lord_of(chart, 1)
 
 
-def _health(chart: BhardwajChart, buckets: list[dict]) -> str:
+def _health(chart: BhardwajChart, buckets: list[dict], evidence: Optional[dict] = None) -> str:
     items: list[str] = []
 
     body = _SIGN_BODY.get(chart.lagna)
@@ -669,6 +713,10 @@ def _health(chart: BhardwajChart, buckets: list[dict]) -> str:
             + (f", supported by the {care} remedy: {remedy}" if remedy else ""),
         ))
 
+    note = _consensus_note("health", evidence or {})
+    if note:
+        items.append(note)
+
     close = (
         "Read this as maintenance rather than medicine. The chart says which part of the "
         "routine to guard and when to guard it hardest; anything a doctor should see still "
@@ -724,21 +772,30 @@ def _child_trait(sign: str) -> str:
     return f"the sign gives the child {rest}"
 
 
-def _children(chart: BhardwajChart, buckets: list[dict]) -> str:
+def _children(chart: BhardwajChart, buckets: list[dict], evidence: Optional[dict] = None) -> str:
     items: list[str] = []
     fifth_lord = _lord_of(chart, 5)
     fifth_sign = _sign_of(chart, 5)
     lord_in, book = _lord_book(chart, 5, domain="children")
 
     if lord_in:
+        progeny_effect = (
+            f"in the classical method the 5th lord {fifth_lord} in the {_ord(lord_in)} house links your progeny "
+            f"and lineage to {_HOUSE_TOPIC.get(lord_in, 'that part of life')}; the texts indicate children who "
+            f"achieve recognized standing, bringing honor and support to the family"
+            if lord_in in (1, 4, 5, 7, 9, 10, 11) else
+            f"matters of progeny, education and lineage are reached through {_HOUSE_TOPIC.get(lord_in, 'that part of life')}, "
+            f"requiring steady guidance and patience in their developmental years"
+        )
         items.append(CV.bullet(
-            "The house of children",
+            "Progeny and 5th lord placement",
             CV.lord_cause(fifth_lord, 5, lord_in),
-            book or (
-                "children, teaching and creative work are reached through "
-                f"{_HOUSE_TOPIC.get(lord_in, 'that part of life')}"
-            ),
+            progeny_effect,
         ))
+
+    note = _consensus_note("children", evidence or {})
+    if note:
+        items.append(note)
 
     jup = chart.planets.get("Jupiter") or {}
     jup_house = _house_of(chart, "Jupiter")
@@ -836,8 +893,9 @@ def _children(chart: BhardwajChart, buckets: list[dict]) -> str:
     ))
 
     close = (
-        "The texts read children through the 5th house and through Jupiter. Take this as "
-        "guidance for their care, their schooling and their encouragement, not as a count."
+        "The classical texts read progeny and children through the natal 5th house, Jupiter (Putrakaraka), and Saptamsha (D7). "
+        "Bhavat Bhavam reads the 5th house as the child's own Lagna, the 9th house as their education (5th from 5th), and the 2nd house "
+        "as their vocation (10th from 5th). Take this as diagnostic guidance for their care, schooling, and lineage harmony."
     )
     return _section("6. Children — Health, Education and Path", items, close)
 
@@ -872,7 +930,7 @@ def _delivery_timing(chart: BhardwajChart, md_lord: str) -> str:
     )
 
 
-def _currently(chart: BhardwajChart) -> str:
+def _currently(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items: list[str] = []
     md_lord = str(chart.cur_md.get("md_lord") or "")
     current_ad = next((a for a in chart.antars if a.get("status") == "current"), {})
@@ -924,6 +982,9 @@ def _currently(chart: BhardwajChart) -> str:
         "a fixed rhythm for sleep, food and work does more for this stretch than any single "
         "decision you could make",
     ))
+    note = _consensus_note("career", evidence or {}, label="What the present chapter confirms")
+    if note:
+        items.append(note)
 
     close = (
         "Life may feel demanding rather than fast right now. The classical view is that a "
@@ -932,39 +993,73 @@ def _currently(chart: BhardwajChart) -> str:
     return _section("7. What You Are Going Through Currently", items, close)
 
 
-def _future(chart: BhardwajChart, buckets: list[dict]) -> str:
+def _future(chart: BhardwajChart, buckets: list[dict], evidence: Optional[dict] = None) -> str:
     blocks: list[str] = []
+    md_lord = str(chart.cur_md.get("md_lord") or "")
+    seen_md_bullet = False
+
     for bucket in buckets:
         lords = CT.ruling_lords(bucket)
         items: list[str] = []
 
+        periods = bucket.get("periods") or []
         period_names = ", ".join(
             f"{p['label']} ({_pretty(p['start'])} to {_pretty(p['end'])})"
-            for p in (bucket.get("periods") or [])[:3]
+            for p in periods[:3]
         )
         if period_names:
             items.append(CV.bullet("Period running", period_names,
                                    "this is the timing frame everything below is read against"))
 
-        for lord in lords[:2]:
+        # Find specific Antardasha lords active in this bucket
+        ad_lords = [p.get("lord") for p in periods if p.get("lord") and p.get("lord") in PLANETS]
+        distinct_ad = [l for l in ad_lords if l != md_lord]
+        
+        # If there is a distinct sub-period lord (Antardasha), describe its specific effect
+        for ad in dict.fromkeys(distinct_ad):
             items.append(CV.bullet(
-                CV.label_for("future", planet=lord),
-                f"{lord} {_rules_phrase(chart, lord)}, and governs this stretch",
-                f"it {_LORD_EFFECT.get(lord, 'colours the period')}, so expect movement in "
-                f"{_HOUSE_TOPIC.get(_focus_house(chart, lord), 'these matters')}",
+                f"Sub-period ruler ({ad})",
+                f"{ad} {_rules_phrase(chart, ad)}, acting within the {md_lord} Mahadasha",
+                f"it {_LORD_EFFECT.get(ad, 'colours this stretch')}, activating "
+                f"{_HOUSE_TOPIC.get(_focus_house(chart, ad), 'these matters')} during this timing window",
             ))
 
-        for window in bucket.get("windows") or []:
+        # Only describe the overarching Mahadasha lord once (in the first horizon)
+        if md_lord and not seen_md_bullet:
             items.append(CV.bullet(
-                window["label"],
-                f"{window['planet']} crosses the relevant house from "
-                f"{_pretty(window['start'])} to {_pretty(window['end'])}",
-                "the birth promise, the running period and the transit agree here, so this is "
-                "the strongest dated opening in this stretch"
-                if window.get("aligned") else
-                "the period supports this even though the birth chart is mixed, so treat it as "
-                "an opening to test rather than a certainty",
+                f"Overarching dasha lord ({md_lord})",
+                f"{md_lord} {_rules_phrase(chart, md_lord)}, and sets the macro theme for this chapter of life",
+                f"it {_LORD_EFFECT.get(md_lord, 'colours the major period')}, bringing overall focus to "
+                f"{_HOUSE_TOPIC.get(_focus_house(chart, md_lord), 'these matters')}",
             ))
+            seen_md_bullet = True
+
+        for window in bucket.get("windows") or []:
+            area_name = window.get("label", "Opportunity window")
+            planet_tr = window.get("planet", "")
+            items.append(CV.bullet(
+                f"Transit trigger: {area_name}",
+                f"{planet_tr} transits the relevant house from "
+                f"{_pretty(window['start'])} to {_pretty(window['end'])}",
+                f"the running sub-period and planetary transit converge on {area_name.lower()}, making this "
+                f"a key window for concrete developments in that sphere"
+                if window.get("aligned") else
+                f"transiting {planet_tr} activates {area_name.lower()} during this period, offering an opening to advance through deliberate effort",
+            ))
+
+        # The canonical life map is the same timing source the LLM full report
+        # uses. It is rendered here in the classical bullet form, never as a
+        # separate modern card.
+        if not blocks:
+            for area, label in (("career", "Career"), ("money", "Money"),
+                                ("love", "Marriage"), ("children", "Children"),
+                                ("health", "Health")):
+                note = _consensus_note(
+                    "marriage" if area == "love" else area,
+                    evidence or {}, label=f"{label} in the life map", life_area=area,
+                )
+                if note:
+                    items.append(note)
 
         if items:
             blocks.append(
@@ -984,6 +1079,115 @@ def _future(chart: BhardwajChart, buckets: list[dict]) -> str:
         '<p class="sec-note">Read from the Vimshottari sequence and from slow planets '
         'crossing the houses your chart has promised.</p>'
         + "".join(blocks)
+        + f'<p class="cv-close">{_e(close)}</p></section>'
+    )
+
+
+_CONF_CELL = {
+    CC.SUPPORT: ("yes", "supports"),
+    CC.CAUTION: ("no", "caution"),
+    CC.MIXED: ("even", "even"),
+    CC.ACTIVE: ("dated", "dated"),
+    CC.QUIET: ("none", "&mdash;"),
+}
+
+# What each system is, in one phrase, so the table is not six proper nouns.
+_METHOD_GLOSS = {
+    "Bhardwaj case-book": "the case-book this report is built on",
+    "BNN nadi": "the nadi method, which reads planets in chains rather than houses",
+    "Mehta modern": "the modern-technique method, which weighs house lords by placement",
+    "Jaimini karaka": "the karaka method, which reads the chart from its strongest planet",
+    "RTVD year-wise": "the year-wise method, which assigns one house to each year of life",
+    "Blind chart": "the progression method, which reads Jupiter and Saturn against the lagna",
+}
+
+_AGREEMENT_LEAD = {
+    ("strong", CC.SUPPORT): "the methods agree, and they agree it is supported",
+    ("strong", CC.CAUTION): "the methods agree, and they agree it asks for care",
+    ("partial", CC.SUPPORT): "most of what spoke leans supportive",
+    ("partial", CC.CAUTION): "most of what spoke asks for care",
+    ("split", CC.SUPPORT): "the methods are split, with the balance supportive",
+    ("split", CC.CAUTION): "the methods are split, with the balance cautionary",
+    ("split", CC.MIXED): "the methods are evenly split",
+    ("thin", CC.SUPPORT): "only one system took a side, and it was supportive",
+    ("thin", CC.CAUTION): "only one system took a side, and it asked for care",
+    ("undecided", CC.MIXED): "every system read this house as ordinary — no system flags it",
+    ("no reading", CC.QUIET): "no system had anything decisive to say",
+}
+
+
+def _conf_table(blocks: list[dict]) -> str:
+    head = "".join(f"<th>{_e(b['label'])}</th>" for b in blocks)
+    rows: list[str] = []
+    for method in CC.METHOD_ORDER:
+        cells: list[str] = []
+        for block in blocks:
+            state = next((r["state"] for r in block["rows"] if r["method"] == method),
+                         CC.QUIET)
+            css, text = _CONF_CELL[state]
+            cells.append(f'<td><span class="cv-cell {css}">{text}</span></td>')
+        rows.append(f"<tr><th>{_e(method)}</th>{''.join(cells)}</tr>")
+    return (
+        '<table class="cv-conf"><thead><tr><th>Method</th>' + head + "</tr></thead>"
+        "<tbody>" + "".join(rows) + "</tbody></table>"
+    )
+
+
+def _conf_verdict(block: dict) -> str:
+    """One sentence on what the systems concluded, then why."""
+    lead = _AGREEMENT_LEAD.get((block["agreement"], block["direction"]),
+                               "the systems do not converge here")
+    counts = ""
+    if block["support"] or block["caution"]:
+        parts = []
+        if block["support"]:
+            parts.append(f"{block['support']} support")
+        if block["caution"]:
+            parts.append(f"{block['caution']} ask for care")
+        counts = (f" Of the {block['heard']} systems that spoke, "
+                  + " and ".join(parts) + ".")
+
+    reasons = [CC.method_note(block["rows"], m) for m in
+               ("Bhardwaj case-book", "RTVD year-wise", "Blind chart")]
+    reasons = [r for r in reasons if r and "no reading" not in r]
+    why = ""
+    if reasons:
+        why = " " + "; ".join(r[0].upper() + r[1:] for r in reasons[:2]) + "."
+    return f"<b>{_e(block['label'])}</b> &mdash; {_e(lead)}.{_e(counts)}{_e(why)}"
+
+
+def _confluence(chart: BhardwajChart, pc: dict) -> str:
+    """Section 9: the same chart, read again by five further classical systems."""
+    try:
+        blocks = CC.confluence_rows(pc, chart)
+    except Exception as exc:                                          # noqa: BLE001
+        print(f"[classical_report] confluence skipped: {exc}", flush=True)
+        return ""
+    if not blocks or all(b["heard"] <= 1 for b in blocks):
+        return ""
+
+    gloss = "".join(
+        f"<li><b>{_e(m)}</b>: {_e(_METHOD_GLOSS[m])}.</li>" for m in CC.METHOD_ORDER
+    )
+    verdicts = "".join(f"<li>{_conf_verdict(b)}</li>" for b in blocks)
+    close = (
+        "Where several systems say the same thing, act on it. Where they split, the chart "
+        "is telling you the area is genuinely mixed, and the remedies below are the "
+        "classical answer to exactly that."
+    )
+    return (
+        '<section class="card"><h3 class="sec">9. Where the Classical Methods Agree</h3>'
+        '<p class="sec-note">Everything above is read from one classical source. Your '
+        'chart was then read again, independently, by five further systems. A prediction '
+        'several systems reach on their own is worth more than one that only one of them '
+        'makes &mdash; that agreement is what this section shows.</p>'
+        + _conf_table(blocks)
+        + '<p class="sec-note">Read the columns as: <b>supports</b>, the system backs the '
+        'area; <b>caution</b>, it asks for care; <b>even</b>, it reads the house as '
+        'ordinary; <b>dated</b>, it names the years rather than judging the area.</p>'
+        + f'<ul class="cv-bullets">{verdicts}</ul>'
+        + f'<details class="cv-methods"><summary>What each method is</summary>'
+          f'<ul class="cv-bullets">{gloss}</ul></details>'
         + f'<p class="cv-close">{_e(close)}</p></section>'
     )
 
@@ -1123,7 +1327,7 @@ def _remedies(chart: BhardwajChart, pc: dict) -> str:
         "then mantra and charity, and only then a stone."
     )
     return (
-        '<section class="card"><h3 class="sec">9. Remedies and Guidance</h3>'
+        '<section class="card"><h3 class="sec">10. Remedies and Guidance</h3>'
         '<p class="sec-note">Chosen for the planets that actually rule your chart and your '
         'present period, not a general list.</p>'
         + "".join(cards)
@@ -1186,6 +1390,66 @@ def _section(title: str, items: list[str], close: str) -> str:
     )
 
 
+def _life_map_evidence(pc: dict, chart: BhardwajChart, *, today: Optional[date]) -> dict:
+    """Canonical full-report evidence, kept behind the classical prose.
+
+    `report_cards` is the same multi-method confluence pipeline used by the
+    LLM full report.  We use its *facts* and transition map here, not its
+    Western/conversational renderer.  LLM prose remains language-only and is
+    deliberately not printed in this report.
+    """
+    try:
+        import report_cards as RC
+        cards = RC.build_cards(pc, today=today)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[classical_report] life map unavailable: {exc}", flush=True)
+        return {"areas": {}, "llm_used": False}
+
+    areas = {}
+    for card in cards:
+        result = (getattr(card, "confluence", None) or {}).get("canonical_result") or {}
+        areas[str(getattr(card, "area", "") or "")] = {
+            "direction": str(getattr(card, "direction", "") or ""),
+            "headline": str(getattr(card, "headline", "") or ""),
+            "backing": str(getattr(card, "backing", "") or ""),
+            "window": str(getattr(card, "window", "") or ""),
+            "transition_map": list(getattr(card, "transition_map", None) or []),
+            "canonical": result,
+        }
+
+    # Run the same structured LLM layer as the full report when it is enabled.
+    # Its accepted output is retained as internal editorial context only: all
+    # visible sentences below continue to be rendered through classical_voice.
+    llm_used = False
+    try:
+        from llm.facts import build_report_facts
+        from llm.humanize import humanize
+        facts = build_report_facts(pc, cards, name=chart.name, access="paid", today=today)
+        llm_used = bool(humanize("full_report", facts, access="paid").get("enabled"))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[classical_report] LLM life-map context unavailable: {exc}", flush=True)
+    return {"areas": areas, "llm_used": llm_used}
+
+
+def _consensus_note(area: str, evidence: dict, *, label: str = "What the chart confirms",
+                    life_area: str = "") -> str:
+    """One classical bullet only when two or more methods take the same side."""
+    block = (evidence.get("confluence") or {}).get(area) or {}
+    direction = str(block.get("direction") or "")
+    count = int(block.get("support") if direction == CC.SUPPORT else block.get("caution") or 0)
+    if count < 2 or direction not in (CC.SUPPORT, CC.CAUTION):
+        return ""
+    card = (evidence.get("life_map") or {}).get("areas", {}).get(life_area or area) or {}
+    basis = str(card.get("backing") or card.get("headline") or "").strip()
+    if not basis:
+        basis = "the same chart factors repeat when this area is read in more than one way"
+    if direction == CC.SUPPORT:
+        meaning = "the combined reading supports this area. Use the favourable period with discipline; do not leave the promise unused"
+    else:
+        meaning = "the combined reading asks for care in this area. Keep the remedy, routine and timing close rather than forcing the matter"
+    return CV.bullet(label, basis, meaning)
+
+
 def _locked(price: int) -> str:
     return (
         '<section class="card"><h3 class="sec">The rest of the reading</h3>'
@@ -1218,28 +1482,48 @@ def _locked(price: int) -> str:
 def build_sections(pc: dict, *, name: str = "", dob: str = "", tob: str = "",
                    place: str = "", today: Optional[date] = None) -> dict:
     """Every section of the report, keyed, so free and paid can select."""
+    from classical_claims import assemble_practitioner_facts
+    from classical_llm_synthesis import generate_practitioner_synthesis
+
     chart = BhardwajChart(pc, _load_book())
     buckets = CT.horizon_buckets(pc, today=today)
+    blocks = CC.confluence_rows(pc, chart)
+
+    practitioner_facts = assemble_practitioner_facts(
+        pc, chart, name=name, dob=dob, tob=tob, place=place
+    )
+    synthesis = generate_practitioner_synthesis(practitioner_facts)
+
+    evidence = {
+        "confluence": {str(block.get("key") or ""): block for block in blocks},
+        "life_map": _life_map_evidence(pc, chart, today=today),
+        "claims_by_section": practitioner_facts.get("claims_by_section", {}),
+        "synthesis": synthesis,
+        "longevity": practitioner_facts.get("longevity", {}),
+    }
     return {
-        "details": _client_details(chart, name=name, dob=dob, tob=tob, place=place),
-        "personality": _personality(chart),
-        "family": _family(chart),
-        "career": _career(chart),
-        "marriage": _marriage(chart),
-        "health": _health(chart, buckets),
-        "children": _children(chart, buckets),
-        "currently": _currently(chart),
-        "future": _future(chart, buckets),
+        "details": _client_details(chart, name=name, dob=dob, tob=tob, place=place,
+                                  longevity_data=practitioner_facts.get("longevity")),
+        "personality": _personality(chart, evidence),
+        "family": _family(chart, evidence),
+        "career": _career(chart, evidence),
+        "marriage": _marriage(chart, evidence),
+        "health": _health(chart, buckets, evidence),
+        "children": _children(chart, buckets, evidence),
+        "currently": _currently(chart, evidence),
+        "future": _future(chart, buckets, evidence),
+        "confluence": _confluence(chart, pc),
         "remedies": _remedies(chart, pc),
         "summary": _summary(chart, buckets),
         "_chart": chart,
         "_buckets": buckets,
+        "_evidence": evidence,
     }
 
 
 FREE_KEYS = ("details", "personality", "family")
 PAID_KEYS = ("details", "personality", "family", "career", "marriage",
-             "health", "children", "currently", "future", "remedies", "summary")
+             "health", "children", "currently", "future", "confluence", "remedies", "summary")
 
 
 def classical_report(pc: dict, *, name: str = "", dob: str = "", tob: str = "",
@@ -1261,8 +1545,8 @@ def classical_report(pc: dict, *, name: str = "", dob: str = "", tob: str = "",
         doc = RS.page(
             f"Classical Vedic Report — {display_name}",
             body,
-            eyebrow="Classical reading",
-            heading=f"{display_name}, this is what your chart says in the traditional texts.",
+            eyebrow="Classical Consultation Reading",
+            heading=f"{display_name}, Astrologer's Consultation Brief across Traditional Shastras.",
             sub=f"{chart.lagna} ascendant · Moon in {chart.moon_sign} · "
                 f"{chart.cur_md.get('md_lord', '')} mahadasha",
         )
@@ -1273,7 +1557,7 @@ def classical_report(pc: dict, *, name: str = "", dob: str = "", tob: str = "",
 
     current_ad = next((a for a in chart.antars if a.get("status") == "current"), {})
     meta = {
-        "design": "classical-v1",
+        "design": "classical-v3-practitioner",
         "price": price,
         "bundlePrice": bundle_price,
         "lagna": chart.lagna,

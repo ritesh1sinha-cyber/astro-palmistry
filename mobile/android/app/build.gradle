@@ -1,0 +1,78 @@
+plugins {
+    id 'com.android.application'
+}
+
+def baseUrl = (project.findProperty('graharekha.baseUrl')
+        ?: 'https://astro-palmistry.vercel.app/').toString().trim()
+def webHost = new URI(baseUrl).host
+def plainHttp = baseUrl.startsWith('http://')
+
+// Release signing is opt-in: drop a keystore.properties next to gradle.properties
+// and `assembleRelease` signs with it. Without that file the release variant is
+// still built, just unsigned, so a fresh clone of this repo is never blocked on a
+// secret it does not have.
+def keystoreFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystoreFile.exists()) {
+    keystoreFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'com.graharekha.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.graharekha.app'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+
+        buildConfigField 'String', 'BASE_URL', "\"${baseUrl}\""
+        buildConfigField 'String', 'WEB_HOST', "\"${webHost}\""
+        buildConfigField 'boolean', 'ALLOW_PLAIN_HTTP', "${plainHttp}"
+        manifestPlaceholders = [cleartext: plainHttp ? 'true' : 'false']
+    }
+
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            release {
+                storeFile rootProject.file(keystoreProps.getProperty('storeFile'))
+                storePassword keystoreProps.getProperty('storePassword')
+                keyAlias keystoreProps.getProperty('keyAlias')
+                keyPassword keystoreProps.getProperty('keyPassword')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            applicationIdSuffix '.debug'
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // AppCompat drags in kotlin-stdlib 1.8.22 next to an older kotlin-stdlib-jdk8,
+    // and the two overlap because 1.8 folded the jdk7/jdk8 artifacts into the main
+    // one. The BOM lines them all up so dexing does not see duplicate classes.
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}

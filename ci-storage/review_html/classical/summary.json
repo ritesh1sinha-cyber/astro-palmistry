@@ -1,8 +1,8 @@
 [
   {
     "slug": "meera",
-    "free_bytes": 43888,
-    "paid_bytes": 58584,
+    "free_bytes": 44702,
+    "paid_bytes": 63811,
     "lagna": "Aries",
     "mahadasha": "Rahu",
     "paid_sections": [
@@ -15,14 +15,15 @@
       "children",
       "currently",
       "future",
+      "confluence",
       "remedies",
       "summary"
     ]
   },
   {
     "slug": "ramesh",
-    "free_bytes": 43853,
-    "paid_bytes": 58857,
+    "free_bytes": 44667,
+    "paid_bytes": 64146,
     "lagna": "Gemini",
     "mahadasha": "Saturn",
     "paid_sections": [
@@ -35,6 +36,7 @@
       "children",
       "currently",
       "future",
+      "confluence",
       "remedies",
       "summary"
     ]
