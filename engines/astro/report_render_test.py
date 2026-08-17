@@ -155,7 +155,24 @@ if pc:
           body_of(fp).count("locked-inline") < body_of(ff).count("locked-inline"),
           f"free={body_of(ff).count('locked-inline')} "
           f"paid={body_of(fp).count('locked-inline')}")
-    check("the bundle is offered in free only",
+    # Free-view redesign: the paid depth is titled and blurred, never leaked.
+    check("free shows six titled-but-locked sections",
+          ff.count('class="locked-section"') == 6,
+          f"{ff.count('class=\"locked-section\"')} lock sections")
+    check("free blurs the placeholder bodies", "lock-blur" in ff)
+    check("free names the sections as locked", "in the full reading" in ff)
+    check("old locked-preview block is gone", "locked-preview" not in ff)
+    check("old bullet-pointed teaser copy is gone",
+          "What the full reading adds" not in ff)
+    check("per-card action is a placeholder, not the real remedy",
+          "The specific action and mantra for this area are in the full reading." in ff)
+    check("free never carries the dated timeline",
+          "<ol class=\"timeline\">" not in ff)
+    check("free never carries the dated windows",
+          "<ol class=\"windows-list\">" not in ff)
+    check("paid has no lock sections",
+          '<section class="locked-section">' not in fp)
+    check("bundle is offered in free only",
           "Everything, one package" in ff and "Everything, one package" not in fp)
     check("bundle asks for contact, not a payment button",
           "admin@graharekha.co.in" in ff

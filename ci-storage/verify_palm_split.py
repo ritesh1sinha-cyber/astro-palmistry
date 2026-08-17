@@ -122,7 +122,7 @@ def main():
     # free: verdicts and photographs present, working absent
     c.has("free", free, "locked-inline")
     c.has("free", free, "data-unlock")
-    c.has("free", free, "What the full reading adds")
+    c.has("free", free, "lock-blur")
     c.has("free", free, "palm-imgs")
     c.has("free", free, "Left hand")
     c.has("free", free, "Right hand")

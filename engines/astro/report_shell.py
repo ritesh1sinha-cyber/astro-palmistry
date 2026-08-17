@@ -101,6 +101,17 @@ font-weight:600;color:var(--mixed)}
 .blurred{filter:blur(4.5px);user-select:none;opacity:.6}
 .locked-inline .lockicon{color:var(--mixed);font-weight:700}
 .when.locked-inline{color:var(--mixed);font-weight:600}
+.lock-wrap{position:relative;border:1px solid var(--line);border-radius:14px;
+overflow:hidden;background:var(--card);margin-bottom:26px}
+.lock-blur{padding:18px 20px;filter:blur(5px);opacity:.55;user-select:none;
+pointer-events:none;color:#3d4250;font-size:.86rem;line-height:1.7}
+.lock-over{position:absolute;inset:0;display:grid;place-items:center;
+background:rgba(251,250,248,.18);pointer-events:none;padding:12px}
+.lock-chip{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+font-weight:600;color:var(--mixed);background:#fff;border:1px solid var(--line);
+border-radius:999px;padding:7px 14px;box-shadow:0 2px 10px rgba(22,24,29,.08);
+white-space:nowrap}
+.locked-section{margin-top:28px}
 .evidence{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
 .ev-label{font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;
 font-weight:600;color:var(--muted)}
@@ -617,6 +628,44 @@ INTERACT = """
 
 def esc(t: Any) -> str:
     return _html.escape(str(t or ""))
+
+
+def lock_sections(rows: list[tuple[str, str]]) -> str:
+    """Free-view teaser: real section titles, blurred placeholder bodies.
+
+    ``rows`` is a list of ``(title, body)``. The title is the exact heading the
+    paid report uses, so the free half reads as a blurred full document; the
+    body is a generic, non-personal placeholder — never the real paid content,
+    which the free render path never has in memory. The chip carries no
+    ``data-unlock`` attribute; each report adds exactly one unlock CTA via
+    :func:`buy_block`.
+    """
+    parts = []
+    for title, body in rows:
+        parts.append(
+            '<section class="locked-section">\n'
+            f'  <h3 class="sec">{_html.escape(str(title))}</h3>\n'
+            '  <div class="lock-wrap">\n'
+            f'    <div class="lock-blur">{body}</div>\n'
+            '    <div class="lock-over"><span class="lock-chip">Locked &#183; '
+            'in the full reading</span></div>\n'
+            '  </div>\n'
+            '</section>')
+    return "\n".join(parts)
+
+
+def buy_block(title: str, text: str, *, price: int | None = None,
+              cta: str = "Unlock full reading") -> str:
+    """The single unlock CTA. ``data-unlock`` posts ``{action:'unlock'}`` to the
+    parent page, which opens the site's pay card for this report."""
+    price_bit = f" — ₹{int(price)}" if price else ""
+    return (
+        '<div class="buy">\n'
+        f'  <h3>{_html.escape(title)}</h3>\n'
+        f'  <p>{_html.escape(text)}</p>\n'
+        f'  <a class="cta" href="#unlock" data-unlock="1">{_html.escape(cta)}'
+        f'{price_bit}</a>\n'
+        '</div>')
 
 
 # ---------------------------------------------------------------------------

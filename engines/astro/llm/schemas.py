@@ -574,6 +574,30 @@ class ConversationalAreasProse(BaseModel):
     areas: list[ConversationalAreaProse] = Field(default_factory=list, max_length=12)
 
 
+class ReportConfluenceProse(BaseModel):
+    """LLM-generated prose for the full report — expression only, no new facts.
+
+    Python owns all prediction truth (areas, phases, timing, status, planets,
+    houses, dashas). This model is language-only: the LLM may cite facts that
+    appear in the input but must not invent, calculate, or imply any astrological
+    factor not already supplied. Every sentence must trace to the supplied facts.
+
+    Use the classical report tone: authoritative, specific where grounded, general
+    otherwise. No guaranteed/certain/destined language. Health language stays at
+    routine/recovery. Remedies only from approved_remedies list. Soft modality only.
+    """
+    model_config = ConfigDict(extra="forbid")
+    astrological_basis: str = Field(default="", max_length=700)
+    interpretation: str = Field(default="", max_length=700)
+    personality: str = Field(default="", max_length=720)
+    current_phase: str = Field(default="", max_length=520)
+    hardest_area_note: str = Field(default="", max_length=200)
+    mind_now: list[str] = Field(default_factory=list, max_length=3)
+    why_now: str = Field(default="", max_length=520)
+    family_note: list[str] = Field(default_factory=list, max_length=6)
+    areas: dict[str, str] = Field(default_factory=dict)
+
+
 class ConversationalPalmAreaProse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     aspect: str

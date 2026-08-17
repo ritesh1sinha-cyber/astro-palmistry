@@ -18,6 +18,17 @@ _FILLER = re.compile(r"timing evidence is included", re.I)
 _LEAK = re.compile(r"\b(vimshottari|yogini|chara|nadi)\b", re.I)
 
 SHORT_PHASE = {
+    # New natural labels stay themselves: they are already the simple word a
+    # reader understands ("Opening", "Pressure", "Recognition").
+    "Opening": "Opening",
+    "Growth": "Opening",
+    "Recognition": "Recognition",
+    "Pressure": "Pressure",
+    "Easing": "Mixed",
+    "Transition": "Mixed",
+    "Caution": "Mixed",
+    "Pressure Release": "Mixed",
+    # Legacy label strings (kept so persisted rows still render simply).
     "Pressure / Restructuring": "Pressure",
     "Pressure → Opening": "Opening",
     "Adjustment → Opening": "Opening",
@@ -89,25 +100,57 @@ def _conf(value: Any) -> str:
 def _phase(direction: str, previous: str, *, event_type: str = "") -> tuple[str, str]:
     d = (direction or "mixed").lower()
     p = (previous or "").lower()
-    if p == "down" and d == "up":
-        return "Pressure → Opening", "The pressure phase gives way to an opening."
-    if p == "mixed" and d == "up":
-        return "Adjustment → Opening", "An uncertain phase begins to open into opportunity."
-    if p == "up" and d == "down":
-        return "Expansion → Pressure", "An earlier opening becomes more demanding."
-    if p == "up" and d == "mixed":
-        return "Momentum → Adjustment", "Momentum remains, but the conditions become less straightforward."
-    if p == "down" and d == "mixed":
-        return "Pressure → Adjustment", "The heavier tone begins to ease, but the matter is not fully settled."
-    if p == "mixed" and d == "down":
-        return "Adjustment → Caution", "An uncertain phase becomes more demanding and needs care."
-    if d == "up":
-        return "Opening / Expansion", "This is an opportunity-oriented part of the cycle."
-    if d == "down":
-        return "Pressure / Restructuring", "This is the part of the cycle where effort, correction or patience matters most."
+    # Build a compact label from a small, readable set — the user recognized
+    # these in the original request: "opening, mixed, recognition, pressure".
+    label_map = {
+        ("up", "up"): "Opening",
+        ("up", "mixed"): "Growth",
+        ("up", "down"): "Recognition",
+        ("down", "down"): "Pressure",
+        ("down", "mixed"): "Easing",
+        ("mixed", "up"): "Opening",
+        ("mixed", "mixed"): "Transition",
+        ("mixed", "down"): "Caution",
+        ("down", "up"): "Pressure Release",
+    }
+    # Fallback label when direction/previous don't match a key
+    label = label_map.get((d, p), "") or {
+        "up": "Opening", "down": "Pressure", "mixed": "Transition",
+    }.get(d, "Phase")
+
+    # --- Meaning -------------------------------------------------------
+    # A readable, natural-sounding line.  The wording varies with the phase
+    # state (and the transition direction), so this is never verbatim boilerplate
+    # the way a single "opportunity / evaluation" sentence was for every window.
     if event_type and "opportunity" in event_type.lower():
-        return "Opportunity / Evaluation", "An opening is present, but it should be evaluated carefully."
-    return "Adjustment / Reassessment", "The chart is asking for adjustment rather than an all-or-nothing move."
+        if d == "up":
+            meaning = "An opening is present, and it is a good time to move forward."
+        elif d == "down":
+            meaning = "An opportunity is present but must be handled with care."
+        else:
+            meaning = "An opening is present, but it should be assessed before acting."
+    elif d == "up":
+        if p == "down":
+            meaning = "An earlier difficult phase gives way to an opening."
+        elif p == "mixed":
+            meaning = "Uncertainty begins to open into opportunity."
+        else:
+            meaning = "This is an opportunity-oriented part of the cycle."
+    elif d == "down":
+        if p == "up":
+            meaning = "An earlier opening becomes more demanding."
+        elif p == "mixed":
+            meaning = "The matter becomes more demanding and needs care."
+        else:
+            meaning = "This is the part of the cycle where effort or patience matters most."
+    elif p == "up":
+        meaning = "Momentum remains, but the conditions become less straightforward."
+    elif p == "down":
+        meaning = "The heavy tone begins to ease, but the matter is not fully settled."
+    else:
+        meaning = "The chart is asking for adjustment rather than an all-or-nothing move."
+
+    return label, meaning
 
 
 def short_phase(phase: str, *, last: bool = False, direction: str = "") -> str:

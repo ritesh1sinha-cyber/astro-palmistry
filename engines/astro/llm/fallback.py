@@ -634,11 +634,17 @@ def _family_prose(family_notes: Any) -> list[str]:
     """One deterministic line per relation, from the engines' own sentences.
 
     The source sentences are already customer-safe and already addressed to
-    the reader, so the work here is framing rather than rewriting: a relation
-    only one method saw has to arrive as a leaning, and one two methods agreed
-    on can say so, because that agreement is the reason to believe it.
+    the reader so the work here is framing rather than rewriting.
     """
     lines: list[str] = []
+    _RELATION_WORDS_EXTENDED = {
+        "father": ("father", "dad", "paternal", "your father"),
+        "mother": ("mother", "mum", "maternal", "your mother"),
+        "siblings": ("sibling", "brother", "sister", "elder", "youngest",
+                     "last-born", "your siblings", "brothers and sisters"),
+        "home": ("home", "household", "domestic", "childhood", "upbringing",
+                 "the family home", "family home"),
+    }
     for note in list(family_notes or [])[:4]:
         notes = [str(n).strip() for n in (getattr(note, "notes", None) or []) if str(n).strip()]
         if not notes:
@@ -648,22 +654,28 @@ def _family_prose(family_notes: Any) -> list[str]:
             methods = int(getattr(note, "method_count", 0) or 0)
         except (TypeError, ValueError):
             methods = 0
-        # The source engines answer about parents in the third person; the
-        # page is addressed to the reader.
-        body = " ".join(notes[:2])
+        # Pick the best note: prefer one that already names the relation
+        # explicitly (usually the BNN/blind interpretation).
+        rel_words = _RELATION_WORDS_EXTENDED.get(relation, ())
+        best = notes[-1]  # default: last note (usually BNN)
+        for n in reversed(notes):
+            if any(w in n.lower() for w in rel_words):
+                best = n
+                break
+        body = best
         body = re.sub(r"\bThe (father|mother)\b", r"Your \1", body)
         body = re.sub(r"\bthe (father|mother)\b", r"your \1", body)
         low = body.lower()
-        if not any(w in low for w in _FAMILY_RELATION_WORDS.get(relation, ())):
+        if not any(w in low for w in rel_words):
             body = _FAMILY_OPENER.get(relation, "") + body[0].lower() + body[1:]
-        # The qualifier belongs at the end. Leading with it turns every line
-        # into a disclaimer and buries the thing the reader came to check.
+        # validate_family_line requires a hedge or soft-attribution phrase for
+        # single-method lines. Append a standard qualifier so the validator
+        # keeps the line rather than dropping it (the text is sanitizer-safe).
         if methods <= 1 and not _FAMILY_HEDGED.search(body):
-            body += " That is one method's reading rather than a settled fact."
-        elif methods > 1:
-            body += " More than one method reads it the same way."
-        lines.append(clip_sentences(body, 280))
+            body += " That reading leans on one method rather than full agreement."
+        lines.append(clip_sentences(body, 300))
     return lines[:4]
+
 
 
 _CHAPTER_TONE_LINE = {

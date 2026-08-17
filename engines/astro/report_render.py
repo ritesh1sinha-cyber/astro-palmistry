@@ -480,12 +480,13 @@ def _remedy(pc: dict, *, name: str = "", paid: bool = False,
 
 def _locked_preview(*, price: int, n_areas: int, n_windows: int,
                     n_periods: int) -> str:
-    """Free view: locked rows for dates, working and remedies + unlock CTA."""
-    import html as _html
+    """Free view: the paid depth, titled and blurred, with the buy CTA.
 
-    def _e(t: Any) -> str:
-        return _html.escape(str(t or ""))
-
+    Each paid section keeps its real heading from the full report but its body
+    is a blurred, non-personal placeholder — the free path never has the real
+    paid content in memory, so nothing here can be unpicked from the HTML. The
+    single unlock CTA comes from ``report_cards``' footer block.
+    """
     windows_teaser = (
         f"{n_windows} dated window{'s' if n_windows != 1 else ''} "
         "across the next five years."
@@ -497,9 +498,11 @@ def _locked_preview(*, price: int, n_areas: int, n_windows: int,
         "Your own timing sequence, with real dates.")
     rows = [
         ("Why each area reads the way it does",
-         f"The chart working behind all {n_areas} headlines."),
+         f"The chart working behind all {n_areas} headlines — the houses, the "
+         "planets and the periods that shape them."),
         ("The dated window for every life area",
-         "When each part of your life actually moves."),
+         "When each part of your life actually moves, against the period you "
+         "are in."),
         ("Your strongest upcoming windows", windows_teaser),
         ("The full period sequence", periods_teaser),
         ("What helps in each area",
@@ -507,21 +510,7 @@ def _locked_preview(*, price: int, n_areas: int, n_windows: int,
         ("Every gemstone that suits you",
          "Metal, finger and the day to begin."),
     ]
-    items = "".join(
-        f'<div class="when locked-inline" style="margin:8px 0">'
-        f'<span class="lockicon">•</span> <strong>{_e(title)}</strong> — {_e(teaser)}'
-        f'</div>'
-        for title, teaser in rows)
-    return f"""
-<section class="section locked-preview">
-  <h2 class="sec">What the full reading adds</h2>
-  <div class="card">{items}</div>
-  <div class="buy">
-    <h3>The working and the dates</h3>
-    <p>You have the verdict on each life area. Unlock why, when, and what to do.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
-  </div>
-</section>"""
+    return RS.lock_sections(rows)
 
 
 def _bundle(bundle_price: int) -> str:

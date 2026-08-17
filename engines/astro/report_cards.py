@@ -42,7 +42,8 @@ from typing import Any, Optional
 # The stylesheet moved to report_shell so horary, numerology, matching and the
 # palm tab render in the same visual language from ONE source. Interpolated
 # below as {_STYLE}, so this report is byte-identical to before the move.
-from report_shell import STYLE as _STYLE, EXTRA as _EXTRA, INTERACT as _INTERACT
+from report_shell import (STYLE as _STYLE, EXTRA as _EXTRA, INTERACT as _INTERACT,
+                          buy_block as _buy_block)
 
 # ---------------------------------------------------------------------------
 # life areas — named the way people think about their lives, not by house
@@ -65,7 +66,7 @@ AREAS: tuple[Area, ...] = (
     Area("children", "Children", 5, (9,), "children"),
     Area("health", "Health & Energy", 1, (6, 8), "your health"),
     Area("learning", "Learning & Luck", 9, (5,), "study and good fortune"),
-    Area("inner", "Inner Life", 12, (9,), "your inner life"),
+    Area("inner", "Inner Peace & Spirituality", 12, (9,), "your inner peace and spirituality"),
 )
 
 PLANET_VOICE = {
@@ -1333,7 +1334,8 @@ make much more sense.</p>
                      '<span class="lockicon">•</span> Exact dates in the full reading</div>')
             act = ('<div class="action locked-inline">'
                    f'<span class="act-label">{act_label}</span>'
-                   '<p class="blurred">{}</p></div>'.format(_e(c.action))
+                   '<p class="blurred">The specific action and mantra for this area '
+                   'are in the full reading.</p></div>'
                    ) if c.action else ""
             body = (
                 f'<div class="expect"><span class="ev-label">What to expect</span>'
@@ -1441,13 +1443,11 @@ make much more sense.</p>
 
     buy_block = ""
     if not paid and footer_unlock:
-        buy_block = f"""
-<div class="buy">
-  <h3>Unlock the full reading</h3>
-  <p>Why every headline above reads the way it does, the dated window for
-  each, the five-year windows, the period sequence and your gemstones.</p>
-  <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
-</div>"""
+        buy_block = _buy_block(
+            "Unlock the full reading",
+            "Why every headline above reads the way it does, the dated window for "
+            "each, the five-year windows, the period sequence and your gemstones.",
+            price=price)
 
     period_strip_html = ""
     try:

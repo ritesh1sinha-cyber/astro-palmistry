@@ -100,7 +100,7 @@ AREA_LABEL = {
     "children": "children",
     "health": "your health and energy",
     "learning": "study and luck",
-    "inner": "your inner life",
+    "inner": "your peace of mind and spirituality",
     "legal": "your legal matter",
 }
 

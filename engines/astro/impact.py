@@ -37,7 +37,7 @@ AREA_DASHA = {
     "children": "progeny and creative projects need steady effort, not force",
     "health": "energy and recovery respond to routine — rest is not optional",
     "learning": "study and luck open through teachers and consistent practice",
-    "inner": "spiritual and inner life deepen when you withdraw from noise",
+    "inner": "peace of mind and spirituality deepen when you withdraw from noise",
 }
 
 STAGE_AREA_DASHA: dict[str, dict[str, str]] = {

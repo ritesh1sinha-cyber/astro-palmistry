@@ -347,6 +347,27 @@ def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
     # offending slot and let deterministic fact prose fill it.
     overlay, kept, dropped = _screen_conversational_slots(overlay, facts, stats)
     overlay = _merge_conversational_facts(overlay, facts, access=access)
+
+    # Classical-tone rephrase pass: rewrites the finished page prose into the
+    # voice of the classical Vedic report. It never introduces new facts, and a
+    # failure or rejected plan returns None, leaving the overlay exactly as-is.
+    _classical = _llm_rephrase_full_report(facts, stats)
+    if isinstance(_classical, dict) and _classical:
+        for _k in ("astrological_basis", "interpretation", "personality",
+                   "current_phase", "hardest_area_note", "why_now"):
+            _v = str(_classical.get(_k) or "").strip()
+            if _v:
+                overlay[_k] = _v
+        if isinstance(_classical.get("mind_now"), list) and _classical["mind_now"]:
+            overlay["mind_now"] = [str(x) for x in _classical["mind_now"]][:3]
+        if isinstance(_classical.get("family_note"), list) and _classical["family_note"]:
+            overlay["family_note"] = [str(x) for x in _classical["family_note"]][:6]
+        _ca = _classical.get("areas") or {}
+        if isinstance(_ca, dict) and isinstance(overlay.get("areas"), dict):
+            for _a, _txt in _ca.items():
+                sl = overlay["areas"].get(_a)
+                if isinstance(sl, dict) and str(_txt).strip():
+                    sl["interpretation"] = str(_txt).strip()
     if not str(overlay.get("personality") or "").strip():
         stats["rejected"] += 1
         reject(["empty_conversational_prose"])
@@ -393,6 +414,131 @@ def _humanize_report_areas(facts: Any, stats: dict[str, Any]) -> dict[str, Any]:
             "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
             "remedy": _as_sentence(getattr(a, "remedy", "") or ""),
         }
+    return out
+
+
+def _llm_rephrase_full_report(facts: Any, stats: dict[str, Any]) -> Optional[dict]:
+    """Classical-tone rephrase of a finished page overlay, or None on any failure.
+
+    Python owns all prediction truth (areas, phases, timing, planets, houses,
+    dashas). This pass rewrites the meaning the LLM already produced into the
+    voice of the classical Vedic report: authoritative, concrete and traced to
+    the supplied chart factors. A failure or rejected plan returns None, and the
+    caller keeps the existing overlay untouched -- this layer can never regress
+    a working page.
+    """
+    from .facts import public_fact_payload
+    from .schemas import ReportConfluenceProse
+    from .validate import validate_prose_against_facts
+
+    payload = {}
+    try:
+        payload = public_fact_payload(facts) if facts else {}
+    except Exception:
+        payload = {}
+    if not isinstance(payload, dict):
+        return None
+
+    cards = payload.get("cards") or []
+    cards_summary = []
+    for c in (cards or [])[:12]:
+        cm = c if isinstance(c, dict) else (getattr(c, "__dict__", {}) or {})
+        cards_summary.append({
+            "area_key": str(cm.get("area") or cm.get("key") or ""),
+            "area_name": str(cm.get("area_name") or cm.get("label") or ""),
+            "phase": str(cm.get("phase") or ""),
+            "status": str(cm.get("status") or ""),
+            "activation_status": str(cm.get("activation_status") or ""),
+            "direction": str(cm.get("direction") or ""),
+            "house": cm.get("house") or 0,
+            "allowed_planets": cm.get("allowed_planets") or [],
+        })
+
+    rephrase_facts = {
+        "client": payload.get("client") or {"name": payload.get("first_name", "")},
+        "vedic_context": payload.get("vedic_context") or {},
+        "personality_traits": payload.get("personality_traits") or [],
+        "family_notes": payload.get("family_notes") or [],
+        "life_state": payload.get("life_state") or {},
+        "phase": {
+            "phase_direction": payload.get("phase_direction") or "",
+            "phase_tone": payload.get("phase_tone") or "",
+            "phase_end": payload.get("phase_end") or "",
+            "phase_notes": payload.get("phase_notes") or [],
+        },
+        "hardest_areas": payload.get("hardest_areas") or [],
+        "hardest_area_labels": payload.get("hardest_area_labels") or [],
+        "cards": cards_summary,
+    }
+
+    user_text = (
+        "Write the classical Vedic reading for this page. You are only rephrasing "
+        "the facts below; Python owns all prediction truth. Do not invent planets, "
+        "houses, dashas, dates, symptoms or remedies. Use the authoritative, concrete "
+        "voice of a practising Jyotish astrologer:\n"
+        "- Ground the running Mahadasha (main period) STRICTLY in vedic_context.period_lord "
+        "and the running Antardasha (sub period) STRICTLY in vedic_context.sub_period_lord. "
+        "Never call any other planet the main period or sub period lord.\n"
+        "- Rephrase personality traits and family notes (father, mother, siblings, home) "
+        "faithfully into classical Vedic voice from the supplied facts.\n"
+        "- Name the governing planet(s) and house numbers when they appear in the facts.\n"
+        "- Never say 'you will' / 'guaranteed' / 'destined'. Health stays at routine/recovery. Use you/your.\n"
+        "Output astrological_basis, interpretation, personality, current_phase, "
+        "hardest_area_note, mind_now (max 3), why_now, family_note (max 6), and "
+        "areas as a dict keyed by area where each value is a 1-2 sentence classical "
+        "interpretation. Use the short_phase labels (Opening/Pressure/Recognition/"
+        "etc.) where relevant. Months only as supplied.\n\n"
+        "FACTS:\n" + json.dumps(rephrase_facts, indent=2, default=str)
+    )
+
+    try:
+        prose, _retries, errs = _complete_validated(
+            ReportConfluenceProse,
+            system_prompt_for("full_report_confluence"),
+            user_text,
+            facts,
+            validate_prose_against_facts,
+            keep_last_on_failure=True,
+        )
+    except Exception as exc:
+        print(f"[llm] full_report_confluence skipped: {exc}", flush=True)
+        return None
+
+    if prose is None:
+        for reason in errs or []:
+            key = "full_report_confluence:" + str(reason).split(":", 1)[0][:60]
+            stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
+        return None
+
+    out: dict[str, Any] = {}
+    for field in ("astrological_basis", "interpretation", "personality",
+                  "current_phase", "hardest_area_note", "why_now"):
+        val = str(getattr(prose, field, "") or "").strip()
+        if val:
+            out[field] = _as_sentence(val)
+
+    mind = [str(x) for x in (getattr(prose, "mind_now", None) or []) if str(x).strip()]
+    if mind:
+        out["mind_now"] = mind[:3]
+
+    fam = [str(x) for x in (getattr(prose, "family_note", None) or []) if str(x).strip()]
+    if fam:
+        out["family_note"] = fam[:6]
+
+    areas = getattr(prose, "areas", None) or {}
+    if isinstance(areas, dict):
+        clean: dict[str, str] = {}
+        card_keys = {
+            str(cm.get("area") or cm.get("key") or "").strip()
+            for cm in [c if isinstance(c, dict) else (getattr(c, "__dict__", {}) or {}) for c in cards]
+        }
+        for k, v in areas.items():
+            ks = str(k).strip()
+            if ks and (ks in card_keys or not card_keys):
+                if str(v).strip():
+                    clean[ks] = _as_sentence(str(v))
+        out["areas"] = clean
+
     return out
 
 

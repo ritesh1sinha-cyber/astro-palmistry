@@ -74,8 +74,24 @@ def main() -> int:
     paid = PC.render(raw(), name="Ritz", age=30, paid=True)
     check("free keeps the two-hand gallery", free.count("<figure>") == 2)
     check("free locks supporting evidence", "evidence locked-inline" in free)
-    check("paid unlocks supporting evidence", 'class="evidence">' in paid)
+    check("paid unlocks supporting evidence", 'class="evidence-row"' in paid)
     check("paid removes the unlock CTA", 'data-unlock="1"' not in paid)
+
+    # Free-view redesign: every paid section keeps its real title but the body
+    # is a blurred placeholder, and the report carries exactly one unlock CTA.
+    check("free shows six titled-but-locked sections",
+          free.count('class="locked-section"') == 6)
+    check("free blurs the placeholder bodies", "lock-blur" in free)
+    check("free names the section as locked", "in the full reading" in free)
+    check("free has exactly one unlock CTA", free.count('data-unlock="1"') == 1)
+    check("free buy block names the upgrade",
+          "See the pattern beneath the first reading" in free)
+    check("free never carries the line-by-line workings",
+          '<details class="workings' not in free)
+    check("free never carries the forward timeline",
+          '<ol class="timeline">' not in free)
+    check("paid has no lock sections", 'class="locked-section"' not in paid)
+    check("paid has no placeholder blur", '<div class="lock-blur">' not in paid)
 
     blocks = {"right": raw()["right"], "left": raw()["left"]}
     aspects = build_life_aspects(

@@ -283,6 +283,257 @@ def _signals(pc: dict, which: str) -> tuple[list[str], dict[str, list[str]]]:
     return traits, family
 
 
+_CLASSIC_SKIP = re.compile(
+    r"(?:"
+    r"\bluckless\b"
+    r"|\bdebt-ridden\b"
+    r"|\bhurt by fire\b"
+    r"|\birreligious\b"
+    r"|\bsuffering from enemies\b"
+    r"|\barrogant\b"
+    r"|\bphlegm\b"
+    r"|\bpainful for\b"
+    r"|\bfree from enemies, wealthy, rich\b"
+    r"|\bfamous, dreamer\b"
+    r"|\bher mother suffers\b"
+    r"|\bhis mother suffers\b"
+    r"|\bobstructing children.s happiness\b"
+    r"|\bcapable of destroying enemies\b"
+    r"|\bFather.s happiness will be less\b"
+    r"|\bin the \d+(?:st|nd|rd|th) year\b"
+    r"|\bblessed with son\b"
+    r"|\brenouncing ancestral property\b"
+    r"|\bweak and afflicted\b"
+    r"|\bspeaking of mind\b"
+    r"|\bloss of above mentioned areas\b"
+    r"|\btask contemplated in the mind\b"
+    r"|\bcomplete the task contemplated\b"
+    r"|\bwill trouble the mother\b"
+    r"|\brise through a woman\b"
+    r")",
+    re.I,
+)
+
+
+def _clean_classical_line(raw_text: str, *, relation: str = "") -> list[str]:
+    """Clean classical book predictions into coherent sentences for LLM rephrase.
+
+    Fixes:
+    - Sanskrit lord names -> plain English
+    - Archaic gender pronouns ('he', 'his') -> neutral 'they'/'their'
+    - 'the native' -> 'the person'
+    - 'landlord' -> 'property owner'
+    - 'more trips' -> 'more travels and journeys'
+    - 'royal servant' -> 'respected in authority'
+    - Bad grammar from naive substitution ('you is', 'fate of you') fixed
+    - Negative/morbid predictions stripped
+    """
+    if not raw_text:
+        return []
+    clean = re.sub(r"<[^>]+>", " ", str(raw_text))
+    # Sanskrit house lord names
+    clean = re.sub(r"\bLagnesh\b", "First house lord", clean, flags=re.I)
+    clean = re.sub(r"\bDhanesh\b", "Second house lord", clean, flags=re.I)
+    clean = re.sub(r"\bSahajesh\b", "Third house lord", clean, flags=re.I)
+    clean = re.sub(r"\bSukhesh\b", "Fourth house lord", clean, flags=re.I)
+    clean = re.sub(r"\bPutresh\b", "Fifth house lord", clean, flags=re.I)
+    clean = re.sub(r"\bRipuesh\b", "Sixth house lord", clean, flags=re.I)
+    clean = re.sub(r"\bYuvatesh\b", "Seventh house lord", clean, flags=re.I)
+    clean = re.sub(r"\bRandhresh\b", "Eighth house lord", clean, flags=re.I)
+    clean = re.sub(r"\bNavmesh\b", "Ninth house lord", clean, flags=re.I)
+    clean = re.sub(r"\bKarmesh\b", "Tenth house lord", clean, flags=re.I)
+    clean = re.sub(r"\bLabhesh\b", "Eleventh house lord", clean, flags=re.I)
+    clean = re.sub(r"\bVyayesh\b", "Twelfth house lord", clean, flags=re.I)
+    # Archaic phrases
+    clean = re.sub(r"\blandlord\b", "property owner", clean, flags=re.I)
+    clean = re.sub(r"\broyal servant\b", "respected in authority", clean, flags=re.I)
+    clean = re.sub(r"\bmore trips\b", "more travels and journeys", clean, flags=re.I)
+    clean = re.sub(r"\bDiety\b|\bDeity\b", "elders", clean, flags=re.I)
+    clean = re.sub(r"\bBrahmins\b", "learned people", clean, flags=re.I)
+    clean = re.sub(r"\baquatic goods\b", "trade and commerce", clean, flags=re.I)
+    clean = re.sub(r"\bphlegm\b", "health issues", clean, flags=re.I)
+    # 'The native' / 'native'
+    clean = re.sub(r"\bthe native\b", "the person", clean, flags=re.I)
+    clean = re.sub(r"\bnative\b", "person", clean, flags=re.I)
+    # Gendered pronouns from book text — replace with neutral
+    # But only when relation context is clear; otherwise keep 'they'
+    if relation in ("father", "siblings"):
+        # 'He will' -> 'They will', 'His' -> 'Their', 'his' -> 'their'
+        clean = re.sub(r"\bHe will\b", "They will", clean)
+        clean = re.sub(r"\bhe will\b", "they will", clean)
+        clean = re.sub(r"\bHe is\b", "They are", clean)
+        clean = re.sub(r"\bhe is\b", "they are", clean)
+        clean = re.sub(r"\bHis\b", "Their", clean)
+        clean = re.sub(r"\bhis\b", "their", clean)
+    elif relation == "mother":
+        clean = re.sub(r"\bHe will\b", "She will", clean)
+        clean = re.sub(r"\bhe will\b", "she will", clean)
+        clean = re.sub(r"\bHis\b", "Her", clean)
+        clean = re.sub(r"\bhis\b", "her", clean)
+    else:
+        clean = re.sub(r"\b[Hh]e will\b", "they will", clean)
+        clean = re.sub(r"\b[Hh]is\b", "their", clean)
+    # Fix bad grammar from 'you is' (when 'native' -> 'you' + 'is')
+    clean = re.sub(r"\byou is\b", "you are", clean, flags=re.I)
+    # Fix 'The fate of the person will' -> relation-appropriate phrase
+    clean = re.sub(r"\bThe fate of the person will\b", "Their fortune will", clean, flags=re.I)
+    clean = re.sub(r"\bfate of the person\b", "their fortune", clean, flags=re.I)
+    # Fix 'The fate of you' -> 'Your fortune'
+    clean = re.sub(r"\bThe fate of you will\b", "Your fortune will", clean, flags=re.I)
+    clean = re.sub(r"\bfate of you\b", "your fortune", clean, flags=re.I)
+    # Reframe native-centric predictions as relation-centric descriptions.
+    # The classical book says 'The person will be a property owner...' about the
+    # NATIVE; for the Mother/Father/Siblings slots we need the sentence to name
+    # the relation so _family_prose doesn't prepend a duplicate opener and the
+    # sanitizer doesn't then strip the whole block.
+    _RELATION_LABELS_MAP = {
+        "mother": "Your mother",
+        "father": "Your father",
+        "siblings": "Your siblings",
+        "home": "The family home",
+    }
+    if relation in _RELATION_LABELS_MAP:
+        label = _RELATION_LABELS_MAP[relation]
+        clean = re.sub(r"\bThe person will be\b", f"{label} is", clean, flags=re.I)
+        clean = re.sub(r"\bThe person is\b", f"{label} is", clean, flags=re.I)
+        clean = re.sub(r"\bThe person\b", label, clean, flags=re.I)
+        clean = re.sub(r"\bthe person\b", label.lower(), clean, flags=re.I)
+        # Also replace pronouns that now refer to the relation
+        if relation == "mother":
+            clean = re.sub(r"\bshe will be\b", f"{label} is", clean, flags=re.I)
+        elif relation in ("father", "siblings"):
+            clean = re.sub(r"\bthey will be\b", f"{label} is", clean, flags=re.I)
+    # Improve awkward phrases
+    clean = re.sub(r"\bgentleman\b", "principled person", clean, flags=re.I)
+    clean = re.sub(r"\bcultivator\b", "nurturing by nature", clean, flags=re.I)
+    clean = re.sub(r"\bmerchant of trade and commerce\b", "connected to commerce and trade", clean, flags=re.I)
+    clean = re.sub(r"\bself-acquired money\b", "self-made prosperity", clean, flags=re.I)
+    clean = re.sub(r"\bvehicle and house\b", "comforts of home and travel", clean, flags=re.I)
+    clean = re.sub(r"\bbest property and vehicles\b", "property and financial stability", clean, flags=re.I)
+    clean = re.sub(r"\broyal favour\b", "recognition and favour from those in power", clean, flags=re.I)
+    clean = re.sub(r"\bIf moon is in the variable sign[^.]*\.", "", clean, flags=re.I)
+    # Remove parentheticals and normalise whitespace
+    clean = _PARENTHETICAL.sub("", clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
+
+    out: list[str] = []
+    for s in _SENTENCE_SPLIT.split(clean):
+        st = s.strip(" -\u2013\u2014|.,;")
+        if len(st) < 20 or len(st) > 300 or len(st.split()) < 4:
+            continue
+        # Drop strongly negative / morbid lines
+        if _CLASSIC_SKIP.search(st):
+            continue
+        if not st.endswith((".", "!", "?")):
+            st += "."
+        out.append(st[0].upper() + st[1:])
+    return out
+
+
+
+def _classical_report(pc: dict) -> tuple[list[str], dict[str, list[str]]]:
+    """Rich classical predictions for personality (self), father, mother, siblings, and home/house."""
+    traits: list[str] = []
+    family: dict[str, list[str]] = _empty_family()
+    if not isinstance(pc, dict):
+        return traits, family
+    try:
+        from vedic_bhardwaj_report import BhardwajChart, _load_book
+        from bhardwaj_prose import LAGNA_HUMAN, NAKSHATRA_SNIPPETS, YOGA_HUMAN
+        book = _load_book()
+    except Exception:
+        return traits, family
+
+    meta = dict(pc.get("meta") or {})
+    lagna_sign = meta.get("lagna_sign") or (pc.get("lagna") or {}).get("sign") or "Aries"
+    meta["lagna_sign"] = lagna_sign
+    meta["client"] = meta.get("client") or "Seeker"
+    if "age" not in meta:
+        meta["age"] = 30
+
+    pc_safe = dict(pc)
+    pc_safe["meta"] = meta
+    if "vimshottari" not in pc_safe:
+        pc_safe["vimshottari"] = {"current_md": {}, "current_md_antardashas": []}
+
+    try:
+        chart = BhardwajChart(pc_safe, book)
+    except Exception:
+        return traits, family
+
+    # 1. Personality / Self
+    lagna_txt = LAGNA_HUMAN.get(chart.lagna, "")
+    if lagna_txt:
+        traits.extend(_clean_classical_line(lagna_txt))
+    star_txt = NAKSHATRA_SNIPPETS.get(chart.moon_nak, "")
+    if star_txt:
+        traits.extend(_clean_classical_line(star_txt))
+    for yoga in chart.detect_yogas():
+        yname = yoga.get("name", "")
+        if yname in YOGA_HUMAN:
+            traits.extend(_clean_classical_line(YOGA_HUMAN[yname]))
+        elif yoga.get("result"):
+            traits.extend(_clean_classical_line(yoga["result"]))
+
+
+    hlh = book.get("house_lord_in_house", {})
+    pih = book.get("planet_in_house", {})
+
+    # 2. Father (Sun in house, 9th lord in house)
+    sun_h = chart.planets.get("Sun", {}).get("house", 0)
+    if sun_h:
+        sun_pred = pih.get(str(sun_h), {}).get("Sun", "")
+        if sun_pred:
+            family["father"].extend(_clean_classical_line(sun_pred, relation="father"))
+    lord_9 = chart.houses.get(9, {}).get("lord", "")
+    if lord_9:
+        occ_9 = chart.planets.get(lord_9, {}).get("house", 0)
+        if occ_9:
+            hlh_9 = hlh.get("9", {}).get(str(occ_9), "")
+            if hlh_9:
+                family["father"].extend(_clean_classical_line(hlh_9, relation="father"))
+
+    # 3. Mother (Moon in house, 4th lord in house)
+    moon_h = chart.planets.get("Moon", {}).get("house", 0)
+    if moon_h:
+        moon_pred = pih.get(str(moon_h), {}).get("Moon", "")
+        if moon_pred:
+            family["mother"].extend(_clean_classical_line(moon_pred, relation="mother"))
+    lord_4 = chart.houses.get(4, {}).get("lord", "")
+    if lord_4:
+        occ_4 = chart.planets.get(lord_4, {}).get("house", 0)
+        if occ_4:
+            hlh_4 = hlh.get("4", {}).get(str(occ_4), "")
+            if hlh_4:
+                family["mother"].extend(_clean_classical_line(hlh_4, relation="mother"))
+                family["home"].extend(_clean_classical_line(hlh_4, relation="home"))
+
+    # 4. Siblings (3rd lord in house, Mars in house)
+    lord_3 = chart.houses.get(3, {}).get("lord", "")
+    if lord_3:
+        occ_3 = chart.planets.get(lord_3, {}).get("house", 0)
+        if occ_3:
+            hlh_3 = hlh.get("3", {}).get(str(occ_3), "")
+            if hlh_3:
+                family["siblings"].extend(_clean_classical_line(hlh_3, relation="siblings"))
+    mars_h = chart.planets.get("Mars", {}).get("house", 0)
+    if mars_h:
+        mars_pred = pih.get(str(mars_h), {}).get("Mars", "")
+        if mars_pred:
+            family["siblings"].extend(_clean_classical_line(mars_pred, relation="siblings"))
+
+    # 5. Home / House (2nd lord for family values/wealth)
+    lord_2 = chart.houses.get(2, {}).get("lord", "")
+    if lord_2:
+        occ_2 = chart.planets.get(lord_2, {}).get("house", 0)
+        if occ_2:
+            hlh_2 = hlh.get("2", {}).get(str(occ_2), "")
+            if hlh_2:
+                family["home"].extend(_clean_classical_line(hlh_2, relation="home"))
+
+    return traits, family
+
+
 def build_personal_life(
     pc: dict,
     *,
@@ -314,6 +565,7 @@ def build_personal_life(
     counts: dict[str, int] = {relation: 0 for relation in _RELATIONS}
 
     for collect in (
+        lambda: _classical_report(pc),
         lambda: _blind(pc, dob_date, female),
         lambda: _bnn(pc),
         lambda: _signals(pc, "bhardwaj"),
@@ -342,4 +594,5 @@ def build_personal_life(
             notes=lines,
             method_count=counts[relation],
         ))
-    return _dedupe(traits, 6), notes[:4]
+    return _dedupe(traits, 8), notes[:4]
+

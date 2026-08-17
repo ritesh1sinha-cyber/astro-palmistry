@@ -1141,12 +1141,23 @@ def personalise(html: str, ctx: dict, kind: str = "full_report") -> str:
     block = (f'<section class="section voice-lead" style="border-left:3px solid #c9a227;'
              f'padding-left:16px">{badge}{opening}</section>')
 
-    # insert after <body ...> so it leads the document
-    m = re.search(r"<body[^>]*>", out, re.I)
+    # insert at the top of the reading column. The reports center their body
+    # inside <div class="wrap">, and the section rail sits in the left margin
+    # outside it; a lead placed before the wrap would run edge-to-edge under the
+    # rail and its text would slide over the sidebar on wide screens. The nav is
+    # injected ahead of this pass, so the wrap is not necessarily right after
+    # <body> any more — search the document for it.
+    m = re.search(
+        r'<div\b[^>]*class\s*=\s*["\'][^"\']*(?<![\w-])wrap(?![\w-])[^"\']*["\'][^>]*>',
+        out, re.I)
     if m:
         out = out[:m.end()] + block + out[m.end():]
     else:
-        out = block + out
+        m = re.search(r"<body[^>]*>", out, re.I)
+        if m:
+            out = out[:m.end()] + block + out[m.end():]
+        else:
+            out = block + out
     # Concise is the last pass so it also cleans the opening it just inserted.
     return concise(out)
 

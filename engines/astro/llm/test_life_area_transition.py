@@ -43,8 +43,8 @@ def test_transition_map_builds_overlap_stack(monkeypatch):
     ]
     out = build_transition_map({}, "career", rows)
     assert len(out) == 2
-    assert out[0]["phase"] == "Pressure / Restructuring"
-    assert out[1]["phase"] == "Pressure → Opening"
+    assert out[0]["phase"] == "Pressure"
+    assert out[1]["phase"] == "Recognition"
     assert "Rahu–Jupiter" in out[1]["overlap"]
     assert "Jupiter transit" in out[1]["overlap"]
     assert "6 bindus" in out[1]["overlap"]
@@ -163,7 +163,7 @@ def test_renderer_shows_transition_map():
         remedy_html="",
     )
     assert "Life-area transition map" in html
-    assert "Pressure → Opening" in html
+    assert "Opening" in html
     assert "Rahu–Jupiter" in html
     assert "6 bindus" in html
     assert "lane-chart" in html
@@ -212,8 +212,8 @@ def test_transition_fact_and_dict_render_the_same_map():
                                   "transition_note": "Pressure gives way to an opening."}}}
     html_a = RC.render(pc, name="Meera", paid=True, cards=[dict_card], prose=prose)
     html_b = RC.render(pc, name="Meera", paid=True, cards=[model_card], prose=prose)
-    assert "Pressure → Opening" in html_a
-    assert "Pressure → Opening" in html_b
+    assert "Opening" in html_a
+    assert "Opening" in html_b
     assert "Yogini" in html_a
     assert "Yogini" in html_b
     assert "When the chart gives these themes more room to move" not in html_a

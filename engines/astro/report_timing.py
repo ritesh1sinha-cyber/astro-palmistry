@@ -56,7 +56,7 @@ AREA_FOCUS_PLAIN = {
     "children": "children and creative matters",
     "health": "health and energy",
     "learning": "learning and guidance",
-    "inner": "inner life and rest",
+    "inner": "peace of mind, rest and spirituality",
     "legal": "disputes and formal matters",
 }
 

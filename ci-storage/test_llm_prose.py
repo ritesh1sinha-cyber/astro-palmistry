@@ -966,3 +966,124 @@ def test_merge_drops_manifestation_that_repeats_remedy():
     money = (merged.get("areas") or {}).get("money") or {}
     assert money.get("remedy")
     assert str(money.get("manifestation") or "").strip() == ""
+
+
+def test_confluence_classical_reprise_merges(llm_on):
+    """The classical rephrase pass must overwrite the page prose from a valid
+    ReportConfluenceProse reply, and inject a classical interpretation per area,
+    while the conversational fallback supplies the area shell."""
+    from core.llm_client import set_stub
+    from llm.humanize import humanize
+    from llm.schemas import ConversationalProse, ReportConfluenceProse
+
+    classical = ReportConfluenceProse(
+        astrological_basis=(
+            "Your chart runs under Jupiter's main period with Mercury as the "
+            "sub-period lord, and the Moon placed in Gemini."
+        ),
+        interpretation="This chapter reads as mentally active and communication-led.",
+        personality="Your mind leads the way most weeks; you think better by talking things through.",
+        current_phase="Momentum is gathering in creative and professional directions.",
+        hardest_area_note="The area asking for more care right now is Health & Vitality.",
+        mind_now=["if recognition feels a little slow just now"],
+        why_now="Jupiter supports reflection while Mercury shapes how ideas take shape.",
+        family_note=["your father comes across as steady and measured"],
+        areas={"profession": "Work moves ahead with steady visibility under the current period."},
+    )
+
+    def stub(schema, system, user, **kw):
+        if schema is ConversationalProse:
+            return ConversationalProse.model_validate(GOOD_CONV)
+        if schema is ReportConfluenceProse:
+            return classical
+        return None
+
+    set_stub(stub)
+    out = humanize("full_report", _card_facts(), access="paid")
+    assert out["enabled"] is True
+    ov = out["overlay"]
+    # The whole astrological_basis line is taken from the classical reprise.
+    assert ov.get("astrological_basis") == classical.astrological_basis
+    assert "Jupiter's main period" in ov.get("astrological_basis", "")
+    assert "Mercury as the sub-period lord" in ov.get("astrological_basis", "")
+    # The classical per-area interpretation lands in the existing area shell.
+    assert "profession" in (ov.get("areas") or {})
+    prof = (ov.get("areas") or {}).get("profession") or {}
+    assert "Work moves ahead with steady visibility" in prof.get("interpretation", "")
+
+
+def test_validate_dasha_lords_catches_misattributed_periods():
+    from llm.schemas import ReportFacts, VedicContext
+    from llm.validate import validate_dasha_lords
+
+    facts = ReportFacts(
+        first_name="Ritesh",
+        access="paid",
+        vedic_context=VedicContext(
+            period_lord="Jupiter",
+            sub_period_lord="Ketu",
+            mahadasha="Jupiter",
+            antardasha="Ketu",
+            rising_sign="Gemini",
+            moon_sign="Virgo",
+        ),
+    )
+
+    # 1. Hallucinated Venus main period and Saturn sub period must be flagged
+    bad_prose = (
+        "The weak Venus main period suggests challenges in relationships and partnerships, "
+        "while Saturn's influence in the sub period adds pressure, making progress feel slower."
+    )
+    errs = validate_dasha_lords(bad_prose, facts)
+    assert any("dasha_lord_mismatch:main_period:Venus" in e for e in errs)
+    assert any("dasha_lord_mismatch:sub_period:Saturn" in e for e in errs)
+
+    # 2. Correct Jupiter main period and Ketu sub period must pass with zero errors
+    good_prose = (
+        "Running Jupiter main period with Ketu sub period brings reflection, "
+        "while Venus in the 10th house and Saturn in the 6th house govern specific areas."
+    )
+    assert validate_dasha_lords(good_prose, facts) == []
+
+    # 3. Mismatched compound dasha must be flagged
+    compound_bad = "Under the Venus-Saturn dasha sequence, changes unfold slowly."
+    errs_compound = validate_dasha_lords(compound_bad, facts)
+    assert any("dasha_sequence_mismatch:Venus-Saturn" in e for e in errs_compound)
+
+
+def test_build_personal_life_extracts_classical_predictions():
+    from llm.personal_life import build_personal_life
+
+    # Chart with Sun in 5th (positive father signal), Moon in 4th (positive mother),
+    # 3rd lord well placed. Jupiter lagna for positive classical lines.
+    pc = {
+        "lagna": {"sign": "Gemini", "deg": 15.0},
+        "planets": {
+            "Sun": {"sign": "Libra", "house": 5, "dignity": "enemy_sign"},
+            "Moon": {"sign": "Virgo", "house": 4, "dignity": "neutral", "nakshatra": "Hasta"},
+            "Mars": {"sign": "Scorpio", "house": 6, "dignity": "own_sign"},
+            "Mercury": {"sign": "Pisces", "house": 10, "dignity": "debilitated"},
+            "Jupiter": {"sign": "Cancer", "house": 2, "dignity": "exalted"},
+            "Venus": {"sign": "Pisces", "house": 10, "dignity": "exalted"},
+            "Saturn": {"sign": "Scorpio", "house": 6, "dignity": "enemy_sign"},
+            "Rahu": {"sign": "Aries", "house": 11, "dignity": "neutral"},
+            "Ketu": {"sign": "Libra", "house": 5, "dignity": "neutral"},
+        },
+        "vimshottari": {
+            "current_md": {"lord": "Jupiter", "name": "Jupiter"},
+            "current_md_antardashas": [{"lord": "Ketu", "name": "Ketu", "status": "current"}],
+        },
+        "meta": {"client": "Ritesh", "dob": "1986-03-08"},
+    }
+
+    traits, family_notes = build_personal_life(pc)
+    assert len(traits) > 0, "Should extract at least some personality traits"
+    assert len(family_notes) > 0, "Should extract at least some family notes"
+    relations = {fn.relation for fn in family_notes}
+    # Mother (Moon in 4th) always produces positive classical text
+    assert "mother" in relations, f"Should have mother note, got: {relations}"
+    # At least 2 relations should appear — classical filter legitimately drops negative-only placements
+    assert len(relations) >= 2, f"Should have at least 2 family relations, got: {relations}"
+
+
+

@@ -233,7 +233,7 @@ def _build_proof(pc: dict, area_key: str, house: int, *,
         "children": "children and creativity",
         "health": "health and vitality",
         "learning": "learning and direction",
-        "inner": "inner life and space",
+        "inner": "peace of mind, rest and spirituality",
     }.get(area_key, "this area")
     lines: list[str] = []
 
@@ -242,7 +242,7 @@ def _build_proof(pc: dict, area_key: str, house: int, *,
         "career": "Career", "money": "Money", "love": "Relationship",
         "home": "Home", "children": "Children and creativity",
         "health": "Health and energy", "learning": "Learning",
-        "inner": "Inner life",
+        "inner": "Inner peace and spirituality",
     }.get(area_key, area_name.title())
     strength = ""
     fld = ""

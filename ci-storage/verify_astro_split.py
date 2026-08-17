@@ -20,7 +20,7 @@ SAMPLE = {
 }
 
 AREA_LABELS = (
-    "Work &amp; Career", "Money", "Love &amp; Marriage", "Home &amp; Family",
+    "Work &amp; Career", "Money", "Relationships &amp; Partnership", "Home &amp; Family",
     "Children", "Health &amp; Energy", "Learning &amp; Luck", "Inner Life",
 )
 
@@ -79,9 +79,7 @@ def check(label, html, must, must_not):
 
 
 def has_unlocked_evidence(html: str) -> bool:
-    return bool(re.search(
-        r'<div class="evidence"><span class="ev-label">Why your chart says this</span>',
-        html))
+    return "How this chapter affects this area" in html
 
 
 def has_unlocked_when(html: str) -> bool:
@@ -96,10 +94,11 @@ def main():
 
     ok = True
     ok &= check("free", free,
-                 ["locked-inline", "data-unlock", "What the full reading adds",
-                  'class="present"', "recognition", "Unlock — ₹"]
+                 ["locked-inline", "data-unlock", "lock-blur",
+                  'class="present-current"', "recognition", "Unlock full reading"]
                  + list(AREA_LABELS),
-                 ["<ol class=\"timeline\">", "<ol class=\"windows-list\">", "Full working"])
+                 ["<ol class=\"timeline\">", "<ol class=\"windows-list\">", "Full working",
+                  "Planets involved", "How this chapter affects this area", "Your life promises"])
     if has_unlocked_evidence(free):
         print("FAIL [free] leaked unlocked evidence <ul>")
         ok = False
@@ -117,7 +116,8 @@ def main():
     admin_result = submit_full_report(admin["token"])
     paid_html = fetch_html(admin_result["links"]["paid"])
     ok &= check("paid", paid_html,
-                 ["<ol class=\"timeline\">", "<ol class=\"windows-list\">", "When it actually happens"],
+                 ["<ol class=\"timeline\">", "<ol class=\"windows-list\">",
+                  "Your life promises", "Planets involved", "How this chapter affects this area"],
                  ["Full working", "What the full reading adds"])
     if not has_unlocked_evidence(paid_html):
         print("FAIL [paid] missing evidence lists")

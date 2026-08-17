@@ -33,6 +33,16 @@ ci-storage/*.zip
 daily_free.html
 daily_paid.html
 
+# scratch scripts and extracted artifacts
+_apply_*.py
+_fix_*.py
+_parse_*.py
+_run_*.py
+_verify_*.py
+extracted_*.txt
+pdf_*.txt
+
+
 # user data: palm photos and generated charts are personal information
 engines/palm_api/data/uploads/
 engines/palm_api/data/outputs/

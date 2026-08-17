@@ -12,7 +12,7 @@ ADULT_LABELS: dict[str, str] = {
     "children": "Children",
     "health": "Health & Energy",
     "learning": "Learning & Luck",
-    "inner": "Inner Life",
+    "inner": "Inner Peace & Spirituality",
 }
 
 YOUNG_ADULT_LABELS: dict[str, str] = {
@@ -23,7 +23,7 @@ YOUNG_ADULT_LABELS: dict[str, str] = {
     "children": "Creativity & Projects",
     "health": "Health & Energy",
     "learning": "Learning & Luck",
-    "inner": "Inner Life",
+    "inner": "Inner Peace & Spirituality",
 }
 
 MINOR_LABELS: dict[str, str] = {
@@ -34,7 +34,7 @@ MINOR_LABELS: dict[str, str] = {
     "children": "Creativity & Projects",
     "health": "Health & Energy",
     "learning": "Learning & Luck",
-    "inner": "Inner Life",
+    "inner": "Inner Peace & Spirituality",
 }
 
 ADULT_AREA_NAMES: dict[str, str] = {
@@ -45,7 +45,7 @@ ADULT_AREA_NAMES: dict[str, str] = {
     "children": "children and creativity",
     "health": "health and energy",
     "learning": "learning and direction",
-    "inner": "your inner life",
+    "inner": "your peace of mind and spirituality",
 }
 
 YOUNG_ADULT_AREA_NAMES: dict[str, str] = {
@@ -56,7 +56,7 @@ YOUNG_ADULT_AREA_NAMES: dict[str, str] = {
     "children": "creativity and projects",
     "health": "health and energy",
     "learning": "learning and direction",
-    "inner": "your inner life",
+    "inner": "your peace of mind and spirituality",
 }
 
 MINOR_AREA_NAMES: dict[str, str] = {
@@ -67,7 +67,7 @@ MINOR_AREA_NAMES: dict[str, str] = {
     "children": "creativity and projects",
     "health": "health and energy",
     "learning": "learning and direction",
-    "inner": "your inner life",
+    "inner": "your peace of mind and spirituality",
 }
 
 

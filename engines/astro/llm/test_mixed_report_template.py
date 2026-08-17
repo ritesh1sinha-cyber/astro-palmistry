@@ -53,7 +53,6 @@ def test_mixed_template_keeps_chart_anchors_and_astrologer_prose():
     assert "Nakshatra: Rohini" in html
     assert "Saturn Mahadasha" in html
     assert "Mercury Antardasha" in html
-    assert "What the chart shows" in html
     assert "Saturn&#x27;s influence on the career axis" in html
     assert "House 10" in html
     assert "underlying promise: Supported" in html

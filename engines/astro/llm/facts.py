@@ -1036,8 +1036,8 @@ def _vedic_context(pc: dict) -> VedicContext:
         nakshatra = str(
             moon.get("nakshatra") or moon.get("nak") or moon.get("naksatra") or ""
         ).strip()
-    lord = str(md.get("md_lord") or "").strip()[:20]
-    sub = str(ad.get("ad_lord") or "").strip()[:20]
+    lord = str(md.get("md_lord") or md.get("lord") or md.get("name") or "").strip()[:20]
+    sub = str(ad.get("ad_lord") or ad.get("lord") or ad.get("name") or "").strip()[:20]
     return VedicContext(
         period_lord=lord,
         sub_period_lord=sub,

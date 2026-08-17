@@ -210,6 +210,9 @@ def validate_prose_against_facts(prose: Any, facts: Any, *, area: str = "") -> l
                                           "existing children", "parent")):
                 errors.append("assumed_relationship_or_parent_status")
 
+    # Dasha lord grounding check: ensure planets identified as main/sub period lords match active dasha
+    errors.extend(validate_dasha_lords(text, facts))
+
     # Palm facts have no dates unless explicitly supplied. Do not let a model
     # manufacture an age window from signal IDs or internal engine metadata.
     if isinstance(payload, dict) and payload.get("kind") == "palm":
@@ -226,6 +229,65 @@ def validate_prose_against_facts(prose: Any, facts: Any, *, area: str = "") -> l
             seen.add(e)
             out.append(e)
     return out
+
+
+def validate_dasha_lords(text: str, facts: Any) -> list[str]:
+    """Ensure planets identified as main period or sub period match actual active dasha."""
+    if not text or facts is None:
+        return []
+    payload = public_fact_payload(facts) if facts is not None else {}
+    if not isinstance(payload, dict):
+        return []
+    vedic = payload.get("vedic_context") or {}
+    if not isinstance(vedic, dict):
+        vedic = getattr(facts, "vedic_context", None)
+        if hasattr(vedic, "model_dump"):
+            vedic = vedic.model_dump()
+        elif hasattr(vedic, "__dict__"):
+            vedic = getattr(vedic, "__dict__", {})
+    if not isinstance(vedic, dict):
+        return []
+
+    cur_period = str(vedic.get("period_lord") or vedic.get("mahadasha") or "").strip().lower()
+    cur_sub = str(vedic.get("sub_period_lord") or vedic.get("antardasha") or "").strip().lower()
+    if not cur_period and not cur_sub:
+        return []
+
+    errors: list[str] = []
+    planets_pattern = r"(?:Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu|Uranus|Neptune|Pluto)"
+
+    # 1. Planet + main period / mahadasha
+    if cur_period:
+        for m in re.finditer(rf"\b({planets_pattern})(?:'s)?(?:\s+(?:influence|energy|impact|role|placement|transit))?\s*(?:in|during|under)?\s*(?:the)?\s+(?:main\s+period|mahadasha|maha\s+dasha)\b", text, re.I):
+            p = m.group(1).lower()
+            if p != cur_period:
+                errors.append(f"dasha_lord_mismatch:main_period:{m.group(1)}")
+        for m in re.finditer(rf"\b(?:main\s+period|mahadasha|maha\s+dasha)\s+(?:of|is|ruled\s+by|governed\s+by|under|led\s+by)\s+({planets_pattern})\b", text, re.I):
+            p = m.group(1).lower()
+            if p != cur_period:
+                errors.append(f"dasha_lord_mismatch:main_period:{m.group(1)}")
+
+    # 2. Planet + sub period / antardasha
+    if cur_sub:
+        for m in re.finditer(rf"\b({planets_pattern})(?:'s)?(?:\s+(?:influence|energy|impact|role|placement|transit))?\s*(?:in|during|under)?\s*(?:the)?\s+(?:sub\s*[- ]?period|antardasha|antar\s+dasha|bhukti)\b", text, re.I):
+            p = m.group(1).lower()
+            if p != cur_sub:
+                errors.append(f"dasha_lord_mismatch:sub_period:{m.group(1)}")
+        for m in re.finditer(rf"\b(?:sub\s*[- ]?period|antardasha|antar\s+dasha|bhukti)\s+(?:of|is|ruled\s+by|governed\s+by|under|led\s+by)\s+({planets_pattern})\b", text, re.I):
+            p = m.group(1).lower()
+            if p != cur_sub:
+                errors.append(f"dasha_lord_mismatch:sub_period:{m.group(1)}")
+
+    # 3. Compound sequence: e.g. "Venus-Saturn dasha" or "Venus-Saturn running period"
+    if cur_period and cur_sub:
+        for m in re.finditer(rf"\b({planets_pattern})\s*[-–—/]\s*({planets_pattern})\s+(?:dasha|period\s+sequence|running\s+period|active\s+period)\b", text, re.I):
+            p1 = m.group(1).lower()
+            p2 = m.group(2).lower()
+            if p1 != cur_period or p2 != cur_sub:
+                errors.append(f"dasha_sequence_mismatch:{m.group(1)}-{m.group(2)}")
+
+    return errors
+
 
 
 _OPPORTUNITY_LANGUAGE = re.compile(

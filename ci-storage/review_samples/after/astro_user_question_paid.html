@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Your question — When will I get promoted?</title><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/><style>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Your question — Will my career improve in the next two years?</title><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/><style>
 :root{--ink:#16181d;--muted:#6a7080;--line:#e6e4df;--bg:#fbfaf8;
 --up:#1c6b45;--down:#a3341f;--mixed:#8a6a1f;--card:#fff}
 *{box-sizing:border-box}
@@ -11,6 +11,34 @@ color:var(--muted);font-weight:600}
 h1{font-family:Fraunces,Georgia,serif;font-size:2rem;line-height:1.12;
 margin:10px 0 12px;font-weight:600;letter-spacing:-.015em}
 .chartline{font-size:.86rem;color:var(--muted)}
+.planet-strip{margin:18px 0 6px}
+.planet-strip .sec-note{margin-bottom:10px}
+ul.pchips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+li.pchip{background:#fff;border:1px solid var(--line);border-left-width:4px;
+border-radius:10px;padding:10px 12px;min-width:132px;flex:1 1 140px}
+li.pchip.up{border-left-color:var(--up);background:#f3faf6}
+li.pchip.down{border-left-color:var(--down);background:#fff6f4}
+li.pchip.mixed{border-left-color:var(--mixed);background:#fffbeb}
+li.pchip b{display:block;font-family:Fraunces,serif;font-size:1.05rem;font-weight:600}
+li.pchip span{display:block;font-size:.78rem;color:#3d4250;margin-top:2px}
+li.pchip em.pchip-note{display:block;font-style:normal;font-size:.72rem;line-height:1.35;
+color:var(--mixed);margin-top:6px;font-weight:500}
+li.pchip small{display:block;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
+color:var(--muted);margin-top:6px;font-weight:600}
+.ni-chart{margin:16px 0 8px;padding:0;border:0}
+.ni-chart .ev-label{margin-bottom:8px}
+.ni-chart-box{width:100%;max-width:380px;margin:0 auto;aspect-ratio:1/1;
+background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ni-svg{display:block;width:100%;height:100%}
+.ni-frame{stroke:var(--ink);stroke-width:1.8;fill:#fff}
+.ni-grid{stroke:var(--ink);stroke-width:1.35;fill:none}
+.ni-house{fill:#fbfaf8;stroke:var(--ink);stroke-width:1.15;fill-opacity:0.35}
+.ni-num{font-family:Inter,system-ui,sans-serif;font-size:10px;font-weight:700;
+fill:#6b7280}
+.ni-pl{font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:700;
+fill:var(--ink)}
+.ni-legend{text-align:center;margin:8px 0 0;font-size:.72rem}
+.ni-warn{text-align:center;margin:6px 0 0;font-size:.78rem;color:var(--mixed)}
 .now-box{background:var(--ink);color:#f7f5f1;border-radius:14px;
 padding:20px 22px;margin:22px 0 30px}
 .now-box .lbl{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
@@ -45,6 +73,17 @@ font-weight:600;color:var(--mixed)}
 .blurred{filter:blur(4.5px);user-select:none;opacity:.6}
 .locked-inline .lockicon{color:var(--mixed);font-weight:700}
 .when.locked-inline{color:var(--mixed);font-weight:600}
+.lock-wrap{position:relative;border:1px solid var(--line);border-radius:14px;
+overflow:hidden;background:var(--card);margin-bottom:26px}
+.lock-blur{padding:18px 20px;filter:blur(5px);opacity:.55;user-select:none;
+pointer-events:none;color:#3d4250;font-size:.86rem;line-height:1.7}
+.lock-over{position:absolute;inset:0;display:grid;place-items:center;
+background:rgba(251,250,248,.18);pointer-events:none;padding:12px}
+.lock-chip{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+font-weight:600;color:var(--mixed);background:#fff;border:1px solid var(--line);
+border-radius:999px;padding:7px 14px;box-shadow:0 2px 10px rgba(22,24,29,.08);
+white-space:nowrap}
+.locked-section{margin-top:28px}
 .evidence{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
 .ev-label{font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;
 font-weight:600;color:var(--muted)}
@@ -52,6 +91,47 @@ font-weight:600;color:var(--muted)}
 background:#f1efea;border-radius:99px;padding:2px 9px}
 .evidence ul{margin:8px 0 0;padding-left:18px;font-size:.85rem;color:#3d4250}
 .evidence li{margin:6px 0}
+.confluence-box{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.promise-line{font-size:.86rem;color:#3d4250;margin:0 0 8px;line-height:1.45}
+.promise-teaser{color:var(--muted)}
+.promise-meta{font-size:.78rem;color:var(--muted);font-weight:500}
+.promise-evidence{margin:4px 0 8px;padding-left:18px;font-size:.78rem;color:var(--muted)}
+.promise-evidence li{margin:3px 0}
+.promise-meaning{font-size:.86rem;color:#3d4250;margin:0 0 8px;line-height:1.45}
+.conf-mechanism{font-size:.86rem;color:#3d4250;margin:0 0 8px;line-height:1.45}
+.promise-manifest,.promise-pressure{margin:0 0 8px}
+.promise-manifest ul,.promise-pressure ul,.promise-locked{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:#3d4250}
+.promise-manifest li,.promise-pressure li,.promise-locked li{margin:3px 0}
+.promise-locked{color:var(--muted)}
+.wealth-subs{margin-top:4px}
+.wealth-sub-row{display:flex;justify-content:space-between;gap:12px;font-size:.82rem;
+  color:#3d4250;padding:3px 0;border-bottom:1px dashed rgba(0,0,0,.08)}
+.wealth-sub-row:last-child{border-bottom:none}
+.wealth-sub-row b{color:#1f2430;font-weight:600}
+details.promise-detail{margin:2px 0 8px}
+details.promise-detail summary{font-size:.78rem;color:var(--muted);cursor:pointer}
+.dashboard-grid{display:grid;gap:14px;margin:12px 0 20px}
+.dash-group{background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.dash-group h4{margin:0 0 4px;font-size:.95rem}
+.dash-note{margin:0 0 8px;font-size:.8rem;color:var(--muted)}
+.dash-group ul{margin:0;padding-left:18px;font-size:.85rem}
+.dash-group li{margin:3px 0}
+.confluence-summary{margin:6px 0 8px;font-size:.88rem}
+.confluence-summary span{display:block;font-size:.78rem;color:var(--muted);margin-top:4px}
+.confluence-details{margin-top:6px}
+.confluence-details summary{font-size:.78rem;color:var(--muted);cursor:pointer;font-weight:500}
+.confluence-rows{margin-top:8px}
+.conf-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;padding:8px 0;
+border-top:1px solid var(--line);font-size:.82rem}
+.conf-row:first-child{border-top:none;padding-top:0}
+.conf-method{min-width:120px;font-weight:600;color:var(--ink)}
+.conf-signal{font-size:.66rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+padding:2px 8px;border-radius:99px}
+.conf-signal.support{background:#e4f2ea;color:var(--up)}
+.conf-signal.caution{background:#fbeae6;color:var(--down)}
+.conf-signal.neutral{background:#f1efea;color:var(--muted)}
+.conf-why{display:block;width:100%;font-size:.76rem;color:var(--muted);margin-top:2px}
+.conf-health-frame{font-size:.84rem;color:#3d4250;margin:0 0 8px;line-height:1.45}
 .proof{background:#fff;border:2px solid var(--ink);border-radius:14px;
 padding:22px;margin:26px 0}
 .proof h3{font-family:Fraunces,serif;font-size:1.22rem;margin:0 0 8px;font-weight:600}
@@ -67,10 +147,44 @@ font-weight:600;color:var(--muted)}
 .daily h3{font-family:Fraunces,serif;font-size:1.16rem;margin:8px 0 10px;font-weight:600}
 .dodont{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
 @media(max-width:520px){.dodont{grid-template-columns:1fr}}
-.dodont div{background:#fff;border-radius:10px;padding:10px 12px;font-size:.84rem}
+.dodont>div{border-radius:10px;padding:12px 14px;font-size:.84rem}
+.dodont .do{background:#e4f2ea;border:1px solid #b7dcc8;color:#174a32}
+.dodont .dont{background:#fbeae6;border:1px solid #e8b6aa;color:#7a2416}
 .dodont .t{font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;
-font-weight:600;margin-bottom:5px}
+font-weight:700;margin-bottom:6px}
 .do .t{color:var(--up)} .dont .t{color:var(--down)}
+/* Remedies & gemstones — keep wear/do and avoid visually separate */
+.remedy-card{margin:22px 0 28px}
+.remedy-lede{font-size:.9rem;color:#3d4250;margin:8px 0 14px}
+.remedy-do,.remedy-dont,.stones-group{border-radius:12px;padding:14px 16px;margin:0 0 12px}
+.remedy-do,.stones-group.up{background:#e4f2ea;border:1px solid #b7dcc8}
+.stones-group.trial{background:#fbf6e4;border:1px solid #e6d59a}
+.remedy-dont,.stones-group.down{background:#fbeae6;border:1px solid #e8b6aa}
+.remedy-do-label,.stones-group-label{font-size:.66rem;letter-spacing:.12em;
+text-transform:uppercase;font-weight:700;margin:0 0 8px}
+.remedy-do-label,.stones-group.up .stones-group-label{color:var(--up)}
+.stones-group.trial .stones-group-label{color:var(--mixed)}
+.remedy-dont-label,.stones-group.down .stones-group-label{color:var(--down)}
+.remedy-do p,.remedy-dont p{margin:0;font-size:.9rem;line-height:1.5}
+ul.stones{list-style:none;margin:0;padding:0}
+li.stone{background:#fff;border:1px solid var(--line);border-left-width:4px;
+border-radius:10px;padding:12px 14px;margin:0 0 10px}
+li.stone:last-child{margin-bottom:0}
+li.stone.up{border-left-color:var(--up);background:#f3faf6}
+li.stone.trial{border-left-color:var(--mixed);background:#fffbeb}
+li.stone.down{border-left-color:var(--down);background:#fff6f4}
+li.stone.mixed{border-left-color:var(--mixed);background:#fffbeb}
+.stone-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+flex-wrap:wrap}
+.stone-verdict{font-size:.68rem;font-weight:700;letter-spacing:.04em;
+text-transform:uppercase}
+li.stone.up .stone-verdict{color:var(--up)}
+li.stone.trial .stone-verdict,li.stone.mixed .stone-verdict{color:var(--mixed)}
+li.stone.down .stone-verdict{color:var(--down)}
+.stone-role,.stone-detail,.stone-why,.stone-alt{font-size:.82rem;color:#3d4250;
+margin-top:6px;line-height:1.45}
+.remedy-locked{background:#f6f4ef;border-radius:10px;padding:12px 14px;
+font-size:.88rem;margin-top:10px}
 .windows{list-style:none;margin:10px 0 0;padding:0;font-size:.85rem}
 .windows li{display:flex;gap:10px;padding:6px 0;border-top:1px solid #e0dcd4}
 .windows b{min-width:96px;font-variant-numeric:tabular-nums}
@@ -96,6 +210,7 @@ padding-top:12px}
 padding:3px 0;opacity:.9}
 .dsys span{opacity:.65}
 .dagree{margin-top:9px;font-size:.8rem;opacity:.8}
+.dagree-mix{margin-top:6px;font-size:.78rem;opacity:.75;color:#c4a35a}
 .persona .traits{list-style:none;margin:0;padding:0}
 .persona .traits li{font-family:Fraunces,serif;font-size:1.02rem;
 line-height:1.45;padding:9px 0;border-bottom:1px solid var(--line)}
@@ -117,11 +232,31 @@ margin-top:32px;text-align:center}
 .buy .cta{display:inline-block;background:#f7f5f1;color:var(--ink);
 padding:12px 26px;border-radius:99px;font-weight:600;font-size:.9rem;
 text-decoration:none}
+@media print{
+  .buy,.mm-overlay,.present-ask,.recog-ask,.pillbtn{display:none!important}
+}
+@page{size:A4;margin:14mm 12mm}
 footer{margin-top:40px;font-size:.74rem;color:var(--muted);text-align:center}
 .prediction{margin:14px 0;padding:14px 16px;background:#fff;border:1px solid var(--line);
 border-radius:12px}
 .pred-scenario{margin:0 0 10px;font-size:.92rem;line-height:1.55}
-.pred-why{margin:0;font-size:.82rem;color:#3d4250;line-height:1.45}
+.pred-details{margin-top:10px}
+.pred-details summary{font-size:.78rem;color:var(--muted);cursor:pointer;font-weight:500}
+.pred-why{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#e3eef9;
+border:1px solid #b7cfe6;border-left:4px solid #1a5f9e;font-size:.84rem;
+color:#163a5c;line-height:1.5}
+.pred-why b{display:inline-block;margin-right:4px;color:#0b4f8a;font-size:.72rem;
+font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+/* Keep Why chip above generic paragraph colour rules (evidence / lists / windows) */
+.evidence .pred-why,.win .pred-why,.hits .pred-why,.palm-list .pred-why,
+.palm-points .pred-why,.qa .pred-why,.card .pred-why{
+  margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#e3eef9;
+  border:1px solid #b7cfe6;border-left:4px solid #1a5f9e;font-size:.84rem;
+  color:#163a5c;line-height:1.5}
+.evidence .pred-why b,.win .pred-why b,.hits .pred-why b,.palm-list .pred-why b,
+.palm-points .pred-why b,.qa .pred-why b,.card .pred-why b{
+  display:inline-block;margin-right:4px;color:#0b4f8a;font-size:.72rem;
+  font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .pred-list .prediction{list-style:none}
 .present-list.pred-list{list-style:none;padding:0;margin:0}
 .present-list.pred-list>li{margin-bottom:12px}
@@ -250,6 +385,9 @@ align-items:baseline;padding:9px 0;border-top:1px solid var(--line);font-size:.8
 @media(max-width:480px){.palm-imgs{grid-template-columns:1fr}}
 .palm-imgs figure{margin:0}
 .palm-imgs img{width:100%;display:block;border:1px solid var(--line);border-radius:12px}
+.palm-img-missing{display:flex;align-items:center;justify-content:center;min-height:12rem;
+padding:16px;border:1px dashed var(--line);border-radius:12px;text-align:center;
+font-size:.82rem;line-height:1.45;color:var(--muted);background:#f6f4ef}
 .palm-imgs figcaption{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
 font-weight:600;color:var(--muted);margin-top:6px;text-align:center}
 .palm-scores{list-style:none;margin:10px 0 0;padding:0}
@@ -260,6 +398,12 @@ align-items:center;padding:6px 0;font-size:.85rem}
 .palm-list li{padding:10px 0;border-top:1px solid var(--line);font-size:.9rem}
 .palm-list li:first-child{border-top:0}
 .palm-list p{margin:4px 0 0;font-size:.88rem;color:#3d4250}
+.palm-list .pred-why,.palm-points .pred-why{
+  margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#e3eef9;
+  border:1px solid #b7cfe6;border-left:4px solid #1a5f9e;font-size:.84rem;
+  color:#163a5c;line-height:1.5}
+.palm-list .pred-why b,.palm-points .pred-why b{display:inline-block;margin-right:4px;
+color:#0b4f8a;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .palm-list.plain li{font-size:.88rem;color:#3d4250}
 .palm-points{list-style:none;margin:8px 0 0;padding:0}
 .palm-points li{padding:8px 0;border-top:1px solid var(--line)}
@@ -309,19 +453,67 @@ font-size:.88rem;padding:12px 14px;border-radius:99px}
 .mm-close{appearance:none;display:block;width:100%;border:0;background:transparent;
 color:var(--muted);font:inherit;font-size:.82rem;font-weight:600;padding:10px;
 cursor:pointer}
-</style></head><body><div class="wrap"><section class="qa"> <div class="qa-asked"><b>You asked:</b> When will I get promoted?</div> <p class="qa-lede">Meera, here is the straight answer, then the chart behind it.</p> <h2 class="qa-verdict">A mixed picture — workable with the right timing and steady effort. Yes — and the chart is specific about when.</h2> <div class="prediction" data-verdict="mixed"><p class="pred-scenario">The work is solid; the recognition is slower than the work. Both are true at once. Your career chart is well-built for career and public standing. Moon protects this area in the career chart. Mixed signals. Patience…</p><p class="pred-why"><b>Why:</b> career chart: Saturn mixed; house strength under strain; Rahu–Jupiter; lunar Jupiter</p></div> <p class="qa-promise"><b>Does your chart even offer this?</b> Promotion or a step up reads <b>mixed</b> in your chart — split read.</p> <div class="qa-window strong"> <div class="qa-wlabel">Strongest window</div> <div class="qa-when">June 2027 → October 2027</div> <p class="pred-scenario">This is the window where your chart actually backs a promotion — between June 2027 and October 2027.</p> <p class="pred-why"><b>Why:</b> Rahu–Saturn running; Saturn crossing your 1st house (well supported); period activates this question; lunar cycle on Mars</p></div> <div class="qa-window strong"> <div class="qa-wlabel">Also worth noting</div> <div class="qa-when">February 2028 → August 2029</div> <p class="pred-scenario">This is the window where your chart actually backs a promotion — between February 2028 and August 2029.</p> <p class="pred-why"><b>Why:</b> Rahu–Saturn running; Saturn crossing your 1st house (well supported); period activates this question; lunar cycle on Mars</p></div> <div class="qa-window weak"> <div class="qa-wlabel">Also worth noting</div> <div class="qa-when">March 2033 → August 2033</div> <p class="pred-scenario">An opening appears between March 2033 and August 2033, though your chart does not fully guarantee the outcome.</p> <p class="pred-why"><b>Why:</b> Rahu–Ketu running; Jupiter crossing your 11th house (well supported); lunar cycle on Mercury</p></div> <p class="qa-caveat">Timing is a window, not a date. What the chart says is <em>when the conditions are right</em> — you still have to apply, ask, and move inside it.</p></section>
-<section class="remedy-card"> <div class="ev-label">What you can actually do about it</div> <p class="remedy-lede">What your chart says to do about this question.</p> <div class="remedy-do"> <div class="remedy-do-label">Start here. No belief required</div> <p>Ask one senior person to speak for you. This opens through a sponsor, not through effort.</p> </div> <ul class="stones"> <li class="stone up" data-verdict="up"> <div class="stone-top"> <b>Yellow Sapphire (Pukhraj)</b> <span class="stone-verdict">Safe for you to wear</span> </div> <div class="stone-role">Current antardasha lord. Jupiter in your 3th, neither strong nor weak</div> <div class="stone-detail">Gold · Index finger · first worn on a Thursday</div> <div class="stone-alt"><b>Instead / alongside:</b> Brihaspati Gayatri 108x Thursday · Chana dal + yellow clothes to priest Thursday</div> </li> <li class="stone up" data-verdict="up"> <div class="stone-top"> <b>Ruby (Manik)</b> <span class="stone-verdict">Safe for you to wear</span> </div> <div class="stone-role">5th lord (children/luck). Sun in your 10th, neither strong nor weak</div> <div class="stone-detail">Gold or copper · Ring finger · first worn on a Sunday</div> <div class="stone-alt"><b>Instead / alongside:</b> Aditya Hriday / Surya Gayatri 108x · Wheat + jaggery on Sunday to the needy</div> </li> <li class="stone up" data-verdict="up"> <div class="stone-top"> <b>Emerald (Panna)</b> <span class="stone-verdict">Safe for you to wear</span> </div> <div class="stone-role">Question theme (career). Mercury in your 9th, neither strong nor weak</div> <div class="stone-detail">Gold or brass · Little finger · first worn on a Wednesday</div> <div class="stone-alt"><b>Instead / alongside:</b> Vishnu Sahasranama Wednesday; Budh Gayatri 108x · Green gram or books on Wednesday</div> </li> <li class="stone mixed" data-verdict="mixed"> <div class="stone-top"> <b>Gomed (Hessonite)</b> <span class="stone-verdict">Do not wear the stone — mantra only</span> </div> <div class="stone-role">Mahadasha lord. Rahu in your 10th, neither strong nor weak</div> <div class="stone-why">Rahu gemstone not advised unless dasha is active and placement is supportive</div> <div class="stone-alt"><b>Instead / alongside:</b> Rahu Gayatri 108x · Coconut or blanket on Saturday</div> </li> <li class="stone down" data-verdict="down"> <div class="stone-top"> <b>Red Coral (Moonga)</b> <span class="stone-verdict">Do not wear this stone</span> </div> <div class="stone-role">Lagna lord (H1). Mars in your 8th, in its own sign</div> <div class="stone-why">Mars rules or sits in your 8th house — a pressure house; gem not advised</div> <div class="stone-alt"><b>Instead / alongside:</b> Hanuman Chalisa daily; Mangal Gayatri 108x · Red masoor dal on Tuesday; sweets to dogs</div> </li></ul> <p class="fine">A remedy is not a lever that overrides the chart. It works the way preparation works — it changes what you are ready for when the timing turns.</p>
+/* Six-month validation timeline (free trust layer) */
+.past-validation{margin:18px 0 24px}
+.past-timeline{border-left:2px solid var(--line);padding-left:16px}
+.past-event{position:relative;margin:14px 0;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.past-event:before{content:"";position:absolute;left:-23px;top:18px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.past-event.up{border-left:4px solid #2c7658}.past-event.mixed{border-left:4px solid #a06d1f}.past-event.down{border-left:4px solid #8b3d3d}
+.past-date{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.03em;margin-bottom:5px}
+.past-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700}
+.past-headline{font-size:16px;font-weight:600;margin:5px 0 8px}
+.past-noticed{margin:8px 0 10px}
+.past-noticed ul{margin:6px 0 0;padding-left:1.15rem}
+.past-noticed li{margin:3px 0;font-size:.86rem;color:#3d4250}
+.past-meta,.past-why{font-size:12px;color:var(--muted);margin-top:5px}
+.past-why{padding-top:7px;border-top:1px solid var(--line)}
+.past-signal{margin-left:8px;font-size:11px;letter-spacing:.04em;text-transform:none;color:var(--muted);font-weight:600}
+.past-manifest{margin:8px 0 4px}
+.past-manifest ul{margin:6px 0 0;padding-left:18px;font-size:.86rem;color:#3d4250}
+.past-manifest li{margin:3px 0}
+.past-astro{margin-top:8px;font-size:.8rem;color:var(--muted)}
+.past-astro summary{cursor:pointer;font-weight:600;color:var(--ink)}
+.past-astro p{margin:6px 0 0}
+.present-current{margin:18px 0}
+/* Paid area-card interactivity */
+.card-planets{display:flex;flex-direction:column;gap:8px;margin:10px 0 6px}
+.card-planets .ev-label{width:100%;margin:0}
+.planet-names{font-size:.9rem;font-weight:600;color:#2b303b;letter-spacing:.01em}
+.planet-row{display:flex;gap:8px;align-items:flex-start;font-size:.82rem;color:#3d4250}
+.chapter-planets{display:grid;gap:10px;margin:14px 0 4px}
+.planet-theme{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fbfaf7}
+.planet-theme b{display:block;font-size:.84rem;margin-bottom:4px}
+.planet-theme p{margin:0;font-size:.84rem;color:#3d4250;line-height:1.45}
+.tl-period{display:block;margin-top:4px;font-size:.78rem;color:var(--muted);font-weight:500}
+.planet-chip{display:inline-block;font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#f7f5f1;color:var(--ink);white-space:nowrap}
+.expect{margin:8px 0}
+.expect-note{margin:6px 0 0;font-size:.86rem;color:#3d4250;line-height:1.45}
+.chapter-area-note{margin:8px 0 0;font-size:.86rem;color:#3d4250;line-height:1.45}
+.trajectory{margin:10px 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fbfaf7}
+.trajectory .ev-label{display:block;margin-bottom:8px}
+.trajectory-row{display:grid;grid-template-columns:1fr;gap:4px;font-size:.82rem;padding:10px 0;border-top:1px solid var(--line)}
+.trajectory-row:first-of-type{border-top:0}
+.traj-when{color:var(--muted);font-weight:600}
+.traj-note{margin:0;color:#3d4250}
+.trajectory-row small{color:var(--muted)}
+.traj-up{color:#2c7658}.traj-mixed{color:#a06d1f}.traj-down{color:#8b3d3d}
+.evidence-astro{margin-top:10px;font-size:.86rem}
+.evidence-astro summary{cursor:pointer;font-weight:600}
+.evidence-astro .pred-why{margin-top:8px}
+.evidence-astro p{margin:6px 0;line-height:1.45;color:#3d4250}
+.evidence-astro .pred-agree{font-weight:600;color:#2b303b}
+</style></head><body><div class="wrap"><section class="qa"> <div class="qa-asked"><b>You asked:</b> Will my career improve in the next two years?</div> <h2 class="qa-verdict">No sufficiently strong validated window appears for your career improving in the next 2 years.</h2> <p>This does not mean the life area is blocked. It means the canonical timing evidence does not provide a strong window inside the period you asked about.</p> <div class="evidence"><span class="ev-label">What the chart supports</span><ul><li>Independent chart structure gives mixed support to this area.</li><li>Structural support is limited for this life area.</li><li>Greater professional responsibility and ownership.</li></ul></div></section>
+<section class="remedy-card"> <div class="ev-label">The remedy — what tips the timing your way</div> <p class="remedy-lede">Practical first, then the classical support for the planets that own this question.</p> <div class="remedy-do"> <div class="remedy-do-label">Do this first · no belief required</div> <p>Ask one senior person to speak for you. This opens through a sponsor, not through effort.</p> </div> <div class="stones-group up"> <div class="stones-group-label">Gemstones · considered suitable for your chart</div> <ul class="stones"> <li class="stone up" data-verdict="up"> <div class="stone-top"> <b>Yellow Sapphire (Pukhraj)</b> <span class="stone-verdict">Considered suitable for your chart</span> </div> <div class="stone-role">Current timing pattern</div> <div class="stone-detail">Metal: Gold · Finger: Index finger · Start day: Thursday</div> <div class="stone-alt"><b>If you choose not to wear it / alongside:</b> Brihaspati Gayatri 108x Thursday · Chana dal + yellow clothes to priest Thursday</div> </li> <li class="stone up" data-verdict="up"> <div class="stone-top"> <b>Ruby (Manik)</b> <span class="stone-verdict">Considered suitable for your chart</span> </div> <div class="stone-role">Question-specific chart indicator</div> <div class="stone-detail">Metal: Gold or copper · Finger: Ring finger · Start day: Sunday</div> <div class="stone-alt"><b>If you choose not to wear it / alongside:</b> Aditya Hriday / Surya Gayatri 108x · Wheat + jaggery on Sunday to the needy</div> </li> <li class="stone up" data-verdict="up"> <div class="stone-top"> <b>Emerald (Panna)</b> <span class="stone-verdict">Considered suitable for your chart</span> </div> <div class="stone-role">Question-specific chart indicator</div> <div class="stone-detail">Metal: Gold or brass · Finger: Little finger · Start day: Wednesday</div> <div class="stone-alt"><b>If you choose not to wear it / alongside:</b> Vishnu Sahasranama Wednesday; Budh Gayatri 108x · Green gram or books on Wednesday</div> </li></ul> </div> <div class="stones-group down"> <div class="stones-group-label">Do not wear · mantra and charity instead</div> <ul class="stones"> <li class="stone down" data-verdict="down"> <div class="stone-top"> <b>Gomed (Hessonite)</b> <span class="stone-verdict">Do not wear this stone. Use mantra instead</span> </div> <div class="stone-role">Current timing pattern</div> <div class="stone-why"><b>Why:</b> Rahu gemstone not advised unless dasha is active and placement is supportive</div> <div class="stone-alt"><b>Instead:</b> Rahu Gayatri 108x · Coconut or blanket on Saturday</div> </li></ul> </div> <p class="fine">A remedy is not a lever that overrides the chart. It works the way preparation works — it changes what you are ready for when the timing turns. If you choose a trial approach, follow the specific trial period shown for that stone before deciding whether to continue.</p>
 </section><footer class="fine">For guidance and self-reflection only. Astrology, palmistry and numerology are traditional practices and are not scientifically validated methods of prediction. Not a substitute for medical, legal, financial or psychological advice. We never estimate anyone's remaining years. GrahaRekha · graharekha.co.in</footer></div>
 <script>
 (function(){
   var MODAL_HTML = '<div class="mm-overlay" id="mismatch" hidden>'
     + '<div class="mm-box">'
-    + '<div class="ev-label">Then something upstream is wrong</div>'
-    + '<h3>Most likely, your birth time is not accurate.</h3>'
-    + '<p>This is the common case, not a rare one. Hospital records round to the '
-    + 'nearest five or ten minutes, and families remember approximately. A '
-    + '<b>twenty-minute error moves your rising sign</b>. Once that moves, '
-    + 'every house shifts, so every prediction built on it shifts with it.</p>'
+    + '<div class="ev-label">A useful next step</div>'
+    + '<h3>Your birth time may need checking.</h3>'
+    + '<p>Even a small difference in birth time can change the ascendant and house '
+    + 'positions, which can affect the timing of a reading. That does not prove the '
+    + 'birth time is wrong — but it is a common place to look when a reading feels off.</p>'
     + '<p>Three ways forward:</p>'
     + '<ol class="mm-routes">'
     + '<li><b>Birth-time rectification</b>. Test candidate minutes against dates from your life.</li>'
@@ -388,7 +580,7 @@ cursor:pointer}
       return;
     }
     if(v === 'partly' || v === 'some' || v === 'no'){
-      thanksNear(btn, 'Noted. A wrong present reading usually means the birth time needs a check.');
+      thanksNear(btn, 'Noted. If this does not feel right, your birth time may need checking.');
       showMismatch();
     }
   });

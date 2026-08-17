@@ -17,6 +17,7 @@ from typing import Any, Optional
 from report_shell import EXTRA as _EXTRA
 from report_shell import INTERACT as _INTERACT
 from report_shell import STYLE as _STYLE
+from report_shell import lock_sections as _lock_sections
 
 from llm.fallback import area_tone
 
@@ -349,6 +350,7 @@ def render_transition_map(
         customer_list,
         easing_note,
         field_of,
+        short_phase,
     )
     lanes = build_transition_lanes(
         pc or {}, transitions, area=area, context=list(context or []))
@@ -428,7 +430,7 @@ def render_transition_map(
             <div class="transition-rail"><span class="transition-dot"></span></div>
             <div class="transition-body">
               <div class="transition-when">{_e(when)}</div>
-              <div class="transition-phase">{_e(field_of(t, "phase") or "Transition")}</div>
+              <div class="transition-phase">{_e(short_phase(field_of(t, "phase") or "Transition"))}</div>
               <p class="transition-meaning">{_e(field_of(t, "meaning") or "A change in the tone of this life area is indicated here.")}</p>
               {f'<div class="overlap-chips">{chips}</div>' if chips else ""}
             </div>
@@ -576,6 +578,93 @@ _EVIDENCE_LEAK = (
     "lord", "sub-lord", "sublord", "karaka", "cusp", "shadbala",
     "ashtakavarga", "varga", "degree", "longitude",
 )
+
+
+def _free_area_teaser(cards: list, today: Optional[date] = None) -> str:
+    """Free view: per-area teaser cards showing real headers, blurred body.
+
+    Each card shows the real area label, status pill and chart-result line
+    (House · promise · activation — opens date) so the reader sees personalised
+    data, but the interpretation, timing and remedy are blurred behind a
+    ``lock-wrap`` with a "Locked · in the full reading" chip.  The free render
+    path never holds the LLM interpretation blocks (``areas`` is ``{}``), so
+    the blurred body uses generic non-personal placeholders drawn from the
+    card engine's own summary fields.
+    """
+    if not cards:
+        return ""
+    parts: list[str] = []
+    for card in cards:
+        if card is None:
+            continue
+        area = str(getattr(card, "area", "") or "")
+        label = _area_label(area, cards)
+        status = _card_status(card) if card is not None else "insufficient_evidence"
+        activation = _card_activation(card) if card is not None else "inactive"
+        house = int(getattr(card, "house", 0) or 0)
+        kind = str(getattr(card, "kind", "promise") or "promise").lower()
+
+        pill = _pill({}, card, today)
+        activation_txt = _activation_phrase(card, activation, today)
+        # Strip specific dates from the free teaser — the full reading reveals
+        # when each area opens; the free half only shows the status.
+        activation_free = re.sub(r"\s*[—–-]\s*opens\s+\w+\s+\d{4}.*", "", activation_txt).strip()
+        fact_line = (
+            f"House {house or '—'} · underlying promise: {_readable_status(status)} "
+            f"· current activation: {activation_free}"
+        )
+
+        # Blurred body — generic, non-personal text the free path can safely
+        # show without leaking any LLM-written interpretation.
+        outlook = str(getattr(card, "outlook_line", "") or "").strip()
+        if not outlook:
+            outlook = (
+                "The chart factors behind this area combine to form the picture "
+                "below."
+            )
+        timing_rows = list(getattr(card, "transition_map", None) or [])
+        if timing_rows:
+            timing_note = (
+                f"{len(timing_rows)} dated marker{'s' if len(timing_rows) != 1 else ''}"
+                " across the next five years.  Unlock to see the exact dates."
+            )
+        else:
+            timing_note = "Dated markers across the next five years."
+        remedy_note = (
+            "Practical steps and gemstone guidance where this area needs support."
+        )
+
+        parts.append(f"""
+        <article class="card conv-area">
+          <div class="card-top">
+            <span class="area">{_e(label)}</span>
+            {pill}
+          </div>
+          <div class="area-fact"><span class="mini-label">Chart result</span>{_e(fact_line)}</div>
+          <div class="area-reading">
+            <div class="reading-label">What the chart is saying</div>
+            <div class="lock-wrap">
+              <div class="lock-blur">{_e(outlook)}</div>
+              <div class="lock-over"><span class="lock-chip">Locked &#183; in the full reading</span></div>
+            </div>
+          </div>
+          <div class="area-timing">
+            <span class="ev-label">Timing</span>
+            <div class="lock-wrap">
+              <div class="lock-blur">{_e(timing_note)}</div>
+              <div class="lock-over"><span class="lock-chip">Locked &#183; in the full reading</span></div>
+            </div>
+          </div>
+          <div class="area-help">
+            <span class="ev-label">What helps</span>
+            <div class="lock-wrap">
+              <div class="lock-blur">{_e(remedy_note)}</div>
+              <div class="lock-over"><span class="lock-chip">Locked &#183; in the full reading</span></div>
+            </div>
+          </div>
+        </article>
+        """)
+    return "\n".join(parts)
 
 
 def render(
@@ -918,6 +1007,19 @@ def render(
         </section>
         """
 
+    locked_html = ""
+    if not paid and cards:
+        teaser_cards = _free_area_teaser(cards, today)
+        if teaser_cards:
+            locked_html = f"""
+        <section class="conv-block areas-block">
+          <div class="section-kicker">THE ROAD AHEAD</div>
+          <h2>Each important part of your life</h2>
+          <p class="sec-note">The chart result is kept separate from the interpretation, so the reading remains a chart reading rather than a collection of philosophical statements.</p>
+          {teaser_cards}
+        </section>
+            """
+
     body = f"""
     <header>
       <div class="eyebrow">Your Vedic reading</div>
@@ -936,7 +1038,6 @@ def render(
     <section class="conv-block about-you">
       <div class="section-kicker">ABOUT YOU</div>
       <h2>Who you are beneath the current period</h2>
-      <p class="fact-lead"><span class="ev-label">What the chart shows</span> {_e(astrological_basis)}</p>
       <p class="lead-reading"><span class="ev-label">What it means for you</span> {_e(about_meaning)}</p>
       {f'<p>{_e(personality)}</p>' if personality and personality != about_meaning else ""}
     </section>
@@ -946,7 +1047,8 @@ def render(
     {mind_html}
     {recent_html}
     {areas_html}
-    {remedy_html if paid else ""}
+    {remedy_html}
+    {locked_html}
     {unlock}
 
     <footer>Astrological interpretation from your supplied birth details · guidance, not a substitute for professional advice</footer>

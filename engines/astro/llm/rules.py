@@ -368,6 +368,51 @@ def _prompt_extra(kind: str) -> str:
             "Never invent them or dates. Soft modality only. Health language stays at "
             "routine/recovery."
         ),
+        "full_report_confluence": (
+            "Write the classical Vedic reading for this page. Python owns ALL "
+            "prediction truth — areas, phases, timing windows, status, activation, "
+            "direction, planets, houses, dashas, nakshatras, yogas. You only rephrase "
+            "the supplied facts into the authoritative, concrete voice of a practising "
+            "Jyotish astrologer; you must not invent, calculate, or imply any astrological "
+            "factor not already in the facts.\n"
+            "RULES:\n"
+            "1. Every claim traces to the supplied facts. No invented planets, houses, "
+            "dashas, aspects or dates. Omit anything not in the input.\n"
+            "2. Name the running mahadasha and sub-period STRICTLY from vedic_context "
+            "(period_lord and sub_period_lord). NEVER call any other planet the main "
+            "period or sub period lord. Other planets (e.g. Venus, Saturn) only govern "
+            "specific houses or life areas, not the running dasha clock.\n"
+            "3. No guaranteed/certain/destined language. No 'you will', 'guaranteed', "
+            "'certain to', 'definitely will'. Use 'may indicate', 'suggests', 'is "
+            "highlighted by'.\n"
+            "4. Health language stays at routine/recovery. Never diagnose or predict "
+            "conditions.\n"
+            "5. Remedies only from the approved list in the facts.\n"
+            "6. Use the 'you' perspective, never the reader's name and never she/he.\n"
+            "7. Only use months that appear in the factual timing windows.\n"
+            "8. Areas: use the short_phase labels and the area names from the facts.\n\n"
+            "FIELDS OUTPUT (one object matching ReportConfluenceProse exactly):\n"
+            "- astrological_basis: 2-4 sentences naming the supplied chart factors "
+            "that govern this reading (lagna, moon sign, nakshatra, mahadasha and "
+            "sub-period lord) in classical terms\n"
+            "- interpretation: 2-4 sentences connecting those factors to how this "
+            "stretch of life actually feels, from phase_tone and phase_notes\n"
+            "- personality: one warm paragraph from personality_traits in the "
+            "classical voice; 3-4 sentences free, 6-9 paid\n"
+            "- current_phase: 2-4 full sentences using phase_tone, phase_end and "
+            "phase_notes; never a single adjective\n"
+            "- hardest_area_note: one short line from hardest_area_labels\n"
+            "- mind_now: one hedged line per life_state.mind_now entry, in order\n"
+            "- why_now: 2-4 sentences on the supplied astrological reason this stretch "
+            "feels as it does and how it can manifest\n"
+            "- family_note: one line per family_notes entry, in order, each naming "
+            "that relation and using only that entry's own notes\n"
+            "- areas: dict keyed by area key; each value is a 1-2 sentence classical "
+            "interpretation for that area\n\n"
+            "DO NOT INCLUDE: astrological calculations, new planets/houses/dashas not "
+            "in the facts, guaranteed predictions, diagnoses, remedies not in the "
+            "approved list, or dates not in the timing windows."
+        ),
         "user_question": (
             "Fields: opening, answer, timing, action. "
             "QuestionFacts are projected from the full-report CanonicalAreaResult "
@@ -995,6 +1040,13 @@ def check_prose(text: str, facts: Any = None, *, area: str = "") -> list[str]:
     if (area or "").lower() in ("health", "troubles", "wellbeing"):
         if re.search(r"\b(disease|diagnosis|cancer|diabetes|stroke|heart attack)\b", low):
             fails.append("health_diagnosis")
+
+    if facts is not None:
+        try:
+            from .validate import validate_dasha_lords
+            fails.extend(validate_dasha_lords(t, facts))
+        except Exception:
+            pass
 
     return fails
 

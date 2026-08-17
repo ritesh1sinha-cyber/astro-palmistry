@@ -22,7 +22,7 @@ AREA_NAMES = {
     "children": "children and creativity",
     "health": "health and energy",
     "learning": "learning and direction",
-    "inner": "your inner life",
+    "inner": "your peace of mind and spirituality",
 }
 
 # Headline (WHAT) + concrete manifestations (HOW IT MAY HAVE SHOWN UP).

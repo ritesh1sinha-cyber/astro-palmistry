@@ -46,7 +46,7 @@ _AREA_LABELS = {
     "money": "Money",
     "home": "Home & Family",
     "health": "Health & Energy",
-    "inner": "Inner Life",
+    "inner": "Inner Peace & Spirituality",
 }
 # The report cards, the question router and the canonical areas each name the
 # same part of life slightly differently. An area whose name we fail to

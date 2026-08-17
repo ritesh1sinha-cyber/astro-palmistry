@@ -724,50 +724,6 @@ def _workings(raw: dict) -> str:
 </details>"""
 
 
-def _locked_preview(*, price: int, n_areas: int, n_ahead: int, n_marks: int,
-                    n_points: int) -> str:
-    ahead_teaser = (
-        f"{n_ahead} dated marking{'s' if n_ahead != 1 else ''} on your major lines."
-        if n_ahead else
-        "Where your lines still change, and roughly when.")
-    points_teaser = (
-        f"{n_points} numbered point{'s' if n_points != 1 else ''} across both "
-        "hands, each with its own verdict, keyed to the dots on your photographs."
-        if n_points else
-        "Every line, mount, finger and mark, read one at a time.")
-    marks_teaser = (
-        f"What each of your {n_marks} mark{'s' if n_marks != 1 else ''} does to "
-        "the mount it sits on."
-        if n_marks else
-        "Any mark on your palm, and what it does to the mount it sits on.")
-    rows = [
-        ("Why each area reads the way it does",
-         f"The working behind all {n_areas} verdict{'s' if n_areas != 1 else ''} above."),
-        ("Every dated marking still ahead of you", ahead_teaser),
-        ("The line-by-line analysis", points_teaser),
-        ("Mount by mount",
-         "What the raised and flat mounts add, beyond the lines crossing them."),
-        ("Your special marks, explained", marks_teaser),
-        ("Remedies keyed to your own hand",
-         "Matched to what your palm actually shows, not to your sign."),
-    ]
-    items = "".join(
-        f'<div class="when locked-inline" style="margin:8px 0">'
-        f'<span class="lockicon">&bull;</span> <strong>{_e(t)}</strong> &mdash; {_e(s)}'
-        f'</div>' for t, s in rows)
-    return f"""
-<section class="section locked-preview">
-  <h3 class="sec">What the full reading adds</h3>
-  <div class="card">{items}</div>
-  <div class="buy">
-    <h3>See the pattern beneath the first reading</h3>
-    <p>You have the part you can check against your own hands. Unlock the
-    supporting signs, forward age windows, marks and hand-specific guidance.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
-  </div>
-</section>"""
-
-
 # ---------------------------------------------------------------------------
 # the document
 # ---------------------------------------------------------------------------
@@ -821,8 +777,6 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
         len(_filter_customer_numbered(_hand_for_customer_filter(raw, h)))
         for h in ("left", "right")
     )
-    _special_allowed = _palm_special_marks_allowed(dom)
-    n_marks = len((dom.get("features") or {}).get("special_marks") or []) if _special_allowed else 0
 
     cards = "".join(
         _aspect_card(a, paid=paid, prose=prose_aspects.get(a.get("key") or ""))
@@ -840,18 +794,43 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
                 + _remedies(dom, conf, paid=True)
                 + _workings(raw))
     else:
-        locked_ahead = ""
-        if ahead:
-            locked_ahead = (
-                f'<div class="card"><div class="when locked-inline">'
-                f'<span class="lockicon">&bull;</span> {len(ahead)} further dated '
-                f'marking{"s" if len(ahead) != 1 else ""} sit ahead of age {age} on '
-                f'your lines. They are in the full reading.</div></div>')
-        tail = (locked_ahead + _marks(dom, conf, paid=False)
-                + _remedies(dom, conf, paid=False)
-                + _locked_preview(price=price, n_areas=len(aspects),
-                                  n_ahead=len(ahead), n_marks=n_marks,
-                                  n_points=n_points))
+        # The rest of the reading is titled and blurred, not bullet-pointed:
+        # the free half keeps every paid section's real heading so it reads as
+        # a blurred full document, and the bodies are non-personal placeholders
+        # (the free path never holds the real paid content). One buy CTA.
+        ahead_teaser = (
+            f"{len(ahead)} dated marking{'s' if len(ahead) != 1 else ''} on "
+            "your major lines."
+            if ahead else
+            "Where your lines still change, and roughly when.")
+        points_teaser = (
+            f"{n_points} numbered point{'s' if n_points != 1 else ''} across "
+            "both hands, keyed to the dots on your photographs."
+            if n_points else
+            "Every line, mount, finger and mark, read one at a time.")
+        tail = (_marks(dom, conf, paid=False)
+                + RS.lock_sections([
+                    ("Why each area reads the way it does",
+                     f"The working behind all {len(aspects)} verdicts above — "
+                     "the lines, mounts and marks that shape them."),
+                    ("Every dated marking still ahead of you", ahead_teaser),
+                    ("The line-by-line analysis, both hands", points_teaser),
+                    ("Mount by mount",
+                     "What the raised and flat mounts add, beyond the lines "
+                     "crossing them."),
+                    ("Your special marks, explained",
+                     "Any mark on your palm, and what it does to the mount it "
+                     "sits on."),
+                    ("Remedies keyed to your own hand",
+                     "Traditional supportive practices matched to what your "
+                     "palm actually shows, not to your sign."),
+                ])
+                + RS.buy_block(
+                    "See the pattern beneath the first reading",
+                    "You have the part you can check against your own hands. "
+                    "Unlock the supporting signs, forward age windows, marks "
+                    "and hand-specific guidance.",
+                    price=price))
 
     hand_type = ((dom.get("features") or {}).get("morphology") or {}).get("hand_type")
     sub = f"{age} years · {dom_key}-dominant · both palms analysed"
