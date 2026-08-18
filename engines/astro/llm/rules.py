@@ -448,8 +448,9 @@ def _prompt_extra(kind: str) -> str:
             "   - If direction='mixed' / 'neutral': Explain the mixed current, balancing opportunities with periods requiring patience and careful effort. "
             "   - If direction='caution' / 'down': Explain constructively where caution or steady foundation-building is required, avoiding overly negative or fatalistic language. "
             "   - Never leak raw scores, internal debug codes, or mechanical status strings. "
-            "3. 'timing': A clear 1-2 sentence explanation of the key timing windows (using ONLY dates from allowed_dates, e.g., 'October 2027 to February 2028'), explaining when the strongest opening appears and what to expect. "
-            "4. 'action': Practical, constructive astrological and lifestyle guidance in 2-3 complete sentences. When timing is distant or conditions require immediate relief, incorporate the chart-targeted remedies from the facts: provide practical steps, mantra jaap or donation for the obstructing planet (e.g. Ketu, Saturn, Rahu) to clear friction, and recommend daily rituals or strengthening practices for the supportive ruler (e.g. Mercury, Jupiter) to give the seeker immediate, actionable relief."
+            "3. 'why': The astrological foundation in 2-3 sentences explaining the planetary indicators, governing house lords, and active period influences from the chart facts in clear, natural English. "
+            "4. 'timing': A clear 1-2 sentence explanation of the key timing windows (using ONLY dates from allowed_dates, e.g., 'October 2027 to February 2028'), explaining when the strongest opening appears and what to expect. "
+            "5. 'action': Practical, constructive astrological and lifestyle guidance in 2-3 complete sentences. When timing is distant or conditions require immediate relief, incorporate the chart-targeted remedies from the facts: provide practical steps, mantra jaap or donation for the obstructing planet (e.g. Ketu, Saturn, Rahu) to clear friction, and recommend daily rituals or strengthening practices for the supportive ruler (e.g. Mercury, Jupiter) to give the seeker immediate, actionable relief."
         ),
         "horary": (
             "Write a unified, natural-language Prashna (Horary) consultation response to the seeker's specific question. "

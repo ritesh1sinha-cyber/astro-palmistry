@@ -1198,6 +1198,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     # Prefer validated LLM prose when present (facts→prose layer).
     llm_opening = (prose.get("opening") or "").strip()
     llm_answer = (prose.get("answer") or "").strip()
+    llm_why = (prose.get("why") or "").strip()
     llm_timing = (prose.get("timing") or "").strip()
     llm_action = (prose.get("action") or "").strip()
     if llm_answer:
@@ -1205,39 +1206,100 @@ def render(result: dict, *, name: str = "", paid: bool = False,
     lede_txt = llm_opening or (
         f"{who + ', ' if who else ''}here is the straight answer, then the chart behind it."
     )
-    # "Where the period and the sky agree" promises a favourable window, which
-    # is wrong whenever the best one on offer runs under pressure.
-    timing_note = (
-        f'<p class="sec-note">{_e(llm_timing)}</p>' if llm_timing else
-        '<p class="sec-note">These are the windows where the period and the sky '
-        'both touch the houses that own this question — the moments when the '
-        'matter is live, whether the tone is easy or demanding.</p>'
-    )
+
     action_note = (
         f'<p class="qa-action">{_e(llm_action)}</p>' if llm_action else ""
     )
 
-    promise_conf_str = f" &mdash; {_e(promise_conf)}" if promise_conf else ""
+    why_txt = llm_why
+    if not why_txt:
+        if evidence_rows:
+            why_txt = f"{'; '.join(evidence_rows[:3])}."
+        else:
+            why_txt = f"Your birth chart reflects a {promise_direction} indication across the governing planetary periods for {topic.subject}."
+
+    # Identify supportive and friction planets for the question
+    favour_planets: list[str] = []
+    against_planets: list[str] = []
+    if isinstance(pc, dict):
+        try:
+            import report_confluence as CF
+            vim = CF.vimshottari_at(pc, result.get("start") or date.today()) or {}
+            md = str(vim.get("md") or "")
+            ad = str(vim.get("ad") or "")
+            for p in (md, ad):
+                if p in ("Saturn", "Rahu", "Ketu", "Mars") and p not in against_planets:
+                    against_planets.append(p)
+                elif p and p not in favour_planets and p not in ("Saturn", "Rahu", "Ketu", "Mars"):
+                    favour_planets.append(p)
+            hl = pc.get("house_lords", {}) or {}
+            houses = list(getattr(topic, "houses", None) or [])
+            for h in houses:
+                lord = (hl.get(str(h)) or {}).get("lord") or ""
+                if lord:
+                    if lord in ("Saturn", "Rahu", "Ketu", "Mars") and lord not in against_planets:
+                        against_planets.append(lord)
+                    elif lord not in favour_planets and lord not in ("Saturn", "Rahu", "Ketu", "Mars"):
+                        favour_planets.append(lord)
+        except Exception:
+            pass
+
+    planets_html = ""
+    if favour_planets or against_planets:
+        planets_html = (
+            f"<div style='margin-top:12px;padding-top:10px;border-top:1px solid var(--line);'>"
+            f"<p style='margin:4px 0'><strong>Planets supporting you:</strong> {_e(', '.join(favour_planets)) if favour_planets else 'None stand out strongly'}</p>"
+            f"<p style='margin:4px 0'><strong>Planets creating friction:</strong> {_e(', '.join(against_planets)) if against_planets else 'None stand out strongly'}</p>"
+            f"</div>"
+        )
+
+    dynamics_summary = (
+        "Your birth chart indicates active planetary periods across the governing houses for this matter — "
+        + ("the planetary currents show mixed influences that require strategic timing and proactive effort."
+           if promise_direction == "mixed" else
+           "the planetary alignments provide supportive momentum for progress." if promise_direction == "up" else
+           "the planetary influences create temporary friction that calls for careful navigation.")
+    )
+
+    timing_items = []
+    if nearest and nearest["start"] < best["start"]:
+        timing_items.append(f"<li><b>{_pretty(nearest['start'])} → {_pretty(nearest['end'])}</b> — Soonest opening: {_e(_window_scenario(nearest))}</li>")
+    timing_items.append(f"<li><b>{_pretty(best['start'])} → {_pretty(best['end'])}</b> — Best window: {_e(_window_scenario(best))}</li>")
+    if nearest and nearest["start"] > best["start"]:
+        timing_items.append(f"<li><b>{_pretty(nearest['start'])} → {_pretty(nearest['end'])}</b> — Secondary window: {_e(_window_scenario(nearest))}</li>")
+    for w in later[:2]:
+        timing_items.append(f"<li><b>{_pretty(w['start'])} → {_pretty(w['end'])}</b> — Later window: {_e(_window_scenario(w))}</li>")
+
+    verdict_flag = ("up" if promise_direction == "up" else
+                    "down" if promise_direction == "down" else "mixed")
+
+    timing_note_text = llm_timing or "These are the validated windows where planetary transits and active periods align to create meaningful momentum."
+
     html = f"""
-<section class="qa">
+<section class="qa" data-verdict="{verdict_flag}">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
   <p class="qa-lede">{_e(lede_txt)}</p>
-  <h2 class="qa-verdict">{_e(lead)}</h2>
-  {main_pred}
-  <p class="qa-promise"><b>{_e(promise_heading)}</b>
-  {_e(topic.label)} reads <b>{_e(promise_direction)}</b> in your chart{promise_conf_str}. {_e(_topic_customer_note(topic.key))}</p>
-  {now_line}
-  {house_block}
-  <h3 class="sec">Timing &mdash; when to move</h3>
-  {timing_note}
-  {blocks}
-  {_question_transition_html(result, pc)}
-  {gap_note}
+  <h1 class="verdict-line">{_e(lead)}</h1>
+  <p class="pred-why"><b>Why:</b> {_e(why_txt)}</p>
   {action_note}
-  <p class="qa-caveat">Timing is a window, not a date. What the chart says is
-  <em>when the conditions are right</em> &mdash; you still have to apply, ask, and
-  move inside it. The remedy below is what tips those windows your way.</p>
-  {upsell}
+</section>
+
+<section class="section planetary-dynamics">
+  <h2>Planetary dynamics & supporting influences</h2>
+  <div class="card">
+    <p style="margin:0 0 0.6rem 0;">{_e(dynamics_summary)}</p>
+    {planets_html}
+  </div>
+</section>
+
+<section class="section timing-windows">
+  <h2>Key timing & dated windows</h2>
+  <div class="card">
+    <p class="sec-note" style="margin-top:0;">{_e(timing_note_text)}</p>
+    <ul class="windows">
+      {''.join(timing_items)}
+    </ul>
+  </div>
 </section>"""
     from qa_checks.final_customer_boundary import finalize_customer_html
     return finalize_customer_html(html, strict=True)

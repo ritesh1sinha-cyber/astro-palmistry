@@ -1089,6 +1089,7 @@ def question_fallback(facts: Any) -> dict[str, Any]:
     return {
         "opening": "Here is the straight answer from your chart facts.",
         "answer": answer[:420],
+        "why": f"The confluence of birth chart house rulers and active planetary periods indicates a {conf} confidence assessment for this matter.",
         "timing": timing[:220],
         "action": "Prepare within the validated windows rather than forcing a date.",
     }

@@ -736,9 +736,8 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
         # two things a person asking a life question actually wants to act on.
         paid_body += RB.render(
             rb, paid=True, price=price,
-            heading="The remedy — what tips the timing your way",
-            lede="Practical first, then the classical support for the planets "
-                 "that own this question.")
+            heading="Targeted remedies & immediate relief",
+            lede="Practical first steps, mantra jaap for obstructing influences, and classical support for governing planets.")
     except Exception:                                                # noqa: BLE001
         pass
 
@@ -752,9 +751,9 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
             "llm": llm_meta,
             "_facts": facts_payload,
             "paidSections": ["The verdict — what your chart actually says",
-                             "Timing — dated windows when to move",
-                             "Watch-out rules for this question",
-                             "Chart-targeted remedy"],
+                             "Planetary dynamics & supporting influences",
+                             "Key timing & dated windows",
+                             "Targeted remedies & immediate relief"],
             "teasers": {}}
     return free, paid, meta
 

@@ -808,6 +808,7 @@ class QuestionProse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     opening: str = Field(..., min_length=8, max_length=350)
     answer: str = Field(..., min_length=8, max_length=550)
+    why: str = Field(default="", max_length=450)
     timing: str = Field(default="", max_length=350)
     action: str = Field(default="", max_length=450)
 
