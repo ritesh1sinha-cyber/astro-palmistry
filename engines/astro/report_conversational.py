@@ -83,13 +83,28 @@ TRANSITION_MAP_CSS = """
 .ctx-row.supportive .ctx-what{color:#1c6b45}
 .ctx-row.testing .ctx-what{color:#a3341f}
 .ctx-row.onhouse .ctx-what{color:#4a3d63}
+
+.future-conf{margin-top:10px;border-top:1px solid #e4ded3;padding-top:9px}.future-conf-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#6a7080;font-weight:700}.future-conf-row{display:grid;grid-template-columns:82px 105px 1fr;gap:8px;padding:7px 0;border-bottom:1px dotted #e6e1d7;align-items:start}.future-conf-row:last-child{border-bottom:none}.future-conf-date{font-weight:700;color:#4a4f5c;font-size:.7rem}.future-conf-change{font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}.future-conf-change.improves{color:#1c6b45}.future-conf-change.eases_but_continues{color:#7b6a1f}.future-conf-change.worsens{color:#a3341f}.future-conf-change.continues,.future-conf-change.mixed_change{color:#6a7080}.future-conf-reason{font-size:.72rem;color:#5d625f}.future-conf-state{font-size:.68rem;color:#6a7080;margin-top:2px}
+@media(max-width:520px){.future-conf-row{grid-template-columns:1fr;gap:2px}}
+
 .transition-note{margin-top:6px;padding:10px 11px;background:#f1eee7;border-radius:9px}
 .transition-note p{font-family:Georgia,serif;font-size:.87rem!important;margin:4px 0 0!important;line-height:1.5!important}
 .lane-key{font-size:.68rem!important;color:#6a7080!important;margin:0 0 12px!important;line-height:1.45!important}
 .conf-line{display:none}
 @media(max-width:520px){.lane-chart{display:none}.lane-key{display:none}.ctx-row{grid-template-columns:1fr}
 .conf-line{display:block;font-size:.72rem!important;color:#8a6a1f!important;font-weight:600;margin:0 0 10px!important}}
-""".strip()
+.det-confluence{margin:12px 0;padding:12px 13px;background:#f7f4ec;border:1px solid #e2dccf;border-radius:11px}
+.consultation-conclusion{margin:12px 0 8px;padding:14px 15px;background:#fff;border:1px solid #e4ded3;border-radius:10px}
+.consultation-conclusion p{font-family:Georgia,serif;font-size:1.04rem!important;line-height:1.62!important;margin:0!important;color:#292d36}
+.consultation-remedy{margin:10px 0 0;padding:10px 12px;background:#faf5e7;border-left:3px solid #c9a227;border-radius:8px}
+.consultation-remedy p{margin:3px 0 0!important;font-size:.86rem!important;line-height:1.55!important}
+.confluence-details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.confluence-details summary{cursor:pointer;font-size:.72rem;color:#6a7080;font-weight:700;letter-spacing:.02em}
+.det-confluence-head{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:.78rem;color:#2f3340;margin-bottom:8px}
+.det-confluence-head span{font-size:.66rem;color:#6a7080}
+.det-confluence .evidence-grid{margin-top:4px}
+.future-conf-summary{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;font-size:.72rem;color:#3d4250}
+"""
 
 
 def _conf_sentence(conf: dict) -> str:
@@ -276,6 +291,8 @@ def _pill(block: dict, card: Any, today: Optional[date] = None) -> str:
             status=_card_status(card),
             activation_status=activation,
             kind=getattr(card, "kind", "promise") or "promise",
+            direction=getattr(card, "direction", "") or "",
+            transition_map=list(getattr(card, "transition_map", None) or []),
         ))
     return f'<span class="pill {cls}">{_e(label)}</span>'
 
@@ -297,6 +314,43 @@ def _readable_status(value: str) -> str:
         "up": "Supportive",
     }
     return mapping.get(str(value or "").lower(), str(value or "").replace("_", " ").title())
+
+
+def _sanitize_customer_text(value: Any) -> str:
+    """Remove known engine/placeholder leakage from LLM prose at the boundary."""
+    text = str(value or "").strip()
+    banned = (
+        "This remedy is linked to a relevant chart factor",
+        "The chart evidence is summarized in the life-area reading above",
+        "Timing evidence is included in the overall reading",
+    )
+    if any(x.lower() in text.lower() for x in banned):
+        return ""
+    return text
+
+
+def _sanitize_prose_tree(value: Any) -> Any:
+    """Sanitize all customer-facing LLM strings without changing structure."""
+    if isinstance(value, str):
+        return _sanitize_customer_text(value)
+    if isinstance(value, list):
+        return [_sanitize_prose_tree(x) for x in value]
+    if isinstance(value, dict):
+        return {k: _sanitize_prose_tree(v) for k, v in value.items()}
+    return value
+
+
+def _confluence_pill(aj: dict) -> str:
+    if not isinstance(aj, dict):
+        return ""
+    j = str(aj.get("final_judgement") or "insufficient").lower()
+    label = str(aj.get("confluence_label") or "").strip() or {
+        "good": "Favourable", "moderate": "Moderately supportive",
+        "challenging": "Needs care", "mixed": "Mixed",
+        "insufficient": "Insufficient evidence",
+    }.get(j, "Insufficient evidence")
+    cls = {"good": "good", "moderate": "mid", "challenging": "bad", "mixed": "mid"}.get(j, "mixed")
+    return f'<span class="pill {cls}">{_e(label)}</span>'
 
 
 def _family_labels(count: int) -> list[str]:
@@ -530,13 +584,21 @@ def _activation_phrase(card: Any, activation: str, today: Optional[date] = None)
     kind = str(getattr(card, "kind", "promise") or "promise").lower()
     if state.get("state") == "upcoming" and state.get("opens"):
         if kind == "challenge":
-            return f"Not yet on — the demanding stretch begins {state['opens']}"
-        # "Promised" is a claim about the birth chart, so it can only be used
-        # where the chart actually made that promise.
-        if _card_status(card) in ("weak", "insufficient_evidence"):
-            return f"Not active — the next dated shift is {state['opens']}"
-        return f"Promised, not yet active — opens {state['opens']}"
-    return _readable_status(activation)
+            return f"Opens {state['opens']} (demanding stretch)"
+        return f"Opens {state['opens']}"
+
+    tmap = list(getattr(card, "transition_map", None) or [])
+    first_dir = ""
+    if tmap:
+        from life_area_transition import field_of
+        first_dir = str(field_of(tmap[0], "direction") or "").lower()
+    direction = str(getattr(card, "direction", "") or "").lower()
+    current_strain = direction in ("down", "caution") or first_dir in ("down", "caution")
+
+    readable = _readable_status(activation)
+    if current_strain and activation in ("strongly_active", "active"):
+        return f"{readable} (demanding phase)"
+    return readable
 
 
 def _fallback_help(card: Any, area_label: str) -> str:
@@ -606,12 +668,10 @@ def _free_area_teaser(cards: list, today: Optional[date] = None) -> str:
 
         pill = _pill({}, card, today)
         activation_txt = _activation_phrase(card, activation, today)
-        # Strip specific dates from the free teaser — the full reading reveals
-        # when each area opens; the free half only shows the status.
-        activation_free = re.sub(r"\s*[—–-]\s*opens\s+\w+\s+\d{4}.*", "", activation_txt).strip()
+        activation_free = re.sub(r"\s*[—–-]?\s*opens\s+\w+\s+\d{4}.*", "", activation_txt, flags=re.IGNORECASE).strip() or "Not active yet"
         fact_line = (
-            f"House {house or '—'} · underlying promise: {_readable_status(status)} "
-            f"· current activation: {activation_free}"
+            f"House {house or '—'} · Birth chart: {_readable_status(status)} "
+            f"· Timing: {activation_free}"
         )
 
         # Blurred body — generic, non-personal text the free path can safely
@@ -667,6 +727,208 @@ def _free_area_teaser(cards: list, today: Optional[date] = None) -> str:
     return "\n".join(parts)
 
 
+def _analytical_html(analysis: Any, *, paid: bool, today: date) -> str:
+    """Render deterministic astrological evidence; Qwen never writes this block."""
+    if not paid or not analysis:
+        return ""
+    if hasattr(analysis, "model_dump"):
+        data = analysis.model_dump(mode="json")
+    elif isinstance(analysis, dict):
+        data = analysis
+    else:
+        return ""
+    clocks=list(data.get("timing_systems") or []); cross=list(data.get("crossover_points") or [])
+    slow=list(data.get("slow_transits") or []); jai=data.get("jaimini") or {}
+    dpt=list(data.get("dasha_planet_transits") or []); areas=list(data.get("life_area_judgements") or [])
+    def fdate(x, full=False):
+        text = str(x or "").strip()
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+            return ""
+        return _fmt_full_month(text) if full else _fmt_mon(text)
+    def j(v): return _e(v)
+    def astro_term(value):
+        mapping = {
+            "Natural karaka": "Natural Karaka",
+            "natural significator": "Natural Karaka",
+            "the natural significator method": "Jaimini Karaka judgement",
+            "The main timing cycle": "Vimshottari",
+            "Period-planet transit": "Dasha-planet transit",
+            "period-planet transit": "Dasha-planet transit",
+            "AMK": "AmK", "Atmakarak": "AK", "Amatyakarak": "AmK",
+            "Gnatikaraka": "GK", "Putrakaraka": "PK",
+        }
+        return mapping.get(str(value), str(value))
+    def verdict(v):
+        v=(v or "insufficient").lower(); cls="good" if v in ("good","supportive") else "bad" if v in ("challenging","testing") else "mid"
+        return f'<span class="aj-verdict {cls}">{j(v.title())}</span>'
+    clock_rows=[]
+    for c in clocks:
+        houses=", ".join(str(x) for x in (c.get("activated_houses") or [])) or "—"
+        clock_rows.append(f'<div class="aj-clock"><div><b>{j(str(c.get("system") or "").title())}</b><span>{j(c.get("current") or "—")}</span></div><div class="aj-clock-next"><small>Until</small><b>{j(fdate(c.get("current_end"), True) or "—")}</b><small>Next</small><b>{j(c.get("next") or "—")}</b></div><div class="aj-houses"><small>Activated houses</small><b>{j(houses)}</b></div>{verdict(c.get("judgement"))}</div>')
+    crossover_html=""
+    if cross:
+        items=[]
+        for x in cross:
+            items.append(f'<div class="aj-cross"><b>{j(fdate(x.get("date"), True))}</b><span>{j(" · ".join(x.get("systems") or []))}</span><small>{j(x.get("significance") or "Timing change")}</small></div>')
+        crossover_html=f'<div class="aj-cross-grid">{"".join(items)}</div>'
+    slow_html=""
+    if slow:
+        rows=[]
+        for t in slow:
+            av=t.get("ashtakavarga"); avs="—" if av is None else str(av)
+            rows.append(f'<tr><td><b>{j(t.get("planet"))}</b><small>{j(t.get("functional_role"))}</small></td><td>{j(t.get("sign"))}</td><td>{j(t.get("house") or "—")}</td><td>{j(t.get("from_natal_house") or "—")}</td><td>{j(avs)}</td><td>{verdict(t.get("judgement"))}</td></tr>')
+        slow_html=f'<table class="aj-table"><thead><tr><th>Planet</th><th>Transit sign</th><th>House</th><th>From natal planet</th><th>Bindu score</th><th>Transit tone</th></tr></thead><tbody>{"".join(rows)}</tbody></table>'
+    jai_html=""
+    if jai:
+        karaka=[]
+        for key in ("ak","amk","gk","pk"):
+            if jai.get(key): karaka.append(f'<span><b>{j(key.upper())}</b> {j(jai.get(key))}</span>')
+        jai_html=f'<div class="aj-jai"><div class="aj-karakas">{"".join(karaka) or "Karaka data not available"}</div><div class="aj-jai-meta"><span>Chara major <b>{j(jai.get("current_maha_sign") or "—")}</b></span><span>Chara minor <b>{j(jai.get("current_antar_sign") or "—")}</b></span><span>Activated houses <b>{j(", ".join(str(x) for x in (jai.get("activated_houses") or [])) or "—")}</b></span>{verdict(jai.get("judgement"))}</div><p>{j(jai.get("argala_judgement") or "Jaimini judgement not available.")}</p></div>'
+    dpt_html=""
+    if dpt:
+        rows=[]
+        for t in dpt:
+            av=t.get("ashtakavarga"); rows.append(f'<div class="aj-dpt"><b>{j(t.get("planet"))}</b><span>{j(t.get("role"))}</span><span>{j(t.get("functional_role"))}</span><span>{j(t.get("sign"))} · H{j(t.get("house") or "—")}</span><span>{j("—" if av is None else av)} bindus</span>{verdict(t.get("judgement"))}</div>')
+        dpt_html="".join(rows)
+    area_html=""
+    if areas:
+        rows=[]
+        for a in areas:
+            facts=[
+                f'Natural significator <b>{j(", ".join(a.get("natural_karakas") or []) or "—")}</b>',
+                f'House lord <b>{j(a.get("house_lord") or "—")}</b>',
+                f'Depositor <b>{j(a.get("depositor") or "—")}</b>',
+                f'House strength <b>{j(a.get("house_strength") or "—")}</b>',
+                f'{j(a.get("divisional_chart") or "Divisional")} <b>{j(a.get("divisional_verdict") or "—")}</b>',
+                f'AmK <b>{j(a.get("amk") or "—")}</b>',
+            ]
+            periods=[f'Vim <b>{j(a.get("current_vimshottari") or "—")}</b>',f'Chara <b>{j(a.get("current_chara") or "—")}</b>',f'Yogini <b>{j(a.get("current_yogini") or "—")}</b>']
+            lanes = a.get("lane_judgements") or {}
+            lane_html = "".join(f'<span><b>{j(astro_term(k))}</b> {j(v)}</span>' for k, v in lanes.items())
+            supports = "".join(f'<li>{j(x)}</li>' for x in (a.get("supporting_factors") or [])[:5])
+            cautions = "".join(f'<li>{j(x)}</li>' for x in (a.get("caution_factors") or [])[:5])
+            factor_html = ""
+            if supports or cautions:
+                factor_html = '<div class="aj-factor-cols">'
+                if supports:
+                    factor_html += f'<div><small>Supporting factors</small><ul>{supports}</ul></div>'
+                if cautions:
+                    factor_html += f'<div><small>Caution factors</small><ul>{cautions}</ul></div>'
+                factor_html += '</div>'
+            relief = fdate(a.get("relief_window"), True)
+            stronger = fdate(a.get("stronger_window"), True)
+            forward = j(a.get("future_summary") or "")
+            if relief: forward += f' First material easing point: {j(relief)}.'
+            if stronger: forward += f' First sustained Good-confluence checkpoint: {j(stronger)}.'
+            if not stronger: forward += ' No sustained Good-confluence checkpoint is detected within the forecast horizon.'
+            row_html = '<article class="aj-area">'
+            row_html += f'<div class="aj-area-head"><div><b>{j(a.get("label") or a.get("area"))}</b><small>House {j(a.get("house") or "—")}</small></div>{verdict(a.get("final_judgement"))}</div>'
+            row_html += f'<div class="aj-facts">{"".join("<span>"+x+"</span>" for x in facts)}</div>'
+            row_html += f'<div class="aj-periods">{"".join("<span>"+x+"</span>" for x in periods)}</div>'
+            row_html += f'<div class="aj-confluence"><div class="aj-confluence-title">Final confluence <b>{j(a.get("confluence_label") or a.get("final_judgement") or "insufficient").title()}</b> <small>agreement {j(a.get("confluence_agreement") or "insufficient")}</small></div><div class="aj-periods">{lane_html}</div></div>'
+            future_rows = []
+            for fc in (a.get("future_confluence") or [])[:16]:
+                change = str(fc.get("change_type") or "continues")
+                display_date = fdate(fc.get("date"), True)
+                if not display_date: continue
+                future_rows.append(
+                    f'<div class="future-conf-row"><div class="future-conf-date">{j(display_date)}</div>'
+                    f'<div class="future-conf-change {j(change)}">{j(change.replace("_"," "))}</div>'
+                    f'<div><div class="future-conf-reason">{j(fc.get("reason") or "Complete confluence recalculated at this date.")}</div>'
+                    f'<div class="future-conf-state">Judgement: <b>{j(str(fc.get("judgement") or "insufficient").title())}</b> · '                     f'Vimshottari {j(fc.get("vimshottari") or "—")} · Chara {j(fc.get("chara") or "—")} · Yogini {j(fc.get("yogini") or "—")}</div>'
+                    f'<div class="future-conf-state">Lanes: {j(" · ".join(f"{k}: {v}" for k, v in (fc.get("lane_judgements") or {}).items()))}</div></div></div>'
+                )
+            future_html = (f'<div class="future-conf"><div class="future-conf-title">Future complete-confluence forecast</div>{"".join(future_rows)}</div>' if future_rows else "")
+            row_html += f'<p><b>Why:</b> {j(a.get("current_summary") or "")}</p>{factor_html}<p><b>Forward:</b> {forward}</p>{future_html}</article>'
+            rows.append(row_html)
+        area_html="".join(rows)
+    crossover_sec = f'<h3 class="aj-sub">Important crossover points</h3>{crossover_html}' if crossover_html else ''
+    slow_sec = f'<h3 class="aj-sub">Slow planet transit</h3>{slow_html}' if slow_html else ''
+    jai_sec = f'<h3 class="aj-sub">Jaimini judgement</h3>{jai_html}' if jai_html else ''
+    dpt_sec = f'<h3 class="aj-sub">Dasha planet transit</h3><div class="aj-dpt-list">{dpt_html}</div>' if dpt_html else ''
+    area_sec = f'<h3 class="aj-sub">Life-area judgement</h3><div class="aj-areas">{area_html}</div>' if area_html else ''
+
+    return (
+        '<section class="conv-block analytical-block" data-astrology-facts="1">'
+        '<div class="section-kicker">ASTROLOGICAL ANALYSIS</div>'
+        '<details class="analytical-details">'
+        '<summary>View detailed astrological calculation</summary>'
+        '<p class="sec-note">The calculations below are produced by the astrology engine. The language layer does not recalculate them.</p>'
+        f'<div class="aj-clocks">{"".join(clock_rows)}</div>'
+        f'{crossover_sec}{slow_sec}{jai_sec}{dpt_sec}{area_sec}'
+        '</details>'
+        '</section>'
+    )
+
+def _deterministic_confluence_html(aj: dict, *, today: date) -> str:
+    """Render the canonical life-area confluence and future checkpoints.
+
+    This block is Python-owned. It is intentionally rendered from
+    ``life_area_judgements`` rather than from Qwen prose, so the headline
+    judgement, lanes and future dates cannot drift apart.
+    """
+    if not isinstance(aj, dict):
+        return ""
+    judgement = str(aj.get("final_judgement") or "insufficient").replace("_", " ").title()
+    agreement = str(aj.get("confluence_agreement") or "insufficient").replace("_", " ").title()
+    lanes = aj.get("lane_judgements") or {}
+    lane_order = ["Vimshottari", "Chara", "Yogini", "Slow transit", "Dasha-planet transit", "Jaimini"]
+    lane_rows = []
+    for key in lane_order:
+        if key in lanes and str(lanes.get(key) or ""):
+            lane_rows.append(
+                f'<div class="evidence-row"><span class="evidence-family">{_e(key)}</span>'
+                f'<span class="evidence-text">{_e(str(lanes[key]).replace("_", " ").title())}</span></div>'
+            )
+    future = []
+    for raw in list(aj.get("future_confluence") or []):
+        if not isinstance(raw, dict):
+            continue
+        ds = str(raw.get("date") or "")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", ds):
+            continue
+        try:
+            d = date.fromisoformat(ds)
+        except ValueError:
+            continue
+        if d < today:
+            continue
+        change = str(raw.get("change_type") or "continues").replace("_", " ").title()
+        jdg = str(raw.get("judgement") or "insufficient").replace("_", " ").title()
+        reason = str(raw.get("reason") or "").strip()
+        lane_bits = []
+        for key in lane_order:
+            val = (raw.get("lane_judgements") or {}).get(key)
+            if val:
+                lane_bits.append(f"{key}: {str(val).replace('_',' ').title()}")
+        reason_div = f'<div class="future-conf-reason">{_e(reason)}</div>' if reason else ''
+        future.append(
+            f'<div class="future-conf-row"><div class="future-conf-date">{_e(_fmt_full_month(ds))}</div>'
+            f'<div class="future-conf-state"><b>{_e(change)}</b> · Overall: <b>{_e(jdg)}</b></div>'
+            f'<div class="future-conf-state">{_e(" · ".join(lane_bits))}</div>'
+            f'{reason_div}</div>'
+        )
+    future_html = ""
+    if future:
+        future_html = (
+            '<div class="future-conf">'
+            '<div class="future-conf-title">Future complete-confluence forecast</div>'
+            '<p class="sec-note">Each dated checkpoint recalculates the complete life-area confluence. A dasha change alone never counts as improvement.</p>'
+            + "".join(future) + '</div>'
+        )
+    return (
+        '<div class="det-confluence">'
+        f'<div class="det-confluence-head"><b>Complete confluence: {_e(judgement)}</b>'
+        f'<span>Agreement: {_e(agreement)}</span></div>'
+        '<details class="confluence-details">'
+        '<summary>Astrological calculation & future checkpoints</summary>'
+        f'<div class="evidence-grid">{"".join(lane_rows)}</div>'
+        f'{future_html}'
+        '</details>'
+        '</div>'
+    )
+
+
 def render(
     pc: dict,
     *,
@@ -682,6 +944,7 @@ def render(
     prose: Optional[dict] = None,
     footer_unlock: bool = True,
     remedy_html: str = "",
+    analysis: Any = None,
 ) -> str:
     """Render the LLM report as a consultation-style reading.
 
@@ -695,7 +958,7 @@ def render(
     """
     del question_html, proof_html, daily_html, timing_html
     today = today or date.today()
-    prose = prose if isinstance(prose, dict) else {}
+    prose = _sanitize_prose_tree(prose) if isinstance(prose, dict) else {}
     cards = list(cards or [])
     first = (name or "").split()[0] if name else "You"
 
@@ -705,23 +968,49 @@ def render(
     moon_sign = str(moon.get("sign") or "")
     nakshatra = str(moon.get("nakshatra") or moon.get("nakshatra_name") or "")
 
-    vim = pc.get("vimshottari") or {}
-    md = vim.get("current_md") or {}
-    ads = vim.get("current_md_antardashas") or []
-    if not isinstance(md, dict):
-        md = {}
-    if not isinstance(ads, list):
-        ads = []
-    ad = next(
-        (x for x in ads if isinstance(x, dict) and x.get("status") == "current"),
-        ads[0] if ads else {},
-    )
-    if not isinstance(ad, dict):
-        ad = {}
-
-    md_lord = str(md.get("md_lord") or md.get("lord") or "")
-    ad_lord = str(ad.get("ad_lord") or ad.get("lord") or "")
-    md_end = str(md.get("end") or "").strip()
+    # Use the SAME authoritative timing object that the analytical block uses.
+    # If analysis is present, it wins over raw pc snapshots and over a second
+    # independent calculation in the renderer. This prevents current-chapter
+    # dates from drifting away from the life-area/confluence engine.
+    md_lord = ad_lord = md_end = next_vim = ""
+    try:
+        adata_for_clock = analysis.model_dump(mode="json") if hasattr(analysis, "model_dump") else (analysis if isinstance(analysis, dict) else {})
+        timing_rows = adata_for_clock.get("timing_systems") or [] if isinstance(adata_for_clock, dict) else []
+        vim_row = next((x for x in timing_rows if isinstance(x, dict) and str(x.get("system") or "") == "vimshottari"), None)
+        if vim_row:
+            parts = [x for x in str(vim_row.get("current") or "").split("-") if x]
+            md_lord = parts[0] if parts else ""
+            ad_lord = parts[1] if len(parts) > 1 else ""
+            md_end = str(vim_row.get("current_end") or "")
+            next_vim = str(vim_row.get("next") or "")
+    except Exception:
+        pass
+    if not md_lord:
+        try:
+            from llm.facts import _dasha_clock_facts
+            _clocks = _dasha_clock_facts(pc, today)
+            _vim_clock = next((c for c in _clocks if c.system == "vimshottari"), None)
+            if _vim_clock:
+                _parts = [x for x in str(_vim_clock.current or "").split("-") if x]
+                md_lord = _parts[0] if _parts else ""
+                ad_lord = _parts[1] if len(_parts) > 1 else ""
+                md_end = str(_vim_clock.current_end or "")
+                next_vim = str(_vim_clock.next or "")
+        except Exception:
+            pass
+    # Never fall back to legacy current_md/current_md_antardashas here. If the
+    # authoritative date-aware engine is unavailable, omit the timing line
+    # rather than reintroducing stale dasha facts.
+    authoritative_timing_text = ""
+    if md_lord and ad_lord:
+        authoritative_timing_text = f"{md_lord}–{ad_lord} is the active dasha sequence."
+    elif md_lord:
+        authoritative_timing_text = f"{md_lord} is the active mahadasha."
+    if md_end:
+        shown_end = _fmt_full_month(md_end) or md_end
+        authoritative_timing_text += (" " if authoritative_timing_text else "") + f"It runs through {shown_end}."
+    if next_vim:
+        authoritative_timing_text += (" " if authoritative_timing_text else "") + f"Next Vimshottari period: {next_vim}."
 
     chips = []
     if lagna:
@@ -738,15 +1027,15 @@ def render(
 
     chart_line = " · ".join(chips[:3]) or "Birth chart"
 
-    personality = str(prose.get("personality") or "").strip()
-    astrological_basis = str(prose.get("astrological_basis") or "").strip()
-    interpretation = str(prose.get("interpretation") or "").strip()
-    current_phase = str(prose.get("current_phase") or "").strip()
-    recent_months = str(prose.get("recent_months") or "").strip()
-    hardest = str(prose.get("hardest_area_note") or "").strip()
-    why_now = str(prose.get("why_now") or "").strip()
-    mind_now = [str(x).strip() for x in prose.get("mind_now", []) if str(x).strip()]
-    family_note = [str(x).strip() for x in prose.get("family_note", []) if str(x).strip()]
+    personality = _sanitize_customer_text(prose.get("personality"))
+    astrological_basis = _sanitize_customer_text(prose.get("astrological_basis"))
+    interpretation = _sanitize_customer_text(prose.get("interpretation"))
+    current_phase = _sanitize_customer_text(prose.get("current_phase"))
+    recent_months = _sanitize_customer_text(prose.get("recent_months"))
+    hardest = _sanitize_customer_text(prose.get("hardest_area_note"))
+    why_now = _sanitize_customer_text(prose.get("why_now"))
+    mind_now = [_sanitize_customer_text(x) for x in prose.get("mind_now", []) if str(x).strip()]
+    family_note = [_sanitize_customer_text(x) for x in prose.get("family_note", []) if str(x).strip()]
     areas = prose.get("areas") if isinstance(prose.get("areas"), dict) else {}
 
     if not astrological_basis:
@@ -804,22 +1093,12 @@ def render(
         """
 
     current_html = ""
-    if current_phase or why_now or md_lord:
-        period_line = ""
-        if md_lord and ad_lord:
-            period_line = f"{md_lord}–{ad_lord} is the active dasha sequence."
-        elif md_lord:
-            period_line = f"{md_lord} is the active mahadasha."
-
-        timing_bits = period_line
-        if md_end:
-            shown_end = _fmt_full_month(md_end) or md_end
-            timing_bits = (timing_bits + " " if timing_bits else "") + f"It runs through {shown_end}."
+    if current_phase or why_now or md_lord or authoritative_timing_text:
         current_html = f"""
         <section class="conv-block current-block">
           <div class="section-kicker">YOUR CURRENT CHAPTER</div>
           <h2>Where life is putting its weight right now</h2>
-          {f'<p class="fact-lead"><span class="ev-label">Current timing</span> {_e(timing_bits)}</p>' if timing_bits else ""}
+          {f'<p class="fact-lead"><span class="ev-label">Current timing</span> {_e(authoritative_timing_text)}</p>' if authoritative_timing_text else ""}
           {f'<p class="lead-reading">{_e(current_phase)}</p>' if current_phase else ""}
           {f'<div class="why-now"><span class="ev-label">Why this period feels this way</span><p>{_e(why_now)}</p></div>' if why_now else ""}
           {f'<p class="hardest">{_e(hardest)}</p>' if hardest else ""}
@@ -904,17 +1183,24 @@ def render(
         """
 
     area_rows = []
+    analysis_area_map = {}
+    if analysis is not None:
+        try:
+            adata = analysis.model_dump(mode="json") if hasattr(analysis, "model_dump") else (analysis if isinstance(analysis, dict) else {})
+            analysis_area_map = {str(x.get("area") or ""): x for x in (adata.get("life_area_judgements") or []) if isinstance(x, dict)}
+        except Exception:
+            analysis_area_map = {}
     if paid:
         ordered = [str(getattr(c, "area", "") or "") for c in cards if getattr(c, "area", "")]
         for area in ordered:
             card = card_for(area)
             block = areas.get(area) if isinstance(areas.get(area), dict) else {}
 
-            basis = str(block.get("astrological_basis") or "").strip()
-            interp = str(block.get("interpretation") or "").strip()
-            outlook = str(block.get("outlook") or "").strip()
-            manifestation = str(block.get("manifestation") or "").strip()
-            remedy = str(block.get("remedy") or "").strip()
+            basis = _sanitize_customer_text(block.get("astrological_basis"))
+            interp = _sanitize_customer_text(block.get("interpretation"))
+            outlook = _sanitize_customer_text(block.get("outlook"))
+            manifestation = _sanitize_customer_text(block.get("manifestation"))
+            remedy = _sanitize_customer_text(block.get("remedy"))
 
             if not basis:
                 pnames = _card_planets(card) if card is not None else []
@@ -942,46 +1228,48 @@ def render(
             house = int(getattr(card, "house", 0) or 0)
             timing = timing_for(card, block)
             activation_txt = _activation_phrase(card, activation, today)
-            fact_line = (
-                f"House {house or '—'} · underlying promise: {_readable_status(status)} "
-                f"· current activation: {activation_txt}"
-            )
-
-            # The map prints every window with its own dates, so a separate
-            # timing strip above it only repeats the first row.
-            map_html = _transition_map_html(pc, card, block)
-            timing_html_area = "" if map_html else f"""
-              <div class="area-timing">
-                <span class="ev-label">Timing</span>
-                <p>{_e(timing)}</p>
-              </div>"""
-
-            remedy_html_area = ""
-            help_text = remedy or _fallback_help(card, _area_label(area, cards))
-            if help_text:
-                remedy_html_area = (
-                    f'<div class="area-help"><span class="ev-label">What helps</span>'
-                    f'<p>{_e(help_text)}</p></div>'
+            aj = analysis_area_map.get(area) or {}
+            if aj:
+                fact_line = (
+                    f"Final confluence: {str(aj.get('confluence_label') or aj.get('final_judgement') or 'insufficient').replace('_',' ').title()} "
+                    f"· Natal promise: {str(aj.get('natal_promise') or status).replace('_',' ').title()} "
+                    f"· Current activation: {str(aj.get('activation_label') or 'Not clearly active').replace('_',' ').title()}"
                 )
+                confluence_html = _deterministic_confluence_html(aj, today=today)
+                area_pill = _confluence_pill(aj)
+            else:
+                fact_line = (
+                    f"House {house or '—'} · Birth chart: {_readable_status(status)} "
+                    f"· Timing: {activation_txt}"
+                )
+                confluence_html = ""
+                area_pill = _pill(block, card, today)
+
+            # Customer-facing life areas are intentionally compact: one LLM-written
+            # consultation conclusion plus one remedy. Deterministic calculation
+            # detail remains available under the collapsed confluence block.
+            conclusion = _sanitize_customer_text(block.get("conclusion"))
+            if not conclusion:
+                conclusion = _sanitize_customer_text(outlook or interp or basis)
+
+            help_text = remedy or _fallback_help(card, _area_label(area, cards))
+            remedy_html_area = (
+                f'<div class="consultation-remedy"><span class="ev-label">Remedy / what helps</span>'
+                f'<p>{_e(help_text)}</p></div>' if help_text else ""
+            )
 
             area_rows.append(f"""
             <article class="card conv-area">
               <div class="card-top">
                 <span class="area">{_e(_area_label(area, cards))}</span>
-                {_pill(block, card, today)}
+                {area_pill}
               </div>
-              <div class="area-fact"><span class="mini-label">Chart result</span>{_e(fact_line)}</div>
-              <div class="area-reading">
-                <div class="reading-label">What the chart is saying</div>
-                <p class="astro-basis">{_e(basis)}</p>
-                <p class="interpretation">{_e(interp)}</p>
-                {f'<p class="outlook"><b>So, in practical terms:</b> {_e(outlook)}</p>' if outlook else ""}
+              <div class="consultation-conclusion">
+                <div class="reading-label">Astrologer's conclusion</div>
+                <p>{_e(conclusion)}</p>
+                {remedy_html_area}
               </div>
-              {timing_html_area}
-              {map_html}
-              {f'<div class="area-manifest"><span class="ev-label">How this can show up</span><p>{_e(manifestation)}</p></div>' if manifestation else ""}
-              {remedy_html_area}
-              {evidence_html(card)}
+              {confluence_html}
             </article>
             """)
 
@@ -991,7 +1279,7 @@ def render(
         <section class="conv-block areas-block">
           <div class="section-kicker">THE ROAD AHEAD</div>
           <h2>Each important part of your life</h2>
-          <p class="sec-note">The chart result is kept separate from the interpretation, so the reading remains a chart reading rather than a collection of philosophical statements.</p>
+          <p class="sec-note">Each area gives one astrologer-style conclusion and one practical remedy. The detailed calculation stays available under the collapsed astrology section.</p>
           {"".join(area_rows)}
         </section>
         """
@@ -1015,7 +1303,7 @@ def render(
         <section class="conv-block areas-block">
           <div class="section-kicker">THE ROAD AHEAD</div>
           <h2>Each important part of your life</h2>
-          <p class="sec-note">The chart result is kept separate from the interpretation, so the reading remains a chart reading rather than a collection of philosophical statements.</p>
+          <p class="sec-note">Each area gives one astrologer-style conclusion and one practical remedy. The detailed calculation stays available under the collapsed astrology section.</p>
           {teaser_cards}
         </section>
             """
@@ -1034,6 +1322,8 @@ def render(
       </div>
       <p>{_e(astrological_basis)}</p>
     </section>
+
+    {_analytical_html(analysis, paid=paid, today=today)}
 
     <section class="conv-block about-you">
       <div class="section-kicker">ABOUT YOU</div>
@@ -1099,6 +1389,17 @@ def render(
 .window h3{{font-family:Georgia,serif;font-size:1rem;margin:4px 0}}
 .window p{{font-size:.84rem;margin:0;color:#3d4250}}
 .why-now{{margin:12px 0;padding:12px 13px;background:#f6f4ef;border-radius:9px}}
+.analytical-block{{background:#fffdfa;border:1px solid #e4ded3;border-radius:15px;padding:20px}}
+.analytical-details{{margin-top:8px}}
+.analytical-details summary{{cursor:pointer;font-family:Georgia,serif;font-size:1.05rem;color:#292d36;padding:8px 0}}
+
+.aj-clocks{{display:grid;gap:9px;margin:14px 0}} .aj-clock{{display:grid;grid-template-columns:1.2fr 1.3fr .8fr auto;gap:10px;align-items:center;padding:11px 12px;background:#f7f4ed;border:1px solid #e4ded3;border-radius:10px}} .aj-clock>div{{display:grid;gap:2px}} .aj-clock span{{font-family:Georgia,serif;font-size:1.05rem}} .aj-clock small,.aj-area small,.aj-table small{{display:block;color:#77736c;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em}} .aj-clock-next{{grid-template-columns:auto auto auto auto!important;align-items:center}}
+.aj-verdict{{display:inline-block;padding:4px 8px;border-radius:99px;font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;background:#ebe7df;color:#625c52}} .aj-verdict.good{{background:#dcefe3;color:#1c6b45}} .aj-verdict.bad{{background:#f5ddd8;color:#9d3b28}} .aj-verdict.mid{{background:#eee7d4;color:#80651e}}
+.aj-sub{{font-family:Georgia,serif;font-size:1rem;margin:22px 0 9px;color:#292d36}} .aj-cross-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}} .aj-cross{{padding:10px 11px;border:1px solid #e4ded3;border-radius:9px;background:#fff}} .aj-cross b,.aj-cross span,.aj-cross small{{display:block}} .aj-cross b{{font-family:Georgia,serif;font-size:1rem}} .aj-cross span{{font-size:.72rem;color:#8a6a1f;margin-top:3px}} .aj-cross small{{font-size:.68rem;color:#77736c;margin-top:4px}}
+.aj-table{{width:100%;border-collapse:collapse;font-size:.76rem;background:#fff;border:1px solid #e4ded3}} .aj-table th,.aj-table td{{padding:8px;border-bottom:1px solid #eee9e1;text-align:left;vertical-align:top}} .aj-table th{{font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:#77736c}}
+.aj-jai{{padding:12px;background:#f7f4ed;border:1px solid #e4ded3;border-radius:10px}} .aj-karakas,.aj-jai-meta,.aj-facts,.aj-periods{{display:flex;flex-wrap:wrap;gap:7px}} .aj-karakas span,.aj-jai-meta span,.aj-facts span,.aj-periods span{{padding:5px 8px;border:1px solid #e3ddd2;border-radius:99px;background:#fff;font-size:.68rem;color:#5f5a52}} .aj-jai p{{font-family:Georgia,serif;font-size:.88rem!important;margin:10px 0 0!important}}
+.aj-dpt-list,.aj-areas{{display:grid;gap:7px}} .aj-dpt{{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:9px 10px;border:1px solid #e4ded3;border-radius:9px;background:#fff;font-size:.73rem}} .aj-dpt span{{color:#6f6a62}} .aj-area{{padding:12px;background:#fff;border:1px solid #e4ded3;border-radius:10px}} .aj-area-head{{display:flex;justify-content:space-between;gap:10px;align-items:center}} .aj-area-head>div{{display:grid;gap:2px}} .aj-facts,.aj-periods{{margin:9px 0 0}} .aj-facts span,.aj-periods span{{border-radius:8px}} .aj-area p{{font-size:.82rem!important;margin:8px 0 0!important}} .aj-confluence{{margin:12px 0;padding:12px;border:1px solid #e4ded3;background:#fbfaf6;border-radius:9px}} .aj-confluence-title{{font-size:.76rem}} .aj-confluence-title small{{margin-left:8px;color:#77736c;font-weight:normal}} .aj-factor-cols{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0}} .aj-factor-cols small{{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:#77736c}} .aj-factor-cols ul{{margin:6px 0;padding-left:18px;color:#6b665e;font-size:.72rem}}
+@media(max-width:680px){{.aj-clock{{grid-template-columns:1fr 1fr}} .aj-table{{font-size:.68rem}}}}
 {TRANSITION_MAP_CSS}
 @media(max-width:520px){{.evidence-row{{grid-template-columns:1fr}}}}
 </style></head><body><div class="wrap">{body}</div>{_INTERACT}</body></html>"""

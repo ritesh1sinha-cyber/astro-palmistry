@@ -54,17 +54,20 @@ def test_mixed_template_keeps_chart_anchors_and_astrologer_prose():
     assert "Saturn Mahadasha" in html
     assert "Mercury Antardasha" in html
     assert "Saturn&#x27;s influence on the career axis" in html
-    assert "House 10" in html
-    assert "underlying promise: Supported" in html
-    # The card's only dated window opens in Nov 2027, so the header must not
-    # claim the period is running today.
-    assert "current activation: Promised, not yet active — opens Nov 2027" in html
+    # The paid card is compact: pill + Astrologer's conclusion. The first dated
+    # window opens Nov 2027, so the pill must not claim the period is running
+    # today.
+    assert "Career &amp; Profession" in html
+    assert "Astrologer's conclusion" in html
+    assert "The career promise is supported and the current period is active." in html
+    assert "not yet active" in html
     assert "Active now" not in html
-    assert "Saturn and Jupiter both support" in html
-    assert "Why this reads this way" in html
-    assert "01 Nov 2027" in html
-    assert "28 Feb 2028" in html
-    assert "May 2024 → Oct 2026" in html
+    assert "Saturn and Jupiter both support" not in html
+    assert "Why this reads this way" not in html
+    assert "House 10" not in html
+    assert "01 Nov 2027" not in html
+    assert "28 Feb 2028" not in html
+    assert "May 2024 → Oct 2026" not in html
     assert "start=" not in html
     assert "The timing engine has not supplied an exact window" not in html
     assert "March 2029" not in html
@@ -114,11 +117,17 @@ def test_engine_card_reads_canonical_promise_activation_and_windows():
             },
         },
     )
-    assert "underlying promise: Strongly supported" in html
-    assert "current activation: Promised, not yet active — opens Oct 2026" in html
+    assert "Children" in html
+    assert "Astrologer's conclusion" in html
+    assert "The area is part of your chart&#x27;s real potential, and the current period is actively supporting it." in html
+    # The canonical result says strongly supported / strongly active, but the
+    # only featured window opens in Oct 2026 (after today), so the pill must
+    # stay "not yet active".
+    assert "not yet active" in html
+    assert "Strongly supported" not in html
     assert "Not clearly established" not in html
-    assert "31 Oct 2026" in html
-    assert "25 Jan 2027" in html
+    assert "31 Oct 2026" not in html
+    assert "25 Jan 2027" not in html
     assert "The timing engine has not supplied an exact window" not in html
     assert "March 2029" not in html
 
@@ -172,8 +181,8 @@ def test_free_template_contains_family_home_and_conversion_teaser():
     assert "What the chart shows" in html
     assert "Saturn&#x27;s influence on the career axis" in html
     assert "House 10" in html
-    assert "underlying promise: Supported" in html
-    assert "current activation: Active now" in html
+    assert "Birth chart: Supported" in html
+    assert "Timing: Active now" in html
     assert "Saturn and Jupiter both support" in html
     assert "Why this reads this way" in html
     assert "The timing engine has not supplied an exact window" in html

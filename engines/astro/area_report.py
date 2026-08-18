@@ -420,12 +420,9 @@ def classical_area_remedy(pc: dict, area_key: str, house: int, direction: str,
                           promise_status: str = "") -> str:
     """Rule-backed classical upaya for the stressed planet of this area.
 
-    P1-10: a weak or mixed *promise* still deserves a supportive remedy path
-    even when the *current* activation direction happens to read "up" — the
-    two are different questions, and a temporarily active but structurally
-    weak area is exactly the case a customer should not be left without
-    guidance for. `_gem_safety` downstream remains the sole authority on
-    whether a gemstone is ever actually recommended.
+    Provides strengthening (poshana) remedies for benefic house lords or pacifying (shanti)
+    remedies for obstructing malefics. Gemstones are strictly excluded here and reserved
+    exclusively for the final gemstone section.
     """
     weak_promise = promise_status.lower() in ("weak", "insufficient_evidence", "mixed")
     if direction == "up" and not weak_promise:
@@ -435,33 +432,15 @@ def classical_area_remedy(pc: dict, area_key: str, house: int, direction: str,
         return ""
     body = CLASSICAL_UPAYA.get(planet, "")
     mantra = MANTRA.get(planet, "")
+    is_malefic = planet in ("Rahu", "Ketu", "Saturn", "Mars")
+    action_prefix = f"Pacify {planet}" if is_malefic else f"Strengthen {planet}"
     parts: list[str] = []
     if body:
-        parts.append(f"Support {planet}: {body}")
+        parts.append(f"{action_prefix}: {body}")
     elif mantra:
-        parts.append(f"Support {planet}.")
+        parts.append(f"{action_prefix}.")
     if mantra:
-        parts.append(f"Mantra: {mantra}.")
-    try:
-        from gemstone_remedy import _gem_safety
-        ev = _gem_safety(pc, planet, role=f"{area_key} area")
-        verdict = str(ev.get("verdict") or "")
-        gem = (ev.get("gem") or {}).get("gem") or ""
-        if verdict == "avoid" and gem:
-            parts.append(f"Do not wear {gem} for {planet} — mantra and charity only.")
-        elif verdict == "mantra_only":
-            parts.append(f"No primary gem for {planet} — mantra and charity only.")
-        elif verdict in ("recommended", "test_required") and gem:
-            day = (ev.get("gem") or {}).get("day") or ""
-            finger = (ev.get("gem") or {}).get("finger") or ""
-            bits = [gem]
-            if finger:
-                bits.append(finger)
-            if day:
-                bits.append(f"first on a {day}")
-            parts.append(f"If a stone is used: {' · '.join(bits)}.")
-    except Exception:  # noqa: BLE001
-        pass
+        parts.append(f"Mantra jaap: {mantra}.")
     return client_prose(" ".join(parts).strip())
 
 

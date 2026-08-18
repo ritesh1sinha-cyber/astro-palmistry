@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from .billing import entitled, is_subscribed, month_period, use_quota
+from .billing import entitled, is_subscribed, month_period, use_quota, pin_subscribed_daily_reports
 from .config import S
 from .db import (get_or_create_chart, precompute_get, precompute_put,
                  report_insert)
@@ -353,20 +353,21 @@ def h_full_report(user: dict, p: dict) -> dict:
     # Phase 1: personalise (local openings + humanise) — no cloud LLM required.
     free_html = V.personalise(free_html, ctx, "full_report")
     paid_html = V.personalise(paid_html, ctx, "full_report")
-    free_html = V.translate_jargon(free_html)
-    paid_html = V.translate_jargon(paid_html)
+    free_html = V.translate_jargon(free_html, keep_original=False)
+    paid_html = V.translate_jargon(paid_html, keep_original=False)
 
-    # The old long-form document is kept as an appendix on the paid side. It is
-    # genuinely useful to the minority who want to check the reasoning, and
-    # throwing away a 90-second computation would be wasteful.
+    # The long-form lane document is kept as a clearly-labeled technical
+    # appendix, separated from customer prose by a heading and collapsed by
+    # default.  The summary text is customer-neutral to avoid internal-data
+    # leakage into the visible report.
     try:
         conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
         raw = conf.get("paid_html", "") or ""
-        appendix = RD._appendix_block(raw, summary="Full analyst working — every lane")
+        appendix = RD._appendix_block(raw, summary="Technical details (collapsed)")
         if appendix:
             paid_html += appendix
             meta["paidSections"] = list(meta.get("paidSections", [])) + \
-                ["The full analyst working (collapsed)"]
+                ["Technical details (collapsed)"]
             meta["semantic_mode"] = (_payload or {}).get("semantic_mode", "")
     except Exception as exc:                                          # noqa: BLE001
         print(f"[full_report] appendix skipped: {type(exc).__name__}: {exc}",

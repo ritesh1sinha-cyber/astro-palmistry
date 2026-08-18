@@ -50,6 +50,62 @@ def _safe(fn, *a, **k) -> str:
         return ""
 
 
+# --- Post-render validation guard -------------------------------------------
+# Catches internal-data leakage, placeholder text, duplicate sections, and
+# sentence corruption that slipped through earlier gates.  Runs after _scrub
+# so it sees exactly what the customer will see.
+
+def _post_render_guard(html: str) -> str:
+    """Validate rendered HTML and strip any forbidden content found."""
+    if not html:
+        return html
+    # Always strip known internal leakage (abbr titles, placeholder text, etc.)
+    html = _strip_forbidden_patterns(html)
+    try:
+        from llm.report_validator import validate_rendered_html
+        vr = validate_rendered_html(html)
+        if not vr.ok:
+            print(f"[report_render] post-render guard found "
+                  f"{len(vr.errors)} errors, {len(vr.warnings)} warnings",
+                  flush=True)
+            for e in vr.errors:
+                print(f"  ERROR [{e.code}] {e.message}", flush=True)
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_render] post-render guard validation failed: {exc}",
+              flush=True)
+    return html
+
+
+def _strip_forbidden_patterns(html: str) -> str:
+    """Remove known placeholder/fallback text from rendered HTML."""
+    import re
+    patterns = [
+        r"This remedy is linked to a relevant chart factor",
+        r"The chart evidence is summarized in the life-area reading above",
+        r"Timing evidence is included in the overall reading",
+        r"Promised, not yet active",
+        r"Full analyst working",
+        r"pending LLM prose",
+        r"awaiting humanization",
+        r"\[pending",
+        r"\[placeholder",
+        r"\[TODO",
+        r"\[INTERNAL",
+        r"Raw classical wording",
+        r"Existing chart-rule",
+        r"internal rule id",
+    ]
+    for pat in patterns:
+        html = re.sub(pat, "", html, flags=re.I)
+    # Strip title attributes from jargon abbr tags (prevents internal term leakage)
+    html = re.sub(r'(<abbr\s+class="jargon")\s+title="[^"]*"', r'\1', html)
+    # Clean up double spaces left by removal
+    html = re.sub(r"  +", " ", html)
+    # Clean up empty paragraphs
+    html = re.sub(r"<p>\s*</p>", "", html)
+    return html
+
+
 def _voice_polish(html: str) -> str:
     """Plain-English pass for customer fragments (no personal opening block)."""
     try:
@@ -348,6 +404,22 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                         "start": getattr(row, "start", None),
                         "end": getattr(row, "end", None),
                     })
+            # The paid analytical layer has its own authoritative future
+            # checkpoints. Include those exact dates in the final customer
+            # date allowlist; otherwise _scrub can correctly-but-destructively
+            # soften the very future dates we just calculated.
+            if paid_facts is not None and paid:
+                for aj in list(getattr(paid_facts, "life_area_judgements", None) or []):
+                    for fc in list(getattr(aj, "future_confluence", None) or []):
+                        if hasattr(fc, "model_dump"):
+                            fc = fc.model_dump()
+                        if isinstance(fc, dict):
+                            d = fc.get("date")
+                            if d:
+                                window_sources.append({"start": d, "end": d})
+                    for d in (getattr(aj, "relief_window", ""), getattr(aj, "stronger_window", "")):
+                        if d:
+                            window_sources.append({"start": d, "end": d})
         vim = pc.get("vimshottari", {}) or {}
         window_sources.append(vim.get("current_md") or {})
         window_sources.extend(vim.get("current_md_antardashas") or [])
@@ -398,8 +470,9 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 pc, name=name, price=price, today=today, paid=paid,
                 cards=fact_cards or shared_cards, prose=prose,
                 footer_unlock=(not paid),
-                remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price))
-            return _scrub(body, allowed_dates=allowed_dates)
+                remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price),
+                analysis=(paid_facts if paid else free_facts))
+            return _post_render_guard(_scrub(body, allowed_dates=allowed_dates))
 
         # Frozen non-LLM / classic path — untouched when conversational is used.
         present_html = ""
@@ -426,7 +499,7 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             cards=shared_cards,
             prose=prose,
             footer_unlock=(not paid))  # free view: bottom CTA; paid: none
-        return _scrub(body, allowed_dates=allowed_dates)
+        return _post_render_guard(_scrub(body, allowed_dates=allowed_dates))
 
     free_html, paid_html = build(False), build(True)
     meta = {

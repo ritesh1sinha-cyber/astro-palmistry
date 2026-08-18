@@ -441,7 +441,7 @@ def test_the_deterministic_palm_block_passes_its_own_gates():
 def test_the_free_page_renders_both_new_sections():
     from llm.fallback import conversational_palm_fallback
 
-    sys.path[:0] = [str(HERE.parent.parent.parent)]
+    sys.path[:0] = [str(HERE.parent.parent.parent), str(HERE.parent.parent)]
     from core import palm_conversational as PC
 
     facts = _palm_facts()

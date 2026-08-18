@@ -97,11 +97,163 @@ def _conf(value: Any) -> str:
     return "low"
 
 
-def _phase(direction: str, previous: str, *, event_type: str = "") -> tuple[str, str]:
+_AREA_LIFE_TERMS: dict[str, dict[str, str]] = {
+    "career": {
+        "up_up": "Career momentum accelerates — excellent timing for role transitions, pitching key initiatives, and expanding professional authority.",
+        "up_mixed": "Steady career growth — progress opens up as previous ambiguities clear into concrete milestones.",
+        "up_down": "Professional recognition emerges following a demanding stretch; your track record earns trust.",
+        "down_down": "High-pressure professional stretch — prioritize disciplined execution, manage team expectations, and avoid hasty friction.",
+        "down_mixed": "Demanding workload begins to ease into manageable routines, restoring focus.",
+        "down_up": "A previous period of high responsibility gives way to a phase of consolidation.",
+        "mixed_up": "Professional opportunities expand, though careful pacing and strategic focus remain essential.",
+        "mixed_mixed": "A transitional career chapter — ideal for acquiring specialized skills, re-evaluating goals, and strengthening your network.",
+        "mixed_down": "Career conditions ask for prudence — protect your deliverables and verify terms before committing to major moves.",
+        "opp_up": "A strong professional opening is active — move decisively on major career opportunities.",
+        "opp_down": "A career opening presents itself, but requires careful risk management and patience before committing.",
+        "opp_mixed": "An opportunity is unfolding — assess terms thoroughly and align with trusted mentors before acting.",
+        "default": "Career matters require steady tactical adjustments rather than abrupt shifts.",
+    },
+    "money": {
+        "up_up": "Favourable financial momentum — strong phase for profitable transactions, cash flow expansion, and long-term asset accumulation.",
+        "up_mixed": "Financial conditions improve steadily, allowing you to build reserves and plan future investments with confidence.",
+        "up_down": "Financial recovery takes hold after a phase of heavy outlays; income stabilizes.",
+        "down_down": "Financial outlays or tight cash flow peak here — curb speculative impulses, delay non-essential spending, and preserve liquidity.",
+        "down_mixed": "Financial strain begins to subside, creating room to balance debt and reorganize household budgeting.",
+        "down_up": "Tight financial discipline pays off, easing pressure and stabilizing monthly margins.",
+        "mixed_up": "Income potential improves, but disciplined allocation remains vital to retain gains.",
+        "mixed_mixed": "A financial rebalancing phase — focus on structured budgeting, tax planning, and steady savings over quick returns.",
+        "mixed_down": "Financial conditions suggest caution — double-check financial paperwork and avoid aggressive borrowing.",
+        "opp_up": "An auspicious financial opening is present — favorable timing for major acquisitions or lucrative deals.",
+        "opp_down": "A financial prospect emerges, but calls for strict due diligence and conservative capital allocation.",
+        "opp_mixed": "A financial opportunity is active — evaluate the fine print and avoid rushing into unvetted ventures.",
+        "default": "Financial matters reward pragmatic budgeting and incremental progress.",
+    },
+    "finance": {
+        "up_up": "Favourable financial momentum — strong phase for profitable transactions, cash flow expansion, and long-term asset accumulation.",
+        "up_mixed": "Financial conditions improve steadily, allowing you to build reserves and plan future investments with confidence.",
+        "up_down": "Financial recovery takes hold after a phase of heavy outlays; income stabilizes.",
+        "down_down": "Financial outlays or tight cash flow peak here — curb speculative impulses, delay non-essential spending, and preserve liquidity.",
+        "down_mixed": "Financial strain begins to subside, creating room to balance debt and reorganize household budgeting.",
+        "down_up": "Tight financial discipline pays off, easing pressure and stabilizing monthly margins.",
+        "mixed_up": "Income potential improves, but disciplined allocation remains vital to retain gains.",
+        "mixed_mixed": "A financial rebalancing phase — focus on structured budgeting, tax planning, and steady savings over quick returns.",
+        "mixed_down": "Financial conditions suggest caution — double-check financial paperwork and avoid aggressive borrowing.",
+        "opp_up": "An auspicious financial opening is present — favorable timing for major acquisitions or lucrative deals.",
+        "opp_down": "A financial prospect emerges, but calls for strict due diligence and conservative capital allocation.",
+        "opp_mixed": "A financial opportunity is active — evaluate the fine print and avoid rushing into unvetted ventures.",
+        "default": "Financial matters reward pragmatic budgeting and incremental progress.",
+    },
+    "love": {
+        "up_up": "Harmonious relationship momentum — auspicious timing for deepening commitment, marital milestones, and mutual understanding.",
+        "up_mixed": "Relationship warmth deepens as past uncertainties give way to open, reassuring communication.",
+        "up_down": "Emotional clarity and mutual respect return after a stretch of emotional fatigue.",
+        "down_down": "Relational sensitivity peaks — practice calm communication, avoid rehashing past grievances, and give each other space.",
+        "down_mixed": "Interpersonal friction begins to soften, opening a window for honest, healing conversations.",
+        "down_up": "Emotional tension releases, bringing renewed warmth and shared mutual priorities.",
+        "mixed_up": "Relationship horizons brighten, though honest alignment on long-term family expectations remains key.",
+        "mixed_mixed": "A transitional phase in personal life — focus on quality time, shared values, and mutual emotional support.",
+        "mixed_down": "Patience is essential in partnerships — listen actively and avoid making sweeping decisions under stress.",
+        "opp_up": "A warm, supportive relationship window opens — excellent for important personal commitments and celebrations.",
+        "opp_down": "A romantic or partnership opening is present, but calls for realistic expectations and steady pacing.",
+        "opp_mixed": "An opening for connection is active — nurture mutual trust through thoughtful gestures and open dialogue.",
+        "default": "Personal relationships thrive on consistency, patience, and mutual respect.",
+    },
+    "marriage": {
+        "up_up": "Harmonious relationship momentum — auspicious timing for deepening commitment, marital milestones, and mutual understanding.",
+        "up_mixed": "Relationship warmth deepens as past uncertainties give way to open, reassuring communication.",
+        "up_down": "Emotional clarity and mutual respect return after a stretch of emotional fatigue.",
+        "down_down": "Relational sensitivity peaks — practice calm communication, avoid rehashing past grievances, and give each other space.",
+        "down_mixed": "Interpersonal friction begins to soften, opening a window for honest, healing conversations.",
+        "down_up": "Emotional tension releases, bringing renewed warmth and shared mutual priorities.",
+        "mixed_up": "Relationship horizons brighten, though honest alignment on long-term family expectations remains key.",
+        "mixed_mixed": "A transitional phase in personal life — focus on quality time, shared values, and mutual emotional support.",
+        "mixed_down": "Patience is essential in partnerships — listen actively and avoid making sweeping decisions under stress.",
+        "opp_up": "A warm, supportive relationship window opens — excellent for important personal commitments and celebrations.",
+        "opp_down": "A romantic or partnership opening is present, but calls for realistic expectations and steady pacing.",
+        "opp_mixed": "An opening for connection is active — nurture mutual trust through thoughtful gestures and open dialogue.",
+        "default": "Personal relationships thrive on consistency, patience, and mutual respect.",
+    },
+    "health": {
+        "up_up": "Vitality and stamina are well-supported — ideal window for adopting active fitness habits and building physical resilience.",
+        "up_mixed": "Physical energy rebounds steadily as daily routines stabilize and sleep patterns improve.",
+        "up_down": "Recovery takes hold after a tiring period; strength and mental clarity return.",
+        "down_down": "Physical reserves run low — prioritize restful sleep, balanced nutrition, and pacing your daily workload.",
+        "down_mixed": "Physical fatigue starts to lift; continue nurturing your body with regular, gentle routines.",
+        "down_up": "Stress-related strain eases, allowing stamina to rebuild steadily.",
+        "mixed_up": "Energy levels fluctuate upward — balance enthusiasm with consistent rest to sustain momentum.",
+        "mixed_mixed": "A maintenance chapter for health — keep a structured schedule for meals, hydration, and restorative downtime.",
+        "mixed_down": "Body signals ask for attention — address minor symptoms early and avoid chronic overworking.",
+        "opp_up": "A strong vitality window is open — excellent timing for wellness overhauls and energetic lifestyle upgrades.",
+        "opp_down": "A recovery opening appears, but demands steady lifestyle discipline rather than quick remedies.",
+        "opp_mixed": "An opportunity to revitalize health is present — prioritize foundational sleep and clean daily habits.",
+        "default": "Health and well-being respond best to steady rhythms and proactive self-care.",
+    },
+    "home": {
+        "up_up": "Domestic prosperity and harmony — promising timing for property acquisitions, home improvements, and family celebrations.",
+        "up_mixed": "Home life becomes more settled and comfortable as domestic plans fall smoothly into place.",
+        "up_down": "Domestic peace returns after a period of household upheaval or relocation demands.",
+        "down_down": "Domestic responsibilities peak — navigate family duties with patience and keep domestic boundaries clear.",
+        "down_mixed": "Household tensions begin to diffuse, creating a calmer domestic atmosphere.",
+        "down_up": "Domestic pressures ease, restoring tranquility and comfort to your living space.",
+        "mixed_up": "Opportunities for home upgrades emerge, provided family consensus is reached first.",
+        "mixed_mixed": "A transitional phase on the home front — ideal for organizing living spaces, decluttering, and planning family logistics.",
+        "mixed_down": "Home matters require patience — address maintenance issues promptly and maintain calm dialogue with elders.",
+        "opp_up": "A favorable window for real estate, residence changes, and household prosperity is active.",
+        "opp_down": "A property or domestic opening exists, but requires thorough inspection of terms and family consensus.",
+        "opp_mixed": "An opening in domestic affairs is unfolding — proceed with deliberate planning and realistic budgeting.",
+        "default": "Domestic harmony is fostered through quiet patience and structured household care.",
+    },
+    "children": {
+        "up_up": "Progeny and creative pursuits flourish — auspicious phase for children's educational milestones and personal achievements.",
+        "up_mixed": "Family and creative prospects brighten, bringing rewarding progress in learning and projects.",
+        "up_down": "Clarity and joy in family matters return following a period of concern or heavy parenting demands.",
+        "down_down": "Parenting demands or educational hurdles ask for extra patience — support with steady encouragement rather than pressure.",
+        "down_mixed": "Schooling or family hurdles begin to ease as constructive routines take root.",
+        "down_up": "Parenting stress releases, fostering warmer, more collaborative bonds.",
+        "mixed_up": "New developmental milestones open up for children; encourage their unique talents with patience.",
+        "mixed_mixed": "A transitional phase for family growth and creative projects — focus on educational guidance and structured habits.",
+        "mixed_down": "Children's routines need thoughtful attention — maintain stable schedules and open communication.",
+        "opp_up": "A highly supported opening for progeny milestones, creative breakthroughs, and academic recognition.",
+        "opp_down": "An opening in family or creative matters presents itself, requiring calm consistency and steady oversight.",
+        "opp_mixed": "An opportunity for creative or family progress is present — nurture it with structured guidance.",
+        "default": "Matters of children and creativity thrive on patient encouragement and steady guidance.",
+    },
+    "learning": {
+        "up_up": "Higher learning and fortune flourish — auspicious timing for advanced studies, mentorship, publishing, and broadening philosophical horizons.",
+        "up_mixed": "Academic and personal growth expand steadily with guidance from respected teachers or mentors.",
+        "up_down": "Clarity and good fortune return following an academic or philosophical impasse.",
+        "down_down": "Academic demands or conflicting guidance call for focus — structure your study habits and verify advice carefully.",
+        "down_mixed": "Learning hurdles begin to ease, restoring confidence and direction in higher pursuits.",
+        "down_up": "Intellectual fatigue releases, bringing fresh inspiration and renewed motivation.",
+        "mixed_up": "Promising educational openings emerge, provided consistent study discipline is maintained.",
+        "mixed_mixed": "A chapter of knowledge consolidation — ideal for deep research, skill refinement, and consulting seniors.",
+        "mixed_down": "Study and planning conditions ask for patience — avoid shortcuts and build core mastery step by step.",
+        "opp_up": "A major educational or mentorship opening is present — seize opportunities for skill development and academic milestones.",
+        "opp_down": "A learning opportunity presents itself, but requires careful focus and disciplined groundwork.",
+        "opp_mixed": "An intellectual door is opening — align with experienced mentors and pace your study plan.",
+        "default": "Learning and personal growth thrive on structured discipline and open curiosity.",
+    },
+    "inner": {
+        "up_up": "Deep inner clarity and spiritual grounding — excellent timing for meditation, wellness retreats, foreign connections, and restorative solitude.",
+        "up_mixed": "Inner calm returns steadily as past subconscious stresses and mental fatigue resolve.",
+        "up_down": "A period of inner recovery begins after emotional or mental strain; peace of mind is restored.",
+        "down_down": "Subconscious pressures or high mental sensitivity peak — prioritize restorative sleep, simplify commitments, and protect your inner boundaries.",
+        "down_mixed": "Mental overthinking begins to subside, opening room for quiet reflection and emotional centering.",
+        "down_up": "Mental tension releases, restoring emotional balance and peaceful sleep cycles.",
+        "mixed_up": "Spiritual and inner insights deepen, though keeping grounded in practical daily routines remains essential.",
+        "mixed_mixed": "A contemplative phase — ideal for spiritual exploration, personal retreats, and managing energy boundaries.",
+        "mixed_down": "Mind and sleep cycles need gentle care — avoid late-night stimulation and establish a calm evening routine.",
+        "opp_up": "An auspicious window for spiritual growth, foreign travel, and deep emotional healing opens.",
+        "opp_down": "An inner turning point arrives, asking for emotional detachment and calm mindfulness rather than anxiety.",
+        "opp_mixed": "A period of internal realignment — embrace quiet introspection and protect your personal peace.",
+        "default": "Inner well-being thrives on mindfulness, restful solitude, and emotional balance.",
+    },
+}
+
+
+def _phase(direction: str, previous: str, *, event_type: str = "", area: str = "") -> tuple[str, str]:
     d = (direction or "mixed").lower()
     p = (previous or "").lower()
-    # Build a compact label from a small, readable set — the user recognized
-    # these in the original request: "opening, mixed, recognition, pressure".
     label_map = {
         ("up", "up"): "Opening",
         ("up", "mixed"): "Growth",
@@ -113,42 +265,51 @@ def _phase(direction: str, previous: str, *, event_type: str = "") -> tuple[str,
         ("mixed", "down"): "Caution",
         ("down", "up"): "Pressure Release",
     }
-    # Fallback label when direction/previous don't match a key
     label = label_map.get((d, p), "") or {
         "up": "Opening", "down": "Pressure", "mixed": "Transition",
     }.get(d, "Phase")
 
-    # --- Meaning -------------------------------------------------------
-    # A readable, natural-sounding line.  The wording varies with the phase
-    # state (and the transition direction), so this is never verbatim boilerplate
-    # the way a single "opportunity / evaluation" sentence was for every window.
+    # Domain-specific terms
+    area_dict = _AREA_LIFE_TERMS.get(str(area or "").lower().strip())
+    if area_dict:
+        if event_type and "opportunity" in event_type.lower():
+            key = f"opp_{d}" if f"opp_{d}" in area_dict else "opp_mixed"
+            return label, area_dict.get(key, area_dict["default"])
+        key = f"{d}_{p}" if f"{d}_{p}" in area_dict else d
+        if key in area_dict:
+            return label, area_dict[key]
+        if f"{d}_mixed" in area_dict:
+            return label, area_dict[f"{d}_mixed"]
+        return label, area_dict.get("default", "Matters in this area develop steadily with disciplined attention.")
+
+    # High-quality general fallback
     if event_type and "opportunity" in event_type.lower():
         if d == "up":
-            meaning = "An opening is present, and it is a good time to move forward."
+            meaning = "A favorable window opens — move forward decisively on planned initiatives."
         elif d == "down":
-            meaning = "An opportunity is present but must be handled with care."
+            meaning = "An opening presents itself, but requires careful risk management and patience."
         else:
-            meaning = "An opening is present, but it should be assessed before acting."
+            meaning = "An opportunity is developing — review details carefully and seek trusted counsel before acting."
     elif d == "up":
         if p == "down":
-            meaning = "An earlier difficult phase gives way to an opening."
+            meaning = "Earlier friction gives way to clear momentum and open doors."
         elif p == "mixed":
-            meaning = "Uncertainty begins to open into opportunity."
+            meaning = "Uncertainty resolves into constructive, goal-oriented progress."
         else:
-            meaning = "This is an opportunity-oriented part of the cycle."
+            meaning = "Circumstances strongly support growth, initiative, and visible progress."
     elif d == "down":
         if p == "up":
-            meaning = "An earlier opening becomes more demanding."
+            meaning = "An earlier easy phase becomes more demanding, asking for patience and discipline."
         elif p == "mixed":
-            meaning = "The matter becomes more demanding and needs care."
+            meaning = "Conditions require careful navigation, steady routines, and deliberate pacing."
         else:
-            meaning = "This is the part of the cycle where effort or patience matters most."
+            meaning = "A demanding stretch where resilience, practical structure, and patience matter most."
     elif p == "up":
-        meaning = "Momentum remains, but the conditions become less straightforward."
+        meaning = "Momentum continues, though tactical adjustments are needed to sustain results."
     elif p == "down":
-        meaning = "The heavy tone begins to ease, but the matter is not fully settled."
+        meaning = "Heavy pressure begins to lift, paving the way for steady recovery."
     else:
-        meaning = "The chart is asking for adjustment rather than an all-or-nothing move."
+        meaning = "A period of thoughtful adjustment and practical consolidation."
 
     return label, meaning
 
@@ -249,7 +410,7 @@ def build_transition_map(pc: dict, area_key: str, timing_windows: list[dict], *,
             or int(r.get("bav", 0) or 0) <= 3
             else "mixed"
         )
-        phase, meaning = _phase(direction, previous, event_type=str(r.get("event_type") or ""))
+        phase, meaning = _phase(direction, previous, event_type=str(r.get("event_type") or ""), area=area_key)
         previous = direction
         # Three identical paragraphs inside one card read as a template. The
         # running period is what actually separates two same-tone stretches.

@@ -477,59 +477,92 @@ def _classical_report(pc: dict) -> tuple[list[str], dict[str, list[str]]]:
 
 
     hlh = book.get("house_lord_in_house", {})
-    pih = book.get("planet_in_house", {})
-
-    # 2. Father (Sun in house, 9th lord in house)
+    # 2. Natal Roots for Family (Sun for father, Moon for mother, 3rd lord/Mars for siblings, 4th/2nd for home)
     sun_h = chart.planets.get("Sun", {}).get("house", 0)
-    if sun_h:
-        sun_pred = pih.get(str(sun_h), {}).get("Sun", "")
-        if sun_pred:
-            family["father"].extend(_clean_classical_line(sun_pred, relation="father"))
-    lord_9 = chart.houses.get(9, {}).get("lord", "")
-    if lord_9:
-        occ_9 = chart.planets.get(lord_9, {}).get("house", 0)
-        if occ_9:
-            hlh_9 = hlh.get("9", {}).get(str(occ_9), "")
-            if hlh_9:
-                family["father"].extend(_clean_classical_line(hlh_9, relation="father"))
+    sun_sign = chart.planets.get("Sun", {}).get("sign", "")
+    if sun_h and sun_sign:
+        family["father"].append(f"Natal chart places Sun in {sun_sign} in the {sun_h} house, indicating a structured paternal presence.")
 
-    # 3. Mother (Moon in house, 4th lord in house)
     moon_h = chart.planets.get("Moon", {}).get("house", 0)
-    if moon_h:
-        moon_pred = pih.get(str(moon_h), {}).get("Moon", "")
-        if moon_pred:
-            family["mother"].extend(_clean_classical_line(moon_pred, relation="mother"))
-    lord_4 = chart.houses.get(4, {}).get("lord", "")
-    if lord_4:
-        occ_4 = chart.planets.get(lord_4, {}).get("house", 0)
-        if occ_4:
-            hlh_4 = hlh.get("4", {}).get(str(occ_4), "")
-            if hlh_4:
-                family["mother"].extend(_clean_classical_line(hlh_4, relation="mother"))
-                family["home"].extend(_clean_classical_line(hlh_4, relation="home"))
+    moon_sign = chart.planets.get("Moon", {}).get("sign", "")
+    if moon_h and moon_sign:
+        family["mother"].append(f"Natal chart places Moon in {moon_sign} in the {moon_h} house, reflecting an emotional maternal bond.")
 
-    # 4. Siblings (3rd lord in house, Mars in house)
     lord_3 = chart.houses.get(3, {}).get("lord", "")
-    if lord_3:
-        occ_3 = chart.planets.get(lord_3, {}).get("house", 0)
-        if occ_3:
-            hlh_3 = hlh.get("3", {}).get(str(occ_3), "")
-            if hlh_3:
-                family["siblings"].extend(_clean_classical_line(hlh_3, relation="siblings"))
-    mars_h = chart.planets.get("Mars", {}).get("house", 0)
-    if mars_h:
-        mars_pred = pih.get(str(mars_h), {}).get("Mars", "")
-        if mars_pred:
-            family["siblings"].extend(_clean_classical_line(mars_pred, relation="siblings"))
+    mars_sign = chart.planets.get("Mars", {}).get("sign", "")
+    if lord_3 and mars_sign:
+        family["siblings"].append(f"Natal 3rd house governed by {lord_3} with Mars in {mars_sign} highlights dynamic sibling ties.")
 
-    # 5. Home / House (2nd lord for family values/wealth)
+    lord_4 = chart.houses.get(4, {}).get("lord", "")
     lord_2 = chart.houses.get(2, {}).get("lord", "")
-    if lord_2:
-        occ_2 = chart.planets.get(lord_2, {}).get("house", 0)
-        if occ_2:
-            hlh_2 = hlh.get("2", {}).get(str(occ_2), "")
-            if hlh_2:
-                family["home"].extend(_clean_classical_line(hlh_2, relation="home"))
+    if lord_4 or lord_2:
+        family["home"].append(f"Natal 4th house ruled by {lord_4 or lord_2} forms the foundation of childhood environment and values.")
+
+    return traits, family
+
+
+def _divisional_family(pc: dict) -> tuple[list[str], dict[str, list[str]]]:
+    traits: list[str] = []
+    family: dict[str, list[str]] = _empty_family()
+    if not isinstance(pc, dict):
+        return traits, family
+    divisional = pc.get("divisional") or {}
+    d12 = divisional.get("D12") or {}
+    d3 = divisional.get("D3") or {}
+    d4 = divisional.get("D4") or {}
+
+    _ZODIAC = (
+        "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+        "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+    )
+
+    def _varga_pos(vdata: dict, planet: str) -> tuple[str, int]:
+        ls = vdata.get("Lagna") or ""
+        ps = vdata.get(planet) or ""
+        if ls not in _ZODIAC or ps not in _ZODIAC:
+            return ps, 0
+        return ps, ((_ZODIAC.index(ps) - _ZODIAC.index(ls)) % 12) + 1
+
+    # D12 Father & Mother (Dwadashamsha)
+    d12_sun_sign, d12_sun_h = _varga_pos(d12, "Sun")
+    if d12_sun_h:
+        family["father"].append(
+            f"Dwadashamsha (D12) places the Sun in {d12_sun_sign} in the {d12_sun_h} house, indicating a strong paternal heritage of discipline, traditional values, and structured guidance."
+        )
+        family["father"].append(
+            "Paternal lineage emphasizes duty, ethical principles, and respect for ancestral traditions."
+        )
+
+    d12_moon_sign, d12_moon_h = _varga_pos(d12, "Moon")
+    if d12_moon_h:
+        family["mother"].append(
+            f"Dwadashamsha (D12) places the Moon in {d12_moon_sign} in the {d12_moon_h} house, reflecting maternal grounding, emotional resilience, and deep ancestral care."
+        )
+        family["mother"].append(
+            "Maternal influence provides an emotional anchor and moral stability in early life."
+        )
+
+    # D3 Siblings (Drekkana)
+    d3_mars_sign, d3_mars_h = _varga_pos(d3, "Mars")
+    d3_jup_sign, d3_jup_h = _varga_pos(d3, "Jupiter")
+    if d3_jup_h == 3:
+        family["siblings"].append(
+            f"Drekkana (D3) places Jupiter in the 3rd house in {d3_jup_sign}, indicating supportive co-born bonds, shared learning, and mutual respect."
+        )
+    elif d3_mars_h:
+        family["siblings"].append(
+            f"Drekkana (D3) shows active, independent siblings where mutual patience and clear communication keep relationships harmonious."
+        )
+
+    # D4 Home & Property (Chaturthamsha)
+    d4_moon_sign, d4_moon_h = _varga_pos(d4, "Moon")
+    if d4_moon_h:
+        family["home"].append(
+            f"Chaturthamsha (D4) places the Moon in {d4_moon_sign} in the {d4_moon_h} house, supporting long-term domestic comfort and steady property accumulation."
+        )
+    family["home"].append(
+        "Domestic life is grounded in creating a peaceful, organized household environment."
+    )
 
     return traits, family
 
@@ -566,6 +599,7 @@ def build_personal_life(
 
     for collect in (
         lambda: _classical_report(pc),
+        lambda: _divisional_family(pc),
         lambda: _blind(pc, dob_date, female),
         lambda: _bnn(pc),
         lambda: _signals(pc, "bhardwaj"),

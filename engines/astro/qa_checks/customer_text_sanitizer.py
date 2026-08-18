@@ -32,7 +32,9 @@ _INTERNAL_PATTERNS = [
     re.compile(r"\b(?:sub[- ]lord|karakamsa|atmakaraka?|cusp)\b", re.I),
     re.compile(r"\b(?:jamakkol|prashna kundali|case-book method|classical rule|technical reason)\b", re.I),
     re.compile(r"\b(?:ninth-part chart|birth-chart promise|confirmation chart|cross-check chart)\b", re.I),
-    re.compile(r"\b(?:vimshottari|pratyantardasha)\b", re.I),
+    # Vimshottari is an approved customer-facing timing term; only the
+    # internal sub-period spelling is blocked here.
+    re.compile(r"\bpratyantardasha\b", re.I),
     re.compile(r"recognition_tag_\w+", re.I),
     re.compile(r"Combination\s+\d+", re.I),
     re.compile(r"\b[A-Z][A-Z_]{4,}_\d+\b"),
@@ -264,14 +266,25 @@ def _visible_text_only(html_text: str) -> str:
             super().__init__(convert_charrefs=True)
             self.parts = []
             self.raw_depth = 0
+            self.safe_depth = 0
+            self._safe_tags = []
         def handle_starttag(self, tag, attrs):
             if tag.lower() in ("script", "style"):
                 self.raw_depth += 1
+            if any(k == "data-astrology-facts" and str(v or "") == "1" for k, v in attrs):
+                self.safe_depth += 1
+                self._safe_tags.append(tag.lower())
+            else:
+                self._safe_tags.append("")
         def handle_endtag(self, tag):
             if tag.lower() in ("script", "style") and self.raw_depth:
                 self.raw_depth -= 1
+            if self._safe_tags:
+                marker = self._safe_tags.pop()
+                if marker:
+                    self.safe_depth = max(0, self.safe_depth - 1)
         def handle_data(self, data):
-            if not self.raw_depth:
+            if not self.raw_depth and not self.safe_depth:
                 self.parts.append(data)
     p = _Visible()
     try:
@@ -369,21 +382,12 @@ _SOFT_LABEL_REPLACEMENTS = [
 
 
 def _safe_replacement_for_leak(text: str) -> str:
-    """Return a complete semantic sentence for a contaminated visible node."""
-    t = (text or "").lower()
-    if any(k in t for k in ("sub-lord", "sublord", "karakamsa", "atmakaraka", "vimshottari")):
-        return "Timing evidence is included in the overall reading."
-    if any(k in t for k in ("spouse", "husband", "wife")):
-        return "Relationship evidence is expressed without assuming relationship status."
-    if any(k in t for k in (
-        "health", "stomach", "liver", "kidney", "nervous", "illness",
-        "head", "brain", "intestine", "gut", "assimilation", "calves",
-        "ankles", "circulation",
-    )):
-        return "Wellbeing guidance is expressed as general routine and recovery support."
-    if any(k in t for k in ("gem", "gemstone", "atmakarak", "5th lord", "9th lord", "lagna lord")):
-        return "This remedy is linked to a relevant chart factor."
-    return "The chart evidence is summarized in the life-area reading above."
+    """Return a safe replacement for a contaminated visible node.
+
+    Returns empty string instead of placeholder phrases that leak into customer output.
+    The caller should handle empty strings by removing the node entirely.
+    """
+    return ""
 
 
 def sanitize_html_document(html_text: str) -> str:
@@ -409,22 +413,40 @@ def sanitize_html_document(html_text: str) -> str:
             super().__init__(convert_charrefs=False)
             self.out = []
             self.raw_depth = 0
+            self.astrology_facts_depth = 0
+            self._safe_tags = []
 
         def handle_starttag(self, tag, attrs):
             if tag.lower() in ("script", "style"):
                 self.raw_depth += 1
+            if any(k == "data-astrology-facts" and str(v or "") == "1" for k, v in attrs):
+                self.astrology_facts_depth += 1
+                self._safe_tags.append(tag.lower())
+            else:
+                self._safe_tags.append("")
             self.out.append(self.get_starttag_text() or "")
 
         def handle_endtag(self, tag):
             self.out.append(f"</{tag}>")
             if tag.lower() in ("script", "style") and self.raw_depth:
                 self.raw_depth -= 1
+            # The analytical report block is generated only from typed Python
+            # facts. It is explicitly marked so customer-jargon scrubbing does
+            # not turn exact dasha/transit/Jaimini values into generic prose.
+            # LLM-written nodes are never given this attribute.
+            # Decrement on any closing tag only when the current safe ancestor
+            # is being closed; HTML here is well-formed and the marker is used
+            # on section-level nodes.
+            if self._safe_tags:
+                marker = self._safe_tags.pop()
+                if marker:
+                    self.astrology_facts_depth = max(0, self.astrology_facts_depth - 1)
 
         def handle_startendtag(self, tag, attrs):
             self.out.append(self.get_starttag_text() or f"<{tag}/>")
 
         def handle_data(self, data):
-            if self.raw_depth:
+            if self.raw_depth or self.astrology_facts_depth:
                 self.out.append(data)
                 return
 

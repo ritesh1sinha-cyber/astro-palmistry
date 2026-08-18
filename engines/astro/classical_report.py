@@ -340,54 +340,144 @@ def _personality(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     return _section("1. Personality Traits", items, close)
 
 
+_ZODIAC = (
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+)
+
+
+def _varga_planet_pos(varga_data: dict, planet: str) -> tuple[str, int]:
+    """Return (sign, house_from_varga_lagna) for a planet in a divisional chart."""
+    if not varga_data or not isinstance(varga_data, dict):
+        return "", 0
+    lagna_sign = varga_data.get("Lagna") or ""
+    planet_sign = varga_data.get(planet) or ""
+    if lagna_sign not in _ZODIAC or planet_sign not in _ZODIAC:
+        return planet_sign, 0
+    lagna_idx = _ZODIAC.index(lagna_sign)
+    planet_idx = _ZODIAC.index(planet_sign)
+    house = ((planet_idx - lagna_idx) % 12) + 1
+    return planet_sign, house
+
+
 def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items: list[str] = []
+    divisional = (evidence or {}).get("divisional") or {}
+    d12 = divisional.get("D12") or {}
+    d3 = divisional.get("D3") or {}
+    d4 = divisional.get("D4") or {}
 
-    bullet = _lord_bullet(chart, 2, "Family values and speech", domain="finance")
-    if bullet:
-        items.append(bullet)
-
-    bullet = _lord_bullet(chart, 4, "Home and early environment", domain="property")
-    if bullet:
-        items.append(bullet)
-
-    moon_house = _house_of(chart, "Moon")
-    moon_book = _planet_book(chart, "Moon", domain="property")
-    items.append(CV.bullet(
-        "Connection with mother",
-        CV.placement_cause("Moon", moon_house, (chart.planets.get("Moon") or {}).get("sign", ""),
-                           (chart.planets.get("Moon") or {}).get("dignity", "")),
-        moon_book or (
-            "the Moon carries the mother in a Vedic chart, so her influence reaches you "
-            f"through {_HOUSE_TOPIC.get(moon_house, 'this part of life')}"
-        ),
-    ))
-
+    # 1. Father and Paternal Lineage (Natal 9th House + D12 Dwadashamsha)
+    ninth_lord = _lord_of(chart, 9)
+    ninth_lord_in = _house_of(chart, ninth_lord)
     sun_house = _house_of(chart, "Sun")
-    sun_book = _planet_book(chart, "Sun", domain="personality")
+    sun_sign = (chart.planets.get("Sun") or {}).get("sign", "")
+    d12_sun_sign, d12_sun_house = _varga_planet_pos(d12, "Sun")
+
+    d12_father_note = ""
+    if d12_sun_house:
+        d12_father_note = (
+            f" In the Dwadashamsha (D12 ancestral chart), the Sun is placed in {d12_sun_sign} "
+            f"in the {_ord(d12_sun_house)} house, indicating a strong paternal heritage of "
+            f"discipline, values, and duty."
+        )
+
+    father_cause = CV.placement_cause("Sun", sun_house, sun_sign,
+                                      (chart.planets.get("Sun") or {}).get("dignity", ""))
     items.append(CV.bullet(
-        "Father and authority figures",
-        CV.placement_cause("Sun", sun_house, (chart.planets.get("Sun") or {}).get("sign", ""),
-                           (chart.planets.get("Sun") or {}).get("dignity", "")),
-        sun_book or (
-            "the Sun stands for the father and for authority, and this placement sets the "
-            "tone of that relationship"
-        ),
+        "Father and paternal lineage (D12 Dwadashamsha)",
+        f"{father_cause}, with your 9th lord {ninth_lord} in the {_ord(ninth_lord_in)} house",
+        f"the Sun signifies the father, ethical principles, and ancestral standing; the chart "
+        f"points to a structured, principled paternal bond where respect and traditional values "
+        f"play a central guiding role.{d12_father_note}",
     ))
 
-    bullet = _lord_bullet(chart, 9, "Fortune and family faith", domain="travel")
-    if bullet:
-        items.append(bullet)
+    # 2. Mother and Maternal Heritage (Natal 4th House + D12 Dwadashamsha)
+    fourth_lord = _lord_of(chart, 4)
+    fourth_lord_in = _house_of(chart, fourth_lord)
+    moon_house = _house_of(chart, "Moon")
+    moon_sign = (chart.planets.get("Moon") or {}).get("sign", "")
+    d12_moon_sign, d12_moon_house = _varga_planet_pos(d12, "Moon")
 
-    for house, label in ((2, "Speech and family karma"), (4, "Peace of mind at home")):
+    d12_mother_note = ""
+    if d12_moon_house:
+        d12_mother_note = (
+            f" In the Dwadashamsha (D12), the Moon sits in {d12_moon_sign} in the {_ord(d12_moon_house)} house, "
+            f"reflecting maternal grounding, emotional resilience, and introspective ancestral roots."
+        )
+
+    mother_cause = CV.placement_cause("Moon", moon_house, moon_sign,
+                                      (chart.planets.get("Moon") or {}).get("dignity", ""))
+    items.append(CV.bullet(
+        "Mother and maternal heritage (D12 Dwadashamsha)",
+        f"{mother_cause}, with your 4th lord {fourth_lord} in the {_ord(fourth_lord_in)} house",
+        f"the Moon carries the maternal influence, emotional nurturance, and early conditioning; "
+        f"her blessings form an emotional pillar, fostering sensitivity and moral stability.{d12_mother_note}",
+    ))
+
+    # 3. Siblings and Co-borns (Natal 3rd House + D3 Drekkana)
+    third_lord = _lord_of(chart, 3)
+    third_lord_in = _house_of(chart, third_lord)
+    mars_sign = (chart.planets.get("Mars") or {}).get("sign", "")
+    d3_mars_sign, d3_mars_house = _varga_planet_pos(d3, "Mars")
+    d3_jup_sign, d3_jup_house = _varga_planet_pos(d3, "Jupiter")
+
+    d3_sibling_note = ""
+    if d3_jup_house == 3:
+        d3_sibling_note = (
+            f" In the Drekkana (D3 sibling chart), Jupiter occupies the 3rd house in {d3_jup_sign}, "
+            f"which classical texts regard as highly supportive for co-born harmony and mutual growth."
+        )
+    elif d3_mars_house:
+        d3_sibling_note = (
+            f" In the Drekkana (D3), Mars sits in {d3_mars_sign} in the {_ord(d3_mars_house)} house, "
+            f"showing energetic, independent siblings where mutual patience and clear communication keep bonds strong."
+        )
+
+    items.append(CV.bullet(
+        "Siblings and co-born dynamics (D3 Drekkana)",
+        f"your 3rd lord {third_lord} sits in the {_ord(third_lord_in)} house, with Mars (Bhratri Karaka) in {mars_sign}",
+        f"the 3rd house and Mars govern siblings, courage, and personal initiative. Sibling relationships "
+        f"bring shared learning and mutual loyalty, flourishing when each person's independence is respected.{d3_sibling_note}",
+    ))
+
+    # 4. Home Environment and Property (Natal 4th House + D4 Chaturthamsha)
+    d4_moon_sign, d4_moon_house = _varga_planet_pos(d4, "Moon")
+    d4_prop_note = ""
+    if d4_moon_house:
+        d4_prop_note = (
+            f" The Chaturthamsha (D4) places the Moon in {d4_moon_sign} in the {_ord(d4_moon_house)} house, "
+            f"indicating progressive accumulation of landed assets, property, and domestic comfort over time."
+        )
+
+    items.append(CV.bullet(
+        "Home environment and property (D4 Chaturthamsha)",
+        f"your 4th house of domestic peace is ruled by {fourth_lord} in the {_ord(fourth_lord_in)} house",
+        f"domestic stability and fixed assets are built through steady planning and careful investments. "
+        f"Creating a calm, uncluttered home environment directly strengthens mental peace and productivity.{d4_prop_note}",
+    ))
+
+    # 5. Speech, Cultural Lineage and Family Values (Natal 2nd House)
+    second_lord = _lord_of(chart, 2)
+    second_lord_in = _house_of(chart, second_lord)
+    if second_lord and second_lord_in:
+        items.append(CV.bullet(
+            "Family values and cultural grounding",
+            f"your 2nd lord {second_lord} is placed in the {_ord(second_lord_in)} house",
+            f"early upbringing instills strong ethical and financial values; family traditions and speech "
+            f"act as a steady anchor in public life and career choices.",
+        ))
+
+    # 6. Shadow Planet In Domestic/Family Houses
+    for house, label in ((2, "Family harmony and speech"), (4, "Domestic peace of mind")):
         shadow = [p for p in ("Ketu", "Rahu", "Saturn", "Mars") if _house_of(chart, p) == house]
         if shadow:
             planet = shadow[0]
             items.append(CV.bullet(
                 label,
                 f"{planet} occupies your {_ord(house)} house of {_HOUSE_TOPIC.get(house, '')}",
-                "the classical reading is occasional distance or misunderstanding here, and a "
-                "sense of standing slightly apart from the family even while remaining loyal",
+                f"the classical reading indicates a need for personal space within the family dynamic, "
+                f"where quiet patience and routine resolve misunderstandings far better than emotional confrontation.",
             ))
 
     note = _consensus_note("family", evidence or {}, life_area="home")
@@ -395,9 +485,10 @@ def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
         items.append(note)
 
     close = (
-        "The family background has shaped a person who carries responsibility early and "
-        "values stability. Where the chart shows friction, patience with elders works better "
-        "than argument."
+        "The family foundation is read across the natal chart (D1), the Dwadashamsha (D12 for parents), "
+        "the Drekkana (D3 for siblings), and the Chaturthamsha (D4 for home and property). "
+        "Where the chart shows distinct personalities under one roof, patience with elders and clear boundaries "
+        "preserve lifelong family harmony."
     )
     return _section("2. Family and Background", items, close)
 
@@ -1500,6 +1591,8 @@ def build_sections(pc: dict, *, name: str = "", dob: str = "", tob: str = "",
         "claims_by_section": practitioner_facts.get("claims_by_section", {}),
         "synthesis": synthesis,
         "longevity": practitioner_facts.get("longevity", {}),
+        "divisional": pc.get("divisional") or {},
+        "pc": pc,
     }
     return {
         "details": _client_details(chart, name=name, dob=dob, tob=tob, place=place,

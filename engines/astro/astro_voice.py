@@ -1112,7 +1112,7 @@ def personalise(html: str, ctx: dict, kind: str = "full_report") -> str:
     out = strip_citations(humanise(strip_machinery(strip_leaks(html or ""))),
                           hide_system_names=os.getenv("HIDE_SYSTEM_NAMES", "1") == "1")
     if os.getenv("PLAIN_ENGLISH", "1") == "1":
-        out = translate_jargon(rephrase(out))
+        out = translate_jargon(rephrase(out), keep_original=False)
     # Seams and repetition are the last passes: they clean up the prose that
     # the earlier stages produced, not just what the engine emitted.
     try:

@@ -162,6 +162,15 @@ ASTROLOGER VOICE V3 — CHART READING, NOT PHILOSOPHY
    same career theme." Do not count methods aloud unless the facts provide that
    interpretation.
 6. Do not turn one isolated planet or rule into a life verdict.
+6A. The analytical blocks are already judged by Python. Treat timing_systems,
+    crossover_points, slow_transits, jaimini, dasha_planet_transits and
+    life_area_judgements as authoritative conclusions. Never recalculate them.
+6B. For life areas, prefer this order: natal foundation → current dasha judgement
+    → current transit → next period → final judgement. If a field is empty, omit it.
+6C. The report should show the actual astrology before the prose. A sentence such
+    as "Jupiter is functionally malefic and is transiting your 10th house" is
+    appropriate when those exact facts are supplied. Do not replace this with
+    generic language about pressure or growth.
 7. Use calibrated astrologer certainty: "the chart supports", "this is a strong
    indication", "the period favours", "there is a clear tendency", "this can
    manifest as". Reserve "may" for genuinely uncertain/private circumstances.
@@ -281,10 +290,14 @@ def prompt_version(kind: str) -> str:
     forgetting to bump the registry used to serve the previous wording for
     the rest of the cache TTL, which reads as "the change did nothing".
     """
-    base = PROMPT_VERSIONS.get(kind, "REPORT_PROSE_PROMPT_V1")
-    digest = hashlib.sha256(
-        (_base_prompt(kind) + _prompt_extra(kind)).encode("utf-8")
-    ).hexdigest()[:8]
+    base = PROMPT_VERSIONS.get(kind, "REPORT_PROSE_PROMPT_V5_FINAL_LIFE_AREA_CONFLUENCE")
+    digest_source = _base_prompt(kind) + _prompt_extra(kind)
+    # The paid full_report overlay caches the life-area passages that are
+    # written from the (separate) areas prompt. Editing the areas prompt must
+    # bust that overlay cache too, or the report keeps the previous wording.
+    if kind == "full_report":
+        digest_source += _prompt_extra("full_report_areas")
+    digest = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()[:8]
     return f"{base}-{digest}"
 
 
@@ -300,8 +313,10 @@ def _prompt_extra(kind: str) -> str:
             "(1) astrological_basis — 2–4 sentences naming the supplied chart factors "
             "that govern this reading: vedic_context.lagna / rising_sign, moon_sign, "
             "nakshatra, mahadasha/period_lord and antardasha/sub_period_lord. Name them "
-            "the way an astrologer would: 'You are in a Rahu mahadasha, with Jupiter "
-            "running the current antardasha.' Do not hide them behind a gloss; "
+            "the way an astrologer would, using the exact supplied values: 'You are in the "
+            "{mahadasha} mahadasha, with {antardasha} running the current antardasha.' "
+            "Never substitute another planet for the supplied antardasha; do not hide "
+            "the actual dasha behind a gloss; "
             "(2) interpretation — 2–4 sentences translating those factors into how this "
             "stretch of life actually feels, from phase_tone and phase_notes; "
             "(3) personality — one warm paragraph from personality_traits. Free gets "
@@ -309,6 +324,7 @@ def _prompt_extra(kind: str) -> str:
             "opened out into how it shows in ordinary life rather than listed; "
             "(4) current_phase — 2–4 full sentences using phase_tone, phase_end and "
             "phase_notes. Never answer with a single adjective like 'supportive'; "
+            "(4a) final_guidance — one concise 2–4 sentence practical closing for the whole reading. It must be grounded in the supplied phase_tone, hardest areas and approved remedies. Do not add new astrology facts, dates, rituals or promises. Do not repeat the life-area conclusions. "
             "(5) recent_months — summarise every recent_months window to build trust "
             "(what was happening and which life areas felt harder); "
             "(6) hardest_area_note — one short line from hardest_area_labels; "
@@ -325,48 +341,52 @@ def _prompt_extra(kind: str) -> str:
             "Explain the astrological reason and the lived manifestation; do not dump raw calculations or internal levels. "
             "'the decision pressure is high' is our own field spoken aloud. Say what it "
             "is like to live in this stretch and what it asks for; "
-            "(9) family_note — one line for EVERY family_notes entry, in the order "
-            "supplied, each written from that entry's own notes and tags only. Say "
-            "what that person was like to grow up around, or for relation=home what "
-            "the household itself was like; never predict anything about them, never "
-            "mention their health, their death or their money, and never move a "
-            "detail from one relation to another. An entry with method_count of 1 "
+            "(9) family_note — one rich, elaborative sentence for EVERY family_notes entry, in the order "
+            "supplied (Father, Mother, Siblings, Home & Upbringing), written from that entry's own notes and tags. "
+            "Do NOT write terse bullet points or list raw tags like 'Father: Tag1, Tag2'. "
+            "Write an articulate, narrative synthesis explaining how the divisional chart placements (D12 for parents, D3 for siblings, D4 for home) "
+            "and natal indications shape family roots, values, ethics, and early upbringing; "
+            "never predict anything about them, never mention their health, their death or their money, "
+            "and never move a detail from one relation to another. An entry with method_count of 1 "
             "was seen by a single method, so keep it to a leaning ('your father "
             "comes across as'); at 2 or more you may say it plainly. Leave the list "
             "empty when family_notes is empty; "
-            "(10) areas — ONLY when access=paid: one ConversationalAreaProse for EVERY card, in card order. Each area is a mini consultation, not a template dump. "
-            "Write each area as if you are explaining the chart across the table. First astrological_basis: 1–2 sentences naming only the supplied planetary/house/dasha/transit/yoga/divisional factors that actually support the area. Then interpretation: 2–4 sentences that connect those factors to the persons lived experience. Do not merely restate the basis. Then outlook: 1–2 sentences that make the promise-versus-activation distinction clear. "
-            "Timing is one concise sentence; the renderer will print authoritative exact dates separately. Do not invent or repeat dates. Manifestation "
-            "is one sentence on how the supplied pattern can show up in ordinary life; transition_note is 1–2 sentences "
-            "explaining the most important change inside the longer forecast using transition_map. "
-            "Use only the supplied overlap stack; never invent a trigger or date. Remedy is one practical step "
-            "from remedy_text/approved_remedies. Every area that reads mixed, weak or "
-            "under strain MUST end with a remedy — never leave a difficulty without the "
-            "step that helps. When access=free, leave areas empty. "
-            "Name planets, houses, dashas, nakshatras, yogas and divisional charts when they are explicitly grounded in the supplied facts. Never invent them. "
-            "Never invent dates. Soft modality only. Health language stays at routine/recovery."
+            "(10) areas — ONLY when access=paid: one ConversationalAreaProse for EVERY card, in card order. "
+            "This is the most important paid section. Write ONE compact consultation conclusion per life area, not a collection of mini report fields. "
+            "The conclusion must be 3–5 sentences and follow this exact reasoning shape when the supplied facts support it: "
+            "(a) state the current situation and the main astrological cause (planet/transit/dasha/house), with a concrete end date if supplied; "
+            "(b) say whether pressure eases, continues or worsens at the next material checkpoint, and do not equate a dasha change with improvement; "
+            "(c) bring in the natal foundation and the strongest supporting factor such as house strength, natural karaka, AmK, divisional support or Jaimini when supplied; "
+            "(d) state the first sustained improvement or forecast endpoint with the exact supplied date when available. If no sustained improvement exists in the horizon, say that plainly. "
+            "The first sentence of every area conclusion must identify the current judgement and the strongest current pressure or support when supplied. The second sentence must give the next dated change and its exact effect. The third sentence must reconcile natal support with the strongest supplied supporting factor such as house lord, Natural Karaka, AmK, divisional chart or Jaimini. The fourth sentence must state the first sustained improvement or, if none exists, the forecast endpoint. Do not merely restate lane scores. "
+            "Write it like a Vedic astrologer explaining the chart across the table: 'From the current Saturn transit and Rahu–Moon period, the main strain is in profession through November 2027. After that, the pressure eases somewhat, but the complete confluence still keeps the period demanding. The natal career foundation and AmK support the long-term promise, and the later confluence points to stronger stability by January 2030.' "
+            "Do NOT copy this example unless those exact facts are supplied. Never invent a planet, house, AmK, date, outcome or remedy. Do not use vague philosophy. Do not repeat the same fact in separate sentences. Do not say 'things will definitely improve' or guarantee an event; use firm astrological language such as 'the chart shows', 'the pressure eases', 'the stronger period begins' when the deterministic facts support it. "
+            "The remedy field must be ONE concise, concrete remedy sentence from remedy_text or approved_remedies. If the supplied remedy names Saturn/Jupiter/etc., keep that planet name; do not generalize it away. For a strained area, make the remedy specific: 'To reduce Saturn-related pressure, keep the supplied Saturday remedy for 5 weeks...' only if that exact remedy is supplied. Never invent fasting, temple, mantra, donation or gemstone details. "
+            "Do not separately write astrological_basis, interpretation, outlook, timing, manifestation or transition_note as redundant mini-paragraphs; those legacy fields may be left empty. "
+            "For the analytical layer, use timing_systems and life_area_judgements as the primary source for current and future judgements. Use future_confluence inside each life_area_judgement as the authoritative dated forecast. Never treat a dasha change alone as relief: only say a situation improves/eases/continues/worsens when the supplied future_confluence says so. Use slow_transits, jaimini and dasha_planet_transits for the reason. State concrete combinations only when supplied; never calculate or correct them. "
+            "Name planets, houses, dashas, nakshatras, yogas and divisional charts when explicitly grounded in the supplied facts. Never invent them or dates. Never print raw confluence scores or internal/debug terminology. Treat final_judgement, activation_label, confluence_label and future_confluence as deterministic facts; explain them but never override them. Health language stays at routine/recovery. "
         ),
         "full_report_areas": (
-            "Return ConversationalAreasProse: one entry for EVERY card in the "
-            "facts, in the order supplied, and nothing else. Write each area "
-            "the way an experienced Vedic astrologer speaks it aloud. First "
-            "astrological_basis: 1–2 sentences naming the supplied planetary, house, "
-            "dasha, transit, nakshatra, yoga or divisional-chart factors that support "
-            "the area — allowed_planets, house, vedic_context. Then interpretation: "
-            "1–2 sentences explaining what the combined factors mean in practical life. "
-            "Then outlook is 1–2 sentences saying whether "
-            "this part of life is backed or under strain, from status, activation_status, "
-            "direction and outlook_line; timing is one sentence naming the window from "
-            "window/timing_windows; manifestation is one sentence on how it shows up day "
-            "to day; transition_note is 1–2 sentences explaining the transition inside the "
-            "longer forecast using only transition_map. Never invent a trigger or date. "
-            "remedy is one practical step from "
-            "remedy_text/approved_remedies. Every area that reads mixed, weak "
-            "or under strain MUST end with a remedy — never leave a difficulty "
-            "without the step that helps. Name planets, houses, dashas, nakshatras, "
-            "yogas and divisional charts when explicitly grounded in the supplied facts. "
-            "Never invent them or dates. Soft modality only. Health language stays at "
-            "routine/recovery."
+            "Return ConversationalAreasProse: one entry for EVERY card in the facts, in the order supplied, and nothing else. "
+            "For each area, write ONLY a compact consultation-style conclusion plus one remedy. "
+            "The conclusion is 3–5 sentences: the area's current state and its cause -> its dated pressure/easing window -> the natal support actually named for THAT area -> the first sustained improvement or a plain statement that none is visible. "
+            "HARD RULES — obey each one exactly, for every area: "
+            "1. Every date you write must already exist in THAT area's own facts (future_confluence dates, relief_window, or stronger_window). If the area's future_confluence holds only the baseline row and there is no relief_window or stronger_window, then the area has NO dated window: write that no clear relief window is visible yet and do NOT write any month at all. "
+            "2. The baseline row is the present moment, not a pressure end date. Never cite it as 'until <baseline month>' or as any kind of window. A baseline-only area gets no month at all. "
+            "3. The example's placeholder dates '<MONTH YEAR>' are never real. Only a date that literally exists in the current area's own facts may appear in your reply. If an area truly has its own dated window, use that exact date; otherwise write 'no clear relief window yet'. "
+            "4. The current-state sentence must follow the area's final_judgement/current_verdict. If that value is 'good' or 'strongly_supported', describe the area as supported and positive — never as 'mixed' or 'keeps this area mixed'. If it is 'moderate', say it is mixed or needs care. If it is 'mixed', say it is mixed. Match the supplied value exactly. "
+            "5. Only name a planet in the cause sentence if it appears in THAT area's natural_karakas, house_lord, dasha or transit. Otherwise keep the cause general ('the current period keeps this area mixed') and do not name Saturn or any other planet. "
+            "6. A dasha change alone is never improvement. If a confluence row says 'eases_but_continues', say exactly that meaning: pressure eases but the overall situation remains demanding. Never claim a full recovery the facts do not support. "
+            "7. If you name both a pressure end date and an improvement date for the same area, the improvement date must come AFTER the pressure end date in the same area's facts. Never write a conclusion where the improvement month is earlier than or equal to the pressure end month. " 
+            "8. The style example below is a SHAPE, not a script. Its concrete facts are placeholders marked with <angle brackets> and are never real. Never output the example verbatim, never keep its words ('Saturn', 'job/profession', 'job house', 'AmK', 'Nov 2027', 'Jan 2030', 'ease a little but completely') and never give a career-shaped sentence to another area. Every area reads different because its facts are different. "
+            "9. Write dates as words only ('March 2029'), never as numbers ('2029-03-29', '2029/03/29', '03-2029'). The DATE WINDOW SUMMARY shows 'Month Year'; copy that exact wording. "
+            "Write in plain spoken English, like an astrologer talking to the reader across a table — short everyday sentences, no report-speak, no 'the chart indicates' scaffolding, no bullet lists. Open directly with the area's current state. Each sentence adds one fact and then stops. "
+            "STYLE EXAMPLE (voice and sentence shape ONLY; the bracketed facts are placeholders): "
+            "'From the current planet position and dasha, there is strain mostly due to <PLANET> seen in <LIFE AREA> till <MONTH YEAR>. After that situation will ease a little but <CONTINUE> completely. Since the natal birth support <HOUSE FACTOR> and <AMK IF PRESENT> is supporting, finally things will be better by <MONTH YEAR>.' " 
+            "That is the tone to imitate, nothing more. Its specific facts (Saturn, Nov 2027, job house, AmK, Jan 2030) never transfer to any area. The natal-support sentence must name the actual factors supplied for THAT area (house lord, natural karaka, divisional support, Jaimini, AmK only when present). If the area's facts do not name an AmK, do not say AmK. "
+            "The remedy is one concrete sentence from remedy_text/approved_remedies. Preserve planet names and exact ritual/action details when they are already supplied. Never invent a remedy. "
+            "Leave astrological_basis, interpretation, outlook, timing, manifestation and transition_note empty; they are legacy fields and the renderer intentionally does not display them. "
+            "Never print raw confluence scores or internal/debug terminology. Never use 'Timing evidence is included in the overall reading' or 'Promised, not yet active'. Return only the requested JSON. "
         ),
         "full_report_confluence": (
             "Write the classical Vedic reading for this page. Python owns ALL "
@@ -389,7 +409,7 @@ def _prompt_extra(kind: str) -> str:
             "conditions.\n"
             "5. Remedies only from the approved list in the facts.\n"
             "6. Use the 'you' perspective, never the reader's name and never she/he.\n"
-            "7. Only use months that appear in the factual timing windows.\n"
+            "7. Only use months that appear in the factual timing windows or future_confluence dates.\n"
             "8. Areas: use the short_phase labels and the area names from the facts.\n\n"
             "FIELDS OUTPUT (one object matching ReportConfluenceProse exactly):\n"
             "- astrological_basis: 2-4 sentences naming the supplied chart factors "
@@ -512,6 +532,96 @@ def user_prompt(facts: Any, *, schema_name: str, section: str = "") -> str:
     )
 
 
+def areas_user_prompt(facts: Any, *, area_keys: list[str]) -> str:
+    """Full-report areas prompt limited to a subset of life areas.
+
+    The areas writer returns one compact conclusion per card. Eight conclusions
+    plus the eight slimmed judgements together exceed the endpoint's 8k context
+    (input was ~7.9k and the JSON reply got truncated mid-array), so the paid
+    page asks for the areas in two chunks of four. Each chunk keeps the same
+    system prompt; only the fact payload is filtered to the chunk's areas.
+    """
+    payload = public_fact_payload(facts)
+    compact = _compact_report_payload(payload, section="areas")
+    allowed = set(area_keys or [])
+    if allowed:
+        compact["cards"] = [
+            c for c in list(compact.get("cards") or [])
+            if str(c.get("area") or "") in allowed
+        ]
+        compact["life_area_judgements"] = [
+            j for j in list(compact.get("life_area_judgements") or [])
+            if str(j.get("area") or "") in allowed
+        ]
+    window_summary = _areas_window_summary(compact)
+    return (
+        "Return a JSON object matching schema `ConversationalAreasProse`.\n"
+        "Write one ConversationalAreaProse entry for EVERY card present in "
+        "these facts, in the order supplied, and nothing else.\n"
+        f"Facts (authoritative — do not contradict or expand):\n"
+        f"{json.dumps(compact, ensure_ascii=False, default=str)}\n"
+        f"DATE WINDOW SUMMARY (authoritative; use ONLY these dates — never "
+        f"any month absent from this summary):\n{window_summary}\n"
+        "Write every string in English."
+    )
+
+
+def _areas_window_summary(compact: dict) -> str:
+    """Terse per-area date window summary so the writer never invents months.
+
+    Each area lists the only months it may cite: relief_window and the dated
+    future_confluence rows. A baseline-only row is not a window and is excluded
+    so a sparse area cannot be given a made-up end date.
+    """
+    rows = []
+    for j in list(compact.get("life_area_judgements") or []):
+        if not isinstance(j, dict):
+            continue
+        area = str(j.get("area") or "?")
+        label = str(j.get("label") or area)
+        windows = []
+        relief = j.get("relief_window")
+        if relief:
+            windows.append(f"relief {_fmt_ym(relief)}")
+        stronger = j.get("stronger_window")
+        if stronger:
+            windows.append(f"stronger {_fmt_ym(stronger)}")
+        for r in (j.get("future_confluence") or []):
+            if not isinstance(r, dict):
+                continue
+            change = r.get("change_type")
+            date = r.get("date")
+            if change == "baseline":
+                # The baseline row is masked ("XXXX", planets "YYYY"); it only
+                # marks today and must not be read as a real window.
+                continue
+            if not date:
+                continue
+            windows.append(f"{change} on {_fmt_ym(date)}")
+        if windows:
+            rows.append(f"- {label}: {', '.join(windows)}")
+        else:
+            rows.append(f"- {label}: NO dated window (forecast shows only the "
+                        "baseline row; write no month, no end date, no "
+                        "improvement date)")
+    return "\n".join(rows) if rows else "(none)"
+
+
+_MONTH_NAMES = ("", "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December")
+
+
+def _fmt_ym(iso: str) -> str:
+    """'2029-03-29' -> 'March 2029'; safe on any odd input."""
+    digits = [p for p in re.split(r"[^\d]", iso or "") if p.isdigit()]
+    if len(digits) >= 2 and 1 <= int(digits[1]) <= 12:
+        try:
+            return f"{_MONTH_NAMES[int(digits[1])]} {digits[0]}"
+        except (ValueError, IndexError):
+            pass
+    return str(iso or "")
+
+
 # Fields a card carries for validation, storage or the classic page, which the
 # conversational writer never uses. They are not secret — the boundary already
 # cleared them — they are simply the difference between a prompt that leaves
@@ -524,6 +634,23 @@ _PAGE_ONLY = ("cards", "timing_windows", "dashboard_buckets")
 _AREAS_KEEP = ("kind", "first_name", "age_band", "age_years", "gender",
                "access", "cards", "timing_windows", "vedic_context")
 
+_PLANET_NAME = (
+    r"\b(?:Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu|"
+    r"R?ahu|K?etu|Uranus|Neptune|Pluto)\b"
+)
+
+
+def _mask_planets(text: str) -> str:
+    """Replace planet names in a string with YYYY.
+
+    Used on baseline confluence rows so the model cannot read a dasha
+    (e.g. "Vimshottari: Rahu-Jupiter") out of "today" and repeat it as the
+    area's current cause.
+    """
+    if not text:
+        return text
+    return re.sub(_PLANET_NAME, "YYYY", text, flags=re.IGNORECASE)
+
 
 def _compact_report_payload(payload: dict, *, section: str = "") -> dict:
     """Trim the report prompt to what the prose is actually written from.
@@ -535,20 +662,102 @@ def _compact_report_payload(payload: dict, *, section: str = "") -> dict:
     """
     out = dict(payload or {})
     if section == "page":
-        return {k: v for k, v in out.items() if k not in _PAGE_ONLY}
+        keep = {
+            "kind", "first_name", "age_band", "age_years", "gender", "access",
+            "personality_traits", "phase_direction", "phase_tone", "phase_end",
+            "phase_notes", "recent_months", "hardest_areas", "hardest_area_labels",
+            "life_state", "family_notes", "vedic_context",
+            "timing_systems", "crossover_points", "slow_transits",
+            "jaimini", "dasha_planet_transits",
+        }
+        return {k: v for k, v in out.items() if k in keep}
     if section == "areas":
-        out = {k: v for k, v in out.items() if k in _AREAS_KEEP}
+        keep = set(_AREAS_KEEP) | {"life_area_judgements", "timing_systems", "slow_transits", "jaimini", "dasha_planet_transits", "crossover_points"}
+        out = {k: v for k, v in out.items() if k in keep}
+        # The timing windows below the forecast are already rendered verbatim on
+        # the page; the areas writer only needs the dated confluence rows.
+        out.pop("timing_windows", None)
+        # crossover_points is page-opening analytics; the areas writer works
+        # from the per-judgement confluence rows instead.
+        out.pop("crossover_points", None)
+        # The confluence timeline is a per-judgement list of dated rows, most
+        # of which only restate "the timing changed, the verdict did not".
+        # Dropping the "continues" rows and keeping a slim projection of the
+        # material changes keeps the areas prompt inside the endpoint's 8k
+        # context (a paid page with 8 judgements was ~26k tokens and the
+        # endpoint rejected it, so no area conclusions were produced).
+        judgements = []
+        _JUDGEMENT_DROP = {
+            # Scores / internal debug fields: the writer is told never to print
+            # raw confluence scores or internal terminology, so they only burn
+            # context.
+            "natal_foundation_score", "confluence_score", "confluence_agreement",
+            "lane_judgements", "lane_scores", "house_strength",
+            "divisional_chart", "divisional_verdict", "activated_houses",
+            # Redundant with house_lord / the card factors the writer cites.
+            "house_lord_role", "depositor",
+            # Current-transit/next-period micro fields add little next to the
+            # current/future summaries and the confluence rows.
+            "current_transit", "next_period", "remedy_reason",
+            "caution_factors", "stronger_window",
+        }
+        for j in list(out.get("life_area_judgements") or []):
+            if not isinstance(j, dict):
+                judgements.append(j)
+                continue
+            slim = {k: v for k, v in j.items() if k not in _JUDGEMENT_DROP}
+            fc = slim.get("future_confluence") or []
+            if isinstance(fc, list):
+                kept_rows = []
+                for row in fc:
+                    if not isinstance(row, dict):
+                        continue
+                    if row.get("change_type") == "continues":
+                        continue
+                    reason = str(row.get("reason") or "")
+                    is_baseline = row.get("change_type") == "baseline"
+                    kept_rows.append({
+                        # Mask the baseline row so the writer cannot cite its
+                        # date or its dasha planets as real windows. The
+                        # baseline only marks "today"; copying its month makes
+                        # the model hallucinate an end date for sparse areas.
+                        "date": "XXXX" if is_baseline else row.get("date"),
+                        "change_type": row.get("change_type"),
+                        "judgement": row.get("judgement"),
+                        "reason": (_mask_planets(reason[:100]) if is_baseline
+                                   else reason[:100]),
+                    })
+                # The writer needs the shape of the forecast, not every
+                # checkpoint: the first material change and the tail toward
+                # the endpoint carry the dated story the conclusion cites.
+                slim["future_confluence"] = kept_rows[:6]
+            for key, maxlen in (("current_summary", 160), ("future_summary", 200)):
+                text = str(slim.get(key) or "")
+                if len(text) > maxlen:
+                    slim[key] = text[:maxlen].rsplit(" ", 1)[0] + "…"
+            judgements.append(slim)
+        out["life_area_judgements"] = judgements
     cards = []
+    _CARD_DROP = {
+        # Validation/storage meta the writer never reads. The QA gate runs on
+        # the full facts object, not this prompt payload, so dropping them here
+        # costs nothing but token budget.
+        "kind", "confidence", "agreement", "direction", "score",
+        "support_n", "caution_n", "remedy_eligible", "approved_remedies",
+        "allowed_planets", "semantic_tags",
+    }
+    # In the areas call the judgement rows already carry the dated windows and
+    # the forecast summary; the card-level window/outlook lines only duplicate
+    # them and burn context.
+    _CARD_AREA_DROP = _CARD_DROP | {"window", "outlook_line"}
+    card_drop = _CARD_AREA_DROP if section == "areas" else _CARD_DROP
     for card in list(out.get("cards") or []):
         if not isinstance(card, dict):
             continue
         slim = {k: v for k, v in card.items()
-                if k not in _PROMPT_ONLY_NOISE and v not in ([], {}, "", None)}
-        # remedy_text and approved_remedies are usually the same sentence.
-        remedy = str(slim.get("remedy_text") or "").strip()
-        approved = [str(x).strip() for x in (slim.get("approved_remedies") or [])]
-        if remedy and approved and approved[0] == remedy:
-            slim.pop("approved_remedies", None)
+                if k not in _PROMPT_ONLY_NOISE
+                and k not in card_drop
+                and v not in ([], {}, "", None)}
         cards.append(slim)
     if cards:
         out["cards"] = cards
@@ -907,6 +1116,13 @@ def scrub_palm_bodily(text: str) -> str:
     return " ".join(kept).strip()
 
 
+_CUSTOMER_PLACEHOLDER_PATTERNS = [
+    re.compile(r"This remedy is linked to a relevant chart factor\.?", re.I),
+    re.compile(r"The chart evidence is summarized in the life-area reading above\.?", re.I),
+    re.compile(r"Timing evidence is included in the overall reading\.?", re.I),
+    re.compile(r"Promised, not yet active", re.I),
+]
+
 def check_prose(text: str, facts: Any = None, *, area: str = "") -> list[str]:
     """Return a list of rule violations for one prose string (empty = ok)."""
     t = (text or "").strip()
@@ -914,6 +1130,10 @@ def check_prose(text: str, facts: Any = None, *, area: str = "") -> list[str]:
         return []
     fails: list[str] = []
     low = t.lower()
+    for pat in _CUSTOMER_PLACEHOLDER_PATTERNS:
+        if pat.search(t):
+            fails.append("customer_placeholder")
+            break
     fact_raw = _fact_raw(facts) if facts is not None else ""
     allowed = _fact_token_set(facts) if facts is not None else set()
     allowed_dates = allowed_dates_from_facts(facts) if facts is not None else set()

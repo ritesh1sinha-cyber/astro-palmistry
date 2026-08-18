@@ -6,8 +6,11 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
+ENGINES = HERE.parents[1]
 if str(HERE.parent) not in sys.path:
     sys.path.insert(0, str(HERE.parent))
+if str(ENGINES) not in sys.path:
+    sys.path.insert(0, str(ENGINES))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -205,9 +208,11 @@ def test_conversational_render_has_unlock_on_free():
         footer_unlock=True,
     )
     assert 'data-unlock="1"' in html
-    assert "Who you are" in html
-    assert "Where life is putting its weight right now" in html
-    assert "Each important part of your life" not in html
+    assert "YOUR CHART SIGNATURE" in html
+    assert "ABOUT YOU" in html
+    assert "THE ROAD AHEAD" not in html  # no cards on this free render
+    assert "1. CHART SIGNATURE" not in html
+    assert "See the full reading, area by area" in html
 
 
 def test_palm_conversational_render_paid_areas():

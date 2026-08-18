@@ -38,6 +38,7 @@ from .schemas import (
 )
 from .validate import (
     mind_now_topic_index,
+    validate_area_dates_grounded,
     validate_chat_answer,
     validate_conversational_area,
     validate_family_line,
@@ -234,6 +235,7 @@ def _conversational_overlay(prose: ConversationalProse, *, access: str) -> dict[
             if not key:
                 continue
             areas[key] = {
+                "conclusion": _as_sentence(getattr(a, "conclusion", "") or ""),
                 "astrological_basis": _as_sentence(getattr(a, "astrological_basis", "") or ""),
                 "interpretation": _as_sentence(getattr(a, "interpretation", "") or ""),
                 "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
@@ -250,6 +252,7 @@ def _conversational_overlay(prose: ConversationalProse, *, access: str) -> dict[
         "interpretation": _clip_to_sentence(prose.interpretation or ""),
         "personality": _clip_to_sentence(prose.personality),
         "current_phase": _clip_to_sentence(prose.current_phase),
+        "final_guidance": _clip_to_sentence(getattr(prose, "final_guidance", "") or ""),
         "recent_months": _clip_to_sentence(prose.recent_months or ""),
         "hardest_area_note": _clip_to_sentence(prose.hardest_area_note or ""),
         "mind_now": [_as_sentence(x) for x in list(prose.mind_now or []) if str(x).strip()],
@@ -291,13 +294,11 @@ def _conversational_palm_overlay(
 # Per-tab humanizers
 # ---------------------------------------------------------------------------
 def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
-    """The conversational page: one call for free, two for paid.
+    """Generate grounded prose from deterministic analytical facts.
 
-    Free is one reply and fits comfortably. Paid asks for the opening, the
-    background block and eight life areas against an 8k context, and a model
-    handed all of it at once spends the budget on the opening and returns
-    three areas out of eight. Splitting the paid page into a page call and an
-    areas call costs one extra request and gives each half room to be written.
+    Qwen writes language only. Paid uses two small calls (opening/current chapter
+    and life-area passages) because a 7B model is more reliable with bounded JSON.
+    There is deliberately no second "rewrite the rewrite" pass.
     """
     stats = {"accepted": 0, "rejected": 0, "errors": 0, "rejection_reasons": {}}
     access = str(getattr(facts, "access", "free") or "free")
@@ -311,8 +312,7 @@ def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
     prose, retries, errs = _complete_validated(
         ConversationalProse,
         system_prompt_for("full_report"),
-        user_prompt(facts, schema_name="ConversationalProse",
-                    section="page" if paid else "")
+        user_prompt(facts, schema_name="ConversationalProse", section="page")
         + (
             "\nWrite in the voice of a practising Vedic astrologer. astrological_basis must name the supplied chart factors and briefly explain their astrological significance; interpretation must connect those factors to lived experience rather than philosophy. current_phase must be 2–4 sentences using "
             "phase_tone, phase_end and phase_notes — never a single word like "
@@ -348,26 +348,9 @@ def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
     overlay, kept, dropped = _screen_conversational_slots(overlay, facts, stats)
     overlay = _merge_conversational_facts(overlay, facts, access=access)
 
-    # Classical-tone rephrase pass: rewrites the finished page prose into the
-    # voice of the classical Vedic report. It never introduces new facts, and a
-    # failure or rejected plan returns None, leaving the overlay exactly as-is.
-    _classical = _llm_rephrase_full_report(facts, stats)
-    if isinstance(_classical, dict) and _classical:
-        for _k in ("astrological_basis", "interpretation", "personality",
-                   "current_phase", "hardest_area_note", "why_now"):
-            _v = str(_classical.get(_k) or "").strip()
-            if _v:
-                overlay[_k] = _v
-        if isinstance(_classical.get("mind_now"), list) and _classical["mind_now"]:
-            overlay["mind_now"] = [str(x) for x in _classical["mind_now"]][:3]
-        if isinstance(_classical.get("family_note"), list) and _classical["family_note"]:
-            overlay["family_note"] = [str(x) for x in _classical["family_note"]][:6]
-        _ca = _classical.get("areas") or {}
-        if isinstance(_ca, dict) and isinstance(overlay.get("areas"), dict):
-            for _a, _txt in _ca.items():
-                sl = overlay["areas"].get(_a)
-                if isinstance(sl, dict) and str(_txt).strip():
-                    sl["interpretation"] = str(_txt).strip()
+    # Deliberately no second LLM rephrase pass. Qwen 2.5 7B already receives
+    # the deterministic analytical layer and is asked to express it once. A
+    # second rewrite adds latency and is the easiest place for semantic drift.
     if not str(overlay.get("personality") or "").strip():
         stats["rejected"] += 1
         reject(["empty_conversational_prose"])
@@ -383,37 +366,67 @@ def _humanize_report_areas(facts: Any, stats: dict[str, Any]) -> dict[str, Any]:
     A failure here is not a failed page: the merge step fills every missing
     area from deterministic prose, so the worst case is the reading a reader
     would have got before the model was switched on.
+
+    Eight conclusions plus their facts together exceed the endpoint's 8k
+    context, so the cards are asked for in two chunks of four. Each chunk is
+    validated against the full facts (the gate only inspects the areas present
+    in the reply), and the accepted entries are merged into one overlay.
     """
-    prose, _retries, errs = _complete_validated(
-        ConversationalAreasProse,
-        system_prompt_for("full_report_areas"),
-        user_prompt(facts, schema_name="ConversationalAreasProse",
-                    section="areas"),
-        facts,
-        lambda p, f: [],  # per-area QA runs slot by slot in the screen step
-        keep_last_on_failure=True,
-    )
-    if prose is None:
-        stats["rejection_reasons"]["areas:empty_or_model_failure"] = (
-            stats["rejection_reasons"].get("areas:empty_or_model_failure", 0) + 1
-        )
-        for reason in errs or []:
-            key = f"areas:{str(reason).split(':', 1)[0]}"[:80]
-            stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
-        return {}
+    from .rules import areas_user_prompt
+
+    card_areas = []
+    try:
+        for c in list(getattr(facts, "cards", None) or []):
+            area = str(getattr(c, "area", "") or "").strip()
+            if area:
+                card_areas.append(area)
+    except Exception:  # noqa: BLE001
+        card_areas = []
+
     out: dict[str, Any] = {}
-    for a in list(prose.areas or []):
-        key = str(getattr(a, "area", "") or "").strip()
-        if not key:
+    chunk_size = 4
+    for start in range(0, max(1, len(card_areas)), chunk_size):
+        chunk_keys = card_areas[start:start + chunk_size]
+        prose, _retries, errs = _complete_validated(
+            ConversationalAreasProse,
+            system_prompt_for("full_report_areas"),
+            areas_user_prompt(facts, area_keys=chunk_keys),
+            facts,
+            validate_prose_against_facts,
+            keep_last_on_failure=True,
+        )
+        if prose is None:
+            stats["rejection_reasons"]["areas:empty_or_model_failure"] = (
+                stats["rejection_reasons"].get(
+                    "areas:empty_or_model_failure", 0) + 1
+            )
+            for reason in errs or []:
+                key = f"areas:{str(reason).split(':', 1)[0]}"[:80]
+                stats["rejection_reasons"][key] = (
+                    stats["rejection_reasons"].get(key, 0) + 1
+                )
             continue
-        out[key] = {
-            "astrological_basis": _as_sentence(getattr(a, "astrological_basis", "") or ""),
-            "interpretation": _as_sentence(getattr(a, "interpretation", "") or ""),
-            "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
-            "timing": FB.timing_sentence(getattr(a, "timing", "") or ""),
-            "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
-            "remedy": _as_sentence(getattr(a, "remedy", "") or ""),
-        }
+        for a in list(prose.areas or []):
+            key = str(getattr(a, "area", "") or "").strip()
+            if not key or key in out:
+                continue
+            conclusion = _as_sentence(getattr(a, "conclusion", "") or "")
+            if not conclusion or any(x.lower() in conclusion.lower() for x in (
+                "this remedy is linked to a relevant chart factor",
+                "the chart evidence is summarized in the life-area reading above",
+                "timing evidence is included in the overall reading",
+                "promised, not yet active",
+            )):
+                continue
+            out[key] = {
+                "conclusion": conclusion,
+                "astrological_basis": _as_sentence(getattr(a, "astrological_basis", "") or ""),
+                "interpretation": _as_sentence(getattr(a, "interpretation", "") or ""),
+                "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
+                "timing": FB.timing_sentence(getattr(a, "timing", "") or ""),
+                "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
+                "remedy": _as_sentence(getattr(a, "remedy", "") or ""),
+            }
     return out
 
 
@@ -468,6 +481,12 @@ def _llm_rephrase_full_report(facts: Any, stats: dict[str, Any]) -> Optional[dic
         },
         "hardest_areas": payload.get("hardest_areas") or [],
         "hardest_area_labels": payload.get("hardest_area_labels") or [],
+        "timing_systems": payload.get("timing_systems") or [],
+        "crossover_points": payload.get("crossover_points") or [],
+        "slow_transits": payload.get("slow_transits") or [],
+        "jaimini": payload.get("jaimini") or {},
+        "dasha_planet_transits": payload.get("dasha_planet_transits") or [],
+        "life_area_judgements": payload.get("life_area_judgements") or [],
         "cards": cards_summary,
     }
 
@@ -560,7 +579,7 @@ def _screen_conversational_slots(
         stats["rejection_reasons"][key] = stats["rejection_reasons"].get(key, 0) + 1
 
     for key in ("astrological_basis", "interpretation", "personality",
-                "current_phase", "recent_months", "hardest_area_note",
+                "current_phase", "final_guidance", "recent_months", "hardest_area_note",
                 "why_now"):
         text = str(out.get(key) or "").strip()
         if not text:
@@ -636,6 +655,8 @@ def _screen_conversational_slots(
             problems += validate_conversational_area(field, text, card)
             if field in ("outlook", "manifestation"):
                 problems += validate_retains_fact_terms(text, area_fact_terms(card))
+            if field in ("conclusion", "outlook"):
+                problems += validate_area_dates_grounded(text, mini)
             if problems:
                 dropped += 1
                 for p in problems:
@@ -651,27 +672,36 @@ def _screen_conversational_slots(
 def _single_card_facts(facts: Any, card: Any) -> Any:
     """Mini ReportFacts holding one card, for per-area grounding checks."""
     try:
+        area_key = getattr(card, "area", "") or (card.get("area") if isinstance(card, dict) else "")
+        all_aj = list(getattr(facts, "life_area_judgements", None) or [])
+        matched_aj = [x for x in all_aj if getattr(x, "area", "") == area_key] or all_aj
         return ReportFacts(
-            first_name=facts.first_name,
-            age_band=facts.age_band,
-            age_years=facts.age_years,
-            gender=facts.gender,
-            access=facts.access,
+            first_name=getattr(facts, "first_name", ""),
+            age_band=getattr(facts, "age_band", "adult"),
+            age_years=getattr(facts, "age_years", None),
+            gender=getattr(facts, "gender", "unknown"),
+            access=getattr(facts, "access", "free"),
             cards=[card],
-            timing_windows=list(card.timing_windows or []),
-            personality_traits=list(facts.personality_traits or []),
-            phase_direction=facts.phase_direction,
-            phase_tone=facts.phase_tone,
-            phase_end=facts.phase_end,
-            phase_notes=list(facts.phase_notes or []),
-            recent_months=list(facts.recent_months or []),
-            hardest_areas=list(facts.hardest_areas or []),
-            hardest_area_labels=list(facts.hardest_area_labels or []),
-            schema_version=facts.schema_version,
-            engine_version=facts.engine_version,
-            report_id=facts.report_id,
-            facts_hash=facts.facts_hash,
+            timing_windows=list(getattr(card, "timing_windows", None) or []),
+            personality_traits=list(getattr(facts, "personality_traits", None) or []),
+            phase_direction=getattr(facts, "phase_direction", "mixed"),
+            phase_tone=getattr(facts, "phase_tone", ""),
+            phase_end=getattr(facts, "phase_end", ""),
+            phase_notes=list(getattr(facts, "phase_notes", None) or []),
+            recent_months=list(getattr(facts, "recent_months", None) or []),
+            hardest_areas=list(getattr(facts, "hardest_areas", None) or []),
+            hardest_area_labels=list(getattr(facts, "hardest_area_labels", None) or []),
+            schema_version=getattr(facts, "schema_version", SCHEMA_VERSION),
+            engine_version=getattr(facts, "engine_version", ""),
+            report_id=getattr(facts, "report_id", ""),
+            facts_hash=getattr(facts, "facts_hash", ""),
             vedic_context=getattr(facts, "vedic_context", None),
+            timing_systems=list(getattr(facts, "timing_systems", None) or []),
+            crossover_points=list(getattr(facts, "crossover_points", None) or []),
+            slow_transits=list(getattr(facts, "slow_transits", None) or []),
+            jaimini=getattr(facts, "jaimini", None),
+            dasha_planet_transits=list(getattr(facts, "dasha_planet_transits", None) or []),
+            life_area_judgements=matched_aj,
         )
     except Exception:  # noqa: BLE001
         return facts
@@ -684,7 +714,7 @@ def _merge_conversational_facts(
     fb = FB.conversational_fallback(facts)
     out = dict(overlay or {})
     for key in ("astrological_basis", "interpretation", "personality",
-                "current_phase", "recent_months", "hardest_area_note",
+                "current_phase", "final_guidance", "recent_months", "hardest_area_note",
                 "why_now"):
         cur = str(out.get(key) or "").strip()
         # Bare tone words, bare label lists or empty slots → deterministic prose.
@@ -722,7 +752,7 @@ def _merge_conversational_facts(
         for area, block in (fb.get("areas") or {}).items():
             cur = areas.get(area) if isinstance(areas.get(area), dict) else {}
             merged = dict(block or {})
-            for field in ("astrological_basis", "interpretation", "outlook",
+            for field in ("conclusion", "astrological_basis", "interpretation", "outlook",
                           "timing", "manifestation", "remedy", "transition_note"):
                 if str(cur.get(field) or "").strip():
                     merged[field] = cur[field]

@@ -1,0 +1,959 @@
+FINAL FIX PLAN — CLEAN VEDIC LIFE-AREA REPORT
+================================================
+
+SOURCE
+------
+sample_full_report.html
+
+GOAL
+----
+Create one clean customer-facing report with exactly four top-level sections:
+
+1. Chart Signature
+2. Where You Are Now
+3. Each Life Area
+4. Final Practical Guidance
+
+Each life area must contain exactly:
+- Verdict
+- One astrologer-style conclusion
+- Timing
+- What helps
+- Astrological calculation & future checkpoints [collapsed]
+
+Do not merely hide legacy content with CSS. Remove it from the render tree.
+
+================================================
+1. CANONICAL LIFE-AREA CONTRACT
+================================================
+
+Use fixed internal IDs:
+
+work_career
+money
+relationships
+children_family
+health
+property_home
+travel_foreign
+spiritual_inner
+
+Display names:
+
+Work & Career
+Money
+Relationships
+Children & Family
+Health
+Property & Home
+Travel & Foreign
+Spiritual & Inner Life
+
+Do not let the LLM invent or rename areas.
+
+Map legacy names before rendering:
+
+Finance & Wealth -> money
+Relationships & Partnership -> relationships
+Children -> children_family
+Health & Energy -> health
+Home & Family -> property_home
+Inner Peace & Spirituality -> spiritual_inner
+
+Learning & Luck must NOT automatically become a new customer-facing area. Incorporate only supported relevant information into an existing canonical area or omit it.
+
+================================================
+2. SEPARATE CALCULATION, INTERPRETATION AND RENDERING
+================================================
+
+Use this pipeline:
+
+ASTRO CALCULATION
+        |
+        v
+NORMALIZED ASTRO DATA
+        |
+        v
+COMPLETE CONFLUENCE ENGINE
+        |
+        v
+LIFE-AREA INTERPRETATION OBJECT
+        |
+        v
+VALIDATOR
+        |
+        v
+HTML RENDERER
+
+Never use:
+
+raw LLM text -> HTML
+
+The calculation engine remains authoritative.
+The LLM only converts validated results into readable consultation language.
+
+================================================
+3. NORMALIZED AREA OBJECT
+================================================
+
+Each area must become:
+
+{
+  "id": "work_career",
+  "title": "Work & Career",
+  "verdict": "MIXED",
+  "conclusion": "...",
+  "timing": "...",
+  "what_helps": "...",
+  "calculation": {
+    "agreement": "...",
+    "lanes": [],
+    "current_state": "...",
+    "checkpoints": []
+  }
+}
+
+All fields are mandatory.
+
+================================================
+4. VERDICT RULE
+================================================
+
+Allowed internal verdicts only:
+
+GOOD
+MODERATE
+MIXED
+CHALLENGING
+
+Do not allow arbitrary values such as:
+"Very strong agreement"
+"Early signal"
+"Worth watching"
+"Positive"
+"Neutral"
+
+The final verdict must come from complete confluence, not from an LLM guess.
+
+================================================
+5. COMPLETE CONFLUENCE
+================================================
+
+Use all applicable validated evidence lanes, including where available:
+
+- natal foundation
+- main timing cycle
+- Chara
+- Yogini
+- slow transit
+- period-planet transit
+- natural significator
+- other validated calculation families
+
+One lane must never overwrite the complete judgement.
+
+A dasha/period change alone must NOT mean:
+- improvement
+- success
+- relief
+- GOOD verdict
+
+Every material future checkpoint must recalculate the complete confluence.
+
+================================================
+6. FIX DUPLICATE FUTURE CHECKPOINTS
+================================================
+
+Current bug:
+The sample contains duplicate dates such as February 2028 and December 2028.
+
+Implementation:
+
+raw_events = collect_all_timing_events()
+
+Normalize every event to a canonical date key:
+YYYY-MM or YYYY-MM-DD.
+
+Group all events by that key.
+
+Example:
+
+December 2028:
+- Chara changes
+- Yogini changes
+
+must become ONE checkpoint:
+
+December 2028
+- trigger: Chara change + Yogini change
+- complete recalculation
+- one final judgement
+
+Never render separate rows for separate methods on the same date.
+
+Then sort checkpoints chronologically.
+
+================================================
+7. REMOVE NON-MATERIAL CHECKPOINTS
+================================================
+
+After deduplication, keep a checkpoint when:
+
+verdict changes
+OR
+a major evidence lane materially changes
+OR
+a meaningful timing phase starts/ends
+OR
+the engine identifies a genuine material change
+
+Remove purely repetitive events.
+
+Do not remove a checkpoint just because the final verdict remains the same if the underlying confluence materially changes.
+
+================================================
+8. BASELINE
+================================================
+
+Every area gets exactly one current baseline.
+
+Example:
+
+August 2026
+Baseline · Mixed
+
+Do not hard-code the date. Use the actual report/current chart date.
+
+================================================
+9. FIRST MATERIAL EASING
+================================================
+
+Never define first easing as merely:
+"first dasha change"
+
+Instead, find the first post-baseline checkpoint where:
+- complete confluence materially improves
+- multiple independent factors support the change
+- no major cautionary factor cancels the improvement
+
+If none exists:
+"No clear material easing is established within the forecast horizon."
+
+================================================
+10. STRONG IMPROVEMENT
+================================================
+
+Strong improvement requires:
+- complete confluence = GOOD
+OR
+- a predefined engine threshold supported by multiple independent methods
+
+Never:
+one positive transit = strong improvement
+dasha change = strong improvement
+one benefic planet = strong improvement
+
+================================================
+11. CUSTOMER-FACING TIMING
+================================================
+
+Timing is mandatory in every area.
+
+It must answer:
+1. What is happening now?
+2. Until when?
+3. First meaningful easing/change?
+4. Stronger improvement window?
+5. If no strong improvement exists, say so.
+
+Example:
+
+Timing:
+"Pressure remains elevated through November 2027. The first meaningful easing appears around December 2027. A stronger supportive phase requires later timing and transit factors to align."
+
+If the engine has no supported date:
+"No single strong timing window is established by the available calculation."
+
+Never invent a date.
+
+================================================
+12. ASTROLOGER-STYLE CONCLUSION
+================================================
+
+One paragraph per area, ideally 3–5 sentences.
+
+Logical sequence:
+
+CAUSE
+-> CURRENT EFFECT
+-> TIMING
+-> WHAT CHANGES
+-> PRACTICAL INTERPRETATION
+
+The conclusion must be specific to that area.
+
+Avoid generic text such as:
+"neither a clear yes nor a clear no"
+"do not force a big step"
+"be patient"
+
+unless the calculation actually supports it and it is contextualized.
+
+Do not repeat the Timing paragraph word-for-word inside the conclusion.
+
+================================================
+13. LLM ROLE
+================================================
+
+The LLM must NOT calculate astrology.
+
+CODE calculates:
+- planets
+- houses
+- lords
+- dashas
+- Chara
+- Yogini
+- transits
+- significators
+- timing events
+- confluence
+
+LLM interprets only supplied validated results.
+
+Then code validates the LLM output and renders HTML.
+
+================================================
+14. STRICT LLM JSON
+================================================
+
+LLM output must be JSON only:
+
+{
+  "areas": [
+    {
+      "id": "work_career",
+      "conclusion": "...",
+      "timing": "...",
+      "what_helps": "..."
+    }
+  ],
+  "where_you_are_now": "...",
+  "final_guidance": ["...", "..."]
+}
+
+LLM must NOT output:
+- HTML
+- CSS
+- Markdown sections
+- new life areas
+- raw calculations
+- unsupported dates
+- additional report sections
+
+================================================
+15. DATE PROTECTION
+================================================
+
+Supply validated dates explicitly to the LLM.
+
+Example:
+
+VALIDATED TIMING:
+current_period_end = 2027-12-12
+first_material_easing = 2027-06
+stronger_window = 2030-04
+
+LLM may verbalize only these facts.
+
+After generation:
+- extract dates from all generated text
+- compare with allowed timing facts
+- if unsupported date appears -> validation failure
+- regenerate or use deterministic fallback
+
+The LLM must never invent dates.
+
+================================================
+16. CLAIM PROTECTION
+================================================
+
+Reject unsupported guarantees such as:
+- promotion guaranteed
+- marriage definitely happens
+- wealth guaranteed
+- foreign settlement certain
+- health problem will disappear
+
+Use calibrated language:
+- supports
+- favours
+- indicates
+- suggests
+- may ease
+- stronger window
+
+================================================
+17. HEALTH SAFETY
+================================================
+
+Health interpretation must remain non-diagnostic.
+
+Do not produce:
+- disease diagnoses
+- treatment claims
+- medicine recommendations
+- guaranteed recovery/worsening
+
+Use wellbeing/routine language only and include a brief statement that astrology does not replace medical advice when appropriate.
+
+================================================
+18. WHAT HELPS
+================================================
+
+Every area gets ONE compact block.
+
+Maximum 2–3 actions.
+
+Do not create separate customer sections for:
+- Remedies
+- Gemstones
+- Mantras
+- Chart-targeted remedies
+- Daily remedies
+
+If a supported remedy/mantra exists, incorporate it into What helps.
+
+================================================
+19. DELETE LEGACY CUSTOMER SECTIONS
+================================================
+
+Remove completely from final customer HTML:
+
+- About You
+- Family & Home
+- Right Now
+- Recently
+- Your Current Chapter
+- Year-by-Year Road Map
+- Top Challenges
+- Remedies — Chart-Targeted
+- Remedies & Gemstones
+- Technical details navigation
+- Method/sub-report tables
+- "15 different ways" block
+- old combined-answer tables
+- duplicate analytical dashboards
+- old prediction blocks
+- old windows sections
+- legacy tabs
+- old purchase/CTA sections if not required for the final report
+
+Do not leave these in the DOM.
+
+================================================
+20. CLEAN RENDERER
+================================================
+
+Create one dedicated function:
+
+render_final_report(report)
+
+It calls ONLY:
+
+render_chart_signature()
+render_where_you_are_now()
+render_life_areas()
+render_final_practical_guidance()
+
+Life-area renderer:
+
+render_life_area(area)
+
+Output exactly:
+
+article
+  header
+    title
+    verdict
+  conclusion
+  timing
+  what helps
+  details
+    Astrological calculation & future checkpoints
+
+No other children.
+
+================================================
+21. COLLAPSED CALCULATION
+================================================
+
+Each area should show:
+
+Astrological calculation & future checkpoints
+
+Inside:
+
+Current confluence
+Agreement
+Evidence lanes
+Future checkpoints
+
+Example:
+
+Current confluence: Mixed
+Agreement: Conflicting
+
+Natal foundation: Mixed
+Main timing cycle: Mixed
+Chara: Moderate
+Yogini: Good
+Slow transit: Challenging
+Period-planet transit: Mixed
+Natural significator: Good
+
+Future checkpoints:
+August 2026 — Baseline · Mixed
+October 2026 — Continues · Moderate
+June 2027 — Eases but continues · Moderate
+
+Keep detailed calculations inside this collapsed area only.
+
+================================================
+22. WHERE YOU ARE NOW
+================================================
+
+This replaces:
+- Current Chapter
+- Right Now
+- Recently
+- About You
+
+Target 80–140 words.
+
+Include only:
+- current timing
+- dominant support
+- dominant pressure
+- practical focus now
+
+Do not include:
+- family biography
+- personality essay
+- speculative private facts
+- historical narrative
+
+================================================
+23. CHART SIGNATURE
+================================================
+
+Keep it compact.
+
+Suggested information:
+- Ascendant
+- Moon
+- key career signature
+- key relationship signature
+- current dasha/timing
+
+Maximum 5–7 compact facts.
+
+Do not reproduce the complete calculation.
+
+================================================
+24. FINAL PRACTICAL GUIDANCE
+================================================
+
+Use 3–5 concise bullets derived from the highest-confidence areas.
+
+Possible categories:
+- prioritize now
+- what not to rush
+- where to use supportive windows
+- routine/discipline
+- reassessment timing
+
+Do not introduce new astrology calculations.
+
+================================================
+25. FALLBACK
+================================================
+
+There must be ONE fallback only.
+
+If LLM interpretation fails, create deterministic text from validated calculations.
+
+Never render a second fallback report.
+
+Never append legacy report sections after a failed generation.
+
+================================================
+26. NO RAW LLM HTML
+================================================
+
+LLM -> JSON
+JSON -> schema validation
+validated JSON -> HTML template
+
+Always HTML-escape:
+- conclusion
+- timing
+- what_helps
+- guidance
+
+Never insert raw LLM HTML.
+
+================================================
+27. POST-RENDER VALIDATION
+================================================
+
+After HTML generation, validate the DOM.
+
+Required top-level order:
+
+Chart Signature
+Where You Are Now
+Work & Career
+Money
+Relationships
+Children & Family
+Health
+Property & Home
+Travel & Foreign
+Spiritual & Inner Life
+Final Practical Guidance
+
+Reject if any unexpected top-level section appears.
+
+Forbidden legacy text includes:
+"About You"
+"Family & Home"
+"Recently"
+"Right Now"
+"Your Current Chapter"
+"Year-by-Year Road Map"
+"Top Challenges"
+"Remedies & Gemstones"
+"Chart-Targeted"
+"15 different ways"
+"Combined answer"
+"Method / sub-report"
+"Technical details"
+
+Do not flag the required phrase:
+"Astrological calculation & future checkpoints"
+
+================================================
+28. STRUCTURAL VALIDATION
+================================================
+
+Validate:
+
+- exactly 8 areas
+- no duplicate area IDs
+- canonical area IDs only
+- valid verdicts
+- non-empty conclusion
+- non-empty timing
+- non-empty what_helps
+- calculation exists
+- exactly one details block per area
+- checkpoints unique
+- checkpoints sorted
+- no unsupported dates
+- no legacy sections
+- no duplicate IDs
+
+================================================
+29. CONTENT DEDUPLICATION
+================================================
+
+Check semantic similarity between:
+- conclusion
+- timing
+- what helps
+
+If conclusion and timing are almost identical:
+regenerate.
+
+Do not make every area use the same generic remedy.
+
+If identical remedies appear across many areas:
+verify they are genuinely shared; otherwise regenerate.
+
+================================================
+30. CSS CLEANUP
+================================================
+
+The existing CSS contains many legacy classes.
+
+After replacing the renderer:
+- scan final HTML for all class names
+- compare against CSS selectors
+- delete unused selectors
+
+Do not retain obsolete CSS "just in case."
+
+Do not use:
+display:none
+to hide removed report sections.
+
+CSS hiding is only appropriate for UI state such as collapsed <details>.
+
+================================================
+31. DEBUG REPORT SEPARATION
+================================================
+
+If developers need:
+- all methods
+- raw calculations
+- full timing events
+- detailed tables
+- diagnostic scores
+
+create a separate internal artifact:
+
+debug/report-debug.json
+or
+debug/full-calculation.html
+
+Do not mix debug content with customer HTML.
+
+================================================
+32. REPORT VERSIONING
+================================================
+
+Add:
+
+REPORT_SCHEMA_VERSION = "v2-clean-life-area"
+
+and:
+
+data-report-schema="v2-clean-life-area"
+
+This prevents future renderer/data mismatch.
+
+================================================
+33. AUTOMATED TESTS
+================================================
+
+Create tests for:
+
+1. Exactly 8 areas.
+2. No duplicate area IDs.
+3. No duplicate checkpoint dates.
+4. Chronological checkpoint order.
+5. No legacy section names.
+6. Every area has all required fields.
+7. No unsupported dates.
+8. No raw LLM HTML.
+9. No "Combined answer".
+10. No old technical navigation.
+11. Exactly one collapsed calculation per area.
+12. Same-date timing events are merged.
+13. Health contains no diagnosis/medical guarantee.
+14. No arbitrary life-area titles.
+15. Final Practical Guidance exists.
+
+================================================
+34. GOLDEN HTML TEST
+================================================
+
+Create a golden structural test.
+
+Expected DOM sequence:
+
+chart-signature
+where-you-are-now
+life-areas
+  work-career
+  money
+  relationships
+  children-family
+  health
+  property-home
+  travel-foreign
+  spiritual-inner
+final-practical-guidance
+
+Any unexpected top-level section -> FAIL.
+
+================================================
+35. IMPLEMENTATION ORDER
+================================================
+
+PHASE 1
+Create canonical area IDs and mapping.
+
+PHASE 2
+Create normalized calculation/confluence object.
+
+PHASE 3
+Fix checkpoint date normalization and deduplication.
+
+PHASE 4
+Fix material-easing and strong-improvement detection.
+
+PHASE 5
+Create strict LLM JSON schema.
+
+PHASE 6
+Replace the LLM prompt.
+
+PHASE 7
+Create the life-area interpretation builder.
+
+PHASE 8
+Create the new clean renderer.
+
+PHASE 9
+Delete legacy renderer calls.
+
+PHASE 10
+Delete legacy CSS.
+
+PHASE 11
+Add JSON/schema/HTML validators.
+
+PHASE 12
+Run tests against sample_full_report.html.
+
+PHASE 13
+Generate final sample and visually inspect.
+
+================================================
+36. CURRENT SAMPLE-SPECIFIC FIXES
+================================================
+
+The supplied sample demonstrates these concrete fixes are required:
+
+A. Remove the legacy technical-details report/navigation.
+
+B. Remove the old "15 different ways" block.
+
+C. Remove old method/sub-report tables.
+
+D. Remove About You.
+
+E. Remove Family & Home.
+
+F. Remove Right Now.
+
+G. Remove Recently.
+
+H. Remove the separate Current Chapter narrative.
+
+I. Remove Year-by-Year Road Map.
+
+J. Remove Top Challenges.
+
+K. Remove separate Remedies/Gemstones sections.
+
+L. Merge duplicate future checkpoint dates.
+
+M. Standardize life-area names.
+
+N. Add explicit Timing to every area.
+
+O. Replace generic conclusions with confluence-aware conclusions.
+
+P. Keep detailed calculation only inside each area's collapsed calculation.
+
+================================================
+37. FINAL ACCEPTANCE CRITERIA
+================================================
+
+The implementation is complete only when ALL are true:
+
+[ ] Exactly four top-level customer sections.
+
+[ ] Chart Signature exists.
+
+[ ] Where You Are Now is short.
+
+[ ] Exactly eight canonical life areas.
+
+[ ] Every area has:
+    Verdict
+    One conclusion
+    Timing
+    What helps
+    Collapsed calculation
+
+[ ] No duplicate future checkpoint dates.
+
+[ ] Future checkpoints sorted.
+
+[ ] Complete confluence recalculated at every material checkpoint.
+
+[ ] Period changes alone do not imply improvement.
+
+[ ] No unsupported dates.
+
+[ ] No unsupported guarantees.
+
+[ ] No old report sections in DOM.
+
+[ ] No old method tables.
+
+[ ] No duplicate remedy sections.
+
+[ ] No technical navigation.
+
+[ ] No LLM-generated HTML.
+
+[ ] JSON schema validation passes.
+
+[ ] HTML validation passes.
+
+[ ] Golden structure test passes.
+
+[ ] Health interpretation is non-diagnostic.
+
+[ ] Final Practical Guidance exists.
+
+[ ] CSS contains only required final-report styles.
+
+================================================
+38. FINAL USER EXPERIENCE
+================================================
+
+The customer should immediately understand:
+
+Where am I now?
+
+Then:
+
+What is happening in my career?
+What is happening with money?
+What is happening in relationships?
+What about children/family?
+What about health?
+What about property/home?
+What about travel/foreign matters?
+What about spiritual/inner life?
+
+For every area:
+
+VERDICT
+  ↓
+ONE CLEAR ASTROLOGER CONCLUSION
+  ↓
+TIMING
+  ↓
+WHAT HELPS
+  ↓
+[optional] ASTROLOGICAL CALCULATION
+
+The customer should never have to read:
+- 15 methods
+- competing report variants
+- duplicate timelines
+- technical tables
+- raw calculation dumps
+- old road maps
+- separate remedy reports
+
+Those belong only in the internal calculation/debug layer.
+
+END OF FINAL FIX PLAN

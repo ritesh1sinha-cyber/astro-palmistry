@@ -8,7 +8,7 @@ from typing import Any, Iterable, Optional
 
 from .rules import GENERIC_FACT_IDS, check_prose, check_prose_fields
 from .facts import citable_fact_ids, public_fact_payload
-from .schemas import QuestionFacts
+from .schemas import QuestionFacts, ReportFacts
 
 
 def _fget(obj: Any, key: str, default: Any = None) -> Any:
@@ -213,6 +213,46 @@ def validate_prose_against_facts(prose: Any, facts: Any, *, area: str = "") -> l
     # Dasha lord grounding check: ensure planets identified as main/sub period lords match active dasha
     errors.extend(validate_dasha_lords(text, facts))
 
+    # Per-area date grounding: an area conclusion may only cite month-years
+    # that exist in that area's own relief/stronger/future_confluence facts.
+    # Run inside this gate so rejected area chunks are retried with feedback
+    # instead of silently dropping the conclusion at the slot screen.
+    if facts is not None and hasattr(prose, "areas"):
+        judgements = {
+            (_fget(j, "area", "") or ""): j
+            for j in (_fget(facts, "life_area_judgements", None) or [])
+        }
+        cards_by_area = {
+            (_fget(c, "area", "") or ""): c
+            for c in (_fget(facts, "cards", None) or [])
+        }
+        for area_block in getattr(prose, "areas", []) or []:
+            aname = str(getattr(area_block, "area", "") or "").strip()
+            if not aname:
+                continue
+            judgement = judgements.get(aname)
+            card = cards_by_area.get(aname)
+            if judgement is None or card is None:
+                continue
+            mini = ReportFacts(
+                first_name=_fget(facts, "first_name", ""),
+                age_band=_fget(facts, "age_band", "adult"),
+                age_years=_fget(facts, "age_years", None),
+                gender=_fget(facts, "gender", "unknown"),
+                access=_fget(facts, "access", "free"),
+                cards=[card],
+                timing_windows=list(_fget(card, "timing_windows", None) or []),
+                life_area_judgements=[judgement],
+            )
+            for field in ("conclusion", "outlook"):
+                val = str(getattr(area_block, field, "") or "").strip()
+                if not val:
+                    continue
+                errors.extend(
+                    f"areas[{aname}].{field}:{p}"
+                    for p in validate_area_dates_grounded(val, mini)
+                )
+
     # Palm facts have no dates unless explicitly supplied. Do not let a model
     # manufacture an age window from signal IDs or internal engine metadata.
     if isinstance(payload, dict) and payload.get("kind") == "palm":
@@ -309,6 +349,87 @@ def validate_conversational_area(field: str, text: str, card: Any) -> list[str]:
     if kind == "challenge" and _OPPORTUNITY_LANGUAGE.search(text):
         return ["challenge_framed_as_opportunity"]
     return []
+
+
+_MONTH_TOKEN = re.compile(
+    r"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+    r"Jul(?:y)?|Aug(?:ust)?|Sep(?:t)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{4}\b",
+    re.I,
+)
+
+_MONTH_INDEX = {
+    "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+    "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+    "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9,
+    "oct": 10, "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
+}
+
+
+def _area_grounded_dates(mini_facts: Any) -> set[tuple[int, int]]:
+    """(month, year) pairs an area is allowed to cite, from its own facts."""
+    allowed: set[tuple[int, int]] = set()
+    src = mini_facts
+    judgements = _fget(mini_facts, "life_area_judgements", None) or []
+    if judgements:
+        src = judgements[0]
+    for field in ("relief_window", "stronger_window"):
+        val = _fget(src, field, "")
+        if val:
+            y, m = _split_ym(val)
+            if y:
+                allowed.add((m, y))
+    for cf in _fget(src, "future_confluence", []) or []:
+        d = _fget(cf, "date", "") or ""
+        y, m = _split_ym(d)
+        if y:
+            allowed.add((m, y))
+    for tw in _fget(mini_facts, "timing_windows", []) or []:
+        for key in ("start", "end"):
+            y, m = _split_ym(_fget(tw, key, "") or "")
+            if y:
+                allowed.add((m, y))
+    return allowed
+
+
+def _split_ym(iso: str) -> tuple[int | None, int | None]:
+    if not iso:
+        return None, None
+    digits = [p for p in re.split(r"[^\d]", iso) if p.isdigit()]
+    if len(digits) >= 2:
+        try:
+            return int(digits[0]), int(digits[1])
+        except ValueError:
+            return None, None
+    return None, None
+
+
+def validate_area_dates_grounded(text: str, mini_facts: Any) -> list[str]:
+    """Reject any month-year token not present in the area's own facts.
+
+    This stops the style example's facts ('Nov 2027', 'Jan 2030') from being
+    transplanted onto a chart whose window is different, even when the model
+    ignores the window summary.
+    """
+    t = (text or "").strip()
+    if not t:
+        return []
+    allowed = _area_grounded_dates(mini_facts)
+    if not allowed:
+        if _MONTH_TOKEN.search(t):
+            return ["ungrounded_date_no_window"]
+        return []
+    bad: list[str] = []
+    for tok in _MONTH_TOKEN.findall(t):
+        parts = tok.split()
+        month = _MONTH_INDEX.get(parts[0].lower())
+        year = int(parts[1]) if parts[1].isdigit() else None
+        if month is None or year is None:
+            continue
+        if (month, year) not in allowed:
+            bad.append(tok)
+    if not bad:
+        return []
+    return ["ungrounded_date:" + "|".join(sorted(set(bad)))]
 
 
 _GENERIC_FACT_WORDS = frozenset({

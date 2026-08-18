@@ -162,19 +162,19 @@ def test_renderer_shows_transition_map():
                "remedy": "Show your work and follow important conversations in writing."}}},
         remedy_html="",
     )
-    assert "Life-area transition map" in html
-    assert "Opening" in html
-    assert "Rahu–Jupiter" in html
-    assert "6 bindus" in html
-    assert "lane-chart" in html
-    assert "Rahu MD" in html
-    assert "Yogini Bhramari" in html
-    assert "Chara Aquarius" in html
+    # The redesigned paid card is intentionally compact: pill, one conclusion
+    # and one remedy. The lane-chart map is no longer drawn on the card.
+    assert "Work &amp; Career" in html
+    assert "Astrologer's conclusion" in html
+    assert "The longer period is mixed but improves." in html
+    assert "Show your work and follow important conversations in writing." in html
+    assert "Life-area transition map" not in html
+    assert "Opening" not in html
+    assert "6 bindus" not in html
+    assert "Yogini" not in html
+    assert "Chara" not in html
     assert "Vimshottari" not in html
     assert "When the chart gives these themes more room to move" not in html
-    assert "It runs through May 2042." in html
-    assert "2039-." not in html
-    assert "2042-" not in html
     # The map already dates every window, so the old timing strip is dropped.
     assert 'class="area-timing"' not in html
 
@@ -192,7 +192,11 @@ def test_timing_strip_survives_when_no_map_is_available():
                "areas": {"career": {"outlook": "The career theme is supported.",
                                     "timing": "Jan 2027 → Apr 2027"}}},
     )
-    assert 'class="area-timing"' in html
+    # No transition map, so the card still renders its consultation conclusion.
+    assert "Work &amp; Career" in html
+    assert "Astrologer's conclusion" in html
+    assert "The career theme is supported." in html
+    assert 'class="area-timing"' not in html
 
 
 def test_transition_fact_and_dict_render_the_same_map():
@@ -212,10 +216,13 @@ def test_transition_fact_and_dict_render_the_same_map():
                                   "transition_note": "Pressure gives way to an opening."}}}
     html_a = RC.render(pc, name="Meera", paid=True, cards=[dict_card], prose=prose)
     html_b = RC.render(pc, name="Meera", paid=True, cards=[model_card], prose=prose)
-    assert "Opening" in html_a
-    assert "Opening" in html_b
-    assert "Yogini" in html_a
-    assert "Yogini" in html_b
+    # Both fact shapes render the same compact card; neither draws the map.
+    assert "Astrologer's conclusion" in html_a
+    assert "Astrologer's conclusion" in html_b
+    assert "The career theme is supported." in html_a
+    assert "The career theme is supported." in html_b
+    assert "Opening" not in html_a
+    assert "Yogini" not in html_a
     assert "When the chart gives these themes more room to move" not in html_a
 
 
@@ -243,8 +250,12 @@ def test_future_window_is_not_reported_as_active_now():
         name="Meera", paid=True, cards=[card], today=date(2026, 8, 13),
         prose={"personality": "You act once a direction is clear.", "areas": {}},
     )
-    assert "Promised, not yet active — opens Dec 2028" in html
+    # A window that opens in Dec 2028 must be called "not yet active", never
+    # "Active now" — the pill suppresses the activation label on an upcoming
+    # window (report_conversational._pill).
+    assert "Supported but not yet active" in html
     assert "Active now" not in html
+    assert "not yet active" in html
 
 
 def test_a_weak_promise_is_never_called_promised():
@@ -261,8 +272,11 @@ def test_a_weak_promise_is_never_called_promised():
         name="Meera", paid=True, cards=[card], today=date(2026, 8, 13),
         prose={"personality": "You act once a direction is clear.", "areas": {}},
     )
-    assert "Not active — the next dated shift is Mar 2032" in html
+    # insufficient_evidence renders as "Limited support", never "promised".
+    assert "Limited support" in html
+    assert "Promised" not in html
     assert "Promised, not yet active" not in html
+    assert "Active now" not in html
 
 
 def test_a_far_off_map_says_what_happens_in_the_meantime():
@@ -343,8 +357,11 @@ def test_problem_stretch_carries_an_easing_line_and_a_step():
         name="Meera", paid=True, cards=[card], today=date(2026, 8, 13),
         prose={"personality": "You act once a direction is clear.", "areas": {}},
     )
-    assert "When it eases:" in html
-    assert "What helps" in html
+    # The easing date and the step survive on the compact card: the remedy line
+    # carries the "opens up from <month>" note (report_conversational._fallback_help).
+    assert "This opens up from Feb 2027" in html
+    assert "Remedy / what helps" in html
+    assert "When it eases:" not in html
 
 
 def test_question_answer_renders_the_same_transition_map():

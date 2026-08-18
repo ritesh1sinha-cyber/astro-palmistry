@@ -247,14 +247,25 @@ def area_tone(card: Any) -> tuple[str, str]:
     status = str(getattr(card, "status", "") or "").lower()
     activation = str(getattr(card, "activation_status", "") or "").lower()
     kind = str(getattr(card, "kind", "promise") or "promise").lower()
+    direction = str(getattr(card, "direction", "") or "").lower()
     supported = status in ("strongly_supported", "supported")
     active = activation in ("strongly_active", "active")
+
+    tmap = list(getattr(card, "transition_map", None) or [])
+    first_dir = ""
+    if tmap:
+        from life_area_transition import field_of
+        first_dir = str(field_of(tmap[0], "direction") or "").lower()
+    current_strain = direction in ("down", "caution") or first_dir in ("down", "caution")
+
     if kind == "challenge":
         return ("Needs care", "down") if active else ("Steady for now", "mixed")
     if supported and active:
+        if current_strain:
+            return ("Demanding phase", "mixed")
         return ("Supported now", "up")
     if supported:
-        return ("Promised, not yet active", "mixed")
+        return ("Supported but not yet active", "mixed")
     if status in ("weak", "insufficient_evidence"):
         return ("Limited support", "down")
     return ("Mixed", "mixed")
@@ -285,6 +296,14 @@ def _area_outlook_sentence(card: Any, area_name: str) -> str:
     if first:
         how = f" Day to day this shows as {first[0].lower() + first[1:]}."
 
+    tmap = list(getattr(card, "transition_map", None) or [])
+    first_dir = ""
+    if tmap:
+        from life_area_transition import field_of
+        first_dir = str(field_of(tmap[0], "direction") or "").lower()
+    direction = str(getattr(card, "direction", "") or "").lower()
+    current_strain = direction in ("down", "caution") or first_dir in ("down", "caution")
+
     if kind == "challenge" or subject.startswith("health"):
         if active:
             return (
@@ -296,6 +315,11 @@ def _area_outlook_sentence(card: Any, area_name: str) -> str:
             f"test it.{how}"
         )
     if supported and active:
+        if current_strain:
+            return (
+                f"{area_name} has solid long-term potential in your chart, but the current timing brings heavy responsibility and pressure. "
+                f"Pace yourself and focus on disciplined groundwork rather than forcing quick expansion.{how}"
+            )
         return (
             f"{area_name} is promised in this chart, and the present period is "
             f"lighting it up. This is the time to move, not to wait.{how}"
@@ -439,6 +463,14 @@ def _area_interpretation_sentence(card: Any, area_name: str) -> str:
     subject = area_name.lower()
     first = _first_manifest(card)
     how = f" That can show as {first[0].lower() + first[1:]}." if first else ""
+    direction = str(getattr(card, "direction", "") or "").lower()
+    tmap = list(getattr(card, "transition_map", None) or [])
+    first_dir = ""
+    if tmap:
+        from life_area_transition import field_of
+        first_dir = str(field_of(tmap[0], "direction") or "").lower()
+    current_strain = direction in ("down", "caution") or first_dir in ("down", "caution")
+
     if kind == "challenge" or subject.startswith("health"):
         if activation in ("strongly_active", "active"):
             return (
@@ -450,6 +482,11 @@ def _area_interpretation_sentence(card: Any, area_name: str) -> str:
             f"rather than testing it.{how}"
         )
     if status in ("strongly_supported", "supported") and activation in ("strongly_active", "active"):
+        if current_strain:
+            return (
+                f"While the chart provides long-term backing for {subject}, the current timing adds heavy responsibility and demanding milestones. "
+                f"Progress comes through sustained discipline and patient follow-through.{how}"
+            )
         return (
             f"The chart supports advancement here, and the present period is "
             f"lighting it up — progress comes through a clearer role, not an overnight change.{how}"
@@ -581,9 +618,22 @@ def conversational_fallback(facts: Any) -> dict[str, Any]:
             if transition_map:
                 from life_area_transition import field_of
                 first_transition = transition_map[0]
-                transition_note = str(field_of(first_transition, "meaning") or "").strip()
-                if len(transition_map) > 1:
-                    transition_note += " The tone can change again as the next overlap window arrives."
+                first_dir = str(field_of(first_transition, "direction") or "").lower()
+                if first_dir in ("down", "caution"):
+                    transition_note = (
+                        f"The upcoming timing window in {area_name.lower()} asks for deliberate patience and measured pacing. "
+                        "Focus on steady routines and avoid forcing outcomes until the demanding planetary influence eases."
+                    )
+                elif first_dir in ("up", "support"):
+                    transition_note = (
+                        f"Astrological indicators highlight a constructive window of momentum in {area_name.lower()}. "
+                        "Capitalize on this opening by taking proactive steps while keeping long-term foundations solid."
+                    )
+                else:
+                    transition_note = (
+                        f"A transitional cycle is active for {area_name.lower()}, bringing new opportunities alongside practical adjustments. "
+                        "Evaluate emerging options thoroughly and seek trusted counsel before making major commitments."
+                    )
             tone_label, tone_class = area_tone(c)
             areas[area] = {
                 "astrological_basis": area_basis[:320],
@@ -650,30 +700,32 @@ def _family_prose(family_notes: Any) -> list[str]:
         if not notes:
             continue
         relation = str(getattr(note, "relation", "") or "")
+        rel_words = _RELATION_WORDS_EXTENDED.get(relation, ())
         try:
             methods = int(getattr(note, "method_count", 0) or 0)
         except (TypeError, ValueError):
             methods = 0
-        # Pick the best note: prefer one that already names the relation
-        # explicitly (usually the BNN/blind interpretation).
-        rel_words = _RELATION_WORDS_EXTENDED.get(relation, ())
-        best = notes[-1]  # default: last note (usually BNN)
-        for n in reversed(notes):
-            if any(w in n.lower() for w in rel_words):
-                best = n
-                break
-        body = best
+        # Synthesize notes for this relation into an articulate, elaborate narrative
+        div_note = next((n for n in notes if any(k in n for k in ("Dwadashamsha", "Drekkana", "Chaturthamsha", "D12", "D3", "D4"))), "")
+        core_note = next((n for n in reversed(notes) if n != div_note and any(w in n.lower() for w in rel_words)), "")
+
+        if div_note and core_note:
+            body = f"{div_note} {core_note}"
+        elif div_note:
+            body = div_note
+        elif core_note:
+            body = core_note
+        else:
+            body = notes[-1]
+
         body = re.sub(r"\bThe (father|mother)\b", r"Your \1", body)
         body = re.sub(r"\bthe (father|mother)\b", r"your \1", body)
         low = body.lower()
         if not any(w in low for w in rel_words):
             body = _FAMILY_OPENER.get(relation, "") + body[0].lower() + body[1:]
-        # validate_family_line requires a hedge or soft-attribution phrase for
-        # single-method lines. Append a standard qualifier so the validator
-        # keeps the line rather than dropping it (the text is sanitizer-safe).
         if methods <= 1 and not _FAMILY_HEDGED.search(body):
             body += " That reading leans on one method rather than full agreement."
-        lines.append(clip_sentences(body, 300))
+        lines.append(clip_sentences(body, 320))
     return lines[:4]
 
 
