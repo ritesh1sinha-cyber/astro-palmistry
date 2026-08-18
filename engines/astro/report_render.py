@@ -855,18 +855,18 @@ def kundali_match(match_meta: dict, *, groom: str = "", bride: str = "",
 # daily — verdict free every morning, the working behind it on subscription
 # ---------------------------------------------------------------------------
 DAILY_FREE_SECTIONS = (
-    "Today's verdict, and how many methods agree with it",
-    "Where the reading comes from, in your own chart",
-    "Your lucky number and colour",
-    "One thing to do and one to avoid",
+    "Today's verdict & emotional climate",
+    "Your lucky number and day colour",
+    "Primary action (Do) and pitfall to avoid (Don't)",
+    "Preview of locked precision clock windows & transit workings",
 )
 DAILY_PAID_SECTIONS = (
-    "Every lane that voted on today, with its signal",
-    "The dasha you are running, down to pratyantar, with dates",
-    "Ashtakavarga on today's transits, including your dasha lords",
-    "The houses today's sky is lighting up",
-    "What helps while this period runs",
-    "Rahu Kaal, choghadiya and Abhijit for your birth place",
+    "Precision Auspicious Hours & Rahu Kaal Avoid Times",
+    "Your Personal Moon Transit & Ashtakavarga Score (/56)",
+    "Full Action Guide — 3 Personalized Dos & 3 Don'ts",
+    "Vimshottari Dasha & Pratyantardasha Sub-Clock",
+    "The 9-Lane Confluence Matrix",
+    "Moonology Phase Ritual & Journaling Prompt",
 )
 
 

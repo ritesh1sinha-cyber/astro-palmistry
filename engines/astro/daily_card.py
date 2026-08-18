@@ -207,7 +207,7 @@ def pick_windows(day: date, lat: float, lon: float, tz: float,
 # free blocks
 # ---------------------------------------------------------------------------
 def _hero(reading: dict, day: date, n_lanes: int) -> str:
-    """The verdict. Lead with the prediction, not the machinery behind it."""
+    """The verdict. Lead with the prediction and Moonology emotional climate."""
     vc = reading.get("vedic_confluence") or {}
     verdict = (vc.get("verdict_plain") or vc.get("verdict")
                or reading.get("opening") or DEFAULT_LINE)
@@ -215,28 +215,61 @@ def _hero(reading: dict, day: date, n_lanes: int) -> str:
     pill_cls, pill_txt = TONE_PILL.get(tone, ("faint", tone.title()))
 
     moon = reading.get("moon_transit") or {}
-    house_note = HOUSE_FROM_MOON_NOTE.get(moon.get("house_from_moon"), "")
+    h_moon = moon.get("house_from_moon")
+    h_lagna = moon.get("house_from_lagna")
+    sign = moon.get("sign") or ""
+    
+    # Moonology emotional vibe
+    moonology = reading.get("moonology") or {}
+    phase = moonology.get("phase") or moonology.get("phase_astronomical") or "Waxing"
+    
+    try:
+        from moonology_daily_narrative import SIGN_DAY_FEEL, PHASE_DAY_FEEL, HOUSE_DAY_FEEL
+        sign_feel = SIGN_DAY_FEEL.get(sign, "")
+        phase_feel = PHASE_DAY_FEEL.get(phase, "")
+        house_feel = HOUSE_DAY_FEEL.get(h_lagna if isinstance(h_lagna, int) else (h_moon if isinstance(h_moon, int) else 1), "")
+    except Exception:  # noqa: BLE001
+        sign_feel, phase_feel, house_feel = "", "", ""
+
+    climate_parts = []
+    if sign_feel:
+        climate_parts.append(f"With Moon in {sign}, {sign_feel}.")
+    if phase_feel and phase:
+        climate_parts.append(f"Under the {phase}, {phase_feel}.")
+    climate_text = " ".join(climate_parts)
+
+    from ashtakavarga_analysis import HOUSE_LIFE_THEME
+    theme = HOUSE_LIFE_THEME.get(h_lagna if isinstance(h_lagna, int) else h_moon, "daily priorities and personal focus")
+    house_note = HOUSE_FROM_MOON_NOTE.get(h_moon, "")
+
+    focus_line = f"House {h_lagna or h_moon or 1} activated ({theme}) — {house_note}" if (theme or house_note) else ""
+
     return f"""
 <section class="daily">
   <div class="lbl">Today · {day:%A %d %B}</div>
   <span class="pill {pill_cls}">{_e(pill_txt)}</span>
-  <h3>{_e(verdict)}</h3>
-  {f'<p style="font-size:.86rem;margin:0 0 4px">{_e(house_note)}</p>' if house_note else ''}
+  <h3 style="margin:10px 0 8px 0;">{_e(verdict)}</h3>
+  {f'<p class="moon-feel" style="margin:6px 0;font-size:0.92rem;color:#374151;line-height:1.45;"><strong>Today’s emotional climate:</strong> {_e(climate_text)}</p>' if climate_text else ''}
+  {f'<p style="font-size:0.86rem;margin:4px 0 0 0;color:#6b7280;"><strong>Personal focus:</strong> {_e(focus_line)}</p>' if focus_line else ''}
 </section>"""
 
 
 def _moon_proof(reading: dict, first: str) -> str:
-    """One compact technical basis line; users came for the prediction."""
+    """One compact technical basis line tying today to your birth chart."""
     moon = reading.get("moon_transit") or {}
     natal = reading.get("natal_moon") or {}
     tara = reading.get("tarabala") or {}
     chandra = reading.get("chandrabal") or {}
     bits = []
     if moon.get("sign"):
-        bits.append(f"Moon in {_e(moon.get('sign'))}")
+        nak = f" ({moon.get('nakshatra')})" if moon.get('nakshatra') else ""
+        bits.append(f"Moon in {_e(moon.get('sign'))}{nak}")
+    if moon.get("house_from_lagna"):
+        h_l = moon["house_from_lagna"]
+        bits.append(f"{h_l}{_suffix(h_l)} from Ascendant")
     if moon.get("house_from_moon"):
         h = moon["house_from_moon"]
-        bits.append(f"{h}{_suffix(h)} from your birth Moon")
+        bits.append(f"{h}{_suffix(h)} from birth Moon")
     if tara.get("name"):
         bits.append(f"{_e(tara.get('name'))} Tarabala")
     if chandra.get("name"):
@@ -245,9 +278,8 @@ def _moon_proof(reading: dict, first: str) -> str:
         return ""
     return f"""
 <div class="proof">
-  <p class="pred-scenario"><b>{_e(first)}:</b> today is measured from your birth
-  chart, not from a generic sun sign.</p>
-  <p class="pred-why"><b>Why:</b> {" · ".join(bits)}</p>
+  <p class="pred-scenario"><b>{_e(first)}:</b> today is calculated specifically for your birth chart, not generic sun signs.</p>
+  <p class="pred-why"><b>Astrological basis:</b> {" · ".join(bits)}</p>
 </div>"""
 
 
@@ -767,31 +799,36 @@ def _extras(reading: dict) -> str:
 
 
 def _locked_preview(*, price: int, n_lanes: int, md: str, ad: str, pd: str) -> str:
-    rows = [
-        ("Your personal Moon transit",
-         "Exact transit house, SAV/BAV support and the natal house significator behind today's theme."),
-        ("Your timing stack",
-         "Running dasha/pratyantar and the independent timing lanes that agree or disagree today."),
-        ("Best and avoid times",
-         "The most useful Choghadiya/Abhijit windows and the main periods to avoid."),
-    ]
-    items = "".join(
-        f'<div class="when locked-inline" style="margin:8px 0">'
-        f'<span class="lockicon">&bull;</span> <strong>{_e(t)}</strong> &mdash; {_e(s)}'
-        f'</div>' for t, s in rows)
     return f"""
-<section class="section locked-preview">
-  <h3 class="sec">What the subscription adds each morning</h3>
-  <div class="card">{items}</div>
-  <div class="buy">
-    <h3>Clearer guidance for today</h3>
-    <p>The verdict, your Moon, and your number and colour stay free every day.
-    Subscribe to see the exact Moon transit house, SAV/BAV support, the natal
-    significator behind it, your running timing stack, and the day's strongest
-    action windows.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
-  </div>
-</section>"""
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Precision Auspicious Hours & Timing Windows</div>
+  <p class="blurred">Exact daylight planetary hours (Jupiter, Mercury, Venus horas) for commercial decisions, applications, negotiations, and exact Rahu Kaal window to avoid.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Daily clock windows are locked.</b> Unlock to view exact clock times for today's highest-converting windows.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Personal Moon Transit & Strength Score</div>
+  <p class="blurred">Sarvashtakavarga score (/56) and Moon BAV (/8) on today's activated house, refined by the natal condition of your governing house lord.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Personalized transit working is locked.</b> Unlock to see the exact astrological strength behind today's climate.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Full Action Guide — 3 Personalized Dos & 3 Don'ts</div>
+  <p class="blurred">Complete tactical guidance grounded in today's active Tarabala, Chandrabala, and planetary weekday lord.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Full action guide is locked.</b> Unlock for all 6 rule-backed actions for today.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Active Timing Clock & Life Phase Sub-Periods</div>
+  <p class="blurred">The exact three-tier Dasha clock running today with transition dates and energy impact analysis.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Dasha timing stack is locked.</b> Unlock to see the active planetary periods governing today.</p>
+</div>
+
+<div class="buy" style="margin-top:20px;">
+  <h3>Unlock full daily guidance</h3>
+  <p>Your daily verdict, emotional climate, and lucky numbers remain free every morning. Subscribe to unlock precision clock windows, complete dos/donts, and deep chart workings every day.</p>
+  <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
+</div>"""
 
 
 # ---------------------------------------------------------------------------
