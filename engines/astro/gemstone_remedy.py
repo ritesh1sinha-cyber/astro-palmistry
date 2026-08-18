@@ -161,6 +161,22 @@ def _planet_snapshot(pc: dict, planet: str) -> dict[str, Any]:
     return {"planet": planet, "house": ph, "sign": p.get("sign", ""), "dignity": dig}
 
 
+LAGNA_TRIKONA_LORDS: dict[str, list[str]] = {
+    "Aries": ["Mars", "Sun", "Jupiter"],
+    "Taurus": ["Venus", "Mercury", "Saturn"],
+    "Gemini": ["Mercury", "Venus", "Saturn"],
+    "Cancer": ["Moon", "Mars", "Jupiter"],
+    "Leo": ["Sun", "Jupiter", "Mars"],
+    "Virgo": ["Mercury", "Saturn", "Venus"],
+    "Libra": ["Venus", "Saturn", "Mercury"],
+    "Scorpio": ["Mars", "Jupiter", "Moon"],
+    "Sagittarius": ["Jupiter", "Mars", "Sun"],
+    "Capricorn": ["Saturn", "Venus", "Mercury"],
+    "Aquarius": ["Saturn", "Mercury", "Venus"],
+    "Pisces": ["Jupiter", "Moon", "Mars"],
+}
+
+
 def _gem_safety(
     pc: dict,
     planet: str,
@@ -176,6 +192,13 @@ def _gem_safety(
     reasons: list[str] = []
     verdict = "recommended"
     use_sub = False
+
+    lagna = pc.get("lagna", {}).get("sign") or pc.get("meta", {}).get("lagna_sign", "")
+    trikona_lords = LAGNA_TRIKONA_LORDS.get(lagna, [])
+    if trikona_lords and planet not in trikona_lords and role not in ("Lagna lord", "H1 lord", "5th lord", "9th lord"):
+        verdict = "mantra_only"
+        use_sub = False
+        reasons.append(f"{planet} is not a primary trine/lagna lord for {lagna} Ascendant — mantra and charity recommended instead of gemstone wear")
 
     if ph in DUSTHANA and role not in ("Lagna lord", "H1 lord"):
         verdict = "avoid"
@@ -353,22 +376,15 @@ def build_remedy_report(
     # Priority 2: MD lord (duration only if safe)
     if dasha["md_lord"]:
         add(dasha["md_lord"], f"Mahadasha lord", is_md=True, priority=2)
-    if not question_scoped:
-        # General chart remedy report: retain the broader 1/5/9 and Atmakarak
-        # candidates used by the full report.
-        add(h1["lord"], "Lagna lord (H1)", priority=3)
-        add(h5["lord"], "5th lord (children/luck)", priority=4)
-        add(h9["lord"], "9th lord (fortune/dharma)", priority=5)
+    # Functional benefics (H1, H5, H9) are always foundational for gemstone support
+    add(h1["lord"], "Lagna lord (H1)", priority=3)
+    add(h5["lord"], "5th lord (career luck / intellect)", priority=4)
+    add(h9["lord"], "9th lord (fortune/dharma)", priority=5)
 
+    if not question_scoped:
         ak = next((k.get("planet") for k in (pc.get("cara_karakas") or {}).get("karakas", []) if k.get("role") == "Atmakarak"), None)
         if ak:
             add(ak, "Jaimini Atmakarak", priority=3)
-    else:
-        # A follow-up question is not a second full horoscope. Keep remedies
-        # tied to the asked life area: current timing lords + domain-specific
-        # significators only. This prevents a career question from showing
-        # unrelated children/fortune remedies.
-        pass
 
     # Question-specific
     dom = domain or ""

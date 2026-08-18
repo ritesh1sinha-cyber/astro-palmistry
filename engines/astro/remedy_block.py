@@ -230,9 +230,9 @@ def _stone_row(item: dict, *, paid: bool = False) -> str:
         # Free refusals: keep the verdict, drop lord/house mechanics.
         if verdict in ("avoid", "mantra_only") or reasons:
             why = f'<div class="stone-why">{_e(_free_avoid_reason(item))}</div>'
-    alt_label = "If you choose not to wear it / alongside"
+    alt_label = "Daily strengthening mantra & offering"
     if verdict in ("avoid", "mantra_only"):
-        alt_label = "Instead"
+        alt_label = "Immediate relief (Mantra & charity)"
     return f"""
   <li class="stone {tone}" data-verdict="{tone}">
     <div class="stone-top">
@@ -298,13 +298,13 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
                  if str(w.get("verdict") or "") not in ("recommended", "test_required")]
         wear_group = _stones_group(
             safe + other, tone="up", paid=True,
-            label="Gemstones · considered suitable for your chart")
+            label="Supporting planets · Auspicious gemstone & strengthening")
         trial_group = _stones_group(
             trial, tone="trial", paid=True,
-            label="Gemstones · trial first (caution)")
+            label="Secondary planetary support · Trial wear first")
         avoid_group = _stones_group(
             list(mantra_only) + list(avoid), tone="down", paid=True,
-            label="Do not wear · mantra and charity instead")
+            label="Obstructing & friction planets · Immediate relief (mantra & charity)")
         return f"""
 <section class="remedy-card">
   <div class="ev-label">{_e(heading)}</div>
