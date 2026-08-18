@@ -369,24 +369,28 @@ def _prompt_extra(kind: str) -> str:
         "full_report_areas": (
             "Return ConversationalAreasProse: one entry for EVERY card in the facts, in the order supplied, and nothing else. "
             "For each area, write ONLY a compact consultation-style conclusion plus one remedy. "
-            "The conclusion is 3–5 sentences: the area's current state and its cause -> its dated pressure/easing window -> the natal support actually named for THAT area -> the first sustained improvement or a plain statement that none is visible. "
+            "The conclusion is 3–5 sentences: the area's current state and its specific cause -> its dated pressure/easing window -> the natal support actually named for THAT area -> the first sustained improvement or a plain honest statement that none is visible in the forecast horizon. "
             "HARD RULES — obey each one exactly, for every area: "
-            "1. Every date you write must already exist in THAT area's own facts (future_confluence dates, relief_window, or stronger_window). If the area's future_confluence holds only the baseline row and there is no relief_window or stronger_window, then the area has NO dated window: write that no clear relief window is visible yet and do NOT write any month at all. "
-            "2. The baseline row is the present moment, not a pressure end date. Never cite it as 'until <baseline month>' or as any kind of window. A baseline-only area gets no month at all. "
-            "3. The example's placeholder dates '<MONTH YEAR>' are never real. Only a date that literally exists in the current area's own facts may appear in your reply. If an area truly has its own dated window, use that exact date; otherwise write 'no clear relief window yet'. "
-            "4. The current-state sentence must follow the area's final_judgement/current_verdict. If that value is 'good' or 'strongly_supported', describe the area as supported and positive — never as 'mixed' or 'keeps this area mixed'. If it is 'moderate', say it is mixed or needs care. If it is 'mixed', say it is mixed. Match the supplied value exactly. "
-            "5. Only name a planet in the cause sentence if it appears in THAT area's natural_karakas, house_lord, dasha or transit. Otherwise keep the cause general ('the current period keeps this area mixed') and do not name Saturn or any other planet. "
-            "6. A dasha change alone is never improvement. If a confluence row says 'eases_but_continues', say exactly that meaning: pressure eases but the overall situation remains demanding. Never claim a full recovery the facts do not support. "
-            "7. If you name both a pressure end date and an improvement date for the same area, the improvement date must come AFTER the pressure end date in the same area's facts. Never write a conclusion where the improvement month is earlier than or equal to the pressure end month. " 
-            "8. The style example below is a SHAPE, not a script. Its concrete facts are placeholders marked with <angle brackets> and are never real. Never output the example verbatim, never keep its words ('Saturn', 'job/profession', 'job house', 'AmK', 'Nov 2027', 'Jan 2030', 'ease a little but completely') and never give a career-shaped sentence to another area. Every area reads different because its facts are different. "
-            "9. Write dates as words only ('March 2029'), never as numbers ('2029-03-29', '2029/03/29', '03-2029'). The DATE WINDOW SUMMARY shows 'Month Year'; copy that exact wording. "
-            "Write in plain spoken English, like an astrologer talking to the reader across a table — short everyday sentences, no report-speak, no 'the chart indicates' scaffolding, no bullet lists. Open directly with the area's current state. Each sentence adds one fact and then stops. "
-            "STYLE EXAMPLE (voice and sentence shape ONLY; the bracketed facts are placeholders): "
-            "'From the current planet position and dasha, there is strain mostly due to <PLANET> seen in <LIFE AREA> till <MONTH YEAR>. After that situation will ease a little but <CONTINUE> completely. Since the natal birth support <HOUSE FACTOR> and <AMK IF PRESENT> is supporting, finally things will be better by <MONTH YEAR>.' " 
-            "That is the tone to imitate, nothing more. Its specific facts (Saturn, Nov 2027, job house, AmK, Jan 2030) never transfer to any area. The natal-support sentence must name the actual factors supplied for THAT area (house lord, natural karaka, divisional support, Jaimini, AmK only when present). If the area's facts do not name an AmK, do not say AmK. "
+            "1. Every date you write must already exist in THAT area's own facts (future_confluence dates, relief_window, or stronger_window). If the area has NO dated window or only the baseline row, write that no clear relief window is visible yet and do NOT write any month at all. "
+            "2. The baseline row is the present moment, not a pressure end date. Never cite it as 'until <baseline month>'. "
+            "3. An improvement claim ('things improve by <date>', 'better by <date>') is ONLY allowed if THAT date is explicitly marked 'improves' or 'stronger' in THAT area's facts. If a date is 'eases_but_continues', 'mixed_change', or 'continues', you must NEVER call it an improvement date; state that pressure eases but demands continue. If an area has no sustained improvement row, clearly state that no sustained relief is visible in the horizon and steady effort is required. "
+            "4. Match the current-state sentence to the area's final_judgement/current_verdict: "
+            "   - 'good' / 'strongly_supported': Open positively and constructively. "
+            "   - 'moderately_supportive' / 'moderate': Open with balanced, realistic guidance. "
+            "   - 'mixed': Open noting the fluctuating or transitional nature. "
+            "   - 'challenging' / 'down': Open addressing where care and protection are needed. "
+            "5. Only name a planet in the cause sentence if it appears in THAT area's natural_karakas, house_lord, dasha or transit. Otherwise keep the cause general ('the current period keeps this area mixed'). "
+            "6. A dasha change alone is never relief. "
+            "7. Never output duplicate or cloned paragraphs across different life areas. Each life area must have its own distinct wording, focus, and narrative rhythm. "
+            "8. Never leak template markers or stutters such as 'the current period and period', 'insufficient evidence to determine', or angle brackets. "
+            "9. Write dates as words only ('March 2029'). "
+            "Write in plain spoken English, like an astrologer talking to the client across a consultation table — direct, empathetic, and grounded. "
+            "CONSULTATION VOICE EXAMPLES (adapt tone naturally to each area's specific facts): "
+            "- For a supported area: 'Your work is backed by solid natal factors, and the current cycle brings constructive momentum until <MONTH YEAR>. Although transits bring occasional tests, the underlying strength of <HOUSE FACTOR> keeps your trajectory secure through <MONTH YEAR>.' "
+            "- For a mixed/transitional area: 'Your relationships are navigating mixed currents right now, with period pressure asking for patience until <MONTH YEAR>. While conditions ease after that checkpoint, the overall phase remains demanding, so steady communication is required through the forecast horizon.' "
+            "- For an area needing care: 'Health requires regular maintenance during this stretch, as pressure from <PLANET> is prominent until <MONTH YEAR>. Since no sustained easing is detected in the near-term forecast, protecting your daily routine and recovery time is the most effective approach.' "
             "The remedy is one concrete sentence from remedy_text/approved_remedies. Preserve planet names and exact ritual/action details when they are already supplied. Never invent a remedy. "
-            "Leave astrological_basis, interpretation, outlook, timing, manifestation and transition_note empty; they are legacy fields and the renderer intentionally does not display them. "
-            "Never print raw confluence scores or internal/debug terminology. Never use 'Timing evidence is included in the overall reading' or 'Promised, not yet active'. Return only the requested JSON. "
+            "Leave astrological_basis, interpretation, outlook, timing, manifestation and transition_note empty. Return only the requested JSON."
         ),
         "full_report_confluence": (
             "Write the classical Vedic reading for this page. Python owns ALL "
@@ -586,18 +590,19 @@ def _areas_window_summary(compact: dict) -> str:
         stronger = j.get("stronger_window")
         if stronger:
             windows.append(f"stronger {_fmt_ym(stronger)}")
+        has_improves = bool(stronger)
         for r in (j.get("future_confluence") or []):
             if not isinstance(r, dict):
                 continue
             change = r.get("change_type")
             date = r.get("date")
-            if change == "baseline":
-                # The baseline row is masked ("XXXX", planets "YYYY"); it only
-                # marks today and must not be read as a real window.
+            if change == "baseline" or not date:
                 continue
-            if not date:
-                continue
+            if change == "improves":
+                has_improves = True
             windows.append(f"{change} on {_fmt_ym(date)}")
+        if not has_improves:
+            windows.append("sustained improvement: NONE in forecast horizon (do NOT claim improvement)")
         if windows:
             rows.append(f"- {label}: {', '.join(windows)}")
         else:

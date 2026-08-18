@@ -213,6 +213,34 @@ def validate_prose_against_facts(prose: Any, facts: Any, *, area: str = "") -> l
     # Dasha lord grounding check: ensure planets identified as main/sub period lords match active dasha
     errors.extend(validate_dasha_lords(text, facts))
 
+    # Banned template artifacts and raw error strings
+    if re.search(r"\b(?:the\s+)?current\s+period\s+and\s+period\b", text, re.I):
+        errors.append("leaked_placeholder_stutter:period_and_period")
+    if re.search(r"\binsufficient\s+evidence\s+to\s+determine\b", text, re.I):
+        errors.append("leaked_internal_status:insufficient_evidence")
+    if re.search(r"<[A-Z_ ]+>", text):
+        errors.append("leaked_template_tag")
+
+    # Deduplicate area conclusions across ConversationalAreasProse
+    if hasattr(prose, "areas"):
+        seen_concls: dict[str, str] = {}
+        for ab in getattr(prose, "areas", []) or []:
+            aname = str(getattr(ab, "area", "") or "").strip()
+            concl = str(getattr(ab, "conclusion", "") or "").strip()
+            if not concl:
+                continue
+            cwords = set(re.findall(r"[a-z]{4,}", concl.lower()))
+            for other_name, other_concl in seen_concls.items():
+                if concl.lower() == other_concl.lower():
+                    errors.append(f"duplicate_area_conclusion:{aname}_matches_{other_name}")
+                else:
+                    owords = set(re.findall(r"[a-z]{4,}", other_concl.lower()))
+                    if cwords and owords:
+                        overlap = len(cwords & owords) / max(len(cwords), len(owords))
+                        if overlap > 0.85:
+                            errors.append(f"duplicate_area_conclusion:{aname}_similar_to_{other_name}")
+            seen_concls[aname] = concl
+
     # Per-area date grounding: an area conclusion may only cite month-years
     # that exist in that area's own relief/stronger/future_confluence facts.
     # Run inside this gate so rejected area chunks are retried with feedback
@@ -252,6 +280,17 @@ def validate_prose_against_facts(prose: Any, facts: Any, *, area: str = "") -> l
                     f"areas[{aname}].{field}:{p}"
                     for p in validate_area_dates_grounded(val, mini)
                 )
+                if re.search(r"\b(?:things|situation|overall|prospects)\s+(?:will\s+)?(?:improve|be\s+better|gradually\s+improve)\b", val, re.I):
+                    has_real_improvement = False
+                    if judgement is not None:
+                        if _fget(judgement, "stronger_window", ""):
+                            has_real_improvement = True
+                        for r in _fget(judgement, "future_confluence", []) or []:
+                            if isinstance(r, dict) and r.get("change_type") == "improves":
+                                has_real_improvement = True
+                                break
+                    if not has_real_improvement:
+                        errors.append(f"areas[{aname}].{field}:false_improvement_claim_without_good_checkpoint")
 
     # Palm facts have no dates unless explicitly supplied. Do not let a model
     # manufacture an age window from signal IDs or internal engine metadata.

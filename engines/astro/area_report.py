@@ -370,50 +370,39 @@ def _planet_stress(pc: dict, planet: str) -> float:
 
 
 def _stress_planet_for_area(pc: dict, area_key: str, house: int) -> str:
-    """Planet to remedy for this life area — house lord / support lords / natural karakas.
+    """Planet to remedy for this life area — primary house lord / natural karakas / primary occupants.
 
-    Never the bare running dasha lord alone: that made Health show Venus's
-    relationship slogan whenever Venus was the current antardasha.
+    Never let an arbitrary MD lord sitting in an unrelated house take over all areas.
     """
-    primary, support = _AREA_HOUSES.get(area_key, (house, ()))
-    houses = (primary,) + tuple(support)
+    primary, _ = _AREA_HOUSES.get(area_key, (house, ()))
     hl = pc.get("house_lords") or {}
-    candidates: list[str] = []
-    for h in houses:
-        lord = (hl.get(str(h)) or {}).get("lord") or ""
-        if lord:
-            candidates.append(lord)
-    for pl in _AREA_NATURAL.get(area_key, ()):
-        candidates.append(pl)
+    primary_lord = (hl.get(str(primary)) or {}).get("lord") or ""
 
-    # Dasha lords only if they touch this area (rule the house or sit there).
-    vim = pc.get("vimshottari") or {}
-    md = (vim.get("current_md") or {}).get("md_lord") or ""
-    ad = ""
-    for row in vim.get("current_md_antardashas") or []:
-        if row.get("status") == "current":
-            ad = row.get("ad_lord") or ""
-            break
-    planets = pc.get("planets") or {}
-    for pl in (ad, md):
-        if not pl:
-            continue
-        sits = (planets.get(pl) or {}).get("house")
-        rules = any((hl.get(str(h)) or {}).get("lord") == pl for h in houses)
-        if rules or sits in houses:
+    candidates: list[str] = []
+    if primary_lord:
+        candidates.append(primary_lord)
+    for pl in _AREA_NATURAL.get(area_key, ()):
+        if pl and pl not in candidates:
             candidates.append(pl)
 
-    # Prefer the most stressed candidate; house lord of the primary house
-    # wins ties so the remedy stays tied to this area.
-    primary_lord = (hl.get(str(primary)) or {}).get("lord") or ""
-    best, best_score = "", -99.0
+    # Also check if any planet sits directly in the primary house
+    planets = pc.get("planets") or {}
+    for pl, info in (planets.items() if isinstance(planets, dict) else []):
+        if isinstance(info, dict) and info.get("house") == primary:
+            if pl and pl not in candidates:
+                candidates.append(pl)
+
+    # Prefer the most stressed candidate among the area's direct rulers/karakas/occupants.
+    # Primary house lord gets a tie-break boost (+1.5) so it is preferred unless a karaka/occupant is deeply afflicted.
+    best, best_score = primary_lord, -99.0
     for pl in candidates:
         s = _planet_stress(pc, pl)
         if pl == primary_lord:
-            s += 0.15  # mild bias to the area's own lord on ties
+            s += 1.5
         if s > best_score:
             best, best_score = pl, s
     return best or primary_lord
+
 
 
 def classical_area_remedy(pc: dict, area_key: str, house: int, direction: str,
