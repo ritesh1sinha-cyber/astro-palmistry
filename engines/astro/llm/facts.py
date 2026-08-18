@@ -2130,7 +2130,7 @@ def build_report_facts(
         for t in extra_traits:
             if t not in personality_traits:
                 personality_traits.append(t)
-        personality_traits = personality_traits[:6]
+        personality_traits = personality_traits[:10]
     except Exception as exc:  # noqa: BLE001
         print(f"[llm.facts] personal life evidence skipped: {exc}", flush=True)
     # What may be occupying them now, read off the same canonical cards the
@@ -2334,7 +2334,7 @@ def _personality_traits(pc: dict) -> list[str]:
     try:
         import report_confluence as CF
         pers = CF.personality(pc) or {}
-        for t in list(pers.get("traits") or [])[:6]:
+        for t in list(pers.get("traits") or [])[:10]:
             text = str(t or "").strip()
             if not text:
                 continue
@@ -2343,10 +2343,10 @@ def _personality_traits(pc: dict) -> list[str]:
                 continue
             if re.search(r"\b(?:main astrological influence|carries that in your chart)\b", text, re.I):
                 continue
-            traits.append(text[:180])
+            traits.append(text[:220])
     except Exception:  # noqa: BLE001
         traits = []
-    return traits[:6]
+    return traits[:10]
 
 
 def _phase_facts(pc: dict, today: date) -> tuple[str, str, str, list[str]]:
@@ -2359,13 +2359,13 @@ def _phase_facts(pc: dict, today: date) -> tuple[str, str, str, list[str]]:
         import present_read as PR
         block = PR.build(pc, today=today) or {}
         direction = str(block.get("direction") or "mixed")
-        for pred in list(block.get("predictions") or [])[:4]:
+        for pred in list(block.get("predictions") or [])[:6]:
             scenario = str(getattr(pred, "scenario", "") or "").strip()
             if not scenario:
                 continue
             if _CLASSICAL_RAW.search(scenario):
                 continue
-            notes.append(scenario[:160])
+            notes.append(scenario[:200])
     except Exception:  # noqa: BLE001
         pass
     tone = {
@@ -2378,7 +2378,7 @@ def _phase_facts(pc: dict, today: date) -> tuple[str, str, str, list[str]]:
         phase_end = _pretty_date(ad.get("end"))
     except Exception:  # noqa: BLE001
         phase_end = ""
-    return direction, tone, phase_end, notes[:4]
+    return direction, tone, phase_end, notes[:6]
 
 
 def _recent_month_facts(pc: dict, today: date) -> list[RecentMonthFact]:

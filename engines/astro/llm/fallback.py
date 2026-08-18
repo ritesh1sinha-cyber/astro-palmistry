@@ -512,7 +512,8 @@ def conversational_fallback(facts: Any) -> dict[str, Any]:
     name = getattr(facts, "first_name", "") or ""
     traits = [str(t).strip() for t in (getattr(facts, "personality_traits", None) or []) if str(t).strip()]
     if traits:
-        personality = " ".join(traits[:4])
+        limit = 6 if getattr(facts, "access", "free") == "paid" else 4
+        personality = " ".join(traits[:limit])
     else:
         personality = (
             f"{name}, your nature is consistent — it shows in how you work, how you "

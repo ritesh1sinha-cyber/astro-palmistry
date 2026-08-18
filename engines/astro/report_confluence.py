@@ -1204,6 +1204,75 @@ MOON_TRAIT = {
     "Pisces": "When pressure rises, focus can drift; a steady person nearby helps you come back.",
 }
 
+SUN_TRAIT = {
+    "Aries": "Your conscious drive is guided by initiative, courage, and a preference for direct leadership.",
+    "Taurus": "Your core sense of purpose thrives on building enduring, tangible value with unwavering focus.",
+    "Gemini": "Your conscious identity centers on intellectual curiosity, ideas, communication, and versatile exploration.",
+    "Cancer": "Your core drive is rooted in protective instinct, dedication to family, and deep personal loyalty.",
+    "Leo": "Your natural orientation is toward creative self-expression, dignified leadership, and executive authority.",
+    "Virgo": "Your purpose is expressed through mastery of craft, analytical discrimination, and dedicated service.",
+    "Libra": "Your core identity is shaped by the pursuit of equilibrium, partnership, and aesthetic or social harmony.",
+    "Scorpio": "Your conscious drive is marked by intense willpower, strategic focus, and transformative depth.",
+    "Sagittarius": "Your sense of purpose expands through higher learning, truth-seeking, and philosophical freedom.",
+    "Capricorn": "Your core ambition is expressed through disciplined responsibility, long-term mastery, and structured achievement.",
+    "Aquarius": "Your conscious drive centers on independent vision, humanitarian ideals, and strategic systems thinking.",
+    "Pisces": "Your natural purpose is shaped by empathy, visionary imagination, and intuitive understanding.",
+}
+
+NAKSHATRA_TRAIT = {
+    "Ashwini": "Your birth star gives quick reflexes, a pioneer spirit, and an instinct to take early initiative.",
+    "Bharani": "Your birth star brings intense determination, creative passion, and the strength to endure transformations.",
+    "Krittika": "Your birth star provides a razor-sharp intellect, decisive energy, and courage to cut through clutter.",
+    "Rohini": "Your birth star blesses you with aesthetic charm, creative refinement, and natural magnetism.",
+    "Mrigashira": "Your birth star adds investigative curiosity, searching intellect, and a perpetual thirst for new knowledge.",
+    "Ardra": "Your birth star brings powerful analytical depth, intellectual intensity, and resilience through storms.",
+    "Punarvasu": "Your birth star gives natural resilience, philosophical wisdom, and the ability to bounce back stronger.",
+    "Pushya": "Your birth star fosters deep reliability, protective care, patience, and steady spiritual or practical growth.",
+    "Ashlesha": "Your birth star bestows keen intuition, psychological insight, and fierce protectiveness over inner circles.",
+    "Magha": "Your birth star carries natural dignity, respect for tradition, and an innate sense of authority.",
+    "Purva Phalguni": "Your birth star brings a warm social nature, love for creative leisure, and effortless charm.",
+    "Uttara Phalguni": "Your birth star emphasizes honorable conduct, reliability in commitments, and generosity.",
+    "Hasta": "Your birth star gives a quick, resourceful mind, skill in practical craft, and natural problem-solving ability.",
+    "Chitra": "Your birth star brings an eye for design, artistic precision, and pride in exceptional personal craftsmanship.",
+    "Swati": "Your birth star brings independent thinking, diplomatic skill, and flexibility in adapting to changing currents.",
+    "Vishakha": "Your birth star drives sharp focus, goal-oriented tenacity, and competitive endurance.",
+    "Anuradha": "Your birth star fosters heartfelt loyalty, collaborative ability, and success across distant or diverse environments.",
+    "Jyeshtha": "Your birth star adds strategic seniority, protective instincts, and an eagle-eyed sense of discernment.",
+    "Mula": "Your birth star brings an instinct to investigate root causes, seek core truths, and reinvent yourself when needed.",
+    "Purva Ashadha": "Your birth star gives strong conviction, persuasive power, and unwavering belief in your path.",
+    "Uttara Ashadha": "Your birth star brings quiet endurance, ethical strength, and lasting victory through patience.",
+    "Shravana": "Your birth star fosters exceptional listening, thirst for structured learning, and respect for knowledge.",
+    "Dhanishtha": "Your birth star links to rhythm, organizational capability, resource management, and natural confidence.",
+    "Shatabhisha": "Your birth star brings research ability, a visionary mind, and a need for quiet personal autonomy.",
+    "Purva Bhadrapada": "Your birth star adds passionate idealism, transformative depth, and philosophical conviction.",
+    "Uttara Bhadrapada": "Your birth star gives calm emotional stability, meditative depth, and enduring wisdom.",
+    "Revati": "Your birth star blesses you with gentle empathy, artistic sensitivity, and grace in guiding matters to completion.",
+}
+
+MOOLANK_TRAIT = {
+    1: "Numerologically, your birth day connects to leadership, pioneering drive, and executive self-reliance.",
+    2: "Numerologically, your birth day connects to intuitive receptivity, emotional diplomacy, and collaborative balance.",
+    3: "Numerologically, your birth day connects to expressive creativity, optimism, and an expansive thirst for knowledge.",
+    4: "Numerologically, your birth day connects to structural discipline, grounded problem-solving, and methodical execution.",
+    5: "Numerologically, your birth day connects to rapid adaptability, dynamic versatility, and sharp commercial intellect.",
+    6: "Numerologically, your birth day connects to harmony, nurturing responsibility, aesthetic taste, and social care.",
+    7: "Numerologically, your birth day connects to deep analytical introspection, investigative intellect, and independent discernment.",
+    8: "Numerologically, your birth day connects to immense endurance, pragmatic resilience, and building significant achievements over time.",
+    9: "Numerologically, your birth day connects to noble ambition, courage, humanitarian conviction, and protective energy.",
+}
+
+BHAGYANK_TRAIT = {
+    1: "Your life path trajectory calls you toward establishing independent authority and leading with self-determination.",
+    2: "Your life path trajectory emphasizes cultivating deep partnerships, emotional equilibrium, and peacemaking.",
+    3: "Your life path trajectory emphasizes guiding others through knowledge, uplifting creativity, and clear communication.",
+    4: "Your life path trajectory builds toward enduring stability, systematic foundations, and tangible mastery.",
+    5: "Your life path trajectory guides you through diverse experiences, strategic versatility, and broad horizons.",
+    6: "Your life path trajectory centers on community responsibility, creating beauty, and harmonizing family or social spheres.",
+    7: "Your life path trajectory calls for seeking deeper philosophical truths, specialized mastery, and intellectual depth.",
+    8: "Your life path trajectory directs you toward managing significant responsibilities, material mastery, and long-term legacy.",
+    9: "Your life path trajectory is dedicated to broad humanitarian purpose, wisdom, and completing larger life missions.",
+}
+
 AK_TRAIT = {
     "Sun": "your standing in the world",
     "Moon": "your emotional life and the people you care for",
@@ -1238,24 +1307,63 @@ def _human_yoga(line: str) -> str:
     return s
 
 
+def _reduce_digit(n: int) -> int:
+    while n > 9:
+        n = sum(int(d) for d in str(n) if d.isdigit())
+    return n
+
+
 def personality(pc: dict) -> dict:
     from report_language import client_prose
     lagna = (pc.get("lagna") or {}).get("sign", "")
     moon = pc.get("planets", {}).get("Moon") or {}
+    sun = pc.get("planets", {}).get("Sun") or {}
+    moon_sign = moon.get("sign", "")
+    sun_sign = sun.get("sign", "")
+    nak = moon.get("nakshatra", "") or moon.get("nakshatra_name", "")
     ak = (pc.get("jaimini") or {}).get("atmakaraka", "")
     pillar = pc.get("pillar", {}) or {}
-    traits = [client_prose(t) for t in (LAGNA_TRAIT.get(lagna), MOON_TRAIT.get(moon.get("sign"))) if t]
+
+    traits: list[str] = []
+    # 1. Lagna (Ascendant)
+    if lagna and LAGNA_TRAIT.get(lagna):
+        traits.append(client_prose(LAGNA_TRAIT[lagna]))
+    # 2. Moon Sign (Emotional Mind)
+    if moon_sign and MOON_TRAIT.get(moon_sign):
+        traits.append(client_prose(MOON_TRAIT[moon_sign]))
+    # 3. Sun Sign (Conscious Drive)
+    if sun_sign and SUN_TRAIT.get(sun_sign):
+        traits.append(client_prose(SUN_TRAIT[sun_sign]))
+    # 4. Nakshatra (Subconscious Temperament & Craft)
+    if nak and NAKSHATRA_TRAIT.get(nak):
+        traits.append(client_prose(NAKSHATRA_TRAIT[nak]))
+
+    # 5. Numerology (Moolank & Bhagyank)
+    dob_str = str((pc.get("user") or {}).get("dob") or pc.get("dob") or (pc.get("birth_data") or {}).get("dob") or "").strip()
+    m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})", dob_str)
+    if m:
+        try:
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            moolank = _reduce_digit(d)
+            bhagyank = _reduce_digit(y + mo + d)
+            if moolank in MOOLANK_TRAIT:
+                traits.append(client_prose(MOOLANK_TRAIT[moolank]))
+            if bhagyank in BHAGYANK_TRAIT and bhagyank != moolank:
+                traits.append(client_prose(BHAGYANK_TRAIT[bhagyank]))
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 6. Atmakaraka
     if ak == "Mars":
         traits.append(client_prose(
             "A recurring theme in your life is learning which battles deserve "
             "your energy — and which ones are better left alone."))
-        traits.append(client_prose(
-            "Mars is the main astrological influence behind this theme."))
-    elif ak:
+    elif ak and ak in AK_TRAIT:
         traits.append(client_prose(
             f"The thread running through your whole life is "
-            f"{AK_TRAIT.get(ak, 'your own path')}. "
-            f"{ak} carries that in your chart."))
+            f"{AK_TRAIT[ak]}."))
+
+    # 7. Neecha Bhanga / Special Yogas
     nb = pillar.get("neecha_bhanga") or {}
     if nb.get("neecha_bhanga_present"):
         traits.append(
@@ -1264,8 +1372,9 @@ def personality(pc: dict) -> dict:
             f"People with this pattern usually under-perform early and are "
             f"badly underestimated as a result.")
     yogas = [_human_yoga(y) for y in (pillar.get("special_yogas") or [])[:4]]
-    return {"lagna": lagna, "moon_sign": moon.get("sign", ""),
-            "nakshatra": moon.get("nakshatra", ""), "atmakaraka": ak,
+    return {"lagna": lagna, "moon_sign": moon_sign,
+            "sun_sign": sun_sign,
+            "nakshatra": nak, "atmakaraka": ak,
             "traits": traits,
             "yogas": yogas}
 

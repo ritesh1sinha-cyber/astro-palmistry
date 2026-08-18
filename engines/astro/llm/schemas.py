@@ -443,11 +443,11 @@ class ReportFacts(BaseModel):
     dashboard_buckets: dict[str, list[str]] = Field(default_factory=dict)
     timing_windows: list[WindowFact] = Field(default_factory=list, max_length=8)
     # Free-section conversational facts (Python-owned, never re-derived by LLM).
-    personality_traits: list[str] = Field(default_factory=list, max_length=6)
+    personality_traits: list[str] = Field(default_factory=list, max_length=12)
     phase_direction: Direction = "mixed"
     phase_tone: str = Field(default="", max_length=40)  # supportive / mixed / demanding
     phase_end: str = ""
-    phase_notes: list[str] = Field(default_factory=list, max_length=4)
+    phase_notes: list[str] = Field(default_factory=list, max_length=6)
     recent_months: list[RecentMonthFact] = Field(default_factory=list, max_length=4)
     hardest_areas: list[str] = Field(default_factory=list, max_length=4)
     hardest_area_labels: list[str] = Field(default_factory=list, max_length=4)
@@ -594,7 +594,7 @@ class PalmFacts(BaseModel):
     future_windows: list[dict[str, Any]] = Field(default_factory=list, max_length=6)
     special_mark_ids: list[str] = Field(default_factory=list, max_length=8)
     # Conversational free-section facts.
-    personality_traits: list[str] = Field(default_factory=list, max_length=6)
+    personality_traits: list[str] = Field(default_factory=list, max_length=12)
     life_stage_note: str = Field(default="", max_length=220)
     life_stage_age: Optional[int] = None
     demanding_aspect: str = ""
