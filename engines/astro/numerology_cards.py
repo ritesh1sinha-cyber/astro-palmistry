@@ -366,38 +366,44 @@ def _workings(c: dict) -> str:
 def _locked_preview(*, price: int, n_missing: int, maha: str,
                     needs_name_fix: bool) -> str:
     name_teaser = (
-        "Spellings of your own name that move it onto a root your birth date "
-        "agrees with, using letters already in it."
+        "Spellings of your own name that move it onto a root your birth date agrees with, using letters already in it — no legal name change required."
         if needs_name_fix else
-        "What every alternative spelling of your name would move, and why "
-        "yours is already close.")
+        "What every alternative spelling of your name would move, and how to maintain alignment.")
     cell_teaser = (
-        f"The colour, habit, charity and day for each of your {n_missing} empty "
-        "cells, in the order they actually matter."
+        f"Targeted remedies (colours, items to carry, daily habits, and donation days) for each of your {n_missing} empty Lo Shu cells."
         if n_missing else
-        "The remedy attached to each cell, and which of them you are running "
-        "thin on this year.")
-    rows = [
-        ("Your name-correction suggestions", name_teaser),
-        ("Your next three years",
-         "The main theme of each birthday year, with its start date."),
-        ("What to do about each empty Lo Shu cell", cell_teaser),
-    ]
-    items = "".join(
-        f'<div class="when locked-inline" style="margin:8px 0">'
-        f'<span class="lockicon">&bull;</span> <strong>{_e(t)}</strong> &mdash; {_e(s)}'
-        f'</div>' for t, s in rows)
+        "The energetic balancing remedies for your completed grid.")
+    
     return f"""
-<section class="section locked-preview">
-  <h3 class="sec">What the full reading adds</h3>
-  <div class="card">{items}</div>
-  <div class="buy">
-    <h3>Put your numbers to work</h3>
-    <p>Unlock your strongest name spellings, your next three years, and simple
-    actions for the gaps in your grid.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
-  </div>
-</section>"""
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Suggested Name Corrections & Lucky Spellings</div>
+  <p class="blurred">{_e(name_teaser)}</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Name correction suggestions are locked.</b> Unlock to see exact adjusted spellings tested for your birth chart.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Targeted Remedies for Missing Grid Numbers</div>
+  <p class="blurred">{_e(cell_teaser)}</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Grid remedies are locked.</b> Unlock for specific practical remedies to balance each missing number.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Your Next Three Birthday Years Forecast</div>
+  <p class="blurred">The annual planetary governing lords, transition dates, and core opportunities for the next 3 years of your life path.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Future forecast is locked.</b> Unlock to view your 3-year numerological roadmap.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Complete Step-by-Step Mathematical Derivation</div>
+  <p class="blurred">Letter-by-letter Chaldean & Pythagorean tables, the 4 Life Pinnacles, 4 Challenges, and Maturity Number analysis.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Detailed working is locked.</b> Unlock for the complete mathematical derivation.</p>
+</div>
+
+<div class="buy" style="margin-top:20px;">
+  <h3>Put your numbers to work</h3>
+  <p>All your core numbers and Lo Shu grid are free. Unlock your optimized name spellings, missing grid remedies, and 3-year roadmap.</p>
+  <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
+</div>"""
 
 
 # ---------------------------------------------------------------------------

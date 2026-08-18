@@ -774,18 +774,16 @@ def _as_date(v) -> date:
 
 
 NUMEROLOGY_FREE_SECTIONS = (
-    "Your six numbers, and what each one says",
-    "Your Lo Shu grid, and which cells are empty",
-    "Where you are in the cycle right now",
-    "Whether your name and your birth date agree",
+    "Name harmony diagnosis and vibration assessment",
+    "Your six core numbers (Life Path, Birth Day, Expression, Soul Urge, Personality, Chaldean root)",
+    "Lo Shu magic square and missing cell analysis",
+    "Current 45-year Mahadasha chapter & annual cycle",
 )
 NUMEROLOGY_PAID_SECTIONS = (
-    "The working — every number derived letter by letter",
-    "Your chapters, dated, and this year cut into nine slices",
-    "The next three birthday years",
-    "What to do about each empty Lo Shu cell",
-    "The remedy for the period you are running now",
-    "Name corrections that move your number",
+    "Suggested name corrections & tested lucky spellings",
+    "Targeted remedies for each empty Lo Shu cell",
+    "The next three birthday years forecast with transition dates",
+    "Complete step-by-step mathematical derivations (Pinnacles, Challenges, Maturity)",
 )
 
 
