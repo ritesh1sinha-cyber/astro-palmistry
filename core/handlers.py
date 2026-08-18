@@ -360,22 +360,18 @@ def h_full_report(user: dict, p: dict) -> dict:
     # appendix, separated from customer prose by a heading and collapsed by
     # default.  The summary text is customer-neutral to avoid internal-data
     # leakage into the visible report.
-    # The clean conversational renderer (final_fix_plan §19/20) owns the paid
-    # page's analytics inside each area's collapsed calculation block, so the
-    # legacy long-form appendix must NOT be re-appended onto it.
-    if meta.get("design") != "conversational-v1":
-        try:
-            conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
-            raw = conf.get("paid_html", "") or ""
-            appendix = RD._appendix_block(raw, summary="Technical details (collapsed)")
-            if appendix:
-                paid_html += appendix
-                meta["paidSections"] = list(meta.get("paidSections", [])) + \
-                    ["Technical details (collapsed)"]
-                meta["semantic_mode"] = (_payload or {}).get("semantic_mode", "")
-        except Exception as exc:                                          # noqa: BLE001
-            print(f"[full_report] appendix skipped: {type(exc).__name__}: {exc}",
-                  flush=True)
+    try:
+        conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
+        raw = conf.get("paid_html", "") or ""
+        appendix = RD._appendix_block(raw, summary="Technical details (collapsed)")
+        if appendix:
+            paid_html += appendix
+            meta["paidSections"] = list(meta.get("paidSections", [])) + \
+                ["Technical details (collapsed)"]
+            meta["semantic_mode"] = (_payload or {}).get("semantic_mode", "")
+    except Exception as exc:                                          # noqa: BLE001
+        print(f"[full_report] appendix skipped: {type(exc).__name__}: {exc}",
+              flush=True)
 
     meta["lanes"] = {"built": len((lanes or {}).get("built") or []),
                      "failed": list(((lanes or {}).get("failed") or {}).keys())}
