@@ -1081,11 +1081,14 @@ def question_fallback(facts: Any) -> dict[str, Any]:
     timing = ""
     best = getattr(facts, "best", None)
     if best is not None:
-        label = getattr(best, "label", "") or ""
-        if label:
-            timing = f"The strongest validated window note is: {label}."
+        start_d = getattr(best, "start", "")
+        end_d = getattr(best, "end", "")
+        if start_d and end_d:
+            timing = f"The primary window of momentum runs between {start_d} and {end_d}, when supportive planetary currents align."
         else:
-            timing = "Validated timing windows are listed in the reading below."
+            timing = "Validated timing windows are listed below based on planetary periods and transit alignments."
+    else:
+        timing = "Validated timing windows are listed below based on planetary periods and transit alignments."
     return {
         "opening": "Here is the straight answer from your chart facts.",
         "answer": answer[:420],

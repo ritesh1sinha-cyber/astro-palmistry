@@ -1263,15 +1263,36 @@ def render(result: dict, *, name: str = "", paid: bool = False,
 
     timing_items = []
     if nearest and nearest["start"] < best["start"]:
-        timing_items.append(f"<li><b>{_pretty(nearest['start'])} → {_pretty(nearest['end'])}</b> — Soonest opening: {_e(_window_scenario(nearest))}</li>")
-    timing_items.append(f"<li><b>{_pretty(best['start'])} → {_pretty(best['end'])}</b> — Best window: {_e(_window_scenario(best))}</li>")
+        timing_items.append(
+            f"<li><b>{_pretty(nearest['start'])} → {_pretty(nearest['end'])}</b> — "
+            f"<b>Soonest opening:</b> Good for early preparation, preliminary discussions, and setting groundwork before major shifts.</li>"
+        )
+    best_desc = (
+        "Strongest astrological opening — active planetary periods and transits align to back meaningful progress and initiative."
+        if best.get("strong") else
+        "Primary window of opportunity — supportive planetary currents create favorable conditions for growth."
+    )
+    timing_items.append(
+        f"<li><b>{_pretty(best['start'])} → {_pretty(best['end'])}</b> — "
+        f"<b>Best window:</b> {best_desc}</li>"
+    )
     if nearest and nearest["start"] > best["start"]:
-        timing_items.append(f"<li><b>{_pretty(nearest['start'])} → {_pretty(nearest['end'])}</b> — Secondary window: {_e(_window_scenario(nearest))}</li>")
+        timing_items.append(
+            f"<li><b>{_pretty(nearest['start'])} → {_pretty(nearest['end'])}</b> — "
+            f"<b>Secondary window:</b> Follow-up opening to consolidate gains and build on previous milestones.</li>"
+        )
     for w in later[:2]:
-        timing_items.append(f"<li><b>{_pretty(w['start'])} → {_pretty(w['end'])}</b> — Later window: {_e(_window_scenario(w))}</li>")
+        timing_items.append(
+            f"<li><b>{_pretty(w['start'])} → {_pretty(w['end'])}</b> — "
+            f"<b>Later window:</b> Long-term period for consolidation, stabilization, and continuing growth.</li>"
+        )
 
     verdict_flag = ("up" if promise_direction == "up" else
                     "down" if promise_direction == "down" else "mixed")
+
+    # Sanitize technical leaks in timing prose
+    if llm_timing and any(t in llm_timing.lower() for t in ("ulka", "chara", "dasha", "amber", "validated window note", "saturn-saturn")):
+        llm_timing = "These are the validated windows where planetary transits and active periods align to create meaningful momentum."
 
     timing_note_text = llm_timing or "These are the validated windows where planetary transits and active periods align to create meaningful momentum."
 
