@@ -836,113 +836,68 @@ def _topic_customer_note(topic_key: str) -> str:
 
 def render_free(result: dict, *, name: str = "", price: int = 1499,
                 prose: Optional[dict] = None) -> str:
-    """Free half: plain prediction + one Why line; verdict and dates locked."""
+    """Free half: question acknowledgment & domain framing; verdict, timeline and remedies locked."""
     topic = result["topic"]
     who = (name or "").split()[0] if name else ""
     windows = result["windows"]
     promise = result["promise"]
     route = result.get("route") or {}
-    pred = result.get("prediction")
     prose = prose or {}
 
-    main_pred = ""
-    llm_opening = (prose.get("opening") or "").strip()
-    llm_answer = (prose.get("answer") or "").strip()
-    if llm_opening or llm_answer:
-        parts = []
-        if llm_opening:
-            parts.append(f"<p>{_e(llm_opening)}</p>")
-        if llm_answer:
-            parts.append(f'<div class="qa-promise"><p>{_e(llm_answer)}</p></div>')
-        main_pred = "".join(parts)
-    elif pred is not None and not result.get("canonical_result"):
-        main_pred = pred.html()
-    elif isinstance(result.get("canonical_result"), dict) and result.get("canonical_result"):
-        cr = result.get("canonical_result") or {}
-        backing = str(cr.get("backing") or "").strip()
-        if backing:
-            main_pred = f'<div class="prediction"><p class="pred-scenario">{_e(backing)}</p></div>'
-    else:
-        try:
-            import predict_voice as PV
-            p = PV.compose(
-                result.get("area_key", "career"),
-                direction=promise.get("direction", "mixed"),
-            )
-            main_pred = p.html()
-        except Exception:  # noqa: BLE001
-            main_pred = ""
-
-    route_block = ""
-    if route.get("domain") or topic.key != "general":
-        ph = topic.houses[0] if topic.key != "general" else route.get("primary_house", 0)
-        domain = route.get("domain") or topic.key
-        route_block = (
-            f'<p class="qa-route">We read this primarily as a <b>{_e(domain)}</b> '
-            f'question, centred on the part of life that governs this matter.</p>')
+    domain = route.get("domain") or topic.label or topic.key
+    houses_str = ", ".join(_ord(h) for h in topic.houses) if topic.houses else "governing house"
 
     lede = (prose.get("opening") or "").strip()
     who_prefix = _e(who + ", ") if who else ""
     lede_html = (
         f'<p class="qa-lede">{_e(lede)}</p>' if lede else
-        f'<p class="qa-lede">{who_prefix}here is what your chart is doing on this question now. '
-        f'The straight answer, the dated timing windows, and the remedy for what to '
-        f'do inside them are in the paid reading.</p>'
+        f'<p class="qa-lede">{who_prefix}we have analyzed your birth chart for this question. '
+        f'Here is how the chart frames this life area, while the full verdict, exact timing windows, '
+        f'and targeted remedies are available in the full reading.</p>'
     )
 
-    html = """
+    n_windows = len(windows)
+    window_plural = "" if n_windows == 1 else "s"
+    timing_text = (
+        f"<b>{n_windows} validated timing window{window_plural}</b> were detected across your {result['horizon']}-year horizon."
+        if n_windows else
+        "No single automatic window appears; the full reading dates the subtle movement points."
+    )
+
+    html = f"""
 <section class="qa">
-  <div class="qa-asked"><b>You asked:</b> {question}</div>
-  {route_block}
+  <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
   {lede_html}
 
-  <div class="qa-promise">
-    <b>{label}</b> is assessed from the parts of your chart that govern this question. {note}
+  <div class="card" style="margin:16px 0;">
+    <p style="margin:0 0 6px 0;"><strong>Astrological focus:</strong> We read this primarily as a <b>{_e(domain)}</b> matter, governed by the <b>{_e(houses_str)} house</b> and active planetary periods.</p>
+    <p style="margin:0;font-size:0.88rem;color:#656a74;">{_e(_topic_customer_note(topic.key))}</p>
   </div>
 
-  {main_pred}
-
-  <div class="qa-window locked">
-    <div class="qa-wlabel">The verdict</div>
-    <p class="blurred">The full reading gives the combined verdict from the
-    independent chart methods, including how strongly the evidence agrees.</p>
+  <div class="qa-window locked" style="margin:14px 0;">
+    <div class="qa-wlabel">The Verdict — what your chart actually says</div>
+    <p class="blurred">Your birth chart reveals the core strength of this life area, whether the governing planets provide constructive momentum or require steady patience, and the precise conditions under which this matter progresses.</p>
+    <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>The consultation verdict is locked.</b> Unlock to read the complete astrological reasoning, house ruler analysis, and actionable steps.</p>
   </div>
 
-  <div class="qa-window locked">
-    <div class="qa-wlabel">Timing — when to move</div>
-    <p class="blurred">{timing_teaser}</p>
-    <p><b>{n} validated timing window{window_plural} were found for the
-    requested horizon.</b> Unlock for the exact dates, the evidence behind each
-    window and the practical guidance.</p>
+  <div class="qa-window locked" style="margin:14px 0;">
+    <div class="qa-wlabel">Key timing & dated windows</div>
+    <p class="blurred">A primary window of opportunity opens when the active planetary period and key transits align to touch this house, alongside secondary milestones for consolidation.</p>
+    <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;">{timing_text} Unlock for the exact calendar dates, milestones, and preparation guidance.</p>
   </div>
 
-  <div class="qa-window locked">
-    <div class="qa-wlabel">The remedy</div>
-    <p class="blurred">What to strengthen or pacify for this question — the
-    classical answer tied to the planets that rule it, plus the practical
-    step that matters more than any stone.</p>
+  <div class="qa-window locked" style="margin:14px 0;">
+    <div class="qa-wlabel">Targeted remedies & immediate relief</div>
+    <p class="blurred">Practical first steps to navigate current friction, mantra jaap (108x) for obstructing planets, and auspicious strengthening gemstone rules.</p>
+    <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Chart-targeted remedies are locked.</b> Unlock to see the exact gemstone specifications (metal, finger, day to begin) and classical mantra rituals.</p>
   </div>
 
   <div class="buy">
     <h3>Unlock the full answer</h3>
-    <p>The verdict, dated timing windows, and the remedy for this question.</p>
+    <p>Get the complete consultation verdict, all dated timing windows, and the chart-specific remedies for this question.</p>
     <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
-</section>""".format(
-        question=_e(result["question"]),
-        route_block=route_block,
-        lede_html=lede_html,
-        label=_e(topic.label),
-        houses=_e(", ".join(_ord(h) for h in topic.houses)),
-        note=_e(_topic_customer_note(topic.key)),
-        main_pred=main_pred,
-        timing_teaser=(
-            "No sufficiently strong validated timing window appears within the period you asked about."
-            if not windows else
-            "A validated timing window exists within the period you asked about; the exact dates are part of the full reading."
-        ),
-        window_plural="" if len(windows) == 1 else "s",
-        n=len(windows), horizon=result["horizon"], price=price)
+</section>"""
     from qa_checks.final_customer_boundary import finalize_customer_html
     return finalize_customer_html(html, strict=True)
 

@@ -665,37 +665,42 @@ def _timing_block(j: dict, vc: dict, *, paid: bool = True) -> str:
 
 
 def _locked_block(*, price: int, n_windows: int, has_remedy: bool) -> str:
-    """Free view: section headings with one-line teasers and an unlock CTA."""
+    """Free view: high-converting blurred preview cards and an unlock CTA."""
     timing_teaser = (
-        f"{n_windows} dated window{'s' if n_windows != 1 else ''} "
-        "and primary planetary trigger periods."
+        f"<b>{n_windows} dated window{'s' if n_windows != 1 else ''}</b> and planetary trigger periods identified across the requested horizon."
         if n_windows else
-        "When this moves, and when it does not.")
-    rows = [
-        ("The verdict",
-         "Where the classical planetary indicators land together — one clear answer and timeline."),
-        ("Planets supporting and planets with friction",
-         "Which planets are carrying this question and which need remedy support."),
-        ("Timing", timing_teaser),
-    ]
-    if has_remedy:
-        rows.append(("The remedy",
-                     "The primary planet where pressure sits, and what settles it."))
-    items = "".join(
-        f'<div class="when locked-inline" style="margin:8px 0">'
-        f'<span class="lockicon">•</span> <strong>{_e(title)}</strong> — {_e(teaser)}'
-        f'</div>'
-        for title, teaser in rows)
+        "Exact turning-point timeline and culmination periods across the requested horizon.")
+
     return f"""
-<section class="section locked-preview">
-  <h2>In the full reading</h2>
-  <div class="card">{items}</div>
-  <div class="buy">
-    <h3>The answer itself</h3>
-    <p>Multiple classical indicators have read your question. Unlock what they add up to.</p>
-    <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
-  </div>
-</section>"""
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">The Verdict — Prashna outcome & confidence</div>
+  <p class="blurred">The unified confluence of classical planetary indicators delivers a direct verdict on whether this matter reaches completion, the strength of the opening, and the key obstacles to expect.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>The Prashna verdict is locked.</b> Unlock to read the direct answer, confidence assessment, and astrological reasoning.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Planetary dynamics & supporting influences</div>
+  <p class="blurred">Complete analysis of planets supporting your position versus planets creating friction or delay in the moment chart.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Planetary currents breakdown is locked.</b> Unlock to see the active forces driving or hindering this question.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Key timing & dated windows</div>
+  <p class="blurred">Exact calendar dates when the applying planetary aspects culminate and when secondary developments unfold.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;">{timing_teaser} Unlock for the exact dates and milestone guidance.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Targeted remedies & immediate relief</div>
+  <p class="blurred">Practical first steps to shift momentum, classical mantra jaap for the pressure planet, and traditional remedial actions.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Targeted remedies are locked.</b> Unlock to view the exact mantra rituals and practical steps to tip the timing your way.</p>
+</div>
+
+<div class="buy" style="margin-top:20px;">
+  <h3>Unlock the full answer</h3>
+  <p>The moment chart has been calculated. Unlock the complete verdict, exact timeline dates, and chart-targeted remedies.</p>
+  <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
+</div>"""
 
 
 def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
