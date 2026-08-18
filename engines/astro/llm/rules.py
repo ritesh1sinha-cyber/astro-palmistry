@@ -385,6 +385,7 @@ def _prompt_extra(kind: str) -> str:
             "'From the current planet position and dasha, there is strain mostly due to <PLANET> seen in <LIFE AREA> till <MONTH YEAR>. After that situation will ease a little but <CONTINUE> completely. Since the natal birth support <HOUSE FACTOR> and <AMK IF PRESENT> is supporting, finally things will be better by <MONTH YEAR>.' " 
             "That is the tone to imitate, nothing more. Its specific facts (Saturn, Nov 2027, job house, AmK, Jan 2030) never transfer to any area. The natal-support sentence must name the actual factors supplied for THAT area (house lord, natural karaka, divisional support, Jaimini, AmK only when present). If the area's facts do not name an AmK, do not say AmK. "
             "The remedy is one concrete sentence from remedy_text/approved_remedies. Preserve planet names and exact ritual/action details when they are already supplied. Never invent a remedy. "
+            "The 'learning' card is shown to the reader under the heading 'Travel & Foreign'. Frame its conclusion around the 9th-house themes the supplied facts carry — fortune, dharma, long journeys and foreign places — never around study or schooling, and never use the words 'learning', 'study' or 'education' as the area's subject. "
             "Leave astrological_basis, interpretation, outlook, timing, manifestation and transition_note empty; they are legacy fields and the renderer intentionally does not display them. "
             "Never print raw confluence scores or internal/debug terminology. Never use 'Timing evidence is included in the overall reading' or 'Promised, not yet active'. Return only the requested JSON. "
         ),
@@ -532,6 +533,13 @@ def user_prompt(facts: Any, *, schema_name: str, section: str = "") -> str:
     )
 
 
+# The clean report presents the engine's "learning" card under the canonical
+# "Travel & Foreign" heading (9th house: fortune, dharma, long journeys and
+# foreign places). The model is told the same name so the conclusion it writes
+# matches the heading the reader sees; the card's area key stays "learning".
+_AREA_PROMPT_LABELS = {"learning": "Travel & Foreign"}
+
+
 def areas_user_prompt(facts: Any, *, area_keys: list[str]) -> str:
     """Full-report areas prompt limited to a subset of life areas.
 
@@ -553,6 +561,12 @@ def areas_user_prompt(facts: Any, *, area_keys: list[str]) -> str:
             j for j in list(compact.get("life_area_judgements") or [])
             if str(j.get("area") or "") in allowed
         ]
+    for card in list(compact.get("cards") or []):
+        if isinstance(card, dict) and str(card.get("area") or "") in _AREA_PROMPT_LABELS:
+            card["label"] = _AREA_PROMPT_LABELS[str(card.get("area"))]
+    for j in list(compact.get("life_area_judgements") or []):
+        if isinstance(j, dict) and str(j.get("area") or "") in _AREA_PROMPT_LABELS:
+            j["label"] = _AREA_PROMPT_LABELS[str(j.get("area"))]
     window_summary = _areas_window_summary(compact)
     return (
         "Return a JSON object matching schema `ConversationalAreasProse`.\n"
@@ -578,7 +592,7 @@ def _areas_window_summary(compact: dict) -> str:
         if not isinstance(j, dict):
             continue
         area = str(j.get("area") or "?")
-        label = str(j.get("label") or area)
+        label = _AREA_PROMPT_LABELS.get(area, str(j.get("label") or area))
         windows = []
         relief = j.get("relief_window")
         if relief:

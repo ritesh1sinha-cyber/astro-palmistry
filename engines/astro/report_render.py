@@ -457,21 +457,21 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             and bool(str(prose.get("personality") or "").strip())
         )
         if use_conversational:
-            import report_conversational as RConv
-            # The stones and the practical step are computed, not written, so
-            # the conversational page carries the same block as the classic one
-            # instead of leaving the reading with nothing to act on.
+            # Clean v2 renderer (final_fix_plan): exactly four top-level
+            # sections, eight canonical life areas, collapsed calculation.
+            # The legacy RConv.render function stays importable for tests but
+            # is no longer called from the pipeline.
+            from llm import clean_report
             fact_cards = []
             if paid and paid_facts is not None:
                 fact_cards = list(getattr(paid_facts, "cards", None) or [])
             elif (not paid) and free_facts is not None:
                 fact_cards = list(getattr(free_facts, "cards", None) or [])
-            body = RConv.render(
-                pc, name=name, price=price, today=today, paid=paid,
-                cards=fact_cards or shared_cards, prose=prose,
-                footer_unlock=(not paid),
-                remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price),
-                analysis=(paid_facts if paid else free_facts))
+            report = clean_report.build_final_report(
+                pc, cards=fact_cards or shared_cards,
+                analysis=(paid_facts if paid else free_facts),
+                prose=prose, today=today, paid=paid, name=name)
+            body = clean_report.render_final_report(report)
             return _post_render_guard(_scrub(body, allowed_dates=allowed_dates))
 
         # Frozen non-LLM / classic path — untouched when conversational is used.
