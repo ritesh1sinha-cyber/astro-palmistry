@@ -689,6 +689,7 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
 
     result = QA.answer(pc, question, lat=lat, lon=lon, tz=tz, route=route,
                        area=area)
+    result["pc"] = pc
 
     prose_overlay: dict = {}
     llm_meta: dict = {"enabled": False}

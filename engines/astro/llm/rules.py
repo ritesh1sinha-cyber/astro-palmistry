@@ -438,13 +438,18 @@ def _prompt_extra(kind: str) -> str:
             "approved list, or dates not in the timing windows."
         ),
         "user_question": (
-            "Fields: opening, answer, timing, action. "
-            "QuestionFacts are projected from the full-report CanonicalAreaResult "
-            "whenever truth_source=full_report_canonical. Treat canonical promise, "
-            "activation, direction and timing as immutable. Do not recalculate the "
-            "chart or create a second timing/confluence interpretation. If no "
-            "validated window supports the asked outcome, say the facts do not "
-            "support a high-confidence claim."
+            "Write a personalized, natural-language Vedic astrological consultation response to the seeker's specific question. "
+            "Speak directly to the person as 'you' in warm, grounded, professional English like an experienced astrologer. "
+            "Facts are authoritative — adhere strictly to direction, promise_status, allowed_planets, and allowed_dates. Never invent dates, promises, or planetary placements. "
+            "Required fields in QuestionProse: "
+            "1. 'opening': A warm, natural 1-2 sentence lede addressing their specific question and setting a clear, realistic tone. "
+            "2. 'answer': A comprehensive 2-3 sentence consultation verdict directly answering what the chart shows for their question. "
+            "   - If direction='support' / 'up': Explain the constructive momentum and how the chart backs this pursuit. "
+            "   - If direction='mixed' / 'neutral': Explain the mixed current, balancing opportunities with periods requiring patience and careful effort. "
+            "   - If direction='caution' / 'down': Explain constructively where caution or steady foundation-building is required, avoiding overly negative or fatalistic language. "
+            "   - Never leak raw scores, internal debug codes, or mechanical status strings. "
+            "3. 'timing': A clear 1-2 sentence explanation of the key timing windows (using ONLY dates from allowed_dates, e.g., 'October 2027 to February 2028'), explaining when the strongest opening appears and what to expect. "
+            "4. 'action': Practical, constructive astrological and lifestyle guidance in 2-3 complete sentences. When timing is distant or conditions require immediate relief, incorporate the chart-targeted remedies from the facts: provide practical steps, mantra jaap or donation for the obstructing planet (e.g. Ketu, Saturn, Rahu) to clear friction, and recommend daily rituals or strengthening practices for the supportive ruler (e.g. Mercury, Jupiter) to give the seeker immediate, actionable relief."
         ),
         "horary": (
             "Fields: lead, verdict_line, why, action. "

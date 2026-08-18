@@ -490,8 +490,13 @@ class QuestionFacts(BaseModel):
     support_n: int = 0
     caution_n: int = 0
     manifestation_ids: list[str] = Field(default_factory=list, max_length=6)
-    allowed_planets: list[str] = Field(default_factory=list, max_length=8)
-    allowed_dates: list[str] = Field(default_factory=list, max_length=12)
+    allowed_planets: list[str] = Field(default_factory=list, max_length=12)
+    allowed_dates: list[str] = Field(default_factory=list, max_length=36)
+    remedy_text: str = Field(default="", max_length=400)
+    hindering_planet: str = Field(default="", max_length=40)
+    supportive_planet: str = Field(default="", max_length=40)
+    hindering_remedy: str = Field(default="", max_length=250)
+    supportive_remedy: str = Field(default="", max_length=250)
 
     # Canonical full-report truth. These are a projection of the same
     # CanonicalAreaResult used by the full report; QuestionFacts must not
@@ -788,10 +793,10 @@ class ConversationalPalmProse(BaseModel):
 
 class QuestionProse(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    opening: str = Field(..., min_length=8, max_length=280)
-    answer: str = Field(..., min_length=8, max_length=420)
-    timing: str = Field(default="", max_length=220)
-    action: str = Field(default="", max_length=180)
+    opening: str = Field(..., min_length=8, max_length=350)
+    answer: str = Field(..., min_length=8, max_length=550)
+    timing: str = Field(default="", max_length=350)
+    action: str = Field(default="", max_length=450)
 
 
 class HoraryProse(BaseModel):

@@ -2562,7 +2562,71 @@ def build_question_facts(
         except Exception:  # noqa: BLE001
             canonical_manifests = []
 
+    pc = result.get("pc")
+    canonical_future: list[FutureConfluenceFact] = []
+    if canonical and isinstance(pc, dict):
+        try:
+            area_k = str(canonical.get("area") or result.get("area_key") or "")
+            house_k = int(canonical.get("house") or 0)
+            class _CardMock:
+                def __init__(self, a, h):
+                    self.area = a
+                    self.house = h
+                    self.label = a.title()
+                    self.natural_karakas = ()
+                    self.house_lord = ""
+            c_mock = _CardMock(area_k, house_k)
+            canonical_future = _future_confluence_for_area(pc, c_mock, date.today(), years=4)
+        except Exception as exc:
+            print(f"[build_question_facts] future confluence lookup failed: {exc}", flush=True)
+
+    remedy_text = ""
+    hindering_planet = ""
+    supportive_planet = ""
+    hindering_remedy = ""
+    supportive_remedy = ""
+    allowed_planets: list[str] = []
+    if isinstance(pc, dict):
+        try:
+            import area_report as AR
+            import report_confluence as CF
+            area_k = str(canonical.get("area") or result.get("area_key") or "")
+            house_k = int(canonical.get("house") or 0)
+            remedy_text = AR.classical_area_remedy(pc, area_k, house_k, direction, promise_status=str(promise.get("status") or ""))
+            
+            vim = CF.vimshottari_at(pc, date.today()) or {}
+            ad_lord = str(vim.get("ad") or "")
+            md_lord = str(vim.get("md") or "")
+            if ad_lord in ("Ketu", "Rahu", "Saturn", "Mars"):
+                hindering_planet = ad_lord
+                hindering_remedy = f"Pacify {ad_lord}: {AR.CLASSICAL_UPAYA.get(ad_lord, '')} Mantra: {AR.MANTRA.get(ad_lord, '')}"
+            elif md_lord in ("Ketu", "Rahu", "Saturn", "Mars"):
+                hindering_planet = md_lord
+                hindering_remedy = f"Pacify {md_lord}: {AR.CLASSICAL_UPAYA.get(md_lord, '')} Mantra: {AR.MANTRA.get(md_lord, '')}"
+
+            hl = pc.get("house_lords", {}) or {}
+            lord = (hl.get(str(house_k)) or {}).get("lord") or ""
+            if lord and lord not in ("Ketu", "Rahu", "Saturn", "Mars"):
+                supportive_planet = lord
+                supportive_remedy = f"Strengthen {lord}: {AR.CLASSICAL_UPAYA.get(lord, '')} Mantra: {AR.MANTRA.get(lord, '')}"
+            elif lord:
+                supportive_planet = lord
+
+            for p in (hindering_planet, supportive_planet, md_lord, ad_lord):
+                if p and p not in allowed_planets:
+                    allowed_planets.append(p)
+            for p in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"):
+                if p in str(remedy_text) and p not in allowed_planets:
+                    allowed_planets.append(p)
+        except Exception as exc:
+            print(f"[build_question_facts] remedy calculation failed: {exc}", flush=True)
+
     allowed_dates = _dates_from_windows(best, nearest, *windows)
+    for cf in canonical_future:
+        if cf.date:
+            d_str = _pretty_date(cf.date)
+            if d_str and d_str not in allowed_dates:
+                allowed_dates.append(d_str)
     facts = QuestionFacts(
         first_name=_first_name(name),
         access="paid" if access == "paid" else "free",  # type: ignore[arg-type]
@@ -2581,7 +2645,13 @@ def build_question_facts(
         activation_status=activation_status,
         support_n=int(result.get("n_up") or 0),
         caution_n=int(result.get("n_down") or 0),
-        allowed_dates=allowed_dates,
+        allowed_planets=allowed_planets[:12],
+        allowed_dates=allowed_dates[:36],
+        remedy_text=remedy_text[:400],
+        hindering_planet=hindering_planet[:40],
+        supportive_planet=supportive_planet[:40],
+        hindering_remedy=hindering_remedy[:250],
+        supportive_remedy=supportive_remedy[:250],
         truth_source=truth_source,  # type: ignore[arg-type]
         canonical_area_key=canonical_area_key,
         canonical_promise_status=str(promise.get("status") or ""),

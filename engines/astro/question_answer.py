@@ -1217,6 +1217,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
         f'<p class="qa-action">{_e(llm_action)}</p>' if llm_action else ""
     )
 
+    promise_conf_str = f" &mdash; {_e(promise_conf)}" if promise_conf else ""
     html = f"""
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
@@ -1224,18 +1225,17 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   <h2 class="qa-verdict">{_e(lead)}</h2>
   {main_pred}
   <p class="qa-promise"><b>{_e(promise_heading)}</b>
-  {_e(topic.label)} reads <b>{_e(promise_direction)}</b> in your chart —
-  {_e(promise_conf)}. {_e(_topic_customer_note(topic.key))}</p>
+  {_e(topic.label)} reads <b>{_e(promise_direction)}</b> in your chart{promise_conf_str}. {_e(_topic_customer_note(topic.key))}</p>
   {now_line}
   {house_block}
-  <h3 class="sec">Timing — when to move</h3>
+  <h3 class="sec">Timing &mdash; when to move</h3>
   {timing_note}
   {blocks}
   {_question_transition_html(result, pc)}
   {gap_note}
   {action_note}
   <p class="qa-caveat">Timing is a window, not a date. What the chart says is
-  <em>when the conditions are right</em> — you still have to apply, ask, and
+  <em>when the conditions are right</em> &mdash; you still have to apply, ask, and
   move inside it. The remedy below is what tips those windows your way.</p>
   {upsell}
 </section>"""
