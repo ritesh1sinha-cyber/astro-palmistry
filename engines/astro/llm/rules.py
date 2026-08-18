@@ -452,8 +452,17 @@ def _prompt_extra(kind: str) -> str:
             "4. 'action': Practical, constructive astrological and lifestyle guidance in 2-3 complete sentences. When timing is distant or conditions require immediate relief, incorporate the chart-targeted remedies from the facts: provide practical steps, mantra jaap or donation for the obstructing planet (e.g. Ketu, Saturn, Rahu) to clear friction, and recommend daily rituals or strengthening practices for the supportive ruler (e.g. Mercury, Jupiter) to give the seeker immediate, actionable relief."
         ),
         "horary": (
-            "Fields: lead, verdict_line, why, action. "
-            "Horary is a moment chart — do not invent natal promise or new dates."
+            "Write a unified, natural-language Prashna (Horary) consultation response to the seeker's specific question. "
+            "Speak directly to the person as 'you' in warm, professional English like an experienced astrologer. "
+            "IMPORTANT RULES: "
+            "- STRICTLY FORBIDDEN WORDS: NEVER write 'Western', 'Vedic', 'KP', or 'Jamakkol'. Do not explain methods or compare systems. Refer ONLY to 'the chart', 'planetary significators', 'the planetary positions', or 'the active indicators'. "
+            "- Never make absolute guarantees or write phrases like 'you will' or 'definitely' — use professional consultation framing like 'the chart indicates...', 'conditions support...', 'a favorable window opens...'. "
+            "- Facts are authoritative — adhere strictly to verdict, label, confidence, allowed_planets, and allowed_dates. Never invent dates or unlisted planets. "
+            "Required fields in HoraryProse: "
+            "1. 'lead': A warm, natural 1-2 sentence lede addressing their specific question. "
+            "2. 'verdict_line': A direct 1-2 sentence consultation verdict (must reflect the label, e.g., 'The chart indicates favorable momentum for receiving a job offer this month.'). "
+            "3. 'why': The astrological basis in 2-3 sentences explaining the planetary indicators and aspects from the facts in clear English. "
+            "4. 'action': Practical, constructive guidance in 2-3 complete sentences incorporating the chart-targeted remedies from the facts (mantras, donations, practical first steps)."
         ),
         "palm": (
             "Return ConversationalPalmProse for a short palm reading. Use ONLY "
@@ -891,8 +900,19 @@ def allowed_months_from_facts(facts: Any) -> set[str]:
 
 
 def allowed_planets_from_facts(facts: Any) -> set[str]:
-    allowed = _fact_token_set(facts)
-    return {p for p in _PLANETS if p in allowed}
+    planets: set[str] = set()
+    raw = _fact_raw(facts).lower()
+    for p in _PLANETS:
+        if re.search(rf"\b{p}\b", raw):
+            planets.add(p)
+    if hasattr(facts, "model_dump"):
+        data = facts.model_dump(mode="json")
+    else:
+        data = facts or {}
+    if isinstance(data, dict):
+        for p in data.get("allowed_planets") or []:
+            planets.add(str(p).lower())
+    return planets
 
 
 _NAME_AS_SUBJECT = (
@@ -1195,11 +1215,14 @@ def check_prose(text: str, facts: Any = None, *, area: str = "") -> list[str]:
         # looking for a problem.
         if _PALM_BODILY.search(t):
             fails.append("palm_bodily_claim")
+    is_horary = (getattr(facts, "kind", "") == "horary" or str(getattr(facts, "kind", "") or "") == "horary")
     # Technical astrology is permitted only when the exact factor is grounded
     # in the authoritative facts. This keeps the report sounding like an
     # astrologer without allowing Qwen to invent a dasha, yoga or nakshatra.
     for term in _ASTRO_TECHNICAL_TERMS:
         if re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", low):
+            if is_horary and term in ("aspect", "transit", "retrograde", "house lord", "lordship"):
+                continue
             if term not in fact_raw.lower():
                 if term in _RAW_ASTRO_TERMS:
                     fails.append("classical_raw")
@@ -1213,13 +1236,13 @@ def check_prose(text: str, facts: Any = None, *, area: str = "") -> list[str]:
 
     if _REMEDY_INVENT.search(t):
         # Only allowed if the exact remedy token appears in approved_remedies
-        if "approved_remedies" not in fact_raw and "remedy" not in fact_raw.lower():
+        if "approved_remedies" not in fact_raw and "remedy" not in fact_raw.lower() and not is_horary:
             fails.append("invented_remedy")
         else:
             # still fail if gemstone/mantra words aren't in facts
             for m in _REMEDY_INVENT.finditer(t):
                 token = m.group(0).lower()
-                if token not in fact_raw.lower():
+                if token not in fact_raw.lower() and not (is_horary and token in ("mantra", "chant", "donate", "ritual", "remedy")):
                     fails.append("invented_remedy")
                     break
 
@@ -1235,7 +1258,11 @@ def check_prose(text: str, facts: Any = None, *, area: str = "") -> list[str]:
             fails.append(f"unexpected_year:{m}")
             break
 
-    if _DIGIT.search(t):
+    if is_horary:
+        if re.search(r"\b(western astrology|vedic astrology|kp system|kp number|jamakkol|prashna system|western chart|vedic chart)\b", low):
+            fails.append("system_name_leak")
+
+    if _DIGIT.search(t) and not is_horary:
         for ch in _DIGIT.findall(t):
             if ch not in fact_raw:
                 fails.append("unexpected_digit")
@@ -1258,13 +1285,12 @@ def check_prose(text: str, facts: Any = None, *, area: str = "") -> list[str]:
                 fails.append(f"unexpected_planet:{planet}")
                 break
 
-
     for sign in _SIGNS:
         if re.search(rf"\b{sign}\b", low) and sign not in allowed:
             fails.append(f"unexpected_sign:{sign}")
             break
 
-    if _HOUSE.search(t) and "house" not in fact_raw.lower():
+    if _HOUSE.search(t) and "house" not in fact_raw.lower() and not is_horary:
         fails.append("unexpected_house")
 
     if (area or "").lower() in ("health", "troubles", "wellbeing"):

@@ -2681,8 +2681,12 @@ def build_horary_facts(
     name: str = "",
     access: str = "free",
     report_id: str = "",
+    western_judgment: Optional[dict] = None,
+    vedic_customer: Optional[dict] = None,
 ) -> HoraryFacts:
     summary = summary or {}
+    wj = western_judgment or {}
+    vc = vedic_customer or {}
     lanes: list[HoraryLaneFact] = []
     for lane in ("vedic", "western"):
         block = (verdicts or {}).get(lane) or {}
@@ -2699,17 +2703,89 @@ def build_horary_facts(
             systems=[str(s)[:40] for s in list(systems)[:8]],
         ))
 
+    # Planets extraction
+    allowed_planets = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
+
+    # Dates extraction
+    allowed_dates: list[str] = []
+    timing_windows: list[str] = []
+    timing_items = wj.get("timing") or []
+    for item in timing_items:
+        if isinstance(item, (list, tuple)) and len(item) >= 2:
+            dt, lbl = item[0], item[1]
+            if hasattr(dt, "strftime"):
+                d_str = dt.strftime("%B %Y")
+                d_full = dt.strftime("%d %B %Y").lstrip("0")
+                for d_fmt in (d_str, d_full, dt.strftime("%b %Y"), dt.strftime("%d %b %Y").lstrip("0")):
+                    if d_fmt not in allowed_dates:
+                        allowed_dates.append(d_fmt)
+                timing_windows.append(f"{d_full}: {lbl}")
+    for tl in (vc.get("timing_lines") or []):
+        timing_windows.append(str(tl)[:120])
+
+    # Remedies extraction
+    remedy_text = ""
+    hindering_planet = ""
+    supportive_planet = ""
+    hindering_remedy = ""
+    supportive_remedy = ""
+    try:
+        from horary_answer import _blocking_planet, REMEDIES, GENERAL_REMEDY
+        blk = _blocking_planet(wj, summary.get("vedic") or {})
+        if blk:
+            hindering_planet = blk
+            rem = REMEDIES.get(blk, GENERAL_REMEDY)
+            hindering_remedy = f"Pacify {blk}: {rem.get('practical', '')} Mantra: {rem.get('mantra', '')}"
+            remedy_text = hindering_remedy
+        
+        asc = str(wj.get("asc_lord") or "")
+        if asc and asc != hindering_planet:
+            supportive_planet = asc
+            rem_s = REMEDIES.get(asc, {})
+            if rem_s:
+                supportive_remedy = f"Strengthen {asc}: {rem_s.get('practical', '')} Mantra: {rem_s.get('mantra', '')}"
+    except Exception as exc:
+        print(f"[build_horary_facts] remedy extraction failed: {exc}", flush=True)
+
+    asc_l = str(wj.get("asc_lord") or "")
+    q_l = str(wj.get("q_lord") or "")
+    perf = wj.get("perfection")
+    aspect_desc = ""
+    if isinstance(perf, dict) and perf.get("aspect"):
+        app = "applying" if perf.get("applying") else "separating"
+        aspect_desc = f"{perf.get('aspect')} ({app})"
+    
+    moon_desc = ""
+    if wj.get("moon_void"):
+        moon_desc = "Moon void of course"
+    elif isinstance(wj.get("moon_next"), dict) and wj["moon_next"].get("planet"):
+        moon_desc = f"Moon applies to {wj['moon_next']['planet']}"
+
     facts = HoraryFacts(
         first_name=_first_name(name),
         access="paid" if access == "paid" else "free",  # type: ignore[arg-type]
         question=(question or "")[:280],
         subject=str(summary.get("subject") or "")[:80],
+        area=str(summary.get("area") or wj.get("area") or "")[:40],
+        house=int(summary.get("house") or wj.get("house") or 0),
         label=str(summary.get("label") or "")[:80],
         confidence=_conf(summary.get("confidence") or "low"),  # type: ignore[arg-type]
         score=float(summary.get("score") or 0.0),
         contradicted=bool(summary.get("contradicted")),
         favourable=bool(summary.get("favourable")),
+        querent_planet=asc_l[:40],
+        quesited_planet=q_l[:40],
+        aspect_description=aspect_desc[:80],
+        moon_description=moon_desc[:80],
         lanes=lanes,
+        allowed_planets=allowed_planets[:12],
+        allowed_dates=allowed_dates[:24],
+        timing_windows=timing_windows[:6],
+        remedy_text=remedy_text[:400],
+        hindering_planet=hindering_planet[:40],
+        supportive_planet=supportive_planet[:40],
+        hindering_remedy=hindering_remedy[:250],
+        supportive_remedy=supportive_remedy[:250],
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
 

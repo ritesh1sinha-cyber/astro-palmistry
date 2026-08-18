@@ -170,9 +170,9 @@ def validate_prose_against_facts(prose: Any, facts: Any, *, area: str = "") -> l
         label = (_fget(facts, "label", "") or "").strip().lower()
         vl = (getattr(prose, "verdict_line", "") or "").lower()
         if label:
-            if "yes" in label and not re.search(r"\b(yes|support|favour|favor|lean|open)\b", vl):
+            if "yes" in label and not re.search(r"\b(yes|support|favour|favor|favourable|favorable|positive|promising|likely|likelihood|lean|open|clear|good)\b", vl):
                 errors.append("horary_label_mismatch")
-            elif "no" in label and not re.search(r"\b(no|caution|unlikely|does not favour|does not favor)\b", vl):
+            elif "no" in label and not re.search(r"\b(no|not|caution|unlikely|challenging|delay|difficult|does not favour|does not favor|blocks|resistance)\b", vl):
                 errors.append("horary_label_mismatch")
 
     # Stronger status grounding. The old gate only rejected words such as

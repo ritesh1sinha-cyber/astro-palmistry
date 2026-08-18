@@ -625,7 +625,9 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
         summary_preview = reconcile(verdicts)
         hfacts_paid = build_horary_facts(
             question=question, verdicts=verdicts,
-            summary=summary_preview, name=name, access="paid")
+            summary=summary_preview, name=name, access="paid",
+            western_judgment=western_judgment,
+            vedic_customer=vedic_customer)
         hfacts_free = project_for_access(hfacts_paid, "free")
         facts_payload = public_fact_payload(hfacts_paid)
         free_llm = humanize("horary", hfacts_free, access="free")
@@ -668,8 +670,8 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
             "asked": asked, "price": horary_price,
             "llm": llm_meta,
             "_facts": facts_payload,
-            "paidSections": ["The verdict — all four methods combined",
-                             "Which planets are in favour and which are working against you",
+            "paidSections": ["The verdict — unified planetary confluence",
+                             "Which planets are supporting you and which create friction",
                              "The timing — dated windows",
                              "The remedy — what tips this your way"],
             "teasers": {}}

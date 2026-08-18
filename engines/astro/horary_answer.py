@@ -541,7 +541,7 @@ def _blocking_planet(j: dict, vedic: dict) -> str:
 
 
 def _western_plain_block(j: dict, *, paid: bool = True) -> str:
-    """Western — in plain words, plus a short timing line when paid."""
+    """Foundational planetary dynamics, plus a short timing line when paid."""
     from western_horary_report import plain_western_parts
     asc_lord, q_lord = j.get("asc_lord", ""), j.get("q_lord", "")
     if not asc_lord:
@@ -567,7 +567,7 @@ def _western_plain_block(j: dict, *, paid: bool = True) -> str:
             )
     return f"""
 <section class="section western-plain">
-  <h2>Western — in plain words</h2>
+  <h2>Planetary dynamics & timeline</h2>
   <div class="card">
     <p style="margin:0 0 0.5rem 0;">{p['opener']}</p>
     <p style="margin:0 0 0.5rem 0;">{p['link']}</p>
@@ -592,12 +592,11 @@ def _human_horary_timing_line(text: str) -> str:
 
 
 def _vedic_plain_block(vedic_customer: dict, *, paid: bool = True) -> str:
-    """Vedic — the three classical systems, each in one line; timing and remedy
-    only when paid."""
+    """Momentum and planetary cross-checks; timing and remedy only when paid."""
     vc = vedic_customer or {}
-    systems = [("Vedic cross-check", vc.get("jamakkol")),
-               ("Traditional question check", vc.get("prashna")),
-               ("Specialist timing cross-check", vc.get("kp"))]
+    systems = [("Momentum check", vc.get("jamakkol")),
+               ("Prashna foundation", vc.get("prashna")),
+               ("Timing alignment", vc.get("kp"))]
     cls_for = {"YES": "up", "CONDITIONAL": "mixed", "NEUTRAL": "mixed", "NO": "down"}
     word_for = {"YES": "Favourable", "CONDITIONAL": "Conditional", "NEUTRAL": "Neutral", "NO": "Challenging"}
     cards = []
@@ -619,7 +618,7 @@ def _vedic_plain_block(vedic_customer: dict, *, paid: bool = True) -> str:
         timing_lines = vc.get("timing_lines") or []
         if timing_lines:
             timing_html = (
-                "<p class=\"eyebrow\" style=\"margin:10px 0 4px\">Timing (all three systems)</p>"
+                "<p class=\"eyebrow\" style=\"margin:10px 0 4px\">Key timing periods</p>"
                 f"<ul class=\"windows\">{''.join(f'<li>{_e(_human_horary_timing_line(t))}</li>' for t in timing_lines)}</ul>")
         strengthen = vc.get("strengthen_planets") or []
         pacify = vc.get("pacify_planets") or []
@@ -632,7 +631,7 @@ def _vedic_plain_block(vedic_customer: dict, *, paid: bool = True) -> str:
                 + "</p>")
     return f"""
 <section class="section vedic-plain">
-  <h2>Vedic — three classical systems</h2>
+  <h2>Planetary cross-checks & momentum</h2>
   {''.join(cards)}
   {timing_html}
   {remedy_html}
@@ -667,15 +666,14 @@ def _locked_block(*, price: int, n_windows: int, has_remedy: bool) -> str:
         "When this moves, and when it does not.")
     rows = [
         ("The verdict",
-         "Where Western and all three Vedic systems land together — one answer, "
-         "and how sure it is."),
-        ("Planets in favour, planets against",
-         "Which planets are carrying this question and which are blocking it."),
+         "Where the classical planetary indicators land together — one clear answer and timeline."),
+        ("Planets supporting and planets with friction",
+         "Which planets are carrying this question and which need remedy support."),
         ("Timing", timing_teaser),
     ]
     if has_remedy:
         rows.append(("The remedy",
-                     "The one planet the pressure sits with, and what settles it."))
+                     "The primary planet where pressure sits, and what settles it."))
     items = "".join(
         f'<div class="when locked-inline" style="margin:8px 0">'
         f'<span class="lockicon">•</span> <strong>{_e(title)}</strong> — {_e(teaser)}'
@@ -687,7 +685,7 @@ def _locked_block(*, price: int, n_windows: int, has_remedy: bool) -> str:
   <div class="card">{items}</div>
   <div class="buy">
     <h3>The answer itself</h3>
-    <p>Three methods have read your question. Unlock what they add up to.</p>
+    <p>Multiple classical methods have read your question. Unlock what they add up to.</p>
     <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>"""
@@ -714,19 +712,19 @@ def _confluence_block(r: dict, j: dict, vedic_customer: dict, remedy_html: str,
     against = [p for p, v in net.items() if v < 0][:5]
 
     agree_line = (
-        "Western and all three Vedic systems were weighed together for this verdict; "
-        + ("they pointed in opposite directions, so the confidence below is deliberately capped."
+        "Multiple classical astrological indicators were weighed together for this verdict — "
+        + ("the indicators show mixed currents requiring active navigation."
            if r["contradicted"] else
-           "they broadly agreed on direction.")
+           "the chart indicators show consistent agreement on this direction.")
     )
     planets_html = ""
     if favour or against:
         planets_html = (
-            f"<p><strong>Planets in favour:</strong> {_e(', '.join(favour)) if favour else 'none stand out clearly'}</p>"
-            f"<p><strong>Planets working against:</strong> {_e(', '.join(against)) if against else 'none stand out clearly'}</p>")
+            f"<p><strong>Planets supporting you:</strong> {_e(', '.join(favour)) if favour else 'none stand out clearly'}</p>"
+            f"<p><strong>Planets creating friction:</strong> {_e(', '.join(against)) if against else 'none stand out clearly'}</p>")
     return f"""
 <section class="section final-confluence">
-  <h2>Final verdict — Western + Vedic together</h2>
+  <h2>Unified planetary confluence</h2>
   <div class="card">
     <p style="margin:0 0 0.6rem 0;">{agree_line}</p>
     {planets_html}
@@ -765,11 +763,9 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
 
     if r["contradicted"]:
         conf_line = (
-            "The two methods I use came out on opposite sides of this one. "
-            "I have gone with the reading that carries more weight for a "
-            "question asked in the moment, and dropped the confidence to match "
-            "— because a split chart is a real finding, not something to paper "
-            "over.")
+            "The planetary indicators show a finely balanced chart with mixed "
+            "currents — the confidence is set to reflect that this requires active "
+            "effort and careful timing rather than an automatic outcome.")
 
     western_html = _western_plain_block(j, paid=paid)
     vedic_html = _vedic_plain_block(vc, paid=paid)
@@ -834,8 +830,7 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
             why_line = (
                 f'<p class="pred-why"><b>Why:</b> {_e(llm_why)}</p>'
                 if llm_why else
-                f"<p class=\"pred-why\"><b>Why:</b> Western read {_e(j.get('verdict','mixed'))}; "
-                f"Vedic {_e(r.get('label','mixed'))}; confidence {_e(r.get('confidence','moderate'))}.</p>"
+                f"<p class=\"pred-why\"><b>Why:</b> The moment chart reflects {_e(r.get('label','a mixed situation'))} with {_e(r.get('confidence','moderate'))} confidence.</p>"
             )
             action_line = (
                 f'<p class="qa-action">{_e(llm_action)}</p>' if llm_action else ""
@@ -849,8 +844,7 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
         else:
             verdict_block = (
                 f"<h1 class=\"verdict-line\">{headline}</h1>"
-                f"<p class=\"pred-why\"><b>Why:</b> Western read {_e(j.get('verdict','mixed'))}; "
-                f"Vedic {_e(r.get('label','mixed'))}; confidence {_e(r.get('confidence','moderate'))}.</p>"
+                f"<p class=\"pred-why\"><b>Why:</b> The moment chart reflects {_e(r.get('label','a mixed situation'))} with {_e(r.get('confidence','moderate'))} confidence.</p>"
                 f"<p class=\"confidence\"><strong>How sure is this?</strong> {conf_line}</p>")
         verdict_flag = ("up" if r["favourable"] else
                         "down" if r["favourable"] is False else "mixed")
@@ -861,8 +855,7 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
         else:
             opening = (
                 f"<p class=\"lede\">{greeting}you asked about {subject}. "
-                f"Four classical methods read this chart independently — Western horary "
-                f"and three Vedic systems. Here is what each one found on its own.</p>")
+                f"Multiple classical methods read this chart independently. Here is what they found.</p>")
         verdict_block = ""
         lead_attrs = ""
 

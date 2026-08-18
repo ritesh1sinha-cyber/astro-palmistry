@@ -534,13 +534,26 @@ class HoraryFacts(BaseModel):
     access: Literal["free", "paid"] = "free"
     question: str = Field(default="", max_length=280)
     subject: str = ""
+    area: str = ""
+    house: int = 0
     label: str = ""
     confidence: Confidence = "low"
     score: float = 0.0
     contradicted: bool = False
     favourable: bool = False
+    querent_planet: str = ""
+    quesited_planet: str = ""
+    aspect_description: str = ""
+    moon_description: str = ""
     lanes: list[HoraryLaneFact] = Field(default_factory=list)
-    allowed_dates: list[str] = Field(default_factory=list, max_length=8)
+    allowed_planets: list[str] = Field(default_factory=list, max_length=12)
+    allowed_dates: list[str] = Field(default_factory=list, max_length=24)
+    timing_windows: list[str] = Field(default_factory=list, max_length=6)
+    remedy_text: str = Field(default="", max_length=400)
+    hindering_planet: str = Field(default="", max_length=40)
+    supportive_planet: str = Field(default="", max_length=40)
+    hindering_remedy: str = Field(default="", max_length=250)
+    supportive_remedy: str = Field(default="", max_length=250)
 
 
 class PalmAspectFacts(BaseModel):
@@ -801,10 +814,10 @@ class QuestionProse(BaseModel):
 
 class HoraryProse(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    lead: str = Field(..., min_length=8, max_length=280)
-    verdict_line: str = Field(..., min_length=8, max_length=220)
-    why: str = Field(default="", max_length=280)
-    action: str = Field(default="", max_length=180)
+    lead: str = Field(..., min_length=8, max_length=350)
+    verdict_line: str = Field(..., min_length=8, max_length=550)
+    why: str = Field(default="", max_length=350)
+    action: str = Field(default="", max_length=450)
 
 
 class PalmAspectProse(BaseModel):
