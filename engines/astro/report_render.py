@@ -671,8 +671,8 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
             "llm": llm_meta,
             "_facts": facts_payload,
             "paidSections": ["The verdict — unified planetary confluence",
-                             "Which planets are supporting you and which create friction",
-                             "The timing — dated windows",
+                             "Planetary dynamics & supporting influences",
+                             "Key timing & dated windows",
                              "The remedy — what tips this your way"],
             "teasers": {}}
     return free, paid, meta

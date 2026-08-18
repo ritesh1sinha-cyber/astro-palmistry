@@ -428,10 +428,10 @@ def _fact(label: str, value: str, cls: str = "") -> str:
 
 def _jamakkol_plain_text(jam: dict, jk: dict) -> str:
     return {
-        "YES": "this old Tamil timing method gives a clean green light.",
-        "CONDITIONAL": "this Tamil timing method says it can work, but not without some friction along the way.",
-        "NO": f"this Tamil timing method points to obstacles — {jk.get('verdict_reason', '').lower() or 'the path is blocked for now'}.",
-        "NEUTRAL": "this Tamil timing method is non-committal — neither a clear yes nor no.",
+        "YES": "the immediate planetary momentum gives a clean green light.",
+        "CONDITIONAL": "the planetary momentum indicates success is achievable with proactive effort.",
+        "NO": f"the planetary momentum points to obstacles — {jk.get('verdict_reason', '').lower() or 'temporary blockages exist'}.",
+        "NEUTRAL": "the planetary momentum is currently balanced — neither a clear yes nor no.",
     }[jam["label"]]
 
 
@@ -446,13 +446,13 @@ def _prashna_plain_text(pra: dict) -> str:
 
 def _kp_plain_text(kp: dict) -> str:
     if not kp.get("available"):
-        return "no KP number was supplied, so this lane is not available for this reading."
+        return "the secondary timing factor was not active for this reading."
     sub = kp["sub_lord"]
     return {
-        "YES": f"the single deciding planet in KP ({sub}) is pulling for you, and it's one of today's ruling planets.",
-        "CONDITIONAL": f"the deciding planet in KP ({sub}) is pulled both ways — it promises something but with strings attached.",
-        "NO": f"the deciding planet in KP ({sub}) is leaning against the matter.",
-        "NEUTRAL": f"the deciding planet in KP ({sub}) doesn't clearly favour either side.",
+        "YES": f"the key timing planet ({sub}) is supporting you and aligns with current ruling significators.",
+        "CONDITIONAL": f"the key timing planet ({sub}) shows mixed influences — positive prospects with necessary conditions.",
+        "NO": f"the key timing planet ({sub}) creates resistance for the matter.",
+        "NEUTRAL": f"the key timing planet ({sub}) is neutrally positioned.",
     }[kp["label"]]
 
 

@@ -540,44 +540,6 @@ def _blocking_planet(j: dict, vedic: dict) -> str:
     return j.get("q_lord") or j.get("asc_lord") or ""
 
 
-def _western_plain_block(j: dict, *, paid: bool = True) -> str:
-    """Foundational planetary dynamics, plus a short timing line when paid."""
-    from western_horary_report import plain_western_parts
-    asc_lord, q_lord = j.get("asc_lord", ""), j.get("q_lord", "")
-    if not asc_lord:
-        return ""
-    p = plain_western_parts(j, asc_lord, q_lord)
-    timing_html = ""
-    if paid:
-        timing = j.get("timing") or []
-        if timing:
-            items = "".join(
-                f"<li><b>{d.strftime('%d %b %Y').lstrip('0')}</b> — {_e(label)}</li>"
-                for d, label, _plain in timing[:2])
-            timing_html = (f"<p class=\"eyebrow\" style=\"margin:10px 0 4px\">Timing</p>"
-                           f"<ul class=\"windows\">{items}</ul>")
-        else:
-            note = j.get("requested_horizon_note") or (
-                "No single dated window stands out; read this as a process rather "
-                "than one calendar day."
-            )
-            timing_html = (
-                f'<p class="eyebrow" style="margin:10px 0 4px">Timing</p>'
-                f'<p>{_e(note)}</p>'
-            )
-    return f"""
-<section class="section western-plain">
-  <h2>Planetary dynamics & timeline</h2>
-  <div class="card">
-    <p style="margin:0 0 0.5rem 0;">{p['opener']}</p>
-    <p style="margin:0 0 0.5rem 0;">{p['link']}</p>
-    <p style="margin:0 0 0.5rem 0;">{p['moon']}</p>
-    <p style="margin:0 0 0.7rem 0;color:var(--muted);">{p['confline']}</p>
-    {timing_html}
-  </div>
-</section>"""
-
-
 def _human_horary_timing_line(text: str) -> str:
     """Remove specialist period jargon from customer-facing horary timing."""
     raw = str(text or "").strip()
@@ -589,53 +551,6 @@ def _human_horary_timing_line(text: str) -> str:
     raw = re.sub(r"\bRuling Planets\b", "key timing indicators", raw, flags=re.I)
     raw = re.sub(r"\bsub-lord\b", "specialist timing factor", raw, flags=re.I)
     return raw
-
-
-def _vedic_plain_block(vedic_customer: dict, *, paid: bool = True) -> str:
-    """Momentum and planetary cross-checks; timing and remedy only when paid."""
-    vc = vedic_customer or {}
-    systems = [("Momentum check", vc.get("jamakkol")),
-               ("Prashna foundation", vc.get("prashna")),
-               ("Timing alignment", vc.get("kp"))]
-    cls_for = {"YES": "up", "CONDITIONAL": "mixed", "NEUTRAL": "mixed", "NO": "down"}
-    word_for = {"YES": "Favourable", "CONDITIONAL": "Conditional", "NEUTRAL": "Neutral", "NO": "Challenging"}
-    cards = []
-    for name, sub in systems:
-        if not sub:
-            continue
-        if name == "Specialist timing check" and not sub.get("available", True):
-            continue
-        label = sub.get("label", "NEUTRAL")
-        cards.append(
-            f"<div class=\"card\" style=\"margin-bottom:8px;\">"
-            f"<span class=\"pill {cls_for.get(label,'mixed')}\">{word_for.get(label,'Conditional')}</span> "
-            f"<strong>{_e(name)}</strong> — {sub.get('plain','')}</div>")
-    if not cards:
-        return ""
-    timing_html = ""
-    remedy_html = ""
-    if paid:
-        timing_lines = vc.get("timing_lines") or []
-        if timing_lines:
-            timing_html = (
-                "<p class=\"eyebrow\" style=\"margin:10px 0 4px\">Key timing periods</p>"
-                f"<ul class=\"windows\">{''.join(f'<li>{_e(_human_horary_timing_line(t))}</li>' for t in timing_lines)}</ul>")
-        strengthen = vc.get("strengthen_planets") or []
-        pacify = vc.get("pacify_planets") or []
-        if strengthen or pacify:
-            remedy_html = (
-                "<p class=\"eyebrow\" style=\"margin:10px 0 4px\">Remedy</p>"
-                f"<p><strong>Strengthen:</strong> {_e(', '.join(strengthen)) or '—'}"
-                + (f" &nbsp;·&nbsp; <strong>Pacify:</strong> {_e(', '.join(pacify))}"
-                   if pacify else "")
-                + "</p>")
-    return f"""
-<section class="section vedic-plain">
-  <h2>Planetary cross-checks & momentum</h2>
-  {''.join(cards)}
-  {timing_html}
-  {remedy_html}
-</section>"""
 
 
 def _western_favour_against(j: dict) -> tuple[list[str], list[str]]:
@@ -657,11 +572,103 @@ def _western_favour_against(j: dict) -> tuple[list[str], list[str]]:
     return favour, against
 
 
+def _planetary_dynamics_block(r: dict, j: dict, vc: dict) -> str:
+    """Planetary dynamics and supporting vs friction factors."""
+    from western_horary_report import plain_western_parts
+    asc_lord, q_lord = j.get("asc_lord", ""), j.get("q_lord", "")
+    p_parts = plain_western_parts(j, asc_lord, q_lord) if asc_lord else {}
+
+    w_fav, w_against = _western_favour_against(j)
+    net: dict[str, int] = {}
+    for p in w_fav:
+        net[p] = net.get(p, 0) + 1
+    for p in vc.get("favour_planets") or []:
+        net[p] = net.get(p, 0) + 1
+    for p in w_against:
+        net[p] = net.get(p, 0) - 1
+    for p in vc.get("against_planets") or []:
+        net[p] = net.get(p, 0) - 1
+
+    favour = [p for p, v in net.items() if v > 0][:5]
+    against = [p for p, v in net.items() if v < 0][:5]
+
+    agree_line = (
+        "Multiple classical planetary indicators were weighed together for this reading — "
+        + ("the indicators show mixed currents requiring active navigation and careful timing."
+           if r["contradicted"] else
+           "the chart indicators show consistent alignment on this direction.")
+    )
+
+    planets_html = ""
+    if favour or against:
+        planets_html = (
+            f"<div style='margin-top:12px;padding-top:10px;border-top:1px solid var(--line);'>"
+            f"<p style='margin:4px 0'><strong>Planets supporting you:</strong> {_e(', '.join(favour)) if favour else 'None stand out strongly'}</p>"
+            f"<p style='margin:4px 0'><strong>Planets creating friction:</strong> {_e(', '.join(against)) if against else 'None stand out strongly'}</p>"
+            f"</div>")
+
+    parts_html = ""
+    if p_parts:
+        parts_html = (
+            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('opener', '')}</p>"
+            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('link', '')}</p>"
+            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('moon', '')}</p>"
+        )
+
+    return f"""
+<section class="section planetary-dynamics">
+  <h2>Planetary dynamics & supporting influences</h2>
+  <div class="card">
+    {parts_html}
+    <p style="margin:0 0 0.6rem 0;">{agree_line}</p>
+    {planets_html}
+  </div>
+</section>"""
+
+
+def _timing_block(j: dict, vc: dict, *, paid: bool = True) -> str:
+    """Consolidated dated windows and trigger periods."""
+    if not paid:
+        return ""
+    timing = j.get("timing") or []
+    timing_lines = vc.get("timing_lines") or []
+    
+    items = []
+    if timing:
+        for d, label, _plain in timing[:3]:
+            items.append(f"<li><b>{d.strftime('%d %b %Y').lstrip('0')}</b> — {_e(label)}</li>")
+    
+    for tl in timing_lines[:2]:
+        items.append(f"<li>{_e(_human_horary_timing_line(tl))}</li>")
+
+    if not items:
+        note = j.get("requested_horizon_note") or (
+            "No single dated window stands out; read this as a gradual process rather than one calendar day."
+        )
+        return f"""
+<section class="section timing-windows">
+  <h2>Key timing & dated windows</h2>
+  <div class="card">
+    <p>{_e(note)}</p>
+  </div>
+</section>"""
+
+    return f"""
+<section class="section timing-windows">
+  <h2>Key timing & dated windows</h2>
+  <div class="card">
+    <ul class="windows">
+      {''.join(items)}
+    </ul>
+  </div>
+</section>"""
+
+
 def _locked_block(*, price: int, n_windows: int, has_remedy: bool) -> str:
     """Free view: section headings with one-line teasers and an unlock CTA."""
     timing_teaser = (
         f"{n_windows} dated window{'s' if n_windows != 1 else ''} "
-        "from the Western chart, plus the Vedic trigger periods."
+        "and primary planetary trigger periods."
         if n_windows else
         "When this moves, and when it does not.")
     rows = [
@@ -685,52 +692,10 @@ def _locked_block(*, price: int, n_windows: int, has_remedy: bool) -> str:
   <div class="card">{items}</div>
   <div class="buy">
     <h3>The answer itself</h3>
-    <p>Multiple classical methods have read your question. Unlock what they add up to.</p>
+    <p>Multiple classical indicators have read your question. Unlock what they add up to.</p>
     <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
   </div>
 </section>"""
-
-
-def _confluence_block(r: dict, j: dict, vedic_customer: dict, remedy_html: str,
-                      remedy_planet: str = "") -> str:
-    vc = vedic_customer or {}
-    w_fav, w_against = _western_favour_against(j)
-    net: dict[str, int] = {}
-    for p in w_fav:
-        net[p] = net.get(p, 0) + 1
-    for p in vc.get("favour_planets") or []:
-        net[p] = net.get(p, 0) + 1
-    for p in w_against:
-        net[p] = net.get(p, 0) - 1
-    for p in vc.get("against_planets") or []:
-        net[p] = net.get(p, 0) - 1
-    # The remedy names one planet as where the pressure sits — never show that
-    # same planet as "in favour" a few lines above the remedy that targets it.
-    if remedy_planet:
-        net[remedy_planet] = min(net.get(remedy_planet, 0), -1)
-    favour = [p for p, v in net.items() if v > 0][:5]
-    against = [p for p, v in net.items() if v < 0][:5]
-
-    agree_line = (
-        "Multiple classical astrological indicators were weighed together for this verdict — "
-        + ("the indicators show mixed currents requiring active navigation."
-           if r["contradicted"] else
-           "the chart indicators show consistent agreement on this direction.")
-    )
-    planets_html = ""
-    if favour or against:
-        planets_html = (
-            f"<p><strong>Planets supporting you:</strong> {_e(', '.join(favour)) if favour else 'none stand out clearly'}</p>"
-            f"<p><strong>Planets creating friction:</strong> {_e(', '.join(against)) if against else 'none stand out clearly'}</p>")
-    return f"""
-<section class="section final-confluence">
-  <h2>Unified planetary confluence</h2>
-  <div class="card">
-    <p style="margin:0 0 0.6rem 0;">{agree_line}</p>
-    {planets_html}
-  </div>
-</section>
-{remedy_html}"""
 
 
 def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
@@ -767,8 +732,8 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
             "currents — the confidence is set to reflect that this requires active "
             "effort and careful timing rather than an automatic outcome.")
 
-    western_html = _western_plain_block(j, paid=paid)
-    vedic_html = _vedic_plain_block(vc, paid=paid)
+    dynamics_html = _planetary_dynamics_block(r, j, vc) if paid else ""
+    timing_html = _timing_block(j, vc, paid=paid) if paid else ""
 
     # An unfavourable answer ALWAYS carries a remedy (paid view only).
     remedy_html = ""
@@ -797,7 +762,6 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
 
     n_windows = len(j.get("timing") or [])
     if paid:
-        confluence_html = _confluence_block(r, j, vc, remedy_html, remedy_planet)
         tail_html = f"""
 <section class="section upsell">
   <h2>This answered one question. Your chart answers the rest.</h2>
@@ -810,7 +774,6 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
   gives you dated windows rather than one yes or no — ₹{full_report_price}.</p>
 </section>"""
     else:
-        confluence_html = ""
         tail_html = _locked_block(price=horary_price, n_windows=n_windows,
                                   has_remedy=has_remedy)
 
@@ -868,9 +831,9 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
   {opening}
   {verdict_block}
 </section>
-{western_html}
-{vedic_html}
-{confluence_html}
+{dynamics_html}
+{timing_html}
+{remedy_html}
 {tail_html}
 </article></body></html>"""
 
@@ -878,8 +841,6 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                "score": r["score"], "contradicted": r["contradicted"],
                "favourable": r["favourable"], "weights": r["weights"],
                "subject": subject}
-    # Horary has its own legacy Western/Vedic prose builders, so make the same
-    # final customer boundary mandatory here as for natal/palm reports.
     from qa_checks.final_customer_boundary import finalize_customer_html
     html = finalize_customer_html(html, strict=True)
     return html, summary
