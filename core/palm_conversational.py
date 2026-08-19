@@ -321,41 +321,65 @@ def _timeline(conf: dict, age: int, *, ahead: bool) -> str:
     return f'<ol class="timeline">{rows}</ol>'
 
 
-def _clean_contrast_label(feature: str, sign: str) -> str:
+def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True) -> str:
     f = str(feature or "").strip()
     s = str(sign or "").strip()
     f_low = f.lower()
     s_low = s.lower()
     if "mercury" in f_low:
-        return "<b>Mercury Mount (Speech & Trade)</b> — prominent pad denoting sharp commercial communication and negotiation"
+        if is_active:
+            return "<b>Commercial Acumen &amp; Speech</b> — You have developed sharp communication skills, negotiation confidence, and practical business judgment."
+        return "<b>Innate Inquisitiveness</b> — Natural conversational curiosity and thoughtful observational instinct."
     if "venus" in f_low:
-        return "<b>Venus Mount (Vitality & Warmth)</b> — full, denoting physical vitality, warmth, and generous affection"
+        if is_active:
+            return "<b>Warmth &amp; Emotional Vitality</b> — Deepened capacity for warmth, generous devotion, and grounded interpersonal loyalty."
+        return "<b>Innate Emotional Nature</b> — Core sensitive baseline and natural responsiveness to family warmth."
     if "saturn" in f_low:
-        return "<b>Saturn Mount (Duty & Discipline)</b> — well-formed, reflecting patience, endurance, and serious responsibility"
+        if is_active:
+            return "<b>Duty &amp; Steadfast Discipline</b> — Proven endurance, patience under pressure, and reliable professional responsibility."
+        return "<b>Innate Caution &amp; Seriousness</b> — Early predisposition toward prudence, duty, and careful forethought."
     if "jupiter" in f_low:
-        return "<b>Jupiter Mount (Leadership & Vision)</b> — elevated, indicating ambition, executive dignity, and pride"
+        if is_active:
+            return "<b>Leadership &amp; Executive Ambition</b> — Active cultivation of authority, dignified self-respect, and strategic vision."
+        return "<b>Innate Inner Ideals</b> — Natural pride, high personal standards, and quiet self-worth."
     if "apollo" in f_low or "sun" in f_low:
-        return "<b>Apollo Mount (Creativity & Acclaim)</b> — raised, indicating artistic taste, creative display, and public merit"
+        if is_active:
+            return "<b>Creative Merit &amp; Recognition</b> — Applied creative skill, polished personal taste, and earning public appreciation."
+        return "<b>Innate Aesthetic Sense</b> — Natural appreciation for beauty, balance, and creative expression."
     if "mars" in f_low:
-        if "flat" in s_low:
-            return "<b>Mars Plains (Stamina & Temper)</b> — moderate, denoting diplomatic calm and avoiding unnecessary conflict"
-        return "<b>Mars Mount (Courage & Stamina)</b> — full, denoting resilience, physical courage, and grit under pressure"
+        if is_active:
+            return "<b>Courage &amp; Practical Grit</b> — Hard-earned resilience, constitutional stamina, and standing firm through adversity."
+        return "<b>Innate Inner Fire</b> — Underlying fighting spirit and baseline emotional stamina."
     if "luna" in f_low or "moon" in f_low:
-        return "<b>Moon Mount (Imagination & Intuition)</b> — developed, denoting rich imaginative breadth and intuitive depth"
+        if is_active:
+            return "<b>Applied Intuition &amp; Strategy</b> — Channeling imaginative breadth into realistic, actionable future plans."
+        return "<b>Innate Restless Imagination</b> — Rich inner world, love for new horizons, and vivid instinctive impressions."
     if "life line" in f_low:
-        return "<b>Life Line (Vitality Arc)</b> — deep and smoothly traced, indicating strong constitutional endurance"
+        if is_active:
+            return "<b>Active Vitality &amp; Stamina</b> — Cultivated physical resilience and steady pacing throughout daily work."
+        return "<b>Inborn Constitution</b> — Baseline physical constitution and ancestral vitality."
     if "head line" in f_low:
-        return "<b>Head Line (Mental Clarity)</b> — clearly incised, reflecting practical logic, realism, and structured decision-making"
+        if is_active:
+            return "<b>Practical Reasoning &amp; Focus</b> — Clear, structured decision-making sharpened through real-world experience."
+        return "<b>Innate Intellectual Style</b> — Natural mental agility and instinctive problem-solving."
     if "fate line" in f_low:
-        return "<b>Fate Line (Vocational Drive)</b> — distinct trajectory, indicating purposeful career direction and independent focus"
+        if is_active:
+            return "<b>Vocational Trajectory</b> — Distinct, purposeful career direction forged through independent choices and focus."
+        return "<b>Innate Vocational Baseline</b> — Early adaptability before taking definitive command of your destiny."
     if "heart line" in f_low:
-        return "<b>Heart Line (Emotional Integrity)</b> — deeply etched, reflecting steadfast loyalty and deep emotional investment"
+        if is_active:
+            return "<b>Emotional Integrity &amp; Devotion</b> — Mature, steadfast loyalty and intentional investment in meaningful relationships."
+        return "<b>Innate Emotional Receptivity</b> — Baseline sensitivity and heartfelt connection with close companions."
     if "thumb" in f_low:
         if "reasoning" in s_low or "logic" in s_low:
-            return "<b>Thumb Proportions (Logic & Reasoning)</b> — balanced structure supporting analytical deliberation"
+            if is_active:
+                return "<b>Strategic Deliberation</b> — Methodical reasoning and weighing options before taking major action."
+            return "<b>Innate Analytical Nature</b> — Instinctive logical balance and thoughtful hesitation."
         if "short" in s_low or "receptive" in s_low:
-            return "<b>Thumb Proportions (Adaptability)</b> — flexible, feeling-led nature that responds quickly to real-time situations"
-        return "<b>Thumb Proportions (Willpower)</b> — firm structure denoting strong determination and follow-through"
+            return "<b>Adaptive Flexibility</b> — Agile, feeling-led responsiveness that adjusts quickly to changing circumstances."
+        if is_active:
+            return "<b>Executive Willpower &amp; Drive</b> — Strong follow-through, boundary setting, and decisive execution."
+        return "<b>Innate Determination</b> — Inborn tenacity that anchors your core convictions."
     return f"<b>{_e(f)}</b> — {_e(s)}"
 
 
@@ -446,8 +470,7 @@ def render(
     agree: set[str] = set()
     if other_reading:
         shared = {r.key for r in dom_reading.all()} & {r.key for r in other_reading.all()}
-        agree = {k for k in shared
-                 if "_no_" not in k and not k.startswith(("hand_type", "thumb", "index", "ring"))}
+        agree = {k for k in shared if "_no_" not in k}
 
     personality = str(prose.get("personality") or "").strip()
     current_phase = str(prose.get("current_phase") or "").strip()
@@ -534,7 +557,10 @@ def render(
                 ahead, nav="Future Roadmap"))
 
         # 8 — Innate vs. Made (Left vs. Right Hand Confluence)
-        contrast = ""
+        contrast = (f'<p style="margin:0 0 12px 0;line-height:1.6;color:#2c3140;">'
+                    f'Your passive hand (<b>{other_key.title()}</b>) represents your inborn baseline and ancestral potential, '
+                    f'while your active hand (<b>{dom_key.title()}</b>) reflects what you have achieved and cultivated through conscious choices. '
+                    f'Comparing both reveals your personal evolution:</p>')
         if hand_note:
             contrast += f"<p>{_e(hand_note)}</p>"
         if other_reading:
@@ -546,12 +572,12 @@ def render(
             if only_innate:
                 cols += ('<div class="pv-col"><div class="ev-label">Inborn Potential (Passive Hand: '
                          f'{_e(other_key.title())})</div><ul class="pv-plain">'
-                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign)}</li>"
+                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign, is_active=False)}</li>"
                                    for r in only_innate) + "</ul></div>")
             if only_active:
                 cols += ('<div class="pv-col"><div class="ev-label">Cultivated Strengths (Active Hand: '
                          f'{_e(dom_key.title())})</div><ul class="pv-plain">'
-                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign)}</li>"
+                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign, is_active=True)}</li>"
                                    for r in only_active) + "</ul></div>")
             if cols:
                 contrast += f'<div class="card pv-cols">{cols}</div>'
@@ -645,14 +671,13 @@ def render(
                 "Synthesized analysis combining line trajectories, planetary mount elevations, and auspicious markings.",
                 "".join(rows), nav="Life Areas"))
 
-        # 10 — Master Astrological Upayas & Workings
+        # 10 — Master Astrological Upayas
         try:
-            from .palm_cards import _remedies, _workings
+            from .palm_cards import _remedies
             source, block = _remedy_source(raw, dom_key)
             remedies = _remedies(block, conf, paid=True)
             if remedies:
                 blocks.append(remedies)
-            blocks.append(_workings(raw))
         except Exception:  # noqa: BLE001
             pass
     else:
@@ -666,9 +691,6 @@ def render(
                 anchor_stage + f'<p class="sec-note" style="margin-top:12px;font-style:italic;">This anchor point calibrates your hand timeline. Your complete chronological life story, lived milestones, and upcoming future age chapters (ages {age}+) are unlocked in the full reading.</p>',
                 nav="Validation Point"))
 
-        n_points = sum(
-            len(_filter_customer_numbered(_hand_for_customer_filter(raw, h)))
-            for h in ("left", "right"))
         ahead_n = len([p for p in (conf.get("predictions") or [])
                        if isinstance(p.get("age"), int) and p["age"] > age])
         blocks.append(f"""
@@ -700,12 +722,6 @@ def render(
   <div class="qa-wlabel">Actionable Hand Remedies (Mudras & Daily Habits)</div>
   <p class="blurred">Targeted supportive practices, mudras, and habit shifts keyed to your hand's specific care points.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Hand remedies are locked.</b> Unlock for practical supportive habits tailored to your lines.</p>
-</div>
-
-<div class="qa-window locked" style="margin:16px 0;">
-  <div class="qa-wlabel">Detailed Line-by-Line Mathematical Working</div>
-  <p class="blurred">Point-by-point derivation and classical book citations behind all {n_points} numbered findings on both hands.</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Detailed working is locked.</b> Unlock for the complete line-by-line derivation.</p>
 </div>
 
 <section class="buy" id="unlock" style="margin-top:20px;">
