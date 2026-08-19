@@ -1065,56 +1065,29 @@ def render(
             "and the temporary period you are moving through."
         )
 
-    family_html = ""
-    if family_note:
-        labels = _family_labels(len(family_note))
-        limit = len(family_note) if paid else min(2, len(family_note))
-        items = []
-        for i, line in enumerate(family_note[:limit]):
-            label = labels[i] if i < len(labels) else "Family"
-            items.append(
-                f'<div class="family-item"><div class="family-label">{_e(label)}</div>'
-                f"<p>{_e(line)}</p></div>"
-            )
-        more = (
-            ""
-            if paid or len(family_note) <= limit
-            else '<p class="sec-note">The full reading also covers the remaining '
-            "family relationships and the home environment.</p>"
-        )
-        family_html = f"""
-        <section class="conv-block family-block">
-          <div class="section-kicker">FAMILY & HOME</div>
-          <h2>The people and home that shaped you</h2>
-          <p class="sec-note">These are chart-derived patterns, not facts we were given about your family.</p>
-          {"".join(items)}
-          {more}
-        </section>
+    mind_sub_html = ""
+    if mind_now:
+        mind_sub_html = f"""
+        <div style="margin-top:18px;border-top:1px solid #e0ded8;padding-top:14px">
+          <div style="font-size:0.7rem;letter-spacing:.12em;text-transform:uppercase;color:#8a6a1f;font-weight:700;margin-bottom:6px">WHAT MAY BE OCCUPYING YOUR MIND</div>
+          <p class="sec-note" style="margin-bottom:8px">These are chart-activated possibilities, not private facts we assume about you.</p>
+          <ul class="conv-mind">
+            {"".join(f"<li>{_e(x)}</li>" for x in mind_now[:3])}
+          </ul>
+        </div>
         """
 
     current_html = ""
-    if current_phase or why_now or md_lord or authoritative_timing_text:
+    if current_phase or why_now or md_lord or authoritative_timing_text or mind_now:
         current_html = f"""
         <section class="conv-block current-block">
           <div class="section-kicker">YOUR CURRENT CHAPTER</div>
-          <h2>Where life is putting its weight right now</h2>
+          <h2 id="sec-your-current-chapter">Where life is putting its weight right now</h2>
           {f'<p class="fact-lead"><span class="ev-label">Current timing</span> {_e(authoritative_timing_text)}</p>' if authoritative_timing_text else ""}
           {f'<p class="lead-reading">{_e(current_phase)}</p>' if current_phase else ""}
           {f'<div class="why-now"><span class="ev-label">Why this period feels this way</span><p>{_e(why_now)}</p></div>' if why_now else ""}
           {f'<p class="hardest">{_e(hardest)}</p>' if hardest else ""}
-        </section>
-        """
-
-    mind_html = ""
-    if mind_now:
-        mind_html = f"""
-        <section class="conv-block">
-          <div class="section-kicker">RIGHT NOW</div>
-          <h2>What may be occupying your mind</h2>
-          <p class="sec-note">These are chart-activated possibilities, not private facts we assume about you.</p>
-          <ul class="conv-mind">
-            {"".join(f"<li>{_e(x)}</li>" for x in mind_now[:3])}
-          </ul>
+          {mind_sub_html}
         </section>
         """
 
@@ -1123,7 +1096,7 @@ def render(
         recent_html = f"""
         <section class="conv-block">
           <div class="section-kicker">RECENTLY</div>
-          <h2>The last few months</h2>
+          <h2 id="sec-recently">The last few months</h2>
           <p>{_e(recent_months)}</p>
         </section>
         """
@@ -1308,11 +1281,20 @@ def render(
         </section>
             """
 
+    divisional_html = ""
+    try:
+        from divisional_profile import render_divisional_about_you_html
+        divisional_html = render_divisional_about_you_html(pc, paid=paid)
+    except Exception as exc:
+        print(f"[report_conversational] divisional profile skipped: {exc}", flush=True)
+
+    date_str = f"{today:%d %B %Y}" if today else ""
+
     body = f"""
     <header>
       <div class="eyebrow">Your Vedic reading</div>
       <h1>{_e(first)}, here is what your chart is saying.</h1>
-      <div class="chartline">{_e(chart_line)} · read {today:%d %B %Y}</div>
+      <div class="chartline">{_e(chart_line)} · read {_e(date_str)}</div>
     </header>
 
     <section class="hero">
@@ -1326,15 +1308,14 @@ def render(
     {_analytical_html(analysis, paid=paid, today=today)}
 
     <section class="conv-block about-you">
-      <div class="section-kicker">ABOUT YOU</div>
-      <h2>Who you are beneath the current period</h2>
+      <div class="section-kicker">ABOUT YOU &amp; LIFE FOUNDATIONS</div>
+      <h2 id="sec-about-you">Who you are beneath the current period</h2>
       <p class="lead-reading"><span class="ev-label">What it means for you</span> {_e(about_meaning)}</p>
       {f'<p>{_e(personality)}</p>' if personality and personality != about_meaning else ""}
+      {divisional_html}
     </section>
 
-    {family_html}
     {current_html}
-    {mind_html}
     {recent_html}
     {areas_html}
     {remedy_html}
