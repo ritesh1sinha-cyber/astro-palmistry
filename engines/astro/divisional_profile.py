@@ -228,7 +228,7 @@ def _interpret_varga_balanced(
     nakshatra: str,
     pc: dict,
 ) -> tuple[str, str, str]:
-    """Generates honest, balanced Vedic readings with bolded key takeaways and remedies."""
+    """Generates honest, balanced Vedic readings with authentic, targeted planetary remedies."""
     if code == "D1":
         headline = f"Core Constitution & Temperament ({v_lagna} Rising · Moon in {moon_sign})"
         pred = (
@@ -238,7 +238,10 @@ def _interpret_varga_balanced(
             f"Jupiter in the 8th house (Trik) and Saturn in the 6th house (Trik), your constitution is <b>sensitive to nervous strain, "
             f"overthinking, and digestive fatigue under sustained pressure</b>."
         )
-        remedy = "Maintain regular physical and meal routines. Protect yourself from mental overstimulation and practice weekly Vishnu Sahasranama or green gram donation."
+        remedy = (
+            "To pacify Debilitated Mercury and 8th House Jupiter: Recite Vishnu Sahasranama on Wednesday mornings and feed green fodder or moong dal to cows. "
+            "Offer yellow chana dal to Lord Vishnu on Thursdays. To activate the exalted Venus Malavya Yoga, chant Om Shum Shukraya Namaha (108x) on Friday mornings."
+        )
         return headline, pred, remedy
 
     elif code == "D2":
@@ -249,7 +252,11 @@ def _interpret_varga_balanced(
             f"alongside Venus in the 6th house (Trik), wealth is <b>vulnerable to sudden unexpected expenditures, partnership misunderstandings, or "
             f"speculative missteps if decisions are rushed</b>."
         )
-        remedy = "Automate your savings before spending. Maintain a liquid emergency reserve, avoid speculative partnerships, and review major contracts with extra diligence."
+        remedy = (
+            "To neutralize sudden financial drains from 8th House Mars: Recite Hanuman Chalisa on Tuesday mornings and donate red masoor dal. "
+            "Water a sacred Tulsi plant daily and chant Om Budhaya Namaha (108x) on Wednesdays to strengthen debilitated Mercury. "
+            "Light a mustard oil diya on Saturday evenings to energize 11th house Saturn wealth accumulation."
+        )
         return headline, pred, remedy
 
     elif code == "D3":
@@ -260,7 +267,10 @@ def _interpret_varga_balanced(
             f"12th house (Trik), and Mercury is debilitated in the 2nd. This indicates <b>periodic friction with authority figures, misunderstandings with "
             f"siblings or close peers, and a tendency to carry burdens entirely alone</b>."
         )
-        remedy = "Cultivate conscious transparency with peers and siblings; delegate early rather than bottling up responsibilities."
+        remedy = (
+            "To pacify Debilitated Sun and 12th House Moon: Offer Surya Arghya (water with red kumkum in a copper vessel) to the rising Sun on Sunday mornings while reciting Aditya Hridaya Stotram. "
+            "Offer raw milk or water to Shiva Lingam on Mondays to steady mental calm. Chant Om Bhaumaya Namaha (108x) on Tuesdays to channel 3rd House Mars executive stamina."
+        )
         return headline, pred, remedy
 
     elif code == "D7":
@@ -272,7 +282,10 @@ def _interpret_varga_balanced(
             f"is in the 12th House (Trik), while Rahu and Ketu occupy the 1st/7th axis. This configuration shows parenting requires "
             f"<b>conscious emotional patience, navigating childhood transitions with calm, and avoiding over-anxious expectations</b>."
         )
-        remedy = "Channel parental care through steady emotional presence rather than worry. Cultivate calm communication with children, practice Santan Gopal mantra or Jupiter meditation on Thursdays, and support child welfare or educational charities."
+        remedy = (
+            "To pacify 12th House Jupiter and the Nodal Axis for progeny welfare: Recite the Santan Gopal Mantra (Om Devakisuta Govinda Vasudeva Jagatpate...) or chant Om Gurave Namaha (108x) on Thursday mornings. "
+            "Donate yellow fruits or educational materials to underprivileged children on Thursdays, and offer Durva grass to Lord Ganesha on Wednesdays."
+        )
         return headline, pred, remedy
 
     elif code == "D9":
@@ -283,7 +296,10 @@ def _interpret_varga_balanced(
             f"The vulnerability lies in Venus being placed in the 12th House (Trik house) and Rahu in the 8th / Ketu in the 2nd. "
             f"This can create <b>idealistic relationship expectations, emotional distance during stressful chapters, and financial friction with in-laws</b>."
         )
-        remedy = "Anchor romantic expectations in grounded day-to-day companionship. Practice open, non-defensive communication on finances and family matters."
+        remedy = (
+            "To clear 8th House Rahu and 12th House Venus friction in partnerships: Recite Durga Chalisa on Friday evenings and feed stray animals or street dogs on Saturdays. "
+            "Donate white sweets or curd to elderly women on Fridays, and chant Om Namo Bhagavate Vasudevaya daily to energize your Lagna blessings and marital harmony."
+        )
         return headline, pred, remedy
 
     elif code == "D10":
@@ -294,7 +310,10 @@ def _interpret_varga_balanced(
             f"debilitated in the 10th house, and Jupiter is debilitated in the 1st. This pattern indicates that professional progress does "
             f"not come via easy patronage — you face <b>sudden corporate restructurings, delayed recognition, and office politics</b>."
         )
-        remedy = "Build authority on verifiable technical mastery rather than organizational politics. Stay patient during leadership shifts and cultivate cross-functional alliances."
+        remedy = (
+            "To neutralize career delays from 8th House Saturn and Debilitated 10th House Sun: Light a mustard oil diya with black sesame seeds under a Peepal tree on Saturday evenings and chant Dasharatha Shani Stotram. "
+            "Offer Surya Arghya daily at sunrise chanting Om Suryaya Namaha (108x) to overcome workplace authority friction. Recite Hanuman Ashtak on Tuesday mornings to activate 4th House Mars executive resilience."
+        )
         return headline, pred, remedy
 
     elif code == "D12":
@@ -305,7 +324,10 @@ def _interpret_varga_balanced(
             f"The challenge appears with Moon placed in the 12th House (Dusthana) and Rahu on the Lagna, pointing to <b>maternal health "
             f"vulnerabilities, subconscious emotional burdens, or periods of physical distance from family roots</b>."
         )
-        remedy = "Regularly honor ancestral traditions, check in proactively on maternal health, and maintain emotional closure regarding past family obligations."
+        remedy = (
+            "To pacify 12th House Moon and Rahu on Lagna: Chant Maha Mrityunjaya Mantra (108x) on Monday mornings and offer water mixed with raw milk to Shiva Lingam for maternal health and peace. "
+            "Feed black sesame sweets (til laddoos) to birds/crows on Saturdays to honor ancestral pitrus. Chant Budha Gayatri on Wednesdays to strengthen 5th House Mercury."
+        )
         return headline, pred, remedy
 
     elif code == "D24":
@@ -316,7 +338,10 @@ def _interpret_varga_balanced(
             f"The vulnerability arises because the nodal axis crosses the 5th house of intellect, which can cause <b>scattered study focus, "
             f"imposter syndrome, or burnout from taking on too many complex topics simultaneously</b>."
         )
-        remedy = "Adopt a modular, single-focus study approach. Complete one specialized certification or project before initiating the next."
+        remedy = (
+            "To clear Rahu's distracting influence on the 5th house of study: Worship Goddess Saraswati and chant Om Aim Saraswatyai Namaha (108x) every Wednesday and Thursday morning. "
+            "Offer white flowers at a Saraswati altar before major academic milestones, and donate notebooks or stationery to poor students on Saturdays to activate 10th House Exalted Saturn mastery."
+        )
         return headline, pred, remedy
 
     elif code == "D30":
@@ -327,7 +352,10 @@ def _interpret_varga_balanced(
             f"However, with Saturn placed in the 12th House (Dusthana) and Venus in the 6th House (Trik), acute stress manifests through <b>sleep "
             f"disturbances, hidden fatigue, or inflammatory health flare-ups</b>."
         )
-        remedy = "Protect your sleep environment aggressively. Incorporate regular physical detox, Pranayama, and avoid taking on other people's crises."
+        remedy = (
+            "To dissolve 12th House Saturn karmic obstacles and 6th House Venus sensitivities: Recite Om Namah Shivaya (108x) daily and light a sesame oil lamp in a Shiva temple on Saturday evenings. "
+            "Chant Vishnu Sahasranama on Wednesday mornings and practice daily Pranayama to reinforce the 4th House Exalted Mercury protective shield."
+        )
         return headline, pred, remedy
 
     return f"{code} Reading", f"Governs {VARGA_META.get(code, {}).get('governs', '')}.", ""

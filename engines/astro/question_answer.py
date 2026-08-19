@@ -834,8 +834,86 @@ def _topic_customer_note(topic_key: str) -> str:
     return notes.get(topic_key, "The reading focuses on the part of life most relevant to your question.")
 
 
+TOPIC_TO_VARGA = {
+    "career": "D10",
+    "job_change": "D10",
+    "promotion": "D10",
+    "business": "D10",
+    "money": "D2",
+    "property": "D4",
+    "foreign": "D9",
+    "study": "D24",
+    "health": "D30",
+    "children": "D7",
+    "marriage": "D9",
+    "legal": "D30",
+    "general": "D1",
+}
+
+
+def _build_static_promise_section(result: dict, pc: Optional[dict], *, paid: bool = True) -> str:
+    if not isinstance(pc, dict):
+        return ""
+    try:
+        from divisional_profile import build_divisional_insights
+        topic = result.get("topic")
+        topic_key = getattr(topic, "key", "general")
+        v_code = TOPIC_TO_VARGA.get(topic_key, "D1")
+
+        insights = {ins.code: ins for ins in build_divisional_insights(pc)}
+        v_ins = insights.get(v_code) or insights.get("D1")
+        if not v_ins:
+            return ""
+
+        pill_cls = "up" if v_ins.strength == "strong" else "down" if v_ins.strength == "weak" else "mixed"
+        pill_lbl = "Well Supported" if v_ins.strength == "strong" else "Needs Care" if v_ins.strength == "weak" else "Mixed / Active"
+        border_color = "#1c6b45" if v_ins.strength == "strong" else "#a3341f" if v_ins.strength == "weak" else "#8a6a1f"
+
+        if not paid:
+            return f"""
+<section class="section static-promise" style="margin:20px 0;">
+  <div style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#7a4b18;margin-bottom:6px;">Static Promise &amp; Foundational Potential</div>
+  <h2 style="font-family:Georgia,serif;font-size:1.15rem;margin:0 0 10px;color:#1f2430;">Static Promise &amp; {_e(v_ins.name)}</h2>
+  <div class="card" style="border-left:4px solid {border_color};padding:16px 18px;background:#fff;border-radius:12px;">
+    <p style="margin:0 0 8px;font-size:0.9rem;line-height:1.55;color:#2c3140;">
+      In classical Vedic astrology, predicting exact timing windows requires first confirming the <b>Static Promise</b> in your birth chart (D1) and specialized division (<b>{_e(v_ins.code)}</b>). 
+      Your chart indicates an active <b>{pill_lbl}</b> baseline for this matter.
+    </p>
+    <div style="background:#fcfbf9;border:1px dashed #d5cfc4;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:0.82rem;color:#6a7080;">
+      🔒 <b>Full Divisional Chart ({_e(v_ins.code)}) Breakdown:</b> Complete analysis of ascendant lord dignity, house placements, and foundational yogas available in the full consultation.
+    </div>
+  </div>
+</section>"""
+
+        return f"""
+<section class="section static-promise" style="margin:24px 0;">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+    <span style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#7a4b18;">Foundational Vedic Analysis</span>
+    <span class="pill {pill_cls}" style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;">{pill_lbl}</span>
+  </div>
+  <h2 style="font-family:Georgia,serif;font-size:1.25rem;margin:0 0 8px;color:#1f2430;">Static Promise &amp; {_e(v_ins.name)}</h2>
+  <p style="font-size:0.86rem;color:#5a554c;margin:0 0 14px;line-height:1.45;">
+    Before evaluating exact dates and timing windows, Vedic astrology examines the <b>Static Promise</b> — verifying whether the foundational birth chart (D1) and the dedicated specialized divisional chart ({_e(v_ins.code)}) carry the innate capacity to deliver on this question:
+  </p>
+  <div class="card" style="border-left:4px solid {border_color};padding:18px 20px;background:#fff;border-radius:12px;margin-bottom:14px;">
+    <div style="font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:#6a7080;margin-bottom:4px;">{_e(v_ins.code)} Analysis · {_e(v_ins.governs)}</div>
+    <h3 style="font-family:Georgia,serif;font-size:1.05rem;margin:4px 0 8px;color:#1f2430;font-weight:600;">{_e(v_ins.headline)}</h3>
+    <p style="margin:0 0 12px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{v_ins.prediction}</p>
+    <div style="background:#f9f8f5;border-left:3px solid #8a6a1f;padding:10px 14px;border-radius:6px;margin:10px 0 12px;font-size:0.84rem;line-height:1.45;color:#4a453c;">
+      <b>Remedial &amp; Strategic Key:</b> {_e(v_ins.remedy)}
+    </div>
+    <div style="border-top:1px solid #eeeae3;padding-top:8px;font-size:0.75rem;color:#7a756c;line-height:1.4;">
+      <b>Astrological Basis ({_e(v_ins.name)}):</b> {v_ins.evidence}
+    </div>
+  </div>
+</section>"""
+    except Exception as exc:
+        print(f"[question_answer] static promise block error: {exc}", flush=True)
+        return ""
+
+
 def render_free(result: dict, *, name: str = "", price: int = 1499,
-                prose: Optional[dict] = None) -> str:
+                prose: Optional[dict] = None, pc: Optional[dict] = None) -> str:
     """Free half: question acknowledgment & domain framing; verdict, timeline and remedies locked."""
     topic = result["topic"]
     who = (name or "").split()[0] if name else ""
@@ -864,6 +942,8 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
         "No single automatic window appears; the full reading dates the subtle movement points."
     )
 
+    static_promise_html = _build_static_promise_section(result, pc, paid=False)
+
     html = f"""
 <section class="qa">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
@@ -873,6 +953,8 @@ def render_free(result: dict, *, name: str = "", price: int = 1499,
     <p style="margin:0 0 6px 0;"><strong>Astrological focus:</strong> We read this primarily as a <b>{_e(domain)}</b> matter, governed by the <b>{_e(houses_str)} house</b> and active planetary periods.</p>
     <p style="margin:0;font-size:0.88rem;color:#656a74;">{_e(_topic_customer_note(topic.key))}</p>
   </div>
+
+  {static_promise_html}
 
   <div class="qa-window locked" style="margin:14px 0;">
     <div class="qa-wlabel">The Verdict — what your chart actually says</div>
@@ -989,7 +1071,7 @@ def render(result: dict, *, name: str = "", paid: bool = False,
            price: int = 1499, prose: Optional[dict] = None,
            pc: Optional[dict] = None) -> str:
     if not paid:
-        return render_free(result, name=name, price=price, prose=prose)
+        return render_free(result, name=name, price=price, prose=prose, pc=pc)
     prose = prose or {}
     topic, best = result["topic"], result["best"]
     nearest = result.get("nearest")
@@ -1251,6 +1333,8 @@ def render(result: dict, *, name: str = "", paid: bool = False,
 
     timing_note_text = llm_timing or "These are the validated windows where planetary transits and active periods align to create meaningful momentum."
 
+    static_promise_html = _build_static_promise_section(result, pc, paid=True)
+
     html = f"""
 <section class="qa" data-verdict="{verdict_flag}">
   <div class="qa-asked"><b>You asked:</b> {_e(result['question'])}</div>
@@ -1259,6 +1343,8 @@ def render(result: dict, *, name: str = "", paid: bool = False,
   <p class="pred-why"><b>Why:</b> {_e(why_txt)}</p>
   {action_note}
 </section>
+
+{static_promise_html}
 
 <section class="section planetary-dynamics">
   <h2>Planetary dynamics & supporting influences</h2>
