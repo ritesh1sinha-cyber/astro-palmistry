@@ -321,6 +321,92 @@ def _timeline(conf: dict, age: int, *, ahead: bool) -> str:
     return f'<ol class="timeline">{rows}</ol>'
 
 
+# ---------------------------------------------------------------------------
+# Vedic life reading (paid predictive profile)
+# ---------------------------------------------------------------------------
+def _vedic_card(title: str, body: str, tag: str = "") -> str:
+    pill = f'<span class="pv-pill strong">{_e(tag)}</span>' if tag else ""
+    return (f'<article class="card conv-area">'
+            f'<div class="card-top"><span class="area">{_e(title)}</span>{pill}</div>'
+            f"<p>{_e(body)}</p></article>")
+
+
+def _vedic_life_reading(conf: dict, first: str) -> str:
+    """Deterministic Vedic predictive profile: personality, profession, spouse,
+    wealth, and the dated turning points measured on the reader's own lines."""
+    vp = conf.get("vedic_profile") if isinstance(conf.get("vedic_profile"), dict) else {}
+    if not vp:
+        return ""
+
+    cards: list[str] = []
+
+    archetype = vp.get("archetype") or {}
+    personality = vp.get("personality") or []
+    profession = vp.get("profession") or {}
+    marriage = vp.get("marriage") or {}
+    wealth = vp.get("wealth") or {}
+
+    # 1 — personality & temperament
+    pers_bits = [f"<p>{_e(archetype.get('summary') or '')}</p>"] if archetype.get("summary") else []
+    traits = [t for t in personality if isinstance(t, dict) and t.get("text")]
+    if traits:
+        pers_bits.append(
+            '<ul class="pv-plain" style="margin-top:10px;">'
+            + "".join(f'<li><b>{_e(t.get("trait", ""))}.</b> {_e(t.get("text", ""))}</li>'
+                      for t in traits)
+            + "</ul>")
+    if pers_bits:
+        cards.append(_vedic_card(
+            "Your temperament, in the classical tradition",
+            "".join(pers_bits), "Personality"))
+
+    # 2 — profession type with establishment window
+    prof_txt = profession.get("summary") or ""
+    if prof_txt:
+        win = profession.get("window")
+        tag = "Profession"
+        if isinstance(win, list) and len(win) == 2:
+            prof_txt += f" The classical reading places the establishment of this thread around ages {int(win[0])}–{int(win[1])}."
+            tag = f"Profession · establishes {int(win[0])}–{int(win[1])}"
+        cards.append(_vedic_card("What you will do — your vocation", prof_txt, tag))
+
+    # 3 — marriage & spouse
+    mar_txt = marriage.get("summary") or ""
+    if mar_txt:
+        cards.append(_vedic_card("Marriage & the partner who suits you", mar_txt, "Spouse"))
+
+    # 4 — wealth pattern
+    wea_txt = wealth.get("summary") or ""
+    if wea_txt:
+        cards.append(_vedic_card("How money moves for you", wea_txt, "Wealth"))
+
+    # 5 — dated turning points (real line timings)
+    tp = vp.get("turning_points") or []
+    if tp:
+        rows = ""
+        for p in tp:
+            rng = p.get("age_range") or []
+            when = (f"ages {rng[0]}&ndash;{rng[1]}" if len(rng) == 2
+                    else f"around age {p.get('age')}")
+            text = _split_prediction(p.get("text"))[0]
+            rows += (f'<li><div class="tl-when">{_e(when)}</div>'
+                     f'<div class="tl-body"><b>{_e(p.get("title"))}</b>'
+                     f'<p class="pv-means">{_e(_sentence(text))}</p></div></li>')
+        cards.append(
+            '<div class="card"><div class="ev-label">The ages your own palm marks out</div>'
+            '<ol class="timeline">' + rows + '</ol>'
+            '<p class="fine">These windows come from the Cheiro seven-year division applied '
+            'to the measured positions on your own lines — not from a generic chart.</p></div>')
+
+    if not cards:
+        return ""
+    return _section(
+        "sec-vedic", f"{first}, your Vedic life reading",
+        "A predictive reading in the voice of classical Samudrika Shastra, "
+        "built strictly from the lines, mounts and marks actually measured on your hands.",
+        "".join(cards), nav="Vedic Life Reading")
+
+
 def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True) -> str:
     f = str(feature or "").strip()
     s = str(sign or "").strip()
@@ -531,6 +617,11 @@ def render(
         opening + (f'<div class="card">{shape_rows}</div>' if shape_rows else "")))
 
     if paid:
+        # 2.5 — Vedic predictive profile (personality, profession, spouse, wealth)
+        vedic_block = _vedic_life_reading(conf, first)
+        if vedic_block:
+            blocks.append(vedic_block)
+
         # 3 — Mounts & Auspicious Signs
         mount_rows = _rows(dom_reading.mounts, agree)
         mounts_html = f'<div class="card">{mount_rows}</div>' if mount_rows else ""

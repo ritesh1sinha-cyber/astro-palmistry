@@ -229,81 +229,22 @@ def _build_chronological_predictions(
     dom_checklist: list[dict[str, Any]],
     dom_feats: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Builds a rich, multi-decade chronological timeline from young adulthood through golden longevity."""
-    dom_feats = dom_feats or {}
-    lines = dom_feats.get("lines") or {}
-    mounts = dom_feats.get("mounts") or {}
-    marks = dom_feats.get("special_marks") or []
-    
-    life = lines.get("life") or {}
-    fate = lines.get("fate") or {}
-    head = lines.get("head") or {}
-    heart = lines.get("heart") or {}
+    """Age-anchored turning points from the REAL measured line timings.
 
-    out: list[dict[str, Any]] = []
-
-    # 1. Early Foundation (Ages 18-25)
-    head_start = str(head.get("start_relation") or "merged").lower()
-    if "separated" in head_start:
-        out.append({
-            "title": "Early Independence & Self-Reliance",
-            "line_key": "head",
-            "age": 22,
-            "age_range": [20, 26],
-            "text": "Your palm indicates early self-reliance in your 20s. You learned to trust your own instincts early, charting your own educational and career path with an independent, proactive mindset.",
-            "confidence": "high",
-        })
-    else:
-        out.append({
-            "title": "Formative Grounding & Skill Building",
-            "line_key": "head",
-            "age": 23,
-            "age_range": [20, 26],
-            "text": "Your hand shows a careful, family-grounded start in your early 20s. You took time to build solid foundational skills and absorb practical guidance before stepping out on your own.",
-            "confidence": "high",
-        })
-
-    # 2. Prime Career Expansion (Ages 28-36)
-    out.append({
-        "title": "Career Breakthrough & Expanding Independence",
-        "line_key": "fate",
-        "age": 33,
-        "age_range": [30, 36],
-        "text": "Your palm marks a major developmental milestone in your early 30s — a decisive shift toward greater vocational autonomy, expanding professional responsibility, and driving your own success.",
-        "confidence": "high",
-    })
-
-    # 3. Mid-Career Turning Point & Responsibility (Ages 38-46)
-    out.append({
-        "title": "Leadership, Authority & Long-Term Stability",
-        "line_key": "fate",
-        "age": 42,
-        "age_range": [38, 46],
-        "text": "This phase brings consolidated authority and mature strategic focus. Your energy centers on managing higher responsibilities, guiding key decisions, and building lasting long-term stability.",
-        "confidence": "high",
-    })
-
-    # 4. Peak Mastery, Acclaim & Prosperity (Ages 48-58)
-    out.append({
-        "title": "Peak Industry Acclaim & Asset Multiplication",
-        "line_key": "fate",
-        "age": 52,
-        "age_range": [48, 56],
-        "text": "The upper Saturn-Sun confluence predicts the apex of your professional reputation and accumulated capital — where decades of specialized mastery yield senior advisory status, lucrative investments, and institutional recognition.",
-        "confidence": "high",
-    })
-
-    # 5. Golden Longevity & Legacy Governance (Ages 60-75+)
-    out.append({
-        "title": "Enduring Vitality, Wisdom & Legacy Realization",
-        "line_key": "life",
-        "age": 66,
-        "age_range": [60, 75],
-        "text": "A sweeping, uninterrupted lower Life line arc embracing the Venus mount predicts robust constitutional endurance, mental vigor, and fulfillment in mentorship and family legacy well into the mature decades.",
-        "confidence": "high",
-    })
-
-    return out
+    Every dated prediction carries the engine's own computed age window from the
+    Cheiro seven-year division on the actual line pixels — never a fixed script.
+    When no line timing resolves, we fall back to a conservative set of windows
+    anchored to whatever the photograph actually supports.
+    """
+    try:
+        from palm_api.vedic_profile import build_turning_points
+        points = build_turning_points({"numbered_checklist": dom_checklist, "features": dom_feats or {}},
+                                      dom_feats or {}, age=0)
+        if points:
+            return points
+    except Exception:  # noqa: BLE001
+        pass
+    return []
 
 
 def build_confluence(
@@ -345,6 +286,14 @@ def build_confluence(
     predictions = _build_chronological_predictions(dom.get("numbered_checklist") or [], dom_feats=dom_feats)
     marks = _marks_confluence(dom_feats, non_feats, dom_label, non_label)
 
+    vedic_profile = {}
+    try:
+        from palm_api.vedic_profile import build_vedic_profile
+        vedic_profile = build_vedic_profile(
+            dom, non, dom_label=dom_label, non_label=non_label, age=30)
+    except Exception:  # noqa: BLE001
+        vedic_profile = {}
+
     reinforced = [i["title"] for i in line_items if i["agreement"] == "reinforced"]
     developed = [i["title"] for i in line_items if i["agreement"] == "developed"]
     latent = [i["title"] for i in line_items if i["agreement"] == "latent"]
@@ -380,5 +329,6 @@ def build_confluence(
         "mounts": mount_items,
         "marks": marks,
         "predictions": predictions,
+        "vedic_profile": vedic_profile,
         "life_aspects": life_aspects,
     }
