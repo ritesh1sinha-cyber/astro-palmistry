@@ -30,42 +30,18 @@ def _e(value: Any) -> str:
 
 
 _TITLE = {
-    "career": "Work & Career",
-    "wealth": "Money & Resources",
+    "character": "Character & Temperament",
+    "mind": "Mind & Intellect",
     "love": "Relationships & Emotions",
+    "career": "Career & Direction",
+    "wealth": "Money & Resources",
     "health": "Health & Vitality",
-    "travel": "Travel, Change & Imagination",
-    "character": "Personal Growth & Direction",
 }
 
 _HAND_ROLE = {
     True: "your active hand — what you have made of yourself",
     False: "your passive hand — what you were born with",
 }
-
-
-def _palm_signature(raw: dict, dom_key: str, aspects: list[dict[str, Any]]) -> str:
-    dom_feats = (raw.get(dom_key) or {}).get("features") or {}
-    morph = dom_feats.get("morphology") or {}
-    hand_type = str(morph.get("hand_type") or "air").title()
-    mounts = dom_feats.get("mounts") or {}
-    prom_mounts = [k.title() for k, v in mounts.items() if str(v).lower() in ("prominent", "full", "high")]
-    lines = dom_feats.get("lines") or {}
-    deep_lines = [k.title() for k, v in lines.items() if isinstance(v, dict) and str(v.get("depth") or "").lower() == "deep"]
-    strong_aspects = [_TITLE.get(str(a.get("key") or "")) for a in aspects
-                      if "strong" in str(a.get("verdict") or a.get("strength") or "").lower()
-                      or "good" in str(a.get("verdict") or a.get("strength") or "").lower()]
-
-    mount_part = f"a clearly developed {prom_mounts[0]} mount" if prom_mounts else "balanced mount topography"
-    line_part = f"a defined {deep_lines[0]} line" if deep_lines else "well-etched primary lines"
-    theme_part = f"around {', '.join(strong_aspects[:2])} and sustained disciplined effort" if strong_aspects else "around adaptability, practical decisions and sustained focus"
-
-    sig_text = (f"{hand_type}-type hand with {mount_part}, {line_part} and active palm markers. "
-                f"The overall pattern points toward an analytical, ambitious and purposeful temperament, "
-                f"with the strongest themes {theme_part}.")
-    return (f'<div class="card" style="background:#faf8f5;border-left:4px solid #1a5276;padding:14px 18px;margin-top:14px;">'
-            f'<div class="ev-label" style="color:#1a5276;font-weight:700;margin-bottom:6px;">Palm Signature</div>'
-            f'<p style="margin:0;font-size:0.96rem;line-height:1.6;">{_e(sig_text)}</p></div>')
 
 
 def _sentence(text: str) -> str:
@@ -384,6 +360,43 @@ def _clean_contrast_label(feature: str, sign: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# problems
+# ---------------------------------------------------------------------------
+def _problem_section(readings: dict, dom_key: str, *, paid: bool) -> str:
+    hr = readings.get(dom_key)
+    if not hr:
+        return ""
+    problems = hr.problems()
+    if not problems:
+        return _section(
+            "sec-care", "What needs care", "",
+            '<div class="card"><p class="pv-means">Nothing in your dominant hand '
+            "reads as a warning. The lines that are marked in your hand are "
+            "marked for strength, not for trouble.</p></div>")
+    shown = problems if paid else problems[:1]
+    rows = "".join(
+        f'<li><b>{_e(p.feature)}</b> — {_e(_sentence(p.means))}'
+        + (f'<p class="pv-do"><span class="ev-label">What to do</span> '
+           f"{_e(_sentence(p.remedy))}</p>" if p.remedy else "")
+        + "</li>" for p in shown)
+    locked = ""
+    if not paid and len(problems) > 1:
+        rest = len(problems) - 1
+        plural = (f"{rest} further signs in your hand each need an answer of "
+                  f"their own" if rest != 1 else
+                  "One further sign in your hand needs an answer of its own")
+        locked = (f'<div class="when locked-inline"><span class="lockicon">'
+                  f"&bull;</span> {plural}. Each is named with its remedy in the "
+                  f"full reading.</div>")
+    return _section(
+        "sec-care", "What needs care, and what to do about it",
+        "Every sign below is one your hand actually carries. None of it is fixed "
+        "— a palmist points at the difficulty precisely so it can be worked on.",
+        f'<div class="card"><ul class="pv-care">{rows}</ul>{locked}</div>',
+        nav="What needs care")
+
+
+# ---------------------------------------------------------------------------
 # the document
 # ---------------------------------------------------------------------------
 def render(
@@ -426,37 +439,40 @@ def render(
         dom_reading = PVoice.HandReading(hand=dom_key)
     other_reading = readings.get(other_key)
 
+    # A sign carried by both hands is the one worth trusting: the passive hand
+    # says it was given, the active hand says it is still true. Hand shape and
+    # the absence of a line are excluded — "in both hands" says nothing about a
+    # feature that could hardly differ, or about something that is not there.
     agree: set[str] = set()
     if other_reading:
         shared = {r.key for r in dom_reading.all()} & {r.key for r in other_reading.all()}
         agree = {k for k in shared
                  if "_no_" not in k and not k.startswith(("hand_type", "thumb", "index", "ring"))}
 
+    personality = str(prose.get("personality") or "").strip()
     current_phase = str(prose.get("current_phase") or "").strip()
     hardest = str(prose.get("hardest_area_note") or "").strip()
     mind_now = [str(x).strip() for x in (prose.get("mind_now") or []) if str(x).strip()]
     why_now = str(prose.get("why_now") or "").strip()
+    hand_note = str(prose.get("hand_contrast_note") or "").strip()
     areas = prose.get("areas") if isinstance(prose.get("areas"), dict) else {}
 
     blocks: list[str] = []
 
-    # 1 — Chart / Palm Signature (Photographs + CV Lines + Evidence Signature)
-    sig_card = _palm_signature(raw, dom_key, aspects)
+    # 1 — the photographs
     blocks.append(_section(
         "sec-hands", "Your hands, and what I traced on them",
         "",
-        _photos(raw, dom_key) + _photo_note(raw) + sig_card, nav="Your hands"))
+        _photos(raw, dom_key) + _photo_note(raw), nav="Your hands"))
 
-    # 2 — Executive Overview / Where You Are Now
+    # 1.5 — Executive Overview / Where You Are Now
     now_summary = ""
     if current_phase:
         now_summary += f"<p>{_e(current_phase)}</p>"
     elif why_now:
         now_summary += f"<p>{_e(why_now)}</p>"
     else:
-        strong_areas = [_TITLE.get(str(a.get("key") or "")) for a in aspects
-                        if "strong" in str(a.get("verdict") or a.get("strength") or "").lower()
-                        or "good" in str(a.get("verdict") or a.get("strength") or "").lower()]
+        strong_areas = [_TITLE.get(str(a.get("key") or "")) for a in aspects if a.get("strength") == "strong"]
         dom_name = dom_key.title()
         if strong_areas:
             now_summary += (f"<p>Your active {dom_name} hand shows pronounced momentum in {', '.join(strong_areas[:2])}. "
@@ -483,117 +499,162 @@ def render(
             "An executive synthesis of your current life phase, active focus, and primary tension.",
             now_summary, nav="Where You Are"))
 
-    if paid:
-        # 3 — Core Life Areas (Confluence Analysis with Verdict, Conclusion, Timing, What Helps & Collapsed Checkpoints)
-        rows = []
-        future_windows = rr.get("future_windows") or []
-        domain_map = {
-            "career": "career_direction",
-            "wealth": "money",
-            "love": "relationships",
-            "health": "vitality",
-            "travel": "travel",
-            "character": "temperament",
-        }
+    # 2 — the hand itself (Core Archetype & Temperament)
+    shape_rows = _rows(dom_reading.shape, agree)
+    opening = f"<p>{_e(personality)}</p>" if personality else ""
+    blocks.append(_section(
+        "sec-hand", "Your Core Hand Archetype & Temperament",
+        f"Shape, thumb and finger set — {_HAND_ROLE[True]}.",
+        opening + (f'<div class="card">{shape_rows}</div>' if shape_rows else "")))
 
+    if paid:
+        # 3 — Mounts & Auspicious Signs
+        mount_rows = _rows(dom_reading.mounts, agree)
+        mounts_html = f'<div class="card">{mount_rows}</div>' if mount_rows else ""
+        marks_html = _marks_section(readings, raw)
+        blocks.append(_section(
+            "sec-mounts", "Planetary Mounts & Auspicious Markings",
+            "The raised and flat pads indicate how cosmic planetary energies distribute across your palm, modified by unique signs.",
+            mounts_html + marks_html, nav="Mounts & Signs"))
+
+        # 6 — Chronological Timeline (Past Milestones)
+        behind = _timeline(conf, age, ahead=False)
+        if behind:
+            blocks.append(_section(
+                "sec-behind", f"{first}, your past life milestones",
+                "Calculated using the classical seven-year division across your major lines to map key developmental chapters.",
+                behind, nav="Past Timeline"))
+
+        # 7 — Forward Roadmap (Upcoming Age Windows)
+        ahead = _timeline(conf, age, ahead=True)
+        if ahead:
+            blocks.append(_section(
+                "sec-ahead", "Your Upcoming Age Windows & Direction",
+                "Upcoming developmental windows read forward along your active palm lines.",
+                ahead, nav="Future Roadmap"))
+
+        # 8 — Innate vs. Made (Left vs. Right Hand Confluence)
+        contrast = ""
+        if hand_note:
+            contrast += f"<p>{_e(hand_note)}</p>"
+        if other_reading:
+            only_active = [r for r in dom_reading.all()
+                           if r.key not in agree and r.tone != "neutral"][:4]
+            only_innate = [r for r in other_reading.all()
+                           if r.key not in agree and r.tone != "neutral"][:4]
+            cols = ""
+            if only_innate:
+                cols += ('<div class="pv-col"><div class="ev-label">Inborn Potential (Passive Hand: '
+                         f'{_e(other_key.title())})</div><ul class="pv-plain">'
+                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign)}</li>"
+                                   for r in only_innate) + "</ul></div>")
+            if only_active:
+                cols += ('<div class="pv-col"><div class="ev-label">Cultivated Strengths (Active Hand: '
+                         f'{_e(dom_key.title())})</div><ul class="pv-plain">'
+                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign)}</li>"
+                                   for r in only_active) + "</ul></div>")
+            if cols:
+                contrast += f'<div class="card pv-cols">{cols}</div>'
+        blocks.append(_section(
+            "sec-contrast", "Innate Blueprint vs. Self-Made Evolution",
+            "Comparing your passive hand (inborn baseline) with your active hand (lived choices and cultivated mastery).",
+            contrast, nav="Innate vs Made"))
+
+        # 9 — Life Area Confluences (Domain-Specific with authentic Vedic Upayas)
+        rows = []
+        marks = raw.get(dom_key, {}).get("features", {}).get("special_marks") or []
         for key in [str(a.get("key") or "") for a in aspects if isinstance(a, dict)]:
-            aspect_data = aspect_by_key.get(key) or {}
             block = areas.get(key) or {}
             if not isinstance(block, dict):
                 block = {}
-
+            aspect_data = aspect_by_key.get(key) or {}
+            outlook = str(block.get("outlook") or aspect_data.get("summary") or "").strip()
+            if not outlook:
+                continue
             title = _TITLE.get(key) or str(aspect_data.get("title") or key)
-            verdict = str(aspect_data.get("verdict") or aspect_data.get("strength") or "Moderate")
-            confidence = str(aspect_data.get("confidence") or "Moderate").title()
-
-            # Astrologer Conclusion
-            conclusion = str(block.get("outlook") or block.get("conclusion") or aspect_data.get("summary") or "").strip()
+            strength = str(aspect_data.get("strength") or "moderate")
+            confidence = str(aspect_data.get("confidence") or "moderate").title()
+            timing = str(block.get("timing") or "").strip()
             manifestation = str(block.get("manifestation") or "").strip()
-            if manifestation and manifestation.lower() not in conclusion.lower():
-                conclusion = f"{conclusion} {manifestation}"
+            from palm_api.life_aspects import _ASPECT_VEDIC_UPAYAS
+            remedy = str(_ASPECT_VEDIC_UPAYAS.get(key, {}).get("upaya") or aspect_data.get("remedy") or "").strip()
+            passage_parts = []
+            for chunk in (outlook, timing, manifestation):
+                if not chunk:
+                    continue
+                c_clean = chunk.lower().rstrip(".")
+                if any(c_clean in p.lower() or p.lower() in c_clean or (len(c_clean) > 30 and c_clean[:35] in p.lower()) for p in passage_parts):
+                    continue
+                passage_parts.append(chunk)
+            passage = " ".join(passage_parts)
+            
+            # Filter recognize items so we NEVER repeat lines already printed in the main passage!
+            rec_filtered = []
+            for r in (aspect_data.get("recognize") or []):
+                r_clean = str(r).strip()
+                if not r_clean:
+                    continue
+                r_check = r_clean.lower().rstrip(".")
+                if r_check in passage.lower() or passage.lower() in r_check or (len(r_check) > 25 and r_check[:30] in passage.lower()):
+                    continue
+                rec_filtered.append(r_clean)
 
-            # Timing breakdown
-            timing_str = str(block.get("timing") or "").strip()
-            curr_phase = str(aspect_data.get("current_phase") or "").strip()
-            near_term = str(aspect_data.get("near_term") or "").strip()
-
-            # Future checkpoints matched to domain
-            checkpoints = []
-            for fw in future_windows:
-                fw_dom = str(fw.get("domain") or "").lower()
-                if fw_dom in (key, domain_map.get(key, "")):
-                    aw = fw.get("age_window")
-                    if aw and len(aw) >= 2:
-                        checkpoints.append(
-                            f"Ages {aw[0]}–{aw[1]}: {str(fw.get('status', 'Upcoming milestone')).title()} — {str(fw.get('pattern', 'Active line continuity along your palm roadmap'))}."
-                        )
-
-            if not timing_str:
-                if checkpoints:
-                    timing_str = f"Current phase is {curr_phase.lower().rstrip('.')}. Near-term: {near_term.lower().rstrip('.')}. Next supportive window: {checkpoints[0].split(':')[0]}."
-                else:
-                    timing_str = f"Current phase is {curr_phase.lower().rstrip('.')}. Near-term: {near_term.lower().rstrip('.')}. Next supportive window: Timing cannot be established reliably from the available palm evidence."
-
-            # What helps
-            what_helps = str(block.get("what_helps") or aspect_data.get("what_helps") or "Focus on disciplined execution and balanced habits.").strip()
-
-            # Supporting & Conflicting signals
-            supporting_items = "".join(f"<li>{_e(s)}</li>" for s in (aspect_data.get("supporting_signals") or []))
-            if not supporting_items:
-                supporting_items = "<li>Primary line continuity on active hand</li>"
-
-            conflicting_items = "".join(f"<li>{_e(s)}</li>" for s in (aspect_data.get("conflicting_signals") or []))
-            conflicting_html = f"<p style='margin:6px 0 2px 0;font-weight:600;color:#333;'>Conflicting / Pressure Signals:</p><ul style='margin:0 0 6px 0;padding-left:18px;'>{conflicting_items}</ul>" if conflicting_items else ""
-
-            checkpoints_html = "".join(f"<li>{_e(cp)}</li>" for cp in checkpoints) if checkpoints else "<li>Timing cannot be established reliably from the available palm evidence.</li>"
-
-            evidence_items = "".join(
+            recognize_items = "".join(f"<li>{_e(r)}</li>" for r in rec_filtered)
+            evidence = "".join(
                 f"<li><b>Traditional palmistry interpretation:</b> {_e(str(p.get('text') or p.get('traditional_meaning') or '').strip())}</li>"
                 for p in (aspect_data.get("points") or [])
                 if str(p.get("text") or p.get("traditional_meaning") or "").strip())
+            bits = [f"<p>{_e(passage)}</p>"]
+            if recognize_items:
+                bits.append(f'<p class="fine" style="margin:8px 0 4px 0;color:#5a554c;"><b>How this manifests in daily life:</b></p><ul class="conv-mind" style="margin-bottom:8px;">{recognize_items}</ul>')
+            
+            # Condition for Upaya: STRICTLY for afflicted / challenging / weak areas only!
+            # Strong areas NEVER receive an Upaya; they always get Auspicious Planetary Asset!
+            is_strong = strength.lower() in ("strong", "prominent", "very strong", "favourable", "favorable")
+            is_challenging = (
+                not is_strong
+                and (
+                    strength.lower() in ("weak", "tentative", "challenged", "demanding", "care")
+                    or "caution" in str(aspect_data.get("direction") or "").lower()
+                    or (key == "health" and ("island" in str(aspect_data).lower() or "broken" in str(aspect_data).lower()))
+                    or (key in ("character", "career") and any(str(m.get("type") or "").lower() == "grille" for m in marks if str(m.get("zone") or "").lower() == "jupiter"))
+                    or (key in ("travel", "mind") and any(str(m.get("type") or "").lower() == "star" for m in marks if str(m.get("zone") or "").lower() in ("moon", "luna")))
+                )
+            )
 
-            from palm_api.life_aspects import _ASPECT_VEDIC_UPAYAS
-            remedy = str(_ASPECT_VEDIC_UPAYAS.get(key, {}).get("upaya") or aspect_data.get("remedy") or "").strip()
+            if is_challenging and remedy:
+                bits.append(
+                    f'<p class="pv-do" style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:8px 12px;margin:8px 0;border-radius:4px;"><span class="ev-label" style="color:#9e521b;font-weight:bold;">Targeted Vedic Astrological Upaya</span><br>{remedy}</p>')
+            else:
+                bits.append(
+                    '<p class="pv-strength" style="background:#f4fbf7;border-left:3px solid #2e8b57;padding:8px 12px;margin:8px 0;border-radius:4px;"><span class="ev-label" style="color:#1e6b37;font-weight:bold;">Auspicious Planetary Asset</span><br>This domain is supported by favorable line clarity and mount elevation. Channel this natural planetary strength forward without requiring remedial pacification.</p>')
 
+            if evidence:
+                bits.append(
+                    f'<details class="technical-evidence"><summary>Classical Signs & Evidence</summary><ul>{evidence}</ul></details>')
+            
             conf_badge = f'<span class="pill-conf" style="font-size:0.68rem;font-weight:600;padding:2px 8px;border-radius:10px;background:#ebe9e1;color:#4a453e;margin-left:6px;">{_e(confidence)} Confidence</span>'
-            card_html = f"""
-<article class="card conv-area" id="sec-{_e(key)}">
-  <div class="card-top">
-    <span class="area">{_e(title)}</span>
-    <div><span class="pill mixed">{_e(verdict)}</span>{conf_badge}</div>
-  </div>
-  <div class="conv-conclusion" style="margin:10px 0 8px 0;">
-    <p style="margin:0;font-size:0.96rem;line-height:1.6;color:#2c3140;">{_e(conclusion)}</p>
-  </div>
-  <div class="conv-timing" style="margin:8px 0;font-size:0.91rem;color:#4a453e;line-height:1.5;">
-    <b>Timing:</b> {_e(timing_str)}
-  </div>
-  <div class="conv-helps" style="margin:8px 0 10px 0;background:#f9f8f5;border-left:3px solid #b57c38;padding:8px 12px;border-radius:4px;font-size:0.91rem;color:#3d4250;line-height:1.5;">
-    <b>What helps:</b> {_e(what_helps)}
-  </div>
-  <details class="technical-evidence" style="margin-top:12px;border-top:1px dashed #d5d0c7;padding-top:8px;font-size:0.85rem;color:#555;">
-    <summary style="cursor:pointer;color:#8c531b;font-weight:600;margin-bottom:6px;">Calculation &amp; future checkpoints</summary>
-    <div style="padding:4px 0;">
-      <p style="margin:4px 0 2px 0;font-weight:600;color:#333;">Supporting Evidence:</p>
-      <ul style="margin:0 0 6px 0;padding-left:18px;">{supporting_items}</ul>
-      {conflicting_html}
-      <p style="margin:6px 0 2px 0;font-weight:600;color:#333;">Future Checkpoints:</p>
-      <ul style="margin:0 0 6px 0;padding-left:18px;">{checkpoints_html}</ul>
-      <p style="margin:6px 0 2px 0;font-weight:600;color:#333;">Classical Signs &amp; Citations:</p>
-      <ul style="margin:0 0 6px 0;padding-left:18px;">{evidence_items}</ul>
-      <div style="margin-top:8px;padding:8px 10px;background:#fdfaf6;border-radius:4px;">
-        <b>Traditional Guidance &amp; Astrological Upaya:</b><br>{remedy}
-      </div>
-    </div>
-  </details>
-</article>"""
-            rows.append(card_html)
-
+            rows.append(
+                f'<article class="card conv-area">'
+                f'<div class="card-top"><span class="area">{_e(title)}</span>'
+                f'<div><span class="pill mixed">{_e(strength.title())}</span>{conf_badge}</div></div>'
+                f'{"".join(bits)}</article>')
         if rows:
             blocks.append(_section(
                 "sec-areas", "Core Life Areas (Confluence Analysis)",
                 "Synthesized analysis combining line trajectories, planetary mount elevations, and auspicious markings.",
                 "".join(rows), nav="Life Areas"))
+
+        # 10 — Master Astrological Upayas & Workings
+        try:
+            from .palm_cards import _remedies, _workings
+            source, block = _remedy_source(raw, dom_key)
+            remedies = _remedies(block, conf, paid=True)
+            if remedies:
+                blocks.append(remedies)
+            blocks.append(_workings(raw))
+        except Exception:  # noqa: BLE001
+            pass
     else:
         # Free mode: show 1 anchor past milestone to prove accuracy, then lock forward roadmap
         behind_all = _timeline(conf, age, ahead=False)
