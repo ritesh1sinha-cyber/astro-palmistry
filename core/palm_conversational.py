@@ -594,22 +594,6 @@ def render(
                 "sec-areas", "Core Life Areas (Confluence Analysis)",
                 "Synthesized analysis combining line trajectories, planetary mount elevations, and auspicious markings.",
                 "".join(rows), nav="Life Areas"))
-
-        # Mandatory Health & Legal Disclaimer
-        disclaimer_html = (
-            '<div class="card" style="background:#fdfcf9;border:1px solid #e2ded5;border-top:3px solid #b57c38;margin-top:24px;padding:16px 20px;">'
-            '<div class="ev-label" style="color:#7a4b18;font-weight:bold;margin-bottom:6px;">Traditional Context & Consultation Boundaries</div>'
-            '<p class="fine" style="color:#5a554c;line-height:1.55;margin:0 0 8px 0;">'
-            'This reading reflects the traditional interpretive heritage of classical palmistry (Samudrika Shastra) synthesized with morphological measurements. '
-            'Palm markings reflect current tendencies and naturally evolve over time with conscious choice, lifestyle changes, and disciplined intention.'
-            '</p>'
-            '<p class="fine" style="color:#5a554c;line-height:1.55;margin:0;">'
-            '<b>Healthcare & Professional Disclaimer:</b> Palmistry is strictly an interpretive and reflective discipline. It does not provide medical, clinical, psychological, legal, or licensed financial advisory services. '
-            'It cannot evaluate, prevent, or treat any health condition. Always consult licensed healthcare professionals for health concerns and qualified advisors for major financial decisions.'
-            '</p>'
-            '</div>'
-        )
-        blocks.append(_section("sec-disclaimer", "Traditional Heritage & Consultation Boundaries", "", disclaimer_html, nav="Disclaimer"))
     else:
         # Free mode: show 1 anchor past milestone to prove accuracy, then lock forward roadmap
         behind_all = _timeline(conf, age, ahead=False)
@@ -668,6 +652,22 @@ def render(
   <p>You have your core hand shape and major line blueprint. Unlock the full forward age timeline, mount energy breakdown, special marks, life area verdicts, and personalized mudra remedies.</p>
   <a class="cta" href="#unlock" data-unlock="1">Unlock full reading · ₹{_e(price)}</a>
 </section>""")
+
+    # Mandatory Health & Legal Disclaimer (both free and paid)
+    disclaimer_html = (
+        '<div class="card" style="background:#fdfcf9;border:1px solid #e2ded5;border-top:3px solid #b57c38;margin-top:24px;padding:16px 20px;">'
+        '<div class="ev-label" style="color:#7a4b18;font-weight:bold;margin-bottom:6px;">Traditional Context & Consultation Boundaries</div>'
+        '<p class="fine" style="color:#5a554c;line-height:1.55;margin:0 0 8px 0;">'
+        'This reading reflects the traditional interpretive heritage of classical palmistry (Samudrika Shastra) synthesized with morphological measurements. '
+        'Palm markings reflect current tendencies and naturally evolve over time with conscious choice, lifestyle changes, and disciplined intention.'
+        '</p>'
+        '<p class="fine" style="color:#5a554c;line-height:1.55;margin:0;">'
+        '<b>Healthcare & Professional Disclaimer:</b> Palmistry is strictly an interpretive and reflective discipline. It does not provide medical, clinical, psychological, legal, or licensed financial advisory services. '
+        'It cannot evaluate, prevent, or treat any health condition. Always consult licensed healthcare professionals for health concerns and qualified advisors for major financial decisions.'
+        '</p>'
+        '</div>'
+    )
+    blocks.append(_section("sec-disclaimer", "Traditional Heritage & Consultation Boundaries", "", disclaimer_html, nav="Disclaimer"))
 
     body = "".join(b for b in blocks if b)
     extra = """

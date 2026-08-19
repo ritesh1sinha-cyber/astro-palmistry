@@ -141,6 +141,8 @@ def analyze_image_paths(
     if not overlay_dir:
         import tempfile
         overlay_dir = Path(tempfile.gettempdir()) / "palm_overlays"
+    else:
+        overlay_dir = Path(overlay_dir)
 
     for hand, path in ordered:
         ov = None
