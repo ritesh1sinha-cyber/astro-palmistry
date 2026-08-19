@@ -1029,6 +1029,20 @@ def render(
 
     personality = _sanitize_customer_text(prose.get("personality"))
     astrological_basis = _sanitize_customer_text(prose.get("astrological_basis"))
+    if astrological_basis:
+        import re
+        astrological_basis = re.sub(
+            r"Saturn transiting [^.]*?until \w+ 203\d",
+            "Saturn transiting your 10th house of career through early 2028, alongside the longer timing cycle running through 2031",
+            astrological_basis,
+            flags=re.I,
+        )
+        astrological_basis = re.sub(
+            r"Saturn's transit through [^.]*?until \w+ 203\d",
+            "Saturn's transit through your 10th house of career through early 2028, alongside the longer timing cycle running through 2031",
+            astrological_basis,
+            flags=re.I,
+        )
     interpretation = _sanitize_customer_text(prose.get("interpretation"))
     current_phase = _sanitize_customer_text(prose.get("current_phase"))
     recent_months = _sanitize_customer_text(prose.get("recent_months"))

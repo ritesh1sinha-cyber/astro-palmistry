@@ -6,6 +6,7 @@ Provides a balanced Vedic analysis of all 9 key divisional charts
 2. Vulnerabilities & friction points (trik house 6/8/12 placements, debilitations, afflictions)
 3. Practical remedial & lifestyle guidance to navigate those friction points.
 4. Gating: Remedies blurred in Free report, fully visible in Paid report.
+5. Scannability: Important lines and phrases highlighted in bold for clarity.
 """
 from __future__ import annotations
 
@@ -227,15 +228,15 @@ def _interpret_varga_balanced(
     nakshatra: str,
     pc: dict,
 ) -> tuple[str, str, str]:
-    """Generates honest, balanced Vedic readings detailing strengths, vulnerabilities, and remedies."""
+    """Generates honest, balanced Vedic readings with bolded key takeaways and remedies."""
     if code == "D1":
         headline = f"Core Constitution & Temperament ({v_lagna} Rising · Moon in {moon_sign})"
         pred = (
-            f"You possess an agile, intellectually sharp, and highly observant mind with {v_lagna} rising and Moon in {moon_sign}. "
-            f"Mars in its moolatrikona sign in the 11th house grants strong executive ambition, while exalted Venus in the 10th house confers "
-            f"aesthetic taste, charm, and Malavya Yoga. However, with Lagna lord Mercury debilitated in the 10th house alongside a debilitated "
-            f"Jupiter in the 8th house (Trik) and Saturn in the 6th house (Trik), your constitution is sensitive to nervous strain, "
-            f"overthinking, and digestive fatigue under sustained pressure."
+            f"You possess an <b>agile, intellectually sharp, and highly observant mind</b> with {v_lagna} rising and Moon in {moon_sign}. "
+            f"Mars in its moolatrikona sign in the 11th house grants <b>strong executive ambition</b>, while exalted Venus in the 10th house confers "
+            f"<b>aesthetic taste, charm, and Malavya Yoga</b>. However, with Lagna lord Mercury debilitated in the 10th house alongside a debilitated "
+            f"Jupiter in the 8th house (Trik) and Saturn in the 6th house (Trik), your constitution is <b>sensitive to nervous strain, "
+            f"overthinking, and digestive fatigue under sustained pressure</b>."
         )
         remedy = "Maintain regular physical and meal routines. Protect yourself from mental overstimulation and practice weekly Vishnu Sahasranama or green gram donation."
         return headline, pred, remedy
@@ -243,10 +244,10 @@ def _interpret_varga_balanced(
     elif code == "D2":
         headline = "Wealth Accumulation & Financial Instincts (D2)"
         pred = (
-            f"In your financial division ({v_lagna} rising), Saturn in the 11th house grants strong capacity for structured, "
-            f"long-term wealth accumulation. However, because ruler Mercury is debilitated in the 7th house and Mars is placed in the 8th house (Trik) "
-            f"alongside Venus in the 6th house (Trik), wealth is vulnerable to sudden unexpected expenditures, partnership misunderstandings, or "
-            f"speculative missteps if decisions are rushed."
+            f"In your financial division ({v_lagna} rising), Saturn in the 11th house grants <b>strong capacity for structured, "
+            f"long-term wealth accumulation</b>. However, because ruler Mercury is debilitated in the 7th house and Mars is placed in the 8th house (Trik) "
+            f"alongside Venus in the 6th house (Trik), wealth is <b>vulnerable to sudden unexpected expenditures, partnership misunderstandings, or "
+            f"speculative missteps if decisions are rushed</b>."
         )
         remedy = "Automate your savings before spending. Maintain a liquid emergency reserve, avoid speculative partnerships, and review major contracts with extra diligence."
         return headline, pred, remedy
@@ -254,10 +255,10 @@ def _interpret_varga_balanced(
     elif code == "D3":
         headline = "Drive, Initiative & Sibling Dynamics (D3)"
         pred = (
-            f"With Mars in its own moolatrikona sign in the 3rd house of courage, you have exceptional personal drive, executive stamina, "
-            f"and the grit to execute difficult goals independently. On the friction side, Sun is debilitated in the 9th house, Moon is in the "
-            f"12th house (Trik), and Mercury is debilitated in the 2nd. This indicates periodic friction with authority figures, misunderstandings with "
-            f"siblings or close peers, and a tendency to carry burdens entirely alone."
+            f"With Mars in its own moolatrikona sign in the 3rd house of courage, you have <b>exceptional personal drive, executive stamina, "
+            f"and the grit to execute difficult goals independently</b>. On the friction side, Sun is debilitated in the 9th house, Moon is in the "
+            f"12th house (Trik), and Mercury is debilitated in the 2nd. This indicates <b>periodic friction with authority figures, misunderstandings with "
+            f"siblings or close peers, and a tendency to carry burdens entirely alone</b>."
         )
         remedy = "Cultivate conscious transparency with peers and siblings; delegate early rather than bottling up responsibilities."
         return headline, pred, remedy
@@ -266,10 +267,10 @@ def _interpret_varga_balanced(
         headline = "Lineage, Children & Progeny Dynamics (D7)"
         pred = (
             f"Your D7 chart ({v_lagna} lagna) carries powerful natural blessings — with exalted Venus, exalted Moon, and moolatrikona Mars, "
-            f"your children possess exceptional intelligence, strong artistic/mental gifts, and independent character. "
+            f"your children possess <b>exceptional intelligence, strong artistic/mental gifts, and independent character</b>. "
             f"However, astrologically, Lagna ruler Venus is placed in the 6th House (Trik/Dusthana), Moon is in the 8th House (Trik), and Jupiter "
-            f"is in the 12th House (Trik), while Rahu and Ketu occupy the 1st/7th axis. This configuration indicates that parenting requires "
-            f"conscious emotional patience, navigating childhood transitions with calm, and avoiding over-anxious expectations."
+            f"is in the 12th House (Trik), while Rahu and Ketu occupy the 1st/7th axis. This configuration shows parenting requires "
+            f"<b>conscious emotional patience, navigating childhood transitions with calm, and avoiding over-anxious expectations</b>."
         )
         remedy = "Channel parental care through steady emotional presence rather than worry. Cultivate calm communication with children, practice Santan Gopal mantra or Jupiter meditation on Thursdays, and support child welfare or educational charities."
         return headline, pred, remedy
@@ -277,10 +278,10 @@ def _interpret_varga_balanced(
     elif code == "D9":
         headline = "Soul Purpose & Life Partnership (D9)"
         pred = (
-            f"Your D9 chart ({v_lagna} lagna) reflects strong spiritual grounding and personal courage, backed by Lagna lord Mars in "
-            f"moolatrikona in the 1st house with Moon and Jupiter (Gaja Kesari). This gives deep inner integrity. "
+            f"Your D9 chart ({v_lagna} lagna) reflects <b>strong spiritual grounding and personal courage</b>, backed by Lagna lord Mars in "
+            f"moolatrikona in the 1st house with Moon and Jupiter (Gaja Kesari). This gives <b>deep inner integrity</b>. "
             f"The vulnerability lies in Venus being placed in the 12th House (Trik house) and Rahu in the 8th / Ketu in the 2nd. "
-            f"This can create idealistic relationship expectations, emotional distance during stressful chapters, and financial friction with in-laws."
+            f"This can create <b>idealistic relationship expectations, emotional distance during stressful chapters, and financial friction with in-laws</b>."
         )
         remedy = "Anchor romantic expectations in grounded day-to-day companionship. Practice open, non-defensive communication on finances and family matters."
         return headline, pred, remedy
@@ -288,10 +289,10 @@ def _interpret_varga_balanced(
     elif code == "D10":
         headline = "Career Trajectory, Status & Authority (D10)"
         pred = (
-            f"In your professional karma chart ({v_lagna} lagna), Mars in the 4th house provides formidable technical acumen, resilience, "
-            f"and high delivery standards. However, ruler Saturn is placed in the 8th House (Trik house) with Moon and Venus; Sun is "
+            f"In your professional karma chart ({v_lagna} lagna), Mars in the 4th house provides <b>formidable technical acumen, resilience, "
+            f"and high delivery standards</b>. However, ruler Saturn is placed in the 8th House (Trik house) with Moon and Venus; Sun is "
             f"debilitated in the 10th house, and Jupiter is debilitated in the 1st. This pattern indicates that professional progress does "
-            f"not come via easy patronage — you face sudden corporate restructurings, delayed recognition, and office politics."
+            f"not come via easy patronage — you face <b>sudden corporate restructurings, delayed recognition, and office politics</b>."
         )
         remedy = "Build authority on verifiable technical mastery rather than organizational politics. Stay patient during leadership shifts and cultivate cross-functional alliances."
         return headline, pred, remedy
@@ -300,9 +301,9 @@ def _interpret_varga_balanced(
         headline = "Parental Roots & Ancestral Grounding (D12)"
         pred = (
             f"Your D12 chart ({v_lagna} lagna) shows strong inherited values, with ruler Saturn in the 11th house and Mercury in its own sign "
-            f"in the 5th with Jupiter. You carry principled moral grounding from your father's lineage. "
-            f"The challenge appears with Moon placed in the 12th House (Dusthana) and Rahu on the Lagna, pointing to maternal health "
-            f"vulnerabilities, subconscious emotional burdens, or periods of physical distance from family roots."
+            f"in the 5th with Jupiter. You carry <b>principled moral grounding from your father's lineage</b>. "
+            f"The challenge appears with Moon placed in the 12th House (Dusthana) and Rahu on the Lagna, pointing to <b>maternal health "
+            f"vulnerabilities, subconscious emotional burdens, or periods of physical distance from family roots</b>."
         )
         remedy = "Regularly honor ancestral traditions, check in proactively on maternal health, and maintain emotional closure regarding past family obligations."
         return headline, pred, remedy
@@ -311,9 +312,9 @@ def _interpret_varga_balanced(
         headline = "Higher Learning & Intellectual Mastery (D24)"
         pred = (
             f"Your higher learning chart ({v_lagna} lagna) is exceptionally endowed: ruler Saturn is exalted in the 10th house, and Venus is "
-            f"in its own sign in the 5th house. You possess extraordinary cognitive endurance and can master intricate, highly specialized domains. "
-            f"The vulnerability arises because the nodal axis crosses the 5th house of intellect, which can cause scattered study focus, "
-            f"imposter syndrome, or burnout from taking on too many complex topics simultaneously."
+            f"in its own sign in the 5th house. You possess <b>extraordinary cognitive endurance and can master intricate, highly specialized domains</b>. "
+            f"The vulnerability arises because the nodal axis crosses the 5th house of intellect, which can cause <b>scattered study focus, "
+            f"imposter syndrome, or burnout from taking on too many complex topics simultaneously</b>."
         )
         remedy = "Adopt a modular, single-focus study approach. Complete one specialized certification or project before initiating the next."
         return headline, pred, remedy
@@ -322,9 +323,9 @@ def _interpret_varga_balanced(
         headline = "Navigating Hardships & Hidden Resilience (D30)"
         pred = (
             f"Your resilience chart ({v_lagna} lagna) shows formidable innate protection: ruler Mercury is exalted in the 4th house, Jupiter is in "
-            f"its own sign in the 10th, and Mars is in moolatrikona in the 11th. You have an extraordinary ability to recover from setbacks. "
-            f"However, with Saturn placed in the 12th House (Dusthana) and Venus in the 6th House (Trik), acute stress manifests through sleep "
-            f"disturbances, hidden fatigue, or inflammatory health flare-ups."
+            f"its own sign in the 10th, and Mars is in moolatrikona in the 11th. You have an <b>extraordinary ability to recover from setbacks</b>. "
+            f"However, with Saturn placed in the 12th House (Dusthana) and Venus in the 6th House (Trik), acute stress manifests through <b>sleep "
+            f"disturbances, hidden fatigue, or inflammatory health flare-ups</b>."
         )
         remedy = "Protect your sleep environment aggressively. Incorporate regular physical detox, Pranayama, and avoid taking on other people's crises."
         return headline, pred, remedy
@@ -402,14 +403,14 @@ def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
             if paid:
                 remedy_box = (
                     f'  <div style="background:#f9f8f5;border-left:3px solid #8a6a1f;padding:8px 12px;border-radius:6px;margin:8px 0 10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">\n'
-                    f'    <b>Remedial Key &amp; Action:</b> {html.escape(ins.remedy)}\n'
+                    f'    <b>Remedial Key &amp; Action:</b> {ins.remedy}\n'
                     f'  </div>\n'
                 )
             else:
                 remedy_box = (
                     f'  <div class="lock-wrap" style="margin:8px 0 10px;border-radius:8px;">\n'
                     f'    <div class="lock-blur" style="padding:8px 12px;font-size:0.84rem;line-height:1.45;">\n'
-                    f'      <b>Remedial Key &amp; Action:</b> {html.escape(ins.remedy)}\n'
+                    f'      <b>Remedial Key &amp; Action:</b> {ins.remedy}\n'
                     f'    </div>\n'
                     f'    <div class="lock-over">\n'
                     f'      <span class="lock-chip" style="font-size:0.65rem;padding:4px 10px;">🔒 Remedial Action in Full Reading</span>\n'
@@ -424,7 +425,7 @@ def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
                 f'    <span class="pill {pill_cls}" style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;">{pill_lbl}</span>\n'
                 f'  </div>\n'
                 f'  <h3 style="font-family:Georgia,serif;font-size:1.05rem;margin:4px 0 8px;color:#1f2430;font-weight:600;">{html.escape(ins.headline)}</h3>\n'
-                f'  <p style="margin:0 0 10px;font-size:0.9rem;line-height:1.55;color:#2c3140;">{html.escape(ins.prediction)}</p>\n'
+                f'  <p style="margin:0 0 10px;font-size:0.9rem;line-height:1.55;color:#2c3140;">{ins.prediction}</p>\n'
                 f'{remedy_box}'
                 f'  <div style="border-top:1px solid #eeeae3;padding-top:8px;font-size:0.75rem;color:#7a756c;line-height:1.4;">\n'
                 f'    <b>Astrological Basis ({html.escape(ins.name)}):</b> {ins.evidence}\n'
@@ -468,7 +469,7 @@ def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
         f'<div class="card snapshot-summary-box" style="background:#fbfaf6;border:1px solid #e6e1d6;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;margin-top:18px;">\n'
         f'  <div style="font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:#7a4b18;font-weight:800;margin-bottom:8px;">Core Astrological Signatures &amp; In-Built Strengths</div>\n'
         f'  <p style="margin:0;font-size:0.9rem;color:#2c3140;line-height:1.6;font-family:Georgia,serif;">\n'
-        f'    {html.escape(summary_108)}\n'
+        f'    {summary_108}\n'
         f'  </p>\n'
         f'</div>'
     )
