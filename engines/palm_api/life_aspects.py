@@ -22,44 +22,16 @@ from palm_api.report_format import book_label
 
 # ---- ordered life aspects (titles shown in the report) ---------------------
 ASPECTS: list[tuple[str, str]] = [
-    ("character", "Character & Temperament"),
-    ("mind", "Mind & Intellect"),
+    ("career", "Work & Career"),
+    ("wealth", "Money & Resources"),
     ("love", "Relationships & Emotions"),
-    ("career", "Career & Destiny"),
-    ("wealth", "Wealth & Fortune"),
     ("health", "Health & Vitality"),
     ("travel", "Travel, Change & Imagination"),
-    ("fortune", "Special Marks & Direction"),
+    ("character", "Personal Growth & Direction"),
 ]
 
 # Authentic Domain-Specific Vedic Astrological Upayas
 _ASPECT_VEDIC_UPAYAS: dict[str, dict[str, str]] = {
-    "character": {
-        "planet": "Jupiter & Sun (Guru-Surya)",
-        "upaya": (
-            "<b>Guru Beej Mantra & Gyan Mudra</b>: Practice Gyan Mudra (join thumb tip with index fingertip) "
-            "for 15 minutes daily during morning meditation. Chant the Guru Beej Mantra "
-            "<code>Om Gram Greem Graum Sah Gurave Namah</code> (108 times on Thursdays) to channel "
-            "leadership authority, strategic wisdom, and dignified self-respect."
-        ),
-    },
-    "mind": {
-        "planet": "Mercury & Jupiter (Budh-Brihaspati)",
-        "upaya": (
-            "<b>Budh Beej Mantra & Varun Mudra</b>: Practice Varun Mudra (join thumb tip with little fingertip) "
-            "for 15 minutes daily to harmonize nervous currents and enhance decisive analytical speed. Chant "
-            "<code>Om Bram Breem Braum Sah Budhaya Namah</code> (108 times on Wednesday mornings) to sharpen "
-            "negotiation clarity and commercial acumen."
-        ),
-    },
-    "love": {
-        "planet": "Venus & Moon (Shukra-Chandra)",
-        "upaya": (
-            "<b>Shukra Beej Mantra & Prithvi Mudra</b>: Practice Prithvi Mudra (join thumb tip with ring fingertip) "
-            "to ground emotional warmth and deepen interpersonal trust. Chant <code>Om Dram Dreem Draum Sah Shukraya Namah</code> "
-            "(108 times on Fridays) and donate white sweets, milk, or rice on Friday mornings for domestic harmony."
-        ),
-    },
     "career": {
         "planet": "Saturn & Sun (Shani-Surya)",
         "upaya": (
@@ -74,6 +46,14 @@ _ASPECT_VEDIC_UPAYAS: dict[str, dict[str, str]] = {
             "<b>Budh Upasana & Cow Seva</b>: Feed fresh green grass or spinach to cows on Wednesday mornings and keep "
             "a thriving green plant in the Northern sector of your workspace. Chant <code>Om Shreem Hreem Kleem Shreem Namah</code> "
             "or Shree Suktam to fortify liquid cash flow and commercial prosperity."
+        ),
+    },
+    "love": {
+        "planet": "Venus & Moon (Shukra-Chandra)",
+        "upaya": (
+            "<b>Shukra Beej Mantra & Prithvi Mudra</b>: Practice Prithvi Mudra (join thumb tip with ring fingertip) "
+            "to ground emotional warmth and deepen interpersonal trust. Chant <code>Om Dram Dreem Draum Sah Shukraya Namah</code> "
+            "(108 times on Fridays) and donate white sweets, milk, or rice on Friday mornings for domestic harmony."
         ),
     },
     "health": {
@@ -92,11 +72,13 @@ _ASPECT_VEDIC_UPAYAS: dict[str, dict[str, str]] = {
             "on Monday evenings and drink water stored in a pure silver cup."
         ),
     },
-    "fortune": {
+    "character": {
         "planet": "Jupiter & Sun (Guru-Surya)",
         "upaya": (
-            "<b>Brihaspati Daan & Saffron Tilak</b>: Apply a sacred Saffron or Turmeric tilak on your forehead and throat chakra "
-            "on Thursday mornings. Offer water to a Peepal tree and donate chana dal to scholars to awaken dormant luck and mentors."
+            "<b>Guru Beej Mantra & Gyan Mudra</b>: Practice Gyan Mudra (join thumb tip with index fingertip) "
+            "for 15 minutes daily during morning meditation. Chant the Guru Beej Mantra "
+            "<code>Om Gram Greem Graum Sah Gurave Namah</code> (108 times on Thursdays) to channel "
+            "leadership authority, strategic wisdom, and dignified self-respect."
         ),
     },
 }
@@ -358,54 +340,146 @@ for _idx, _rule in enumerate(RULES, 1):
     _rule.rule_id = f"R{_idx:02d}_{_rule.aspect}"
 
 
-def _calculate_confluence_verdict(akey: str, points: list[dict[str, Any]], quality_grade: str) -> tuple[str, str, str]:
-    if not points:
-        return "insufficient_evidence", "Insufficient evidence — key palm landmarks are not clearly resolved.", "low"
-
+def _calculate_confluence_verdict(
+    akey: str,
+    points: list[dict[str, Any]],
+    quality_grade: str,
+    dv: Optional[View] = None,
+    nv: Optional[View] = None,
+) -> dict[str, Any]:
+    supporting_signals: list[str] = []
+    conflicting_signals: list[str] = []
     score = 0
     reinforced_count = 0
+
     for p in points:
-        txt = str(p.get("text") or p.get("traditional_meaning") or "").lower()
+        txt = str(p.get("traditional_meaning") or p.get("text") or "").strip()
         both = bool(p.get("reinforced"))
         if both:
             reinforced_count += 1
             score += 1
-        
-        if any(w in txt for w in ("deep", "clear", "prominent", "trident", "triangle", "square", "star", "well-formed")):
+            hand_badge = "in both hands (High confidence)"
+        else:
+            hand_badge = "on active hand (Moderate confidence)"
+
+        txt_l = txt.lower()
+        if any(w in txt_l for w in ("deep", "clear", "prominent", "trident", "triangle", "square", "star", "well-formed")):
             score += 2
-        elif any(w in txt for w in ("grille", "cross", "island", "broken", "wavy", "caution", "restless", "delicate", "sensitive")):
+            supporting_signals.append(f"{txt} · {hand_badge}")
+        elif any(w in txt_l for w in ("grille", "cross", "island", "broken", "wavy", "caution", "restless", "delicate", "sensitive")):
             score -= 2
+            conflicting_signals.append(f"{txt} · {hand_badge}")
         else:
             score += 1
+            supporting_signals.append(f"{txt} · {hand_badge}")
 
-    # Quality gating
+    # Check for fine marks on mounts
+    if dv:
+        if akey in ("career", "character") and dv.has_mark("grille", "jupiter"):
+            if not any("grille" in s.lower() for s in conflicting_signals):
+                conflicting_signals.append("Grille on Jupiter mount (Scattered energy when too many priorities compete)")
+                score -= 2
+        if akey in ("career", "character") and dv.has_mark("trident", "jupiter"):
+            if not any("trident" in s.lower() for s in supporting_signals):
+                supporting_signals.append("Trident on Jupiter mount (Leadership ambition and recognition)")
+                score += 2
+
+    # Image quality gating
     if quality_grade == "poor":
         score -= 2
-        confidence = "tentative"
+        confidence = "Tentative"
+        conflicting_signals.append("Photograph grade is poor — fine line markings cannot be resolved with certainty")
     elif quality_grade == "fair":
         score -= 1
-        confidence = "moderate"
+        confidence = "Moderate"
+        conflicting_signals.append("Photograph grade is fair — timing windows widened to avoid false precision")
     else:
-        confidence = "high" if reinforced_count >= 1 else "moderate"
+        confidence = "High" if reinforced_count >= 1 else "Moderate"
 
-    if score >= 4:
-        level = "strong"
-        level_note = "Strong theme — major supporting lines and mounts align clearly."
-    elif score >= 2:
-        level = "moderate"
-        level_note = "Moderate theme — positive primary indicators with steady support."
-    elif score >= 0:
-        level = "balanced"
-        level_note = "Balanced theme — steady baseline with mixed or nuanced indications."
+    # Multi-dimensional verdict determination
+    if akey == "career":
+        if supporting_signals and conflicting_signals:
+            verdict = "Good with pressure"
+        elif score >= 3:
+            verdict = "Strong & Supportive"
+        elif score >= 1:
+            verdict = "Moderate / Developing"
+        else:
+            verdict = "Demanding / Needs Focus"
+    elif akey == "wealth":
+        if score >= 3 and not conflicting_signals:
+            verdict = "Strong / Favourable"
+        elif score >= 1:
+            verdict = "Moderate / Improving"
+        else:
+            verdict = "Delicate / Needs Discipline"
+    elif akey == "love":
+        if supporting_signals and conflicting_signals:
+            verdict = "Supportive with sensitivity"
+        elif score >= 3:
+            verdict = "Harmonious & Warm"
+        elif score >= 1:
+            verdict = "Moderate & Selective"
+        else:
+            verdict = "Guarded / Needs Care"
+    elif akey == "health":
+        if score >= 3:
+            verdict = "Steady Vitality"
+        elif score >= 1:
+            verdict = "Balanced / Steady"
+        else:
+            verdict = "Needs Routine & Care"
+    elif akey == "travel":
+        if score >= 3:
+            verdict = "Active Horizons"
+        elif score >= 1:
+            verdict = "Moderate / Occasional"
+        else:
+            verdict = "Quiet / Rooted"
+    elif akey == "character":
+        if supporting_signals and conflicting_signals:
+            verdict = "Dynamic with competing pulls"
+        elif score >= 3:
+            verdict = "Strong & Purposeful"
+        elif score >= 1:
+            verdict = "Balanced & Adaptive"
+        else:
+            verdict = "Introspective / Guarded"
     else:
-        level = "care"
-        level_note = "Area to watch — competing indications calling for conscious care."
+        if score >= 3:
+            verdict = "Strong"
+        elif score >= 1:
+            verdict = "Moderate"
+        else:
+            verdict = "Needs Attention"
 
     if quality_grade == "poor":
-        level = "tentative"
-        level_note = "Tentative — image resolution is limited."
+        verdict = "Insufficient Evidence"
 
-    return level, level_note, confidence
+    # Practical "What helps"
+    what_helps_map = {
+        "career": "Concentrate on fewer priorities, take ownership of high-value work, and avoid unnecessary professional fragmentation.",
+        "wealth": "Maintain disciplined accumulation, protect liquid cash flow, and avoid short-term emotional or speculative decisions.",
+        "love": "Communicate feelings directly rather than relying on assumptions, and allow emotional trust to build at its natural pace.",
+        "health": "Protect regular rest rhythms, maintain steady daily physical movement, and pause early when nervous fatigue appears.",
+        "travel": "Channel restlessness into purposeful explorations, learning new disciplines, or refreshing changes of environment.",
+        "character": "Anchor ambition with deliberate daily discipline, honor your personal standards, and let consistent actions demonstrate authority.",
+    }
+    what_helps = what_helps_map.get(akey, "Maintain steady focus, balance effort with rest, and act with intention.")
+
+    # Timing breakdown
+    current_phase = "Demanding but constructive — energy requires intentional focus." if conflicting_signals else "Favourable baseline — steady momentum."
+    near_term = "Pressure remains while competing priorities are active; progress rewards patience." if conflicting_signals else "Continued steady development."
+
+    return {
+        "verdict": verdict,
+        "confidence": confidence,
+        "supporting_signals": supporting_signals,
+        "conflicting_signals": conflicting_signals,
+        "what_helps": what_helps,
+        "current_phase": current_phase,
+        "near_term": near_term,
+    }
 
 
 _MAX_POINTS_PER_ASPECT = 2
@@ -447,18 +521,6 @@ def build_life_aspects(
     *,
     saraswati_signals: Optional[dict[str, list[dict[str, Any]]]] = None,
 ) -> list[dict[str, Any]]:
-    """Build life-aspect readings with a separate human-correlation layer.
-
-    The existing RULES remain the source of palm evidence.  This function no
-    longer treats their prose as the final customer copy.  Each selected rule
-    is translated through ``palm_modern_correlation.json`` into:
-
-      palm evidence -> traditional meaning -> modern-life manifestation ->
-      recognition cues.
-
-    This keeps the palmistry logic deterministic while making the report much
-    easier for a customer to validate against real life.
-    """
     from pathlib import Path
     import json
 
@@ -480,14 +542,23 @@ def build_life_aspects(
     except Exception:
         rubric = {}
 
+    # Map aspect key to rule aspect categories
+    aspect_rule_map: dict[str, tuple[str, ...]] = {
+        "career": ("career", "fortune"),
+        "wealth": ("wealth", "fortune"),
+        "love": ("love",),
+        "health": ("health",),
+        "travel": ("travel",),
+        "character": ("character", "mind", "fortune"),
+    }
+
     out: list[dict[str, Any]] = []
     for akey, atitle in ASPECTS:
+        allowed_rule_aspects = aspect_rule_map.get(akey, (akey,))
         matched: list[Rule] = []
         for r in RULES:
-            if r.aspect != akey or not _safe(r.cond, dv):
+            if r.aspect not in allowed_rule_aspects or not _safe(r.cond, dv):
                 continue
-            # Fair/poor photos may support broad lines/mounts, but fine special
-            # marks are not reliable enough to become life-area evidence.
             if quality_grade != "good" and re.search(
                 r"\b(trident|star|grille|triangle|square|cross)\b", r.text, re.I
             ):
@@ -496,8 +567,6 @@ def build_life_aspects(
         if not matched:
             continue
 
-        # Prefer evidence that is independently confirmed on both hands and
-        # prefer richer/composite rules after that.
         ranked = sorted(
             matched,
             key=lambda r: (
@@ -514,8 +583,6 @@ def build_life_aspects(
             entry = rubric.get(r.rule_id) or rubric.get(akey, {}) or {}
             family = str(entry.get("family") or f"{akey}_general")
 
-            # Do not fill an aspect with several statements that are merely
-            # different wording of the same life theme.
             if family in seen_families:
                 continue
 
@@ -548,11 +615,8 @@ def build_life_aspects(
             continue
 
         reinforced = sum(1 for p in points if p.get("reinforced"))
-        level, level_note, confidence = _calculate_confluence_verdict(akey, points, quality_grade)
+        confluence_info = _calculate_confluence_verdict(akey, points, quality_grade, dv=dv, nv=nv)
 
-        # A human-facing summary is intentionally separate from the technical
-        # rule text. It tells the reader what the selected signs could look like
-        # in ordinary life, without turning palmistry into a guaranteed event.
         meaning_parts = [str(p["text"]).strip().rstrip(".") for p in points if p.get("text")]
         if len(meaning_parts) == 1:
             summary = meaning_parts[0] + "."
@@ -579,9 +643,15 @@ def build_life_aspects(
             "what_it_means": summary,
             "recognition_title": "You may recognize this as",
             "recognize": recognition,
-            "strength": level,
-            "strength_note": level_note,
-            "confidence": confidence,
+            "strength": confluence_info["verdict"],
+            "strength_note": confluence_info["current_phase"],
+            "confidence": confluence_info["confidence"],
+            "verdict": confluence_info["verdict"],
+            "supporting_signals": confluence_info["supporting_signals"],
+            "conflicting_signals": confluence_info["conflicting_signals"],
+            "what_helps": confluence_info["what_helps"],
+            "current_phase": confluence_info["current_phase"],
+            "near_term": confluence_info["near_term"],
             "reinforced_count": reinforced,
             "points": points,
             "remedy": remedy_text,
