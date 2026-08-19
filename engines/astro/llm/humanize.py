@@ -267,15 +267,19 @@ def _conversational_palm_overlay(
 ) -> dict[str, Any]:
     areas: dict[str, Any] = {}
     if access == "paid":
+        from palm_api.life_aspects import _ASPECT_VEDIC_UPAYAS
         for a in list(prose.areas or []):
             key = str(getattr(a, "aspect", "") or "").strip()
             if not key:
                 continue
+            rem = str(getattr(a, "remedy", "") or "")
+            if not rem or "guru beej" in rem.lower():
+                rem = _ASPECT_VEDIC_UPAYAS.get(key, {}).get("upaya", rem)
             areas[key] = {
                 "outlook": _as_sentence(getattr(a, "outlook", "") or ""),
                 "timing": _as_sentence(getattr(a, "timing", "") or ""),
                 "manifestation": _as_sentence(getattr(a, "manifestation", "") or ""),
-                "remedy": _as_sentence(getattr(a, "remedy", "") or ""),
+                "remedy": rem,
             }
     return {
         "conversational": True,

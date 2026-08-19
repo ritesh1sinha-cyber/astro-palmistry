@@ -205,12 +205,13 @@ def clip_sentences(text: Any, limit: int) -> str:
     t = str(text or "").strip()
     if len(t) <= limit:
         return t
-    parts = re.split(r"(?<=[.!?])\s+", t)
+    parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+", t) if p.strip()]
     joined = _join_within(parts, limit)
     if joined and len(joined) <= limit:
         return joined
-    # A single oversized sentence: end on a word, never inside one.
-    return t[:limit].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+    if parts:
+        return parts[0]
+    return t
 
 
 def clean_palm_summary(summary: Any) -> str:
@@ -811,13 +812,17 @@ def _life_state_prose(life_state: Any) -> tuple[list[str], str]:
 def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
     name = getattr(facts, "first_name", "") or ""
     traits = [str(t).strip() for t in (getattr(facts, "personality_traits", None) or []) if str(t).strip()]
-    personality = " ".join(traits[:3]) if traits else (
-        f"{name}, your hands show a nature that holds across temperament, mind and work. "
-        f"That nature does not change with a season; it is what you keep bringing."
-        if name else
-        "Your hands show a nature that holds across temperament, mind and work. "
-        "That nature does not change with a season; it is what you keep bringing."
-    )
+    if traits:
+        # Use the primary character and temperament sentence intact
+        personality = traits[0]
+    else:
+        personality = (
+            f"{name}, your hands show a nature that holds across temperament, mind and work. "
+            f"That nature does not change with a season; it is what you keep bringing."
+            if name else
+            "Your hands show a nature that holds across temperament, mind and work. "
+            "That nature does not change with a season; it is what you keep bringing."
+        )
     stage = str(getattr(facts, "life_stage_note", "") or "").strip()
     if stage and stage[-1] not in ".!?":
         cut = max(stage.rfind(". "), stage.rfind("—"), stage.rfind(" - "))
@@ -898,29 +903,20 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
             timing = ""
             if len(aw) >= 2:
                 timing = f"This theme is most noticeable around ages {aw[0]} to {aw[1]}."
-            remedy = ""
-            if remedy_ok and remedies:
-                remedy = remedies[0]
-                remedy = remedy if remedy.endswith(".") else f"{remedy}."
-            elif demanding:
-                remedy = (
-                    "Keep rest, food and working hours regular — this area "
-                    "responds to steady habits, not to sudden effort."
-                )
+            from palm_api.life_aspects import _ASPECT_VEDIC_UPAYAS
+            remedy = _ASPECT_VEDIC_UPAYAS.get(key, {}).get("upaya", "")
             areas[key] = {
-                "outlook": clip_sentences(outlook, 320),
+                "outlook": outlook,
                 "timing": timing[:140],
-                "manifestation": clip_sentences(manifestation, 180),
-                "remedy": clip_sentences(remedy, 200),
+                "manifestation": manifestation,
+                "remedy": remedy,
             }
     mind_now, why_now = _palm_state_prose(getattr(facts, "palm_state", None))
     return {
         "conversational": True,
-        # Sentence-aware, not sliced: the life-stage note the palm engine
-        # supplies runs long, and a hard slice ended the page mid-word.
-        "personality": clip_sentences(personality, 360),
-        "current_phase": clip_sentences(current_phase, 280),
-        "hardest_area_note": clip_sentences(hardest, 160),
+        "personality": personality,
+        "current_phase": current_phase,
+        "hardest_area_note": hardest,
         "mind_now": mind_now,
         "why_now": why_now,
         "hand_contrast_note": _hand_contrast_prose(
@@ -991,16 +987,11 @@ def _palm_state_prose(palm_state: Any) -> tuple[list[str], str]:
         )
     if note:
         why = f"{why} {note}"
-    return lines[:3], clip_sentences(why, 380)
+    return lines[:3], why
 
 
 def _hand_contrast_prose(contrast: Any) -> str:
-    """The two-hand story, in the reader's own terms.
-
-    This is the most persuasive paragraph on a palm page, so it says only what
-    the comparison found: which parts are long-standing, which were grown into,
-    and which are there with less room than they want.
-    """
+    """The two-hand story, written in natural, fluent consultation voice."""
     if contrast is None:
         return ""
     dominant = str(getattr(contrast, "dominant_hand", "") or "right").lower()
@@ -1014,39 +1005,23 @@ def _hand_contrast_prose(contrast: Any) -> str:
         return ""
 
     parts = [
-        f"Your {other} hand reads as what you started with, and your "
-        f"{dominant} hand as what you have made of it."
+        f"Your hands tell a clear story of personal evolution. Your {other} hand represents your inborn potential and natural blueprint, while your {dominant} hand reflects the strengths and conscious choices you have actively cultivated."
     ]
+    if developed or traits:
+        dev_list = developed or traits
+        parts.append(
+            f"Through lived experience, you have noticeably expanded your {_join(dev_list)}, developing greater real-world mastery than you initially started with."
+        )
     if steady:
         parts.append(
-            f"{_join(steady).capitalize()} read much the same on both, so that "
-            "part of you looks long-standing rather than recent."
+            f"At the same time, core foundations such as your {_join(steady)} have remained reliable, steady anchors throughout your journey."
         )
-    if developed:
+    if latent or latent_traits:
+        lat_list = latent or latent_traits
         parts.append(
-            f"{_join(developed).capitalize()} reads stronger on your "
-            f"{dominant} hand, which usually means you grew into it through "
-            "experience rather than starting there."
+            f"Your underlying hand also preserves rich potential for {_join(lat_list)} that you can draw upon whenever you choose to expand further."
         )
-    if latent:
-        parts.append(
-            f"{_join(latent).capitalize()} reads stronger on your {other} "
-            "hand, which tends to mean it is there underneath with less room "
-            "than it wants."
-        )
-    if traits and not developed:
-        parts.append(
-            f"Your lived hand also suggests more {_join(traits)} than you "
-            "may have had earlier on."
-        )
-    if latent_traits and not latent:
-        # The most recognisable line on the page for many readers: a strength
-        # the underlying hand carries but daily life gives no room to.
-        parts.append(
-            f"There may also be more {_join(latent_traits)} in you than your "
-            "routine currently asks for."
-        )
-    return clip_sentences(" ".join(parts), 380)
+    return " ".join(parts)
 
 
 def _join(items: list[str]) -> str:

@@ -57,9 +57,9 @@ def ensure_corpus() -> dict[str, Any]:
 
 def _guess_hand(path: Path) -> str:
     n = path.name.lower()
-    if re.search(r"\bleft\b|leftpalm|l_palm|_l\.|lhand", n):
+    if re.search(r"\bleft\b|leftpalm|l_palm|_l\.|lhand|^l\.|^al\.|_al\.|_l_", n):
         return "left"
-    if re.search(r"\bright\b|rightpalm|r_palm|_r\.|rhand", n):
+    if re.search(r"\bright\b|rightpalm|r_palm|_r\.|rhand|^r\.|^ar\.|_ar\.|_r_", n):
         return "right"
     return "unknown"
 
@@ -137,6 +137,10 @@ def analyze_image_paths(
 
     results: dict[str, Any] = {"active_hand": active_hand, "corpus_rules": corpus.get("rule_count", 0)}
     blocks_for_conf: dict[str, Any] = {}
+
+    if not overlay_dir:
+        import tempfile
+        overlay_dir = Path(tempfile.gettempdir()) / "palm_overlays"
 
     for hand, path in ordered:
         ov = None

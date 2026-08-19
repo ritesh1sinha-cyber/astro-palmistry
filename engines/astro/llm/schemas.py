@@ -566,8 +566,8 @@ class PalmAspectFacts(BaseModel):
     signal_ids: list[str] = Field(default_factory=list, max_length=12)
     point_ids: list[str] = Field(default_factory=list, max_length=8)
     semantic_tags: list[str] = Field(default_factory=list, max_length=6)
-    semantic_summary: str = Field(default="", max_length=220)
-    recognize: list[str] = Field(default_factory=list, max_length=4)
+    semantic_summary: str = Field(default="", max_length=600)
+    recognize: list[str] = Field(default_factory=list, max_length=6)
     age_window: list[int] = Field(default_factory=list, max_length=2)
     score: float = 0.0
 

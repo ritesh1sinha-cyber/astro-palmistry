@@ -206,13 +206,48 @@ def _remedy_source(raw: dict, dom_key: str) -> tuple[str, dict]:
 
 
 def _marks_section(readings: dict, raw: dict) -> str:
-    rows = ""
+    seen_marks: dict[tuple[str, str], dict] = {}
     for hand in ("right", "left"):
         hr = readings.get(hand)
         if not hr:
             continue
         for mark in hr.marks:
-            rows += _reading_row(mark)
+            parts = mark.key.split("_")
+            kind = parts[1] if len(parts) > 1 else "mark"
+            zone = parts[2] if len(parts) > 2 else "palm"
+            k = (kind, zone)
+            if k not in seen_marks:
+                seen_marks[k] = {"mark": mark, "hands": [hand]}
+            else:
+                if hand not in seen_marks[k]["hands"]:
+                    seen_marks[k]["hands"].append(hand)
+
+    rows = ""
+    for (kind, zone), item in seen_marks.items():
+        mark = item["mark"]
+        hands = item["hands"]
+        is_both = len(hands) > 1
+        tone = mark.tone if mark.tone in ("strong", "care") else "steady"
+        tag = {"strong": "A strength", "care": "Needs care"}.get(tone, "")
+        pill = f'<span class="pv-pill {tone}">{_e(tag)}</span>' if tag else ""
+        both_badge = (
+            '<span class="pv-both">&#10003; in both hands (High confidence)</span>'
+            if is_both else f'<span class="pv-pill neutral">Seen on {hands[0].title()} hand · Moderate confidence</span>'
+        )
+
+        remedy = ""
+        if mark.remedy:
+            remedy = (f'<p class="pv-do"><span class="ev-label">Traditional Guidance</span> '
+                      f"{_e(_sentence(mark.remedy))}</p>")
+
+        rows += f"""
+<div class="pv-row {tone}">
+  <div class="pv-head"><b>{_e(mark.feature)}</b>{pill}{both_badge}</div>
+  <p class="pv-sign">{_e(_sentence(mark.sign))}</p>
+  <p class="pv-means">{_e(_sentence(mark.means))}</p>
+  {remedy}
+</div>"""
+
     blocked = [h for h in ("right", "left")
                if readings.get(h) and not readings[h].marks_allowed]
     note = ""
@@ -251,22 +286,77 @@ def _timeline(conf: dict, age: int, *, ahead: bool) -> str:
         when = pred.get("age")
         if not isinstance(when, int):
             continue
-        if ahead != (when > age):
-            continue
+        if ahead:
+            # Future windows strictly up to 10 years ahead (age to age + 10)
+            if when <= age or when > age + 10:
+                continue
+        else:
+            # Past milestones up to current age
+            if when > age:
+                continue
         head, why = _split_prediction(pred.get("text"))
         if not head:
             continue
         span = pred.get("age_range") or []
-        window = (f"ages {span[0]}&ndash;{span[1]}"
-                  if len(span) == 2 and span[1] > span[0] else f"around age {when}")
+        if ahead and len(span) == 2 and span[1] > span[0]:
+            if span[0] > age + 10:
+                continue
+            clamped_low = max(age, span[0])
+            clamped_high = min(age + 10, span[1])
+            if clamped_high <= clamped_low:
+                clamped_high = min(age + 10, clamped_low + 3)
+            window = f"ages {clamped_low}&ndash;{clamped_high}"
+        else:
+            window = (f"ages {span[0]}&ndash;{span[1]}"
+                      if len(span) == 2 and span[1] > span[0] else f"around age {when}")
+        confidence_tag = '<span class="pill-conf" style="font-size:0.7rem;font-weight:600;padding:2px 6px;border-radius:10px;background:#f0efe9;color:#5a554c;margin-left:8px;">Moderate Confidence</span>'
+        backing_feat = f'<p class="pv-sign" style="font-size:0.83rem;color:#6b7280;margin:4px 0 0 0;"><b>Observed Physical Sign:</b> Traced along {_e(why)}.</p>' if why else ""
         rows += (f'<li><div class="tl-when">{window}</div>'
-                 f'<div class="tl-body"><b>{_e(pred.get("title"))}</b>'
+                 f'<div class="tl-body"><b>{_e(pred.get("title"))}</b>{confidence_tag}'
                  f'<p class="pv-means">{_e(_sentence(head))}</p>'
-                 + (f'<p class="pv-sign">Read from {_e(why)}.</p>' if why else "")
+                 + backing_feat
                  + "</div></li>")
     if not rows:
         return ""
     return f'<ol class="timeline">{rows}</ol>'
+
+
+def _clean_contrast_label(feature: str, sign: str) -> str:
+    f = str(feature or "").strip()
+    s = str(sign or "").strip()
+    f_low = f.lower()
+    s_low = s.lower()
+    if "mercury" in f_low:
+        return "<b>Mercury Mount (Speech & Trade)</b> — prominent pad denoting sharp commercial communication and negotiation"
+    if "venus" in f_low:
+        return "<b>Venus Mount (Vitality & Warmth)</b> — full, denoting physical vitality, warmth, and generous affection"
+    if "saturn" in f_low:
+        return "<b>Saturn Mount (Duty & Discipline)</b> — well-formed, reflecting patience, endurance, and serious responsibility"
+    if "jupiter" in f_low:
+        return "<b>Jupiter Mount (Leadership & Vision)</b> — elevated, indicating ambition, executive dignity, and pride"
+    if "apollo" in f_low or "sun" in f_low:
+        return "<b>Apollo Mount (Creativity & Acclaim)</b> — raised, indicating artistic taste, creative display, and public merit"
+    if "mars" in f_low:
+        if "flat" in s_low:
+            return "<b>Mars Plains (Stamina & Temper)</b> — moderate, denoting diplomatic calm and avoiding unnecessary conflict"
+        return "<b>Mars Mount (Courage & Stamina)</b> — full, denoting resilience, physical courage, and grit under pressure"
+    if "luna" in f_low or "moon" in f_low:
+        return "<b>Moon Mount (Imagination & Intuition)</b> — developed, denoting rich imaginative breadth and intuitive depth"
+    if "life line" in f_low:
+        return "<b>Life Line (Vitality Arc)</b> — deep and smoothly traced, indicating strong constitutional endurance"
+    if "head line" in f_low:
+        return "<b>Head Line (Mental Clarity)</b> — clearly incised, reflecting practical logic, realism, and structured decision-making"
+    if "fate line" in f_low:
+        return "<b>Fate Line (Vocational Drive)</b> — distinct trajectory, indicating purposeful career direction and independent focus"
+    if "heart line" in f_low:
+        return "<b>Heart Line (Emotional Integrity)</b> — deeply etched, reflecting steadfast loyalty and deep emotional investment"
+    if "thumb" in f_low:
+        if "reasoning" in s_low or "logic" in s_low:
+            return "<b>Thumb Proportions (Logic & Reasoning)</b> — balanced structure supporting analytical deliberation"
+        if "short" in s_low or "receptive" in s_low:
+            return "<b>Thumb Proportions (Adaptability)</b> — flexible, feeling-led nature that responds quickly to real-time situations"
+        return "<b>Thumb Proportions (Willpower)</b> — firm structure denoting strong determination and follow-through"
+    return f"<b>{_e(f)}</b> — {_e(s)}"
 
 
 # ---------------------------------------------------------------------------
@@ -325,6 +415,14 @@ def render(
     from palm_api import palmist_voice as PVoice
 
     prose = prose if isinstance(prose, dict) else {}
+    rr = raw.get("reading_result") if isinstance(raw.get("reading_result"), dict) else {}
+    if rr:
+        raw_flat = dict(rr)
+        for k, v in raw.items():
+            if k not in raw_flat:
+                raw_flat[k] = v
+        raw = raw_flat
+
     first = (name or "Seeker").split()[0]
     conf = raw.get("confluence") or {}
     dom_key = conf.get("dominant_hand") or dominant
@@ -367,198 +465,268 @@ def render(
         "",
         _photos(raw, dom_key) + _photo_note(raw), nav="Your hands"))
 
-    # 2 — the hand itself
+    # 1.5 — Executive Overview / Where You Are Now
+    now_summary = ""
+    if current_phase:
+        now_summary += f"<p>{_e(current_phase)}</p>"
+    elif why_now:
+        now_summary += f"<p>{_e(why_now)}</p>"
+    else:
+        strong_areas = [_TITLE.get(str(a.get("key") or "")) for a in aspects if a.get("strength") == "strong"]
+        dom_name = dom_key.title()
+        if strong_areas:
+            now_summary += (f"<p>Your active {dom_name} hand shows pronounced momentum in {', '.join(strong_areas[:2])}. "
+                            f"The recurring palm pattern reflects purposeful focus and deliberate application of your core strengths.</p>")
+        else:
+            now_summary += (f"<p>Your active {dom_name} hand reflects a balanced, adaptive constitution. "
+                            f"Lived choices show an evolving mastery of practical decisions and steady personal development.</p>")
+
+    now_points = []
+    if mind_now:
+        for m in mind_now[:2]:
+            now_points.append(f"<li>{_e(m)}</li>")
+    if hardest:
+        now_points.append(f'<li><b style="color:#a44c12;">Core tension to watch:</b> {_e(hardest)}</li>')
+
+    if now_points:
+        now_summary += (f'<div class="card" style="background:#faf8f5;border-left:4px solid #b57c38;padding:12px 16px;margin-top:10px;">'
+                        f'<div class="ev-label" style="color:#7a4b18;font-weight:700;margin-bottom:6px;">Key Focus & Immediate Direction</div>'
+                        f'<ul class="pv-plain" style="margin:0;padding-left:18px;">{"".join(now_points)}</ul></div>')
+
+    if now_summary:
+        blocks.append(_section(
+            "sec-now", f"Where You Are Now, {first}",
+            "An executive synthesis of your current life phase, active focus, and primary tension.",
+            now_summary, nav="Where You Are"))
+
+    # 2 — the hand itself (Core Archetype & Temperament)
     shape_rows = _rows(dom_reading.shape, agree)
     opening = f"<p>{_e(personality)}</p>" if personality else ""
     blocks.append(_section(
-        "sec-hand", "The hand itself",
+        "sec-hand", "Your Core Hand Archetype & Temperament",
         f"Shape, thumb and finger set — {_HAND_ROLE[True]}.",
         opening + (f'<div class="card">{shape_rows}</div>' if shape_rows else "")))
 
-    # 3 — the major lines
-    line_rows = _rows(dom_reading.lines, agree)
-    blocks.append(_section(
-        "sec-lines", "Your four major lines",
-        "Each line is stated as it appears in your palm, then read the way the "
-        "classical texts read that appearance.",
-        f'<div class="card">{line_rows}</div>' if line_rows else ""))
-
-    # 4 — where the hands place you now
-    now_body = ""
-    if current_phase:
-        now_body += f"<p>{_e(current_phase)}</p>"
-    if hardest:
-        now_body += f'<p class="hardest">{_e(hardest)}</p>'
-    if mind_now:
-        items = "".join(f"<li>{_e(line)}</li>" for line in mind_now[:3])
-        now_body += (
-            '<p class="sec-note">These are what your hands make likely right '
-            "now. They are read from the palm, not known about your life.</p>"
-            f'<ul class="conv-mind">{items}</ul>')
-    if why_now:
-        now_body += f"<p>{_e(why_now)}</p>"
-    blocks.append(_section("sec-now", "Where your hands place you now", "", now_body))
-
-    # 5 — read to today
-    behind = _timeline(conf, age, ahead=False)
-    if behind:
-        blocks.append(_section(
-            "sec-behind", f"{first}, check these against the years you have lived",
-            "These ages come from where the marking falls along the line, using "
-            "the seven-year division the classical texts time by. Treat each one "
-            "as a life stage, not a date.",
-            behind, nav="Read to today"))
-
     if paid:
-        # 6 — the minor lines
-        minor_rows = _rows(dom_reading.minor, agree)
-        blocks.append(_section(
-            "sec-minor", "The smaller lines",
-            "The minor lines qualify the major ones. Their absence is read as "
-            "carefully as their presence.",
-            f'<div class="card">{minor_rows}</div>' if minor_rows else ""))
-
-        # 7 — mounts
+        # 3 — Mounts & Auspicious Signs
         mount_rows = _rows(dom_reading.mounts, agree)
+        mounts_html = f'<div class="card">{mount_rows}</div>' if mount_rows else ""
+        marks_html = _marks_section(readings, raw)
         blocks.append(_section(
-            "sec-mounts", "Mount by mount",
-            "The raised and flat pads say where your energy actually goes, "
-            "independently of the lines crossing them.",
-            f'<div class="card">{mount_rows}</div>' if mount_rows else ""))
+            "sec-mounts", "Planetary Mounts & Auspicious Markings",
+            "The raised and flat pads indicate how cosmic planetary energies distribute across your palm, modified by unique signs.",
+            mounts_html + marks_html, nav="Mounts & Signs"))
 
-        # 8 — marks
-        blocks.append(_marks_section(readings, raw))
+        # 6 — Chronological Timeline (Past Milestones)
+        behind = _timeline(conf, age, ahead=False)
+        if behind:
+            blocks.append(_section(
+                "sec-behind", f"{first}, your past life milestones",
+                "Calculated using the classical seven-year division across your major lines to map key developmental chapters.",
+                behind, nav="Past Timeline"))
 
-        # 9 — still ahead
+        # 7 — Forward Roadmap (Upcoming Age Windows)
         ahead = _timeline(conf, age, ahead=True)
         if ahead:
             blocks.append(_section(
-                "sec-ahead", "What is still ahead of you",
-                "Same seven-year division, read forward. An age window is a "
-                "stretch to prepare for, not an appointment.",
-                ahead))
+                "sec-ahead", "Your Upcoming Age Windows & Direction",
+                "Upcoming developmental windows read forward along your active palm lines.",
+                ahead, nav="Future Roadmap"))
 
-        # 10 — life areas
+        # 8 — Innate vs. Made (Left vs. Right Hand Confluence)
+        contrast = ""
+        if hand_note:
+            contrast += f"<p>{_e(hand_note)}</p>"
+        if other_reading:
+            only_active = [r for r in dom_reading.all()
+                           if r.key not in agree and r.tone != "neutral"][:4]
+            only_innate = [r for r in other_reading.all()
+                           if r.key not in agree and r.tone != "neutral"][:4]
+            cols = ""
+            if only_innate:
+                cols += ('<div class="pv-col"><div class="ev-label">Inborn Potential (Passive Hand: '
+                         f'{_e(other_key.title())})</div><ul class="pv-plain">'
+                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign)}</li>"
+                                   for r in only_innate) + "</ul></div>")
+            if only_active:
+                cols += ('<div class="pv-col"><div class="ev-label">Cultivated Strengths (Active Hand: '
+                         f'{_e(dom_key.title())})</div><ul class="pv-plain">'
+                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign)}</li>"
+                                   for r in only_active) + "</ul></div>")
+            if cols:
+                contrast += f'<div class="card pv-cols">{cols}</div>'
+        blocks.append(_section(
+            "sec-contrast", "Innate Blueprint vs. Self-Made Evolution",
+            "Comparing your passive hand (inborn baseline) with your active hand (lived choices and cultivated mastery).",
+            contrast, nav="Innate vs Made"))
+
+        # 9 — Life Area Confluences (Domain-Specific with authentic Vedic Upayas)
         rows = []
+        marks = raw.get(dom_key, {}).get("features", {}).get("special_marks") or []
         for key in [str(a.get("key") or "") for a in aspects if isinstance(a, dict)]:
             block = areas.get(key) or {}
             if not isinstance(block, dict):
-                continue
-            outlook = str(block.get("outlook") or "").strip()
+                block = {}
+            aspect_data = aspect_by_key.get(key) or {}
+            outlook = str(block.get("outlook") or aspect_data.get("summary") or "").strip()
             if not outlook:
                 continue
-            title = _TITLE.get(key) or str(
-                (aspect_by_key.get(key) or {}).get("title") or key)
-            strength = str((aspect_by_key.get(key) or {}).get("strength") or "moderate")
+            title = _TITLE.get(key) or str(aspect_data.get("title") or key)
+            strength = str(aspect_data.get("strength") or "moderate")
+            confidence = str(aspect_data.get("confidence") or "moderate").title()
             timing = str(block.get("timing") or "").strip()
             manifestation = str(block.get("manifestation") or "").strip()
-            remedy = str(block.get("remedy") or "").strip()
-            passage = " ".join(x for x in (outlook, timing, manifestation) if x)
+            from palm_api.life_aspects import _ASPECT_VEDIC_UPAYAS
+            remedy = str(_ASPECT_VEDIC_UPAYAS.get(key, {}).get("upaya") or aspect_data.get("remedy") or "").strip()
+            passage_parts = []
+            for chunk in (outlook, timing, manifestation):
+                if not chunk:
+                    continue
+                c_clean = chunk.lower().rstrip(".")
+                if any(c_clean in p.lower() or p.lower() in c_clean or (len(c_clean) > 30 and c_clean[:35] in p.lower()) for p in passage_parts):
+                    continue
+                passage_parts.append(chunk)
+            passage = " ".join(passage_parts)
+            
+            # Filter recognize items so we NEVER repeat lines already printed in the main passage!
+            rec_filtered = []
+            for r in (aspect_data.get("recognize") or []):
+                r_clean = str(r).strip()
+                if not r_clean:
+                    continue
+                r_check = r_clean.lower().rstrip(".")
+                if r_check in passage.lower() or passage.lower() in r_check or (len(r_check) > 25 and r_check[:30] in passage.lower()):
+                    continue
+                rec_filtered.append(r_clean)
+
+            recognize_items = "".join(f"<li>{_e(r)}</li>" for r in rec_filtered)
             evidence = "".join(
-                f"<li>{_e(str(p.get('text') or '').strip())}</li>"
-                for p in ((aspect_by_key.get(key) or {}).get("points") or [])
-                if str(p.get("text") or "").strip())
+                f"<li><b>Traditional palmistry interpretation:</b> {_e(str(p.get('text') or p.get('traditional_meaning') or '').strip())}</li>"
+                for p in (aspect_data.get("points") or [])
+                if str(p.get("text") or p.get("traditional_meaning") or "").strip())
             bits = [f"<p>{_e(passage)}</p>"]
-            if remedy:
+            if recognize_items:
+                bits.append(f'<p class="fine" style="margin:8px 0 4px 0;color:#5a554c;"><b>How this manifests in daily life:</b></p><ul class="conv-mind" style="margin-bottom:8px;">{recognize_items}</ul>')
+            
+            # Condition for Upaya: STRICTLY for afflicted / challenging / weak areas only!
+            # Strong areas NEVER receive an Upaya; they always get Auspicious Planetary Asset!
+            is_strong = strength.lower() in ("strong", "prominent", "very strong", "favourable", "favorable")
+            is_challenging = (
+                not is_strong
+                and (
+                    strength.lower() in ("weak", "tentative", "challenged", "demanding", "care")
+                    or "caution" in str(aspect_data.get("direction") or "").lower()
+                    or (key == "health" and ("island" in str(aspect_data).lower() or "broken" in str(aspect_data).lower()))
+                    or (key in ("character", "career") and any(str(m.get("type") or "").lower() == "grille" for m in marks if str(m.get("zone") or "").lower() == "jupiter"))
+                    or (key in ("travel", "mind") and any(str(m.get("type") or "").lower() == "star" for m in marks if str(m.get("zone") or "").lower() in ("moon", "luna")))
+                )
+            )
+
+            if is_challenging and remedy:
                 bits.append(
-                    f'<p class="pv-do"><span class="ev-label">What to do</span> '
-                    f"{_e(remedy)}</p>")
+                    f'<p class="pv-do" style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:8px 12px;margin:8px 0;border-radius:4px;"><span class="ev-label" style="color:#9e521b;font-weight:bold;">Targeted Vedic Astrological Upaya</span><br>{remedy}</p>')
+            else:
+                bits.append(
+                    '<p class="pv-strength" style="background:#f4fbf7;border-left:3px solid #2e8b57;padding:8px 12px;margin:8px 0;border-radius:4px;"><span class="ev-label" style="color:#1e6b37;font-weight:bold;">Auspicious Planetary Asset</span><br>This domain is supported by favorable line clarity and mount elevation. Channel this natural planetary strength forward without requiring remedial pacification.</p>')
+
             if evidence:
                 bits.append(
-                    f'<details class="technical-evidence"><summary>The signs this '
-                    f"reads from</summary><ul>{evidence}</ul></details>")
+                    f'<details class="technical-evidence"><summary>Classical Signs & Evidence</summary><ul>{evidence}</ul></details>')
+            
+            conf_badge = f'<span class="pill-conf" style="font-size:0.68rem;font-weight:600;padding:2px 8px;border-radius:10px;background:#ebe9e1;color:#4a453e;margin-left:6px;">{_e(confidence)} Confidence</span>'
             rows.append(
                 f'<article class="card conv-area">'
                 f'<div class="card-top"><span class="area">{_e(title)}</span>'
-                f'<span class="pill mixed">{_e(strength.title())}</span></div>'
+                f'<div><span class="pill mixed">{_e(strength.title())}</span>{conf_badge}</div></div>'
                 f'{"".join(bits)}</article>')
         if rows:
             blocks.append(_section(
-                "sec-areas", "Each part of your life",
-                "What the hand says for this area, when it moves, and what helps "
-                "when it needs care.",
-                "".join(rows)))
+                "sec-areas", "Core Life Areas (Confluence Analysis)",
+                "Synthesized analysis combining line trajectories, planetary mount elevations, and auspicious markings.",
+                "".join(rows), nav="Life Areas"))
 
-    # 11 — the two hands against each other
-    contrast = ""
-    if hand_note:
-        contrast += f"<p>{_e(hand_note)}</p>"
-    if other_reading:
-        only_active = [r for r in dom_reading.all()
-                       if r.key not in agree and r.tone != "neutral"][:4]
-        only_innate = [r for r in other_reading.all()
-                       if r.key not in agree and r.tone != "neutral"][:4]
-        cols = ""
-        if only_innate:
-            cols += ('<div class="pv-col"><div class="ev-label">Born with, on your '
-                     f'{_e(other_key)} hand</div><ul class="pv-plain">'
-                     + "".join(f"<li>{_e(r.feature)} — {_e(r.sign)}</li>"
-                               for r in only_innate) + "</ul></div>")
-        if only_active:
-            cols += ('<div class="pv-col"><div class="ev-label">Made yourself, on '
-                     f'your {_e(dom_key)} hand</div><ul class="pv-plain">'
-                     + "".join(f"<li>{_e(r.feature)} — {_e(r.sign)}</li>"
-                               for r in only_active) + "</ul></div>")
-        if cols:
-            contrast += f'<div class="card pv-cols">{cols}</div>'
-    blocks.append(_section(
-        "sec-contrast", "What you were born with, and what you have made of it",
-        "The passive hand is the hand you were given. The active hand is what you "
-        "have done with it. Where they differ is the most personal part of any "
-        "reading.",
-        contrast, nav="Born with vs made"))
-
-    # 12 — problems and remedies
-    blocks.append(_problem_section(readings, dom_key, paid=paid))
-
-    if paid:
+        # 10 — Master Astrological Upayas & Workings
         try:
             from .palm_cards import _remedies, _workings
-            # A gemstone rule reads off the mounts, and a mount is only
-            # measurable in a clear photograph. When the active hand is the
-            # blurred one, the remedies come from the hand that can carry them
-            # rather than being withheld from both.
             source, block = _remedy_source(raw, dom_key)
-            note = ""
-            if source != dom_key:
-                note = (f'<p class="sec-note">Your {_e(dom_key)} hand photograph '
-                        f"is not clear enough to prescribe from, so these are read "
-                        f"from your {_e(source)} hand — and only where both hands "
-                        f"show the same thing.</p>")
             remedies = _remedies(block, conf, paid=True)
-            if remedies and note:
-                remedies = remedies.replace("</h3>", "</h3>" + note, 1)
-            if not remedies:
-                # Silence here would read as an omission. A gem or a practice is
-                # prescribed only where a classical rule fires on something
-                # measured; when none does, saying so is the honest answer.
-                remedies = (
-                    '<h3 class="sec" data-nav="Remedies">Remedies for your hand'
-                    "</h3>"
-                    '<div class="card"><p class="pv-means">No classical gem or '
-                    "practice is indicated for your hands. The rules that "
-                    "prescribe one fire on a mount that is markedly flat or "
-                    "markedly full, and yours read within the ordinary range. "
-                    "What your hands do ask for is in the steps above, which "
-                    "cost nothing.</p></div>")
-            blocks.append(remedies)
+            if remedies:
+                blocks.append(remedies)
             blocks.append(_workings(raw))
         except Exception:  # noqa: BLE001
             pass
+
+        # Mandatory Health & Legal Disclaimer
+        disclaimer_html = (
+            '<div class="card" style="background:#fdfcf9;border:1px solid #e2ded5;border-top:3px solid #b57c38;margin-top:24px;padding:16px 20px;">'
+            '<div class="ev-label" style="color:#7a4b18;font-weight:bold;margin-bottom:6px;">Traditional Context & Consultation Boundaries</div>'
+            '<p class="fine" style="color:#5a554c;line-height:1.55;margin:0 0 8px 0;">'
+            'This reading reflects the traditional interpretive heritage of classical palmistry (Samudrika Shastra) synthesized with morphological measurements. '
+            'Palm markings reflect current tendencies and naturally evolve over time with conscious choice, lifestyle changes, and disciplined intention.'
+            '</p>'
+            '<p class="fine" style="color:#5a554c;line-height:1.55;margin:0;">'
+            '<b>Healthcare & Professional Disclaimer:</b> Palmistry is strictly an interpretive and reflective discipline. It does not provide medical, clinical, psychological, legal, or licensed financial advisory services. '
+            'It cannot evaluate, prevent, or treat any health condition. Always consult licensed healthcare professionals for health concerns and qualified advisors for major financial decisions.'
+            '</p>'
+            '</div>'
+        )
+        blocks.append(_section("sec-disclaimer", "Traditional Heritage & Consultation Boundaries", "", disclaimer_html, nav="Disclaimer"))
     else:
+        # Free mode: show 1 anchor past milestone to prove accuracy, then lock forward roadmap
+        behind_all = _timeline(conf, age, ahead=False)
+        if behind_all:
+            anchor_stage = behind_all.split("</div>")[0] + "</div>" if "</div>" in behind_all else behind_all
+            blocks.append(_section(
+                "sec-behind", f"Lived Validation Point",
+                "Classical palmistry divides lines into seven-year chapters. Here is one key milestone for verification:",
+                anchor_stage + f'<p class="sec-note" style="margin-top:12px;font-style:italic;">This anchor point calibrates your hand timeline. Your complete chronological life story, lived milestones, and upcoming future age chapters (ages {age}+) are unlocked in the full reading.</p>',
+                nav="Validation Point"))
+
         n_points = sum(
             len(_filter_customer_numbered(_hand_for_customer_filter(raw, h)))
             for h in ("left", "right"))
         ahead_n = len([p for p in (conf.get("predictions") or [])
                        if isinstance(p.get("age"), int) and p["age"] > age])
         blocks.append(f"""
-<section class="buy" id="unlock">
-  <h3>The rest of the hand</h3>
-  <p>You have your photographs, your hand shape and your four major lines.
-  The full reading adds the smaller lines, mount by mount, your special marks,
-  {_e(ahead_n)} dated marking{'s' if ahead_n != 1 else ''} still ahead of you,
-  every life area, the remedies keyed to your own hand, and the point-by-point
-  working behind all {_e(n_points)} numbered findings.</p>
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Upcoming Timeline & Forward Age Windows (Ages {age}+)</div>
+  <p class="blurred">Key forward age chapters and milestone windows mapped across your active palm lines using classical seven-year radial divisions.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Future timeline is locked.</b> Unlock to see age milestones mapped across your lines.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Mount by Mount Planetary Energy Profile</div>
+  <p class="blurred">Analysis of the 7 planetary mounts (Jupiter, Saturn, Sun, Mercury, Mars, Venus, Moon) revealing where your energy naturally pools.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Mount analysis is locked.</b> Unlock for deep planetary energy breakdown.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Special Marks & Auspicious Signs (Trishul, Stars, Squares)</div>
+  <p class="blurred">Analysis of special marks (Trishul, Matsya, Stars, Squares, Triangles) and how they modify each mount.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Special marks analysis is locked.</b> Unlock to view all detected palm signs.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Left vs. Right Hand Evolution (Innate vs. Self-Made)</div>
+  <p class="blurred">Side-by-side comparison of the destiny you were born with on your passive hand versus the strength and career position you have built with your active hand.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Hand evolution comparison is locked.</b> Unlock to explore how you have evolved beyond your blueprint.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Actionable Hand Remedies (Mudras & Daily Habits)</div>
+  <p class="blurred">Targeted supportive practices, mudras, and habit shifts keyed to your hand's specific care points.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Hand remedies are locked.</b> Unlock for practical supportive habits tailored to your lines.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Detailed Line-by-Line Mathematical Working</div>
+  <p class="blurred">Point-by-point derivation and classical book citations behind all {n_points} numbered findings on both hands.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Detailed working is locked.</b> Unlock for the complete line-by-line derivation.</p>
+</div>
+
+<section class="buy" id="unlock" style="margin-top:20px;">
+  <h3>Unlock your complete palm reading</h3>
+  <p>You have your core hand shape and major line blueprint. Unlock the full forward age timeline, mount energy breakdown, special marks, life area verdicts, and personalized mudra remedies.</p>
   <a class="cta" href="#unlock" data-unlock="1">Unlock full reading · ₹{_e(price)}</a>
 </section>""")
 

@@ -143,47 +143,42 @@ def _mk(key: str, feature: str, sign: str, means: str, *, tone: str = "neutral",
 # hand shape, thumb and fingers
 # ---------------------------------------------------------------------------
 _HAND_TYPE = {
-    "air": ("a square palm with long fingers — an air hand",
-            "You are a thinker and a talker before you are a doer. The books give "
-            "this hand to people who need conversation, variety and a reason "
-            "before they will commit to anything.",
+    "air": ("a square palm with long, slender fingers — an Air hand",
+            "You are an intuitive thinker, strategist, and communicator. You thrive on mental variety, "
+            "meaningful conversation, and intellectual challenge. Monotony or rigid repetitive work drains you "
+            "faster than hard mental labor, and you need a clear reason before you commit your energy.",
             "neutral", ""),
-    "earth": ("a square palm with short, firm fingers — an earth hand",
-              "You trust what you can handle and finish. Routine steadies you "
-              "where it would flatten a lighter hand, and you keep your word.",
+    "earth": ("a square palm with sturdy, grounded fingers — an Earth hand",
+              "You are practical, dependable, and deeply grounded. You trust what is tangible, measurable, and reliable. "
+              "Where fast-paced chaos exhausts others, routine steadies you, and when you give your word, you see it through.",
               "neutral", ""),
-    "fire": ("a long palm with short fingers — a fire hand",
-             "You act first and reason afterwards. Energy is never your problem; "
-             "holding one line long enough to finish it is.",
-             "neutral", "Pick one thing this month and refuse to start a second "
-             "until it is done. A fire hand loses more to abandonment than to "
-             "failure."),
-    "water": ("a long palm with long fingers — a water hand",
-              "You read a room before anybody speaks. Feeling arrives before "
-              "reasoning does, and other people's moods stick to you.",
+    "fire": ("a long palm with quick, energetic fingers — a Fire hand",
+             "You are dynamic, instinctive, and driven by passion. You act with enthusiasm and inspire momentum. "
+             "Your challenge is rarely starting — it is sustaining focus on one project until it reaches full completion.",
+             "neutral", "Focus your energy on completing one primary goal before opening a new front. "
+             "A Fire hand creates immense value through disciplined finishing."),
+    "water": ("a long, elegant palm with sensitive fingers — a Water hand",
+              "You possess deep emotional intelligence and absorb the atmosphere around you instantly. "
+              "Your intuition often knows the truth before logic catches up, making empathy your greatest strength.",
               "neutral", ""),
 }
 
 _THUMB_WILL = {
-    "will_dominant": ("a thumb whose top section is the longer of the two",
-                      "Will runs ahead of reasoning. Once you have decided, you "
-                      "are very hard to move — which serves you until the "
-                      "decision was the wrong one.",
+    "will_dominant": ("a thumb with a strong, determined upper phalanx",
+                      "Your willpower naturally leads the way. Once your mind is made up, you push forward with unwavering conviction. "
+                      "This determination creates breakthrough results, provided you pause to verify the course.",
                       "neutral",
-                      "Before any big commitment, make yourself say out loud the "
-                      "one argument against it. A will-led thumb rarely hears it "
-                      "otherwise."),
-    "logic_dominant": ("a thumb whose lower section is the longer of the two",
-                       "Reasoning runs ahead of will. You see the right course "
-                       "clearly and early, and then take longer than you should "
-                       "to act on it.",
+                      "Before major life commitments, intentionally seek out one counter-perspective. "
+                      "A strong-willed thumb benefits greatly from deliberate second checks."),
+    "logic_dominant": ("a thumb with a longer lower phalanx of reasoning",
+                       "Your analytical mind sees solutions and risks well ahead of others. You map out every step with clarity, "
+                       "though you occasionally spend too long analyzing before making the final move.",
                        "care",
-                       "Give yourself a deadline for deciding, not for finishing. "
-                       "The delay in a logic-led thumb sits at the decision, not "
-                       "at the work."),
-    "balanced": ("a thumb whose two sections are near equal",
-                 "You think and act in step — the balance the books call the "
-                 "governing thumb.", "strong", ""),
+                       "Set a firm deadline for the decision itself rather than the execution. "
+                       "Trust your analysis and take action once the core facts are clear."),
+    "balanced": ("a thumb with beautifully balanced will and logic sections",
+                 "You possess what classical palmistry calls the 'Governing Thumb' — a harmonious balance where thoughtful planning "
+                 "and decisive action move in seamless alignment.", "strong", ""),
 }
 
 
@@ -206,45 +201,43 @@ def read_shape(feats: dict, *, hand: str = "") -> list[Reading]:
 
     length = _val(thumb, "length")
     if length == "long":
-        out.append(_mk("thumb_long", "Thumb length", "a long thumb",
-                       "Command comes naturally. You end up running things you "
-                       "only meant to help with.", tone="strong", hand=hand))
+        out.append(_mk("thumb_long", "Thumb length", "a long, commanding thumb",
+                       "Leadership and managerial responsibility come naturally to you. People look to you for direction, "
+                       "and you often find yourself steering initiatives you only joined to support.", tone="strong", hand=hand))
     elif length == "short":
         out.append(_mk(
-            "thumb_short", "Thumb length", "a short thumb",
-            "You lead with the heart rather than with authority. You will give "
-            "way in an argument you were winning, then feel the cost of it later.",
+            "thumb_short", "Thumb length", "a receptive thumb",
+            "You lead with heart, empathy, and adaptability. You are generous in discussions, though you must guard against "
+            "giving away leverage too easily in negotiations.",
             tone="care", hand=hand,
-            remedy="Decide your limit before the conversation starts, and say it "
-                   "in the first minute. A short thumb concedes late, not early."))
+            remedy="Establish your core non-negotiables before enterinng important discussions, and state your boundary clearly up front."))
 
     opening = _val(thumb, "opening")
     if opening == "wide":
-        out.append(_mk("thumb_open", "Thumb angle", "a wide-set thumb",
-                       "Generous and open-handed. You are the one who pays, "
-                       "helps, and is occasionally taken for granted for it.",
+        out.append(_mk("thumb_open", "Thumb angle", "a wide, open-set thumb",
+                       "Generous, independent, and open-minded. You readily share your knowledge, resources, and hospitality, "
+                       "holding a natural sense of abundance.",
                        tone="neutral", hand=hand))
     elif opening in ("narrow", "close"):
         out.append(_mk(
-            "thumb_closed", "Thumb angle", "a close-set thumb",
-            "You hold things close — money, plans and feeling alike. The books "
-            "call it caution, and it protects you more often than it costs you.",
+            "thumb_closed", "Thumb angle", "a close-set, protective thumb",
+            "Prudent and discreet. You protect your resources, plans, and inner feelings with wise caution, "
+            "avoiding unnecessary risks.",
             tone="neutral", hand=hand))
 
     idx = _val(morph, "index_vs_ring")
     if idx == "index_longer":
         out.append(_mk("index_long", "Your index finger",
                        "an index finger longer than your ring finger",
-                       "You want to be in charge, and you feel it when you are "
-                       "not. Working under someone you do not respect wears you "
-                       "down faster than overwork does.", tone="neutral",
+                       "You have a natural drive for autonomy, leadership, and personal standard-setting. "
+                       "You thrive when you have full ownership of your domain.", tone="neutral",
                        hand=hand))
     elif idx == "ring_longer":
         out.append(_mk("ring_long", "Your ring finger",
                        "a ring finger longer than your index finger",
-                       "You take risks the cautious hand will not, and you read "
-                       "an audience well. Recognition matters to you more than "
-                       "rank does.", tone="neutral", hand=hand))
+                       "You possess creative flair, calculated risk appetite, and strong personal charisma. "
+                       "Meaningful recognition and creative impact inspire you deeply.", tone="neutral",
+                       hand=hand))
     return out
 
 
@@ -253,211 +246,150 @@ def read_shape(feats: dict, *, hand: str = "") -> list[Reading]:
 # ---------------------------------------------------------------------------
 _LIFE = {
     "depth": {
-        "deep": ("runs deep and clearly cut",
-                 "A strong constitution. You recover from illness, overwork and "
-                 "bad years faster than the people around you, and you underrate "
-                 "that because it has always been true.", "strong", ""),
-        "medium": ("runs at an even, moderate depth",
-                   "Steady vitality rather than an athlete's reserve. You have "
-                   "enough for a full life, provided you do not spend three days "
-                   "of it in one.", "neutral", ""),
-        "shallow": ("runs fine and lightly marked",
-                    "The books read a light life line as a nervous, quickly-spent "
-                    "energy. You tire before you notice you are tiring.", "care",
-                    "Guard your sleep before you guard your calendar. On this "
-                    "line rest is the remedy, not a reward for finishing."),
+        "deep": ("runs deep, smooth and clearly etched",
+                 "You possess robust vitality and natural resilience. You bounce back from physical fatigue, stress, and intense working "
+                 "stretches faster than most people around you, possessing a strong constitutional reserve.", "strong", ""),
+        "medium": ("runs at an even, healthy depth",
+                   "You have steady, sustainable vitality. You manage energy best with consistent rhythms, balanced pacing, "
+                   "and avoiding sudden extreme over-exertion.", "neutral", ""),
+        "shallow": ("runs fine and lightly drawn",
+                    "Your energy operates through nervous and mental drive rather than raw physical reserve. You give deeply to your work, "
+                    "which makes intentional restorative rest essential.", "care",
+                    "Prioritize restorative sleep and physical recovery. On this line, pacing yourself is the key to sustained success."),
     },
     "sweep": {
-        "wide": ("sweeps wide around the ball of the thumb",
-                 "Warmth, appetite and physical courage. You want people, food, "
-                 "travel and movement in your life, not just work in it.",
+        "wide": ("sweeps broadly around the base of your thumb",
+                 "You have a wide appetite for living — you crave meaningful human connection, travel, vibrant experiences, "
+                 "and dynamic environments. You do not just want to work; you want to truly experience life.",
                  "strong", ""),
-        "narrow": ("hugs close to the thumb",
-                   "Energy is held in rather than spent outward. Home and a "
-                   "small circle restore you; crowds drain you.", "neutral", ""),
+        "narrow": ("curves closely around the thumb",
+                   "Your energy is focused inward. A close inner circle, peaceful home surroundings, and quiet focus restore you best, "
+                   "whereas large noisy crowds drain you.", "neutral", ""),
     },
     "quality": {
-        "broken": ("shows a break",
-                   "A break on the life line marks a change of place or of "
-                   "circumstance, not an ending — classically a move, an illness "
-                   "recovered from, or a life rearranged around new terms.",
+        "broken": ("shows an overlapping shift",
+                   "A clean shift in your life line signifies a major life upgrade or relocation — a change of environment, career direction, "
+                   "or lifestyle where you reinvented your personal foundation on your own terms.",
                    "care",
-                   "Treat the years around this break as a rebuilding stretch. "
-                   "Do not sign anything long and rigid inside it."),
-        "chained": ("is chained in places",
-                    "Chaining is read as a run of small drains rather than one "
-                    "large trouble — the years where health and mood keep "
-                    "interrupting the work.", "care",
-                    "Fix the small recurring thing you have been postponing. On a "
-                    "chained line it is what is costing you the year."),
-        "islanded": ("carries an island",
-                     "An island on the life line marks a stretch of divided "
-                     "strength — a period where health or circumstance takes a "
-                     "share of what you meant to spend elsewhere.", "care",
-                     "Book the check-up you have been putting off, and lighten "
-                     "the load either side of this window rather than inside it."),
+                   "During transition years, focus on building sustainable daily routines before taking on rigid long-term obligations."),
+        "chained": ("shows a textured or chained stretch",
+                     "A chained stretch reflects temporary energy drains or scattered commitments that divide your focus.", "care",
+                     "Identify one recurring distraction and remove it. A focused line brings immediate clarity and vitality."),
+        "islanded": ("carries an enclosed protective loop",
+                     "A temporary split in energy where health, family care, or external duties demanded a share of your attention.", "care",
+                     "Lighten non-essential commitments during demanding periods and prioritize your well-being."),
     },
 }
 
 _HEAD = {
     "depth": {
-        "deep": ("is deeply cut",
-                 "Concentration is your real gift. You hold one problem until it "
-                 "gives way, and you think before you speak more often than the "
-                 "people around you realise.", "strong", ""),
-        "shallow": ("is lightly marked",
-                    "Attention moves quickly and does not always come back. "
-                    "Ideas arrive well; finishing them is the work.", "care",
-                    "Write the decision down before you act on it. A light head "
-                    "line loses good thinking to memory, not to error."),
+        "deep": ("is deeply and sharply cut",
+                 "You possess profound concentration, analytical depth, and strategic thinking. You have the ability to hold complex problems "
+                 "in your mind until you discover the optimal breakthrough, thinking things through before you speak.", "strong", ""),
+        "shallow": ("is lightly etched",
+                    "Your thoughts move rapidly and intuitively. You generate brilliant initial concepts, though delegating or structuring "
+                    "the operational follow-through helps you succeed.", "care",
+                    "Capture your ideas in writing immediately. A creative mind flourishes when ideas are anchored onto paper."),
     },
     "length": {
-        "long": ("runs long across the palm",
-                 "You think a thing all the way through. You are the one who "
-                 "sees the consequence three steps out, which is why you are "
-                 "slower to commit than the people asking you to.", "strong", ""),
-        "short": ("stops short of the far side of the palm",
-                  "You decide fast and directly. The books call it a practical "
-                  "mind — it wants the answer, not the whole map.", "neutral",
+        "long": ("runs long and steady across the palm",
+                 "You are a long-range strategist. You naturally see the second- and third-order consequences of any decision, "
+                 "which makes your judgment exceptionally reliable and calculated.", "strong", ""),
+        "short": ("is concise and direct",
+                  "You are pragmatic, decisive, and action-oriented. You prefer quick, direct solutions over endless theoretical deliberation.", "neutral",
                   ""),
     },
     "direction": {
-        "moon": ("slopes down towards the outer edge of the palm",
-                 "Imagination runs into your reasoning. You solve things "
-                 "sideways, and you need creative work in your life or the "
-                 "imagination turns on you and becomes worry.", "neutral",
-                 "Keep one channel for imagination outside your job. On this "
-                 "slope an unused imagination becomes anxiety."),
-        "straight": ("runs straight across",
-                     "A practical, literal mind. You want the plain facts and "
-                     "you dislike being managed with atmosphere.", "neutral", ""),
-        "upward": ("rises towards the little finger at its end",
-                   "A head line curving up to Mercury is the trader's line — "
-                   "money, negotiation and opportunity read clearly to you.",
+        "moon": ("slopes gently toward the creative lower palm",
+                 "Logic and creative imagination blend seamlessly in your thinking. You solve problems through lateral intuition, "
+                 "and you thrive when your work allows creative autonomy.", "neutral",
+                 "Maintain a creative hobby or personal project outside your routine work to keep your mind energized."),
+        "straight": ("extends straight across the palm",
+                     "You have a practical, realistic, and objective mind. You respect verifiable facts, clear milestones, "
+                     "and straightforward communication.", "neutral", ""),
+        "upward": ("curves upward toward the little finger",
+                   "You have strong commercial acumen, financial sense, and negotiation instincts. You spot market openings and practical value quickly.",
                    "strong", ""),
     },
     "start_relation": {
-        "merged": ("stays joined to the life line for a long start",
-                   "Caution learned early. The books read a long join as a "
-                   "childhood where family opinion carried real weight, and a "
-                   "confidence that had to be built rather than assumed. It also "
-                   "means you look before you leap, and that has saved you more "
-                   "than once.", "care",
-                   "Make one decision this month without asking anybody first. "
-                   "On a long join, confidence returns through practice, not "
-                   "through feeling ready."),
-        "separate": ("leaves the life line cleanly at the start",
-                     "Independence early. You made your own calls young, and you "
-                     "still dislike being asked to justify them.", "strong", ""),
-        "wide": ("starts well clear of the life line",
-                 "A wide gap is read as impatience and self-trust in equal "
-                 "measure. You move before you are ready, and mostly it works.",
+        "merged": ("stays joined with the life line at its origin",
+                   "You developed early caution and deep respect for family guidance. While this thoughtful prudence protected you from reckless risks, "
+                   "your hand shows that you achieve your greatest successes when you step forward and trust your own independent authority.", "care",
+                   "Make key decisions with quiet confidence without seeking unanimous approval from others first."),
+        "separate": ("begins independently from the life line",
+                     "You are naturally independent and self-directed. You trusted your own judgment early in life and thrive with autonomy.", "strong", ""),
+        "wide": ("starts with a distinct gap from the life line",
+                 "You are bold, spontaneous, and quick to seize opportunities. You move with speed, trusting your instincts to adapt as you go.",
                  "neutral",
-                 "Give any irreversible decision one night. That single delay is "
-                 "the whole correction this hand needs."),
+                 "Sleep on high-stakes, irreversible decisions for one night to let your natural logic refine the plan."),
     },
     "quality": {
-        "broken": ("shows a break",
-                   "A break on the head line marks a change of mind big enough to "
-                   "change a life — a course abandoned, a field changed, a belief "
-                   "put down.", "care",
-                   "Around that stretch, keep decisions reversible for a season."),
-        "islanded": ("carries an island",
-                     "An island here is read as a period of divided attention — "
-                     "worry, strain, or two demands running at once.", "care",
-                     "Take the second thing off your plate before this window, "
-                     "not during it."),
-        "chained": ("is chained in places",
-                    "Chaining on the head line is the classical mark of scattered "
-                    "concentration and mental fatigue.", "care",
-                    "Protect one hour a day with nothing in it. Chaining answers "
-                    "to rest faster than to effort."),
+        "broken": ("shows a transition point",
+                   "A major shift in perspective or intellectual career focus where you outgrew an old paradigm and stepped into a new domain.", "care",
+                   "Give yourself room to explore when entering new intellectual chapters."),
+        "islanded": ("carries an island formation",
+                     "A period of mental overwork or competing priorities that divided your attention.", "care",
+                     "Simplify your focus by handling one core priority at a time."),
+        "chained": ("shows a chained texture",
+                     "A stretch of mental fatigue or multitasking overload.", "care",
+                     "Schedule dedicated distraction-free focus blocks during your work day."),
     },
 }
 
 _HEART = {
     "depth": {
-        "deep": ("is deeply cut",
-                 "You feel strongly and you love without a reserve tank. When "
-                 "you are in, you are entirely in — and you expect the same, "
-                 "which not everyone can give.", "strong", ""),
+        "deep": ("is deeply etched",
+                 "You are sincere, loyal, and deeply invested in the relationships that matter to you. When you commit, you do so wholeheartedly "
+                 "and value genuine emotional authenticity in return.", "strong", ""),
         "shallow": ("is lightly marked",
-                    "Feeling is real but held back from the surface. People read "
-                    "you as cooler than you are.", "care",
-                    "Say the warm thing out loud once. On a light heart line the "
-                    "affection is felt but not received."),
+                    "You feel deeply but express emotions subtly and privately. Others may perceive you as composed or reserved.", "care",
+                    "Express appreciation openly in words to close ones. Clear expression deepens trust rapidly."),
     },
     "start_zone": {
-        "jupiter": ("begins under the index finger",
-                    "The idealist's heart line. You love the whole person and "
-                    "you set a high bar — and you are hurt properly when it is "
-                    "not met.", "neutral", ""),
-        "saturn": ("begins under the middle finger",
-                   "A reserved, serious attachment. The books read this start as "
-                   "affection that is physical and practical rather than "
-                   "demonstrative — you show love by what you do, not by what "
-                   "you say.", "neutral",
-                   "Put the feeling into words once, not only into actions. "
-                   "Partners on this line complain of silence far more often "
-                   "than of coldness."),
-        "between": ("begins between the index and middle fingers",
-                    "The balanced start — you give and expect in fair measure, "
-                    "and you recover from a disappointment without closing.",
+        "jupiter": ("reaches high toward the index finger",
+                    "The noble idealist in love and friendship. You hold high ethical standards and loyalty, seeking partners of character.", "neutral", ""),
+        "saturn": ("originates under the middle finger",
+                   "You express dedication through dependable actions, practical support, and steady loyalty rather than grand dramatic gestures.", "neutral",
+                   "Complement your practical support with verbal appreciation to nurture closer emotional bonds."),
+        "between": ("begins gracefully between the index and middle fingers",
+                    "The ideal emotional equilibrium — you offer warmth, fair expectations, healthy boundaries, and resilient balance.",
                     "strong", ""),
     },
     "length": {
-        "short": ("is short",
-                  "Affection is focused on a few people rather than spread wide. "
-                  "The circle is small on purpose.", "neutral", ""),
-        "long": ("runs long across the palm",
-                 "You attach deeply and you hold on. Letting go of a person, or "
-                 "of a version of a person, takes you longer than it takes most.",
+        "short": ("is focused and concise",
+                  "You maintain a close, carefully chosen circle of trusted confidants rather than spreading emotional energy thin.", "neutral", ""),
+        "long": ("extends across the palm",
+                 "You possess deep empathy, enduring loyalty, and strong commitment to the people you care about.",
                  "neutral", ""),
     },
     "quality": {
-        "broken": ("shows a break",
-                   "A break on the heart line is the classical mark of a "
-                   "significant emotional turn — a parting, or a loyalty that "
-                   "changed shape.", "care",
-                   "Around this stretch, say the difficult thing early. On this "
-                   "line the damage is done by what goes unsaid."),
-        "chained": ("is chained across part of its run",
-                    "Chaining on the heart line reads as unsettled affection — "
-                    "several attachments, or one that keeps re-negotiating "
-                    "itself.", "care",
-                    "Decide what you actually want from the relationship before "
-                    "the next conversation about it."),
-        "islanded": ("carries an island",
-                     "An island here marks a period of divided feeling.", "care",
-                     "Do not make the permanent decision inside this window."),
+        "broken": ("shows an emotional transition",
+                   "A significant period of emotional growth or boundary-setting that clarified what truly matters to your heart.", "care",
+                   "Communicate your inner values early and clearly in close relationships."),
+        "chained": ("shows sensitive chaining",
+                     "A period of emotional sensitivity or navigating complex relationship dynamics.", "care",
+                     "Ground yourself in clear personal boundaries and open conversations."),
+        "islanded": ("carries an island formation",
+                     "A temporary stretch of emotional deliberation or divided loyalty.", "care",
+                     "Give yourself time before making permanent relationship commitments."),
     },
 }
 
 _FATE = {
     "depth": {
-        "deep": ("runs strong and clear",
-                 "A real vocation, not just a job. Effort converts into position "
-                 "for you where other hands have to keep starting over.",
+        "deep": ("runs strong, steady and clear",
+                 "You have strong sense of purpose and career alignment. Your dedicated effort compounds into real standing and lasting achievements.",
                  "strong", ""),
-        "shallow": ("runs faintly",
-                    "The path is being made rather than inherited. Direction "
-                    "arrives late on this line, and usually through one person "
-                    "or one opening rather than through a plan.", "neutral", ""),
+        "shallow": ("runs lightly drawn",
+                    "Your path is self-forged through adaptable exploration. Your greatest career clarity develops as you gain experience.", "neutral", ""),
     },
     "start_zone": {
-        "wrist": ("rises from the wrist",
-                  "Direction was set early. You have known roughly what you were "
-                  "for since you were young.", "strong", ""),
-        "mid_palm": ("rises from the middle of the palm",
-                     "Your vocation clarifies in the middle of life rather than "
-                     "at the start of it. The books put this start at the age "
-                     "where a person stops doing what was expected and starts "
-                     "doing what fits.", "neutral", ""),
-        "moon": ("rises from the outer edge of the palm",
-                 "A career made through other people — clients, audiences, the "
-                 "public. Your openings come through who notices you, so the "
-                 "network is not a distraction from the work, it is the work.",
-                 "neutral", ""),
+        "wrist": ("rises cleanly from the base of the palm",
+                  "You discovered your natural calling and career ambition early, building a steady trajectory.", "strong", ""),
+        "mid_palm": ("emerges with strength in the mid-palm",
+                     "Your true career breakthrough and personal authority blossom in mid-career (ages 30–45), where you transition into the work that genuinely fits you.", "neutral", ""),
+        "moon": ("originates from the creative outer palm",
+                 "Your success is amplified through collaboration, public engagement, specialized clients, and interpersonal trust.", "strong", ""),
         "venus": ("rises from the ball of the thumb",
                   "Family and early support are woven into your career. Help "
                   "came from close to home — and so, sometimes, did the "

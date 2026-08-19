@@ -160,6 +160,7 @@ def build_reading_result(
     past_validation = []
     present = []
     future_windows = []
+    curr_age = int((person or {}).get("age") or 35)
     for item in (conf_block.get("predictions") or [])[:8]:
         age = item.get("age")
         if age is None:
@@ -179,8 +180,26 @@ def build_reading_result(
             "heart": "relationships",
             "fate": "career_direction",
         }
+        
+        # Future predictions should strictly look up to 10 years ahead (curr_age to curr_age + 10)
+        # Avoid distant lifetime/longevity predictions that confuse seekers.
+        raw_window = item.get("age_range") or [max(1, age_i - 3), age_i + 3]
+        if raw_window and len(raw_window) == 2:
+            w_low, w_high = int(raw_window[0]), int(raw_window[1])
+            if w_low > curr_age + 10 or w_high <= curr_age:
+                continue
+            clamped_low = max(curr_age, w_low)
+            clamped_high = min(curr_age + 10, w_high)
+            if clamped_high <= clamped_low:
+                clamped_high = min(curr_age + 10, clamped_low + 3)
+            final_window = [clamped_low, clamped_high]
+        else:
+            if age_i > curr_age + 10 or age_i <= curr_age:
+                continue
+            final_window = [curr_age + 1, min(curr_age + 10, age_i + 2)]
+
         future_windows.append({
-            "age_window": item.get("age_range") or [max(1, age_i - 3), age_i + 3],
+            "age_window": final_window,
             "domain": domain_map.get(line_key, str(item.get("domain") or "life")),
             "line": line_key,
             "pattern": item.get("text", ""),

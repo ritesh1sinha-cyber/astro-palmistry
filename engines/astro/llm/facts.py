@@ -2887,12 +2887,11 @@ def build_palm_facts(
         # Do not run it through the evidence sanitizer: that sanitizer is
         # intentionally lossy and was previously turning valid summaries into
         # empty strings + generic tags. The grouping preamble ("Together,
-        # these signs point to…") is engine bookkeeping, not a reading.
-        summary = clip_sentences(clean_palm_summary(raw_summary), 220)
+        summary = clean_palm_summary(raw_summary)
         if summary and len(personality_traits) < 5 and key in (
             "character", "mind", "love", "career", "wealth",
         ):
-            personality_traits.append(clip_sentences(summary, 180))
+            personality_traits.append(summary)
         recognize = [
             str(x)[:120] for x in list(row.get("recognize") or [])[:4]
             if str(x).strip()

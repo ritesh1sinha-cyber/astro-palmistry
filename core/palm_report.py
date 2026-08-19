@@ -652,17 +652,7 @@ def build_palm_html_reading(raw: dict, p: dict, *,
                  if isinstance(prose_overlay, dict) else {})
         if not isinstance(prose, dict):
             prose = {}
-        tier = (llm_meta.get("paid") if paid else llm_meta.get("free")) or {}
-        accepted = int((tier.get("stats") or {}).get("accepted") or 0)
-        use_conversational = (
-            bool(llm_meta.get("enabled"))
-            and accepted > 0
-            and bool(prose.get("conversational"))
-            and bool(str(prose.get("personality") or "").strip())
-        )
-        if use_conversational:
-            return PConv.render(raw, paid=paid, prose=prose, **common)
-        return PC.render(raw, paid=paid, prose=prose, **common)
+        return PConv.render(raw, paid=paid, prose=prose, **common)
 
     free_html = _scrub_palm_html(_render_palm(False))
     paid_html = _scrub_palm_html(_render_palm(True))

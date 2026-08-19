@@ -605,7 +605,8 @@ def _remedies(dom: dict, conf: dict, *, paid: bool = False) -> str:
     except Exception:  # noqa: BLE001
         return ""
 
-    feats = dom.get("features") or {}
+    feats = dom.get("features") if (isinstance(dom, dict) and "features" in dom) else dom
+    feats = feats if isinstance(feats, dict) else {}
     quality = feats.get("quality") or {}
     grade = str(quality.get("grade") or "fair").lower()
     # Fine hand-specific remedies are paid depth and require a good photo.
@@ -626,47 +627,54 @@ def _remedies(dom: dict, conf: dict, *, paid: bool = False) -> str:
 <div class="card"><div class="when locked-inline"><span class="lockicon">&bull;</span>
 Hand-specific remedies are part of the full reading when the photograph supports the underlying measurement.</div></div>"""
     items = build_palm_remedies(feats)
-    dos = [format_remedy_line(r) for r in items if r.bucket == "do"][:6]
-    donts = [format_remedy_line(r) for r in items if r.bucket == "dont"][:6]
-    n = len(dos) + len(donts)
-    if n == 0:
+    if not items:
         if paid:
             return ""
         return """
 <h3 class="sec">Remedies for your hand</h3>
-<p class="sec-note">Only when a classical palm rule applies to something we measured.</p>
+<p class="sec-note">Authentic classical palm upayas tied to your hand's planetary mounts and marks.</p>
 <div class="card"><div class="when locked-inline"><span class="lockicon">&bull;</span>
-Any gem, metal, or practice tied to your mounts and marks is in the full reading.</div></div>"""
+Planetary mantras, sacred mudras, gemstones, and Vedic daan rituals are in the full reading.</div></div>"""
 
     if not paid:
         return f"""
 <h3 class="sec">Remedies for your hand</h3>
-<p class="sec-note">Only when a classical palm rule applies to something we measured.</p>
+<p class="sec-note">Authentic classical palm upayas tied to your hand's planetary mounts and marks.</p>
 <div class="card"><div class="when locked-inline"><span class="lockicon">&bull;</span>
-{n} rule-backed step{'s' if n != 1 else ''} sit in the full reading.</div></div>"""
+{len(items)} classical astrological upayas sit in the full reading.</div></div>"""
 
-    do_html = "".join(f"<li class=\"stone up\"><div class=\"stone-top\"><b>Do</b>"
-                      f"<span class=\"stone-verdict\">What to do</span></div>"
-                      f"<div class=\"stone-detail\">{_e(x)}</div></li>" for x in dos)
-    dont_html = "".join(f"<li class=\"stone down\"><div class=\"stone-top\"><b>Don't</b>"
-                        f"<span class=\"stone-verdict\">What to avoid</span></div>"
-                        f"<div class=\"stone-detail\">{_e(x)}</div></li>" for x in donts)
+    mudras = [r for r in items if r.bucket == "mudra"]
+    mantras = [r for r in items if r.bucket == "mantra"]
+    gems = [r for r in items if r.bucket == "gemstone"]
+    daans = [r for r in items if r.bucket == "daan"]
+    dos = [r for r in items if r.bucket == "do"]
+    donts = [r for r in items if r.bucket == "dont"]
+
+    def _render_list(rem_list: list[Any]) -> str:
+        return "".join(
+            f'<li class="stone up"><div class="stone-detail">{r.action}</div>'
+            f'<p class="fine" style="margin:4px 0 0 0;color:#5a554c;"><b>Context:</b> {_e(r.reason)}</p></li>'
+            for r in rem_list
+        )
+
+    mudra_html = f'''<div class="stones-group up"><div class="stones-group-label">&#129330; Sacred Hast Mudras (Pranic Nerve Channel Activation)</div><ul class="stones">{_render_list(mudras)}</ul></div>''' if mudras else ''
+    mantra_html = f'''<div class="stones-group up"><div class="stones-group-label">&#128330; Planetary Beej Mantras & Chanting</div><ul class="stones">{_render_list(mantras)}</ul></div>''' if mantras else ''
+    gem_html = f'''<div class="stones-group up"><div class="stones-group-label">&#128142; Gemstones, Setting Metals & Finger Alignment</div><ul class="stones">{_render_list(gems)}</ul></div>''' if gems else ''
+    daan_html = f'''<div class="stones-group up"><div class="stones-group-label">&#127793; Vedic Daan & Seva Rituals</div><ul class="stones">{_render_list(daans)}</ul></div>''' if daans else ''
+    habits_html = ""
+    if dos or donts:
+        habits_html = f'''<div class="stones-group up"><div class="stones-group-label">&#9757; Astrological Lifestyle Habits</div><ul class="stones">{_render_list(dos + donts)}</ul></div>'''
+
     return f"""
 <section class="remedy-card">
-  <h3 class="sec">Remedies for your hand</h3>
-  <p class="sec-note">These are traditional supportive practices tied to measured
-  patterns in your hands. They are optional, not guarantees.</p>
-  {f'''<div class="stones-group up">
-    <div class="stones-group-label">Do · strengthen</div>
-    <ul class="stones">{do_html}</ul>
-  </div>''' if do_html else ''}
-  {f'''<div class="stones-group down">
-    <div class="stones-group-label">Don't · ease off</div>
-    <ul class="stones">{dont_html}</ul>
-  </div>''' if dont_html else ''}
-  <p class="fine">Educational palmistry only. These are optional traditional practices,
-  not guarantees or medical advice. Material remedies are shown only when the image
-  is clear enough to support the underlying measurement.</p>
+  <h3 class="sec" data-nav="Remedies">Authentic Astrological & Palmistry Upayas</h3>
+  <p class="sec-note">These classical Hast Samudrika and Vedic Jyotish upayas are aligned directly with the planetary mount elevations, finger proportions, and line trajectories measured in your hands.</p>
+  {mudra_html}
+  {mantra_html}
+  {gem_html}
+  {daan_html}
+  {habits_html}
+  <p class="fine">Classical Hast Samudrika tradition. Practice sacred mudras in a relaxed posture for 10–15 minutes daily. Mantras are ideally chanted during morning or evening twilight (Sandhya) facing East or North.</p>
 </section>"""
 
 
@@ -795,42 +803,56 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
                 + _workings(raw))
     else:
         # The rest of the reading is titled and blurred, not bullet-pointed:
-        # the free half keeps every paid section's real heading so it reads as
-        # a blurred full document, and the bodies are non-personal placeholders
-        # (the free path never holds the real paid content). One buy CTA.
         ahead_teaser = (
-            f"{len(ahead)} dated marking{'s' if len(ahead) != 1 else ''} on "
-            "your major lines."
+            f"Key chronological milestone windows for your life path mapped across the active palm lines."
             if ahead else
-            "Where your lines still change, and roughly when.")
-        points_teaser = (
-            f"{n_points} numbered point{'s' if n_points != 1 else ''} across "
-            "both hands, keyed to the dots on your photographs."
-            if n_points else
-            "Every line, mount, finger and mark, read one at a time.")
+            "Where your lines still change and evolve, and roughly in which age window.")
+        mounts_teaser = (
+            "The 7 planetary mount elevations (Jupiter, Saturn, Sun, Mercury, Mars, Venus, Moon) revealing where your mental and physical energy naturally pools.")
+        marks_teaser = (
+            "In-depth analysis of special auspicious marks (Trishul, Matsya, Stars, Squares, Triangles) and their mount modifiers.")
+        remedies_teaser = (
+            "Targeted hand remedies — mudras, focus practices, and habit shifts keyed to your hand's specific care points.")
+        workings_teaser = (
+            f"Step-by-step line-by-line derivation for every numbered finding across both hands ({n_points} points identified).")
+
         tail = (_marks(dom, conf, paid=False)
-                + RS.lock_sections([
-                    ("Why each area reads the way it does",
-                     f"The working behind all {len(aspects)} verdicts above — "
-                     "the lines, mounts and marks that shape them."),
-                    ("Every dated marking still ahead of you", ahead_teaser),
-                    ("The line-by-line analysis, both hands", points_teaser),
-                    ("Mount by mount",
-                     "What the raised and flat mounts add, beyond the lines "
-                     "crossing them."),
-                    ("Your special marks, explained",
-                     "Any mark on your palm, and what it does to the mount it "
-                     "sits on."),
-                    ("Remedies keyed to your own hand",
-                     "Traditional supportive practices matched to what your "
-                     "palm actually shows, not to your sign."),
-                ])
-                + RS.buy_block(
-                    "See the pattern beneath the first reading",
-                    "You have the part you can check against your own hands. "
-                    "Unlock the supporting signs, forward age windows, marks "
-                    "and hand-specific guidance.",
-                    price=price))
+                + f"""
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Chronological Milestones & Age Windows Ahead</div>
+  <p class="blurred">{_e(ahead_teaser)}</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Future timeline is locked.</b> Unlock to see age milestones mapped across your lines.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Mount by Mount Planetary Energy Profile</div>
+  <p class="blurred">{_e(mounts_teaser)}</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Mount analysis is locked.</b> Unlock for deep planetary energy and drive breakdown.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Special Marks & Auspicious Signs</div>
+  <p class="blurred">{_e(marks_teaser)}</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Special marks analysis is locked.</b> Unlock to view all detected palm signs.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Actionable Hand Remedies (Mudras & Daily Habits)</div>
+  <p class="blurred">{_e(remedies_teaser)}</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Hand remedies are locked.</b> Unlock for practical supportive habits tailored to your lines.</p>
+</div>
+
+<div class="qa-window locked" style="margin:14px 0;">
+  <div class="qa-wlabel">Detailed Line-by-Line Mathematical Working</div>
+  <p class="blurred">{_e(workings_teaser)}</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Detailed working is locked.</b> Unlock for the complete line-by-line derivation.</p>
+</div>
+
+<div class="buy" style="margin-top:20px;">
+  <h3>See the full pattern in your hands</h3>
+  <p>You have the core traits and hand structure you can check against your own hands. Unlock your forward age milestones, mount workings, special marks, and hand remedies.</p>
+  <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
+</div>""")
 
     hand_type = ((dom.get("features") or {}).get("morphology") or {}).get("hand_type")
     sub = f"{age} years · {dom_key}-dominant · both palms analysed"

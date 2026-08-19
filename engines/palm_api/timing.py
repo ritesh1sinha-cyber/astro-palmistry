@@ -157,28 +157,69 @@ def _line_progress(
     group: list[dict[str, Any]],
     size: int,
 ) -> float | None:
+    """Calculate true arc-length progress (0.0 to 1.0) along the curved line trajectory."""
     if not group or size <= 0:
         return None
-    xs = [s["mx"] / size for s in group]
-    ys = [s["my"] / size for s in group]
-    px, py = x / size, y / size
+    pts = []
+    for s in group:
+        mx = float(s.get("mx", 0)) / size
+        my = float(s.get("my", 0)) / size
+        pts.append((mx, my))
 
+    if len(pts) < 2:
+        return None
+
+    # Sort points along the line's natural anatomical direction
     if line_key == "life":
-        y0, y1 = min(ys), max(ys)
-        if y1 - y0 < 0.08:
-            return None
-        return (py - y0) / (y1 - y0)
-    if line_key == "fate":
-        y0, y1 = max(ys), min(ys)  # wrist → finger
-        if y0 - y1 < 0.08:
-            return None
-        return (y0 - py) / (y0 - y1)
-    if line_key in ("head", "heart"):
-        x0, x1 = min(xs), max(xs)
-        if x1 - x0 < 0.08:
-            return None
-        return (px - x0) / (x1 - x0)
-    return None
+        # Origin = top-inner palm between thumb & index (min y), sweeping around Venus down to wrist (max y)
+        pts = sorted(pts, key=lambda p: (p[1], -p[0]))
+    elif line_key == "fate":
+        # Origin = wrist bottom (max y), moving upward to Saturn mount (min y)
+        pts = sorted(pts, key=lambda p: -p[1])
+    elif line_key == "head":
+        # Origin = inner thumb/index junction (min x if right hand canonical), moving across palm
+        pts = sorted(pts, key=lambda p: p[0])
+    elif line_key == "heart":
+        # Origin = outer percussion beneath pinky, moving inward toward Jupiter/Saturn
+        pts = sorted(pts, key=lambda p: p[0])
+
+    # Compute cumulative arc-length distances
+    import math
+    cum_dist = [0.0]
+    for i in range(1, len(pts)):
+        d = math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+        cum_dist.append(cum_dist[-1] + d)
+
+    total_len = cum_dist[-1]
+    if total_len < 0.04:
+        return None
+
+    px, py = float(x) / size, float(y) / size
+
+    # Find the closest projection point onto any line segment
+    best_dist_along = 0.0
+    min_perp_dist = float("inf")
+
+    for i in range(len(pts) - 1):
+        p1, p2 = pts[i], pts[i + 1]
+        dx, dy = p2[0] - p1[0], p2[1] - p1[1]
+        seg_len_sq = dx * dx + dy * dy
+        if seg_len_sq < 1e-7:
+            t = 0.0
+        else:
+            t = max(0.0, min(1.0, ((px - p1[0]) * dx + (py - p1[1]) * dy) / seg_len_sq))
+
+        proj_x = p1[0] + t * dx
+        proj_y = p1[1] + t * dy
+        perp_dist = math.hypot(px - proj_x, py - proj_y)
+
+        if perp_dist < min_perp_dist:
+            min_perp_dist = perp_dist
+            seg_len = math.sqrt(seg_len_sq)
+            best_dist_along = cum_dist[i] + t * seg_len
+
+    progress = best_dist_along / total_len
+    return max(0.0, min(1.0, progress))
 
 
 def _segment_ages(
@@ -217,14 +258,11 @@ def estimate_point_timing(
     if progress is None:
         return None
     age = _interp_age(progress, marks)
-    lower, upper = 1, 98
-    for _p, a in marks:
-        if a <= age:
-            lower = a
-    for _p, a in marks:
-        if a >= age:
-            upper = a
-            break
+    
+    # 3-5 year window representing life chapter
+    window_low = max(1, age - 2)
+    window_high = min(90, age + 2)
+
     seg_ages = _segment_ages(line_key, group, size, marks)
     seg_note = ""
     if seg_ages and segment_count and segment_count > 1:
@@ -236,13 +274,13 @@ def estimate_point_timing(
 
     return {
         "estimated_age": age,
-        "age_range": [max(1, lower), min(98, upper if upper >= lower else age + 7)],
+        "age_range": [window_low, window_high],
         "progress_pct": float(round(progress * 100, 1)),
         "system": "cheiro_system_of_seven" if line_key in ("life", "fate") else "approximate_non_cheiro",
         "method": METHOD_NOTE.get(line_key, ""),
         "summary": (
-            f"Your {line_key.replace('_', ' ')} line at this circle ≈ age {age} "
-            f"(~{round(progress * 100)}% along your line).{seg_note}"
+            f"Your {line_key.replace('_', ' ')} line in this sector ≈ ages {window_low}–{window_high} "
+            f"(~{round(progress * 100)}% along the line arc).{seg_note}"
         ),
     }
 

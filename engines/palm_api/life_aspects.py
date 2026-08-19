@@ -32,6 +32,75 @@ ASPECTS: list[tuple[str, str]] = [
     ("fortune", "Special Marks & Direction"),
 ]
 
+# Authentic Domain-Specific Vedic Astrological Upayas
+_ASPECT_VEDIC_UPAYAS: dict[str, dict[str, str]] = {
+    "character": {
+        "planet": "Jupiter & Sun (Guru-Surya)",
+        "upaya": (
+            "<b>Guru Beej Mantra & Gyan Mudra</b>: Practice Gyan Mudra (join thumb tip with index fingertip) "
+            "for 15 minutes daily during morning meditation. Chant the Guru Beej Mantra "
+            "<code>Om Gram Greem Graum Sah Gurave Namah</code> (108 times on Thursdays) to channel "
+            "leadership authority, strategic wisdom, and dignified self-respect."
+        ),
+    },
+    "mind": {
+        "planet": "Mercury & Jupiter (Budh-Brihaspati)",
+        "upaya": (
+            "<b>Budh Beej Mantra & Varun Mudra</b>: Practice Varun Mudra (join thumb tip with little fingertip) "
+            "for 15 minutes daily to harmonize nervous currents and enhance decisive analytical speed. Chant "
+            "<code>Om Bram Breem Braum Sah Budhaya Namah</code> (108 times on Wednesday mornings) to sharpen "
+            "negotiation clarity and commercial acumen."
+        ),
+    },
+    "love": {
+        "planet": "Venus & Moon (Shukra-Chandra)",
+        "upaya": (
+            "<b>Shukra Beej Mantra & Prithvi Mudra</b>: Practice Prithvi Mudra (join thumb tip with ring fingertip) "
+            "to ground emotional warmth and deepen interpersonal trust. Chant <code>Om Dram Dreem Draum Sah Shukraya Namah</code> "
+            "(108 times on Fridays) and donate white sweets, milk, or rice on Friday mornings for domestic harmony."
+        ),
+    },
+    "career": {
+        "planet": "Saturn & Sun (Shani-Surya)",
+        "upaya": (
+            "<b>Surya Arghya & Shani Beej Mantra</b>: Offer daily Surya Arghya (water with kumkum from a pure copper vessel) "
+            "at sunrise to amplify executive recognition and professional authority. On Saturday evenings, chant "
+            "<code>Om Pram Preem Praum Sah Shanaishcharaya Namah</code> (108 times) to turn patient labor into lasting vocational standing."
+        ),
+    },
+    "wealth": {
+        "planet": "Mercury & Venus (Budh-Lakshmi)",
+        "upaya": (
+            "<b>Budh Upasana & Cow Seva</b>: Feed fresh green grass or spinach to cows on Wednesday mornings and keep "
+            "a thriving green plant in the Northern sector of your workspace. Chant <code>Om Shreem Hreem Kleem Shreem Namah</code> "
+            "or Shree Suktam to fortify liquid cash flow and commercial prosperity."
+        ),
+    },
+    "health": {
+        "planet": "Sun & Mars (Surya-Mangal)",
+        "upaya": (
+            "<b>Surya Mudra & Gayatri Upasana</b>: Practice Surya Mudra (fold ring finger to touch thumb base) for 10–15 minutes "
+            "daily during morning meditation to steady vital energy and focus. Recite the Gayatri Mantra or Aditya Hridaya "
+            "Stotram at sunrise to support mental clarity and daily stamina."
+        ),
+    },
+    "travel": {
+        "planet": "Moon (Chandra Dev)",
+        "upaya": (
+            "<b>Prana Mudra & Chandra Upasana</b>: Practice Prana Mudra (join tips of ring and little fingers with thumb tip) "
+            "to steady emotional tides and mental restlessness before journeys. Chant <code>Om Shram Shreem Shraum Sah Chandraya Namah</code> "
+            "on Monday evenings and drink water stored in a pure silver cup."
+        ),
+    },
+    "fortune": {
+        "planet": "Jupiter & Sun (Guru-Surya)",
+        "upaya": (
+            "<b>Brihaspati Daan & Saffron Tilak</b>: Apply a sacred Saffron or Turmeric tilak on your forehead and throat chakra "
+            "on Thursday mornings. Offer water to a Peepal tree and donate chana dal to scholars to awaken dormant luck and mentors."
+        ),
+    },
+}
+
 
 class View:
     """Flat, safe accessor over one hand's cleaned features."""
@@ -289,14 +358,54 @@ for _idx, _rule in enumerate(RULES, 1):
     _rule.rule_id = f"R{_idx:02d}_{_rule.aspect}"
 
 
-def _strength(matched: int, reinforced: int) -> tuple[str, str]:
-    if reinforced >= 2 or (matched >= 3 and reinforced >= 1):
-        return "strong", "Strong — multiple signs agree, several on both hands."
-    if matched >= 2:
-        return "moderate", "Moderate — more than one sign points the same way."
-    if matched == 1:
-        return "tentative", "Tentative — a single sign; treat as a hint, not a verdict."
-    return "none", ""
+def _calculate_confluence_verdict(akey: str, points: list[dict[str, Any]], quality_grade: str) -> tuple[str, str, str]:
+    if not points:
+        return "insufficient_evidence", "Insufficient evidence — key palm landmarks are not clearly resolved.", "low"
+
+    score = 0
+    reinforced_count = 0
+    for p in points:
+        txt = str(p.get("text") or p.get("traditional_meaning") or "").lower()
+        both = bool(p.get("reinforced"))
+        if both:
+            reinforced_count += 1
+            score += 1
+        
+        if any(w in txt for w in ("deep", "clear", "prominent", "trident", "triangle", "square", "star", "well-formed")):
+            score += 2
+        elif any(w in txt for w in ("grille", "cross", "island", "broken", "wavy", "caution", "restless", "delicate", "sensitive")):
+            score -= 2
+        else:
+            score += 1
+
+    # Quality gating
+    if quality_grade == "poor":
+        score -= 2
+        confidence = "tentative"
+    elif quality_grade == "fair":
+        score -= 1
+        confidence = "moderate"
+    else:
+        confidence = "high" if reinforced_count >= 1 else "moderate"
+
+    if score >= 4:
+        level = "strong"
+        level_note = "Strong theme — major supporting lines and mounts align clearly."
+    elif score >= 2:
+        level = "moderate"
+        level_note = "Moderate theme — positive primary indicators with steady support."
+    elif score >= 0:
+        level = "balanced"
+        level_note = "Balanced theme — steady baseline with mixed or nuanced indications."
+    else:
+        level = "care"
+        level_note = "Area to watch — competing indications calling for conscious care."
+
+    if quality_grade == "poor":
+        level = "tentative"
+        level_note = "Tentative — image resolution is limited."
+
+    return level, level_note, confidence
 
 
 _MAX_POINTS_PER_ASPECT = 2
@@ -439,16 +548,7 @@ def build_life_aspects(
             continue
 
         reinforced = sum(1 for p in points if p.get("reinforced"))
-        level, level_note = _strength(len(points), reinforced)
-        # Image quality caps the confidence of the interpretation. A poor image
-        # cannot legitimately produce a strong customer verdict even if several
-        # heuristic rules happen to match the same uncertain feature.
-        if quality_grade == "poor":
-            level = "tentative"
-            level_note = "Tentative — the photograph is not clear enough to support a stronger palm verdict."
-        elif quality_grade == "fair" and level == "strong":
-            level = "moderate"
-            level_note = "Moderate — the pattern is supported, but fine visual detail is less certain in this photograph."
+        level, level_note, confidence = _calculate_confluence_verdict(akey, points, quality_grade)
 
         # A human-facing summary is intentionally separate from the technical
         # rule text. It tells the reader what the selected signs could look like
@@ -469,6 +569,9 @@ def build_life_aspects(
             if len(recognition) >= 4:
                 break
 
+        upaya_info = _ASPECT_VEDIC_UPAYAS.get(akey) or {}
+        remedy_text = upaya_info.get("upaya", "")
+
         out.append({
             "key": akey,
             "title": atitle,
@@ -478,8 +581,11 @@ def build_life_aspects(
             "recognize": recognition,
             "strength": level,
             "strength_note": level_note,
+            "confidence": confidence,
             "reinforced_count": reinforced,
             "points": points,
+            "remedy": remedy_text,
+            "planet": upaya_info.get("planet", ""),
         })
 
     # Saraswati book lane — keep it as evidence, but do not allow it to create
