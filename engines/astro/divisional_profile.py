@@ -55,6 +55,7 @@ class DivisionalInsight:
     code: str
     name: str
     governs: str
+    domain_id: str
     lagna_sign: str
     lord: str
     lord_sign: str
@@ -210,153 +211,250 @@ def _build_domain_specific_timeline(
     adulthood_md: str,
     adulthood_start_yr: int,
 ) -> str:
-    """Builds distinct, domain-specific timeline guidance for each divisional chart without redundant generic headers."""
+    """Builds distinct, domain-specific multi-clock confluence timeline guidance (Vimshottari + Jaimini Chara + Yogini + Transits)."""
     is_child = current_age < 18
+    this_yr = date.today().year
+
+    # 1. Vimshottari Data
     vim = pc.get("vimshottari", {})
     curr_ad_list = vim.get("current_md_antardashas", [])
 
-    period_str = f"<b>{curr_md}-{curr_ad_name}</b>" if (curr_md and curr_ad_name) else f"<b>{curr_md}</b>"
-    until_str = f" (running until {curr_ad_end})" if curr_ad_end else ""
+    curr_ad = None
+    future_ads = []
+    for ad in curr_ad_list:
+        st = ad.get("status") or ("current" if ad.get("is_current") else "")
+        if st == "current" or ad.get("is_current"):
+            curr_ad = ad
+        elif st == "future":
+            future_ads.append(ad)
+
+    if not curr_ad and curr_ad_list:
+        curr_ad = curr_ad_list[0]
+
+    curr_ad_lord = curr_ad.get("ad_lord") or curr_ad.get("antardasha") or curr_ad_name or "Sub-period"
+    curr_ad_end_fmt = _format_month_year(str(curr_ad.get("end") or "")) or curr_ad_end
+
+    # 2. Jaimini Chara Dasha Data
+    jaimini = pc.get("jaimini", {})
+    chara = jaimini.get("chara_dasha", {})
+    curr_chara_m = chara.get("current_maha", {}) if isinstance(chara, dict) else {}
+    curr_chara_a = chara.get("current_antar", {}) if isinstance(chara, dict) else {}
+    chara_m_sign = curr_chara_m.get("sign", "")
+    chara_m_end = _format_month_year(str(curr_chara_m.get("end") or ""))
+    chara_a_sign = curr_chara_a.get("sign", "")
+
+    # 3. Yogini Dasha Data
+    yogini = pc.get("yogini", {})
+    curr_yog = yogini.get("current_yogini", {}) if isinstance(yogini, dict) else {}
+    yog_name = curr_yog.get("yogini", "")
+    yog_lord = curr_yog.get("lord", "")
+
+    # 4. Karakas & Lords
+    k_list = jaimini.get("karakas", [])
+    k_map = {}
+    if isinstance(k_list, list):
+        for k_obj in k_list:
+            r = str(k_obj.get("role", "")).upper()
+            p = str(k_obj.get("planet", ""))
+            if "ATMA" in r: k_map["AK"] = p
+            elif "AMATYA" in r: k_map["AmK"] = p
+            elif "BHRATRU" in r: k_map["BK"] = p
+            elif "MATRU" in r: k_map["MK"] = p
+            elif "PUTRA" in r: k_map["PK"] = p
+            elif "GNATI" in r: k_map["GK"] = p
+            elif "DARA" in r: k_map["DK"] = p
+    elif isinstance(k_list, dict):
+        k_map = k_list
+
+    ak = k_map.get("AK", "Sun")
+    amk = k_map.get("AmK", "Sun")
+    bk = k_map.get("BK", "Mars")
+    mk = k_map.get("MK", "Moon")
+    pk = k_map.get("PK", "Jupiter")
+    gk = k_map.get("GK", "Saturn")
+    dk = k_map.get("DK", "Venus")
+
+    d1_lagna = pc.get("meta", {}).get("lagna_sign", "") or (pc.get("lagna", {}) or {}).get("sign", "Gemini")
+
+    def get_h_lord(h: int) -> str:
+        if not d1_lagna or d1_lagna not in SIGNS:
+            return ""
+        s = SIGNS[(SIGNS.index(d1_lagna) + h - 1) % 12]
+        return SIGN_LORDS.get(s, "")
+
+    h10_lord = get_h_lord(10)
+    h7_lord = get_h_lord(7)
+    h2_lord = get_h_lord(2)
+    h11_lord = get_h_lord(11)
+    h5_lord = get_h_lord(5)
+    h4_lord = get_h_lord(4)
+    h3_lord = get_h_lord(3)
+    h9_lord = get_h_lord(9)
+
+    def find_future_ad(target_lords: list[str]) -> tuple[str, str, str]:
+        for t in target_lords:
+            for ad in future_ads:
+                l = ad.get("ad_lord") or ad.get("antardasha") or ""
+                if l == t:
+                    st = _format_month_year(str(ad.get("start") or ""))
+                    en = _format_month_year(str(ad.get("end") or ""))
+                    return l, st, en
+        if future_ads:
+            ad = future_ads[0]
+            l = ad.get("ad_lord") or ad.get("antardasha") or ""
+            st = _format_month_year(str(ad.get("start") or ""))
+            en = _format_month_year(str(ad.get("end") or ""))
+            return l, st, en
+        return "", "", ""
+
+    # Multi-Clock Status Line
+    chara_str = f" · Chara Dasha: <b>{chara_m_sign}{f'-{chara_a_sign}' if chara_a_sign else ''}</b>" if chara_m_sign else ""
+    yog_str = f" · Yogini: <b>{yog_name} ({yog_lord})</b>" if yog_name else ""
+    active_clocks = f"<b>Active Multi-Clock Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> (until {curr_ad_end_fmt}){chara_str}{yog_str}."
 
     if code == "D10":
-        # Career & Leadership
+        # Career
         if is_child:
-            launch_start = adulthood_start_yr + 2
-            launch_end = adulthood_start_yr + 6
-            peak_start = adulthood_start_yr + 8
-            peak_end = adulthood_start_yr + 14
+            launch_yr = this_yr + (22 - current_age)
+            peak_yr = this_yr + (28 - current_age)
             return (
-                f"<b>Vocational Incubation:</b> Currently building academic curiosity and foundational discipline under {period_str}.<br>"
-                f"<b>Key Career Milestones:</b> <b>Career Launch Window:</b> <span style='color:#b57c38;font-weight:700;'>{launch_start}–{launch_end} (Ages 20–24)</span> | "
-                f"<b>Peak Executive Authority:</b> <span style='color:#b57c38;font-weight:700;'>{peak_start}–{peak_end} (Ages 26–32)</span> during {adulthood_md} Mahadasha."
+                f"{active_clocks}<br>"
+                f"<b>Vocational Incubation Phase:</b> Currently building academic curiosity and intellectual discipline under {curr_md}-{curr_ad_lord}.<br>"
+                f"<b>Key Career Milestones:</b> <b>Career Launch Window:</b> <span style='color:#b57c38;font-weight:700;'>{launch_yr}–{launch_yr+4} (Ages 22–26)</span> | "
+                f"<b>Executive Promotion & Authority Surge:</b> <span style='color:#b57c38;font-weight:700;'>{peak_yr}–{peak_yr+6} (Ages 28–34)</span>."
             )
         else:
+            c_lord, c_st, c_en = find_future_ad([amk, h10_lord, "Sun", "Jupiter", "Venus", "Mars"])
+            next_chara_info = f" Aligned with the upcoming <b>{chara_m_sign} → next major Chara cycle ({chara_m_end})</b>" if chara_m_end else ""
             return (
-                f"<b>Active Career Cycle:</b> The current {period_str} cycle{until_str} supports consolidating authority, managing key responsibilities, and positioning for strategic promotion.<br>"
-                f"<b>Career Surge Window:</b> Major professional expansion and elevated industry respect activate under supportive Sun, Jupiter, and 10th lord sub-periods."
+                f"{active_clocks}<br>"
+                f"<b>Active Career Momentum:</b> Strategic consolidation and positioning under {curr_md}-{curr_ad_lord} (running until {curr_ad_end_fmt}).<br>"
+                f"<b>Career Surge & Executive Elevation Window:</b> <span style='color:#b57c38;font-weight:700;'>{c_st} – {c_en}</span> under <b>{curr_md}-{c_lord}</b> "
+                f"(activating Amatyakaraka {amk} and 10th house authority).{next_chara_info}."
             )
 
     elif code == "D9":
-        # Marriage & Partnership
+        # Marriage
         if is_child:
-            m_start = adulthood_start_yr + 6
-            m_end = adulthood_start_yr + 11
+            m_yr = this_yr + (26 - current_age)
             return (
-                f"<b>Partnership Horizon:</b> <b>Prime Marriage Window:</b> <span style='color:#b57c38;font-weight:700;'>{m_start}–{m_end} (Ages 24–29)</span> "
-                f"during the {adulthood_md} Mahadasha under supportive Venus and 7th house planetary activations."
+                f"{active_clocks}<br>"
+                f"<b>Partnership Horizon:</b> <b>Prime Marriage Window:</b> <span style='color:#b57c38;font-weight:700;'>{m_yr}–{m_yr+5} (Ages 26–31)</span> "
+                f"under supportive Venus and 7th house planetary activations."
             )
         else:
+            m_lord, m_st, m_en = find_future_ad([dk, "Venus", h7_lord, "Jupiter"])
             return (
-                f"<b>Partnership Dynamics:</b> The running {period_str} phase{until_str} fosters emotional grounding, mutual understanding, and deepening relational stability.<br>"
-                f"<b>Relationship Fruition Window:</b> Favorable marital harmony and shared milestone achievements manifest under Venus and 7th lord sub-periods."
+                f"{active_clocks}<br>"
+                f"<b>Relationship Dynamics:</b> Emotional grounding and mutual understanding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+                f"<b>Marital Fruition & Relational Harmony Window:</b> <span style='color:#b57c38;font-weight:700;'>{m_st} – {m_en}</span> under <b>{curr_md}-{m_lord}</b> "
+                f"(activating Darakaraka {dk} and 7th house partnership karaka)."
             )
 
     elif code == "D2":
-        # Wealth & Assets
+        # Wealth
+        w_lord, w_st, w_en = find_future_ad([h2_lord, h11_lord, "Jupiter", "Venus", "Mercury"])
         return (
-            f"<b>Financial Rhythm:</b> Navigating the {period_str} phase{until_str}, which favors structured savings, systematic asset accumulation, and compounding capital investments over speculative risk."
+            f"{active_clocks}<br>"
+            f"<b>Financial Rhythm:</b> Structured capital preservation and disciplined compounding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+            f"<b>Major Asset Accumulation & Liquidity Window:</b> <span style='color:#b57c38;font-weight:700;'>{w_st} – {w_en}</span> under <b>{curr_md}-{w_lord}</b>, "
+            f"favoring high-yield compounding, asset acquisitions, and expanding income streams."
         )
 
-    elif code == "D3":
-        # Courage, Siblings, Motor Skills & Enterprise
-        if is_child:
-            breakthrough_ad = None
-            for ad in curr_ad_list:
-                ad_l = ad.get("ad_lord") or ad.get("antardasha") or ""
-                if ad.get("status") in ("current", "future") or ad.get("is_current"):
-                    if ad_l in ("Mercury", "Jupiter", "Venus", "Moon"):
-                        breakthrough_ad = ad
-                        break
-            if not breakthrough_ad and curr_ad_list:
-                breakthrough_ad = curr_ad_list[0]
-
-            if breakthrough_ad:
-                ad_name = breakthrough_ad.get("ad_lord") or breakthrough_ad.get("antardasha") or "Supportive"
-                ad_st = _format_month_year(str(breakthrough_ad.get("start") or ""))
-                ad_en = _format_month_year(str(breakthrough_ad.get("end") or ""))
-                date_window = f"{ad_st} – {ad_en}" if (ad_st and ad_en) else (ad_en or "")
-                window_str = f" ({date_window})" if date_window else ""
-                turning_point = f"<b>Major Turning Point:</b> <span style='color:#b57c38;font-weight:700;'>{ad_name} sub-period{window_str}</span> activates a major breakthrough in expressive speech, vocal clarity, and confident motor dexterity."
-            else:
-                turning_point = "<b>Major Turning Point:</b> Favorable planetary sub-periods activate steady growth in expressive speech, vocal clarity, and confident motor dexterity."
-
-            return (
-                f"<b>Developmental & Learning Rhythm:</b> Active learning and coordination phase under {period_str}.<br>"
-                f"{turning_point}"
-            )
-        else:
-            return (
-                f"<b>Initiative & Enterprise Cycle:</b> The current {period_str} period{until_str} energizes collaborative enterprise, proactive leadership, bold project execution, and strong mutual support with peers and siblings."
-            )
-
     elif code == "D7":
-        # Progeny & Family Lineage
+        # Children
         if is_child:
-            p_start = adulthood_start_yr + 8
-            p_end = adulthood_start_yr + 13
+            p_yr = this_yr + (28 - current_age)
             return (
-                f"<b>Family Continuation Horizon:</b> <b>Primary Childbirth Window:</b> <span style='color:#b57c38;font-weight:700;'>{p_start}–{p_end} (Ages 26–31)</span> "
-                f"during the {adulthood_md} Mahadasha, when progeny significators are fully activated."
+                f"{active_clocks}<br>"
+                f"<b>Family Continuation Horizon:</b> <b>Primary Progeny Window:</b> <span style='color:#b57c38;font-weight:700;'>{p_yr}–{p_yr+5} (Ages 28–33)</span> "
+                f"when Putrakaraka and 5th house significators activate."
             )
         else:
+            p_lord, p_st, p_en = find_future_ad([pk, h5_lord, "Jupiter", "Moon", "Venus"])
             return (
-                f"<b>Progeny & Family Expansion:</b> Auspicious fertility alignments and joyful family growth manifest under {period_str} and supportive 5th house / Jupiter sub-periods."
+                f"{active_clocks}<br>"
+                f"<b>Family Continuation Dynamics:</b> Foundational family nurturing under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+                f"<b>Progeny Blessing & Family Expansion Window:</b> <span style='color:#b57c38;font-weight:700;'>{p_st} – {p_en}</span> under <b>{curr_md}-{p_lord}</b> "
+                f"(activating Putrakaraka {pk} and 5th house fertility guardians)."
             )
 
     elif code == "D24":
-        # Higher Learning
+        # Learning
+        l_lord, l_st, l_en = find_future_ad(["Mercury", "Jupiter", h5_lord, h4_lord, "Sun"])
         return (
-            f"<b>Academic & Skill Milestone:</b> Active {period_str} phase{until_str} enhances analytical retention, conceptual mastery, and performance in specialized examinations."
+            f"{active_clocks}<br>"
+            f"<b>Intellectual Grasping Power:</b> Deep analytical assimilation and conceptual mastery under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+            f"<b>Academic Distinction & Certification Milestone:</b> <span style='color:#b57c38;font-weight:700;'>{l_st} – {l_en}</span> under <b>{curr_md}-{l_lord}</b>, "
+            f"energizing executive credentials, specialized publications, and competitive examinations."
+        )
+
+    elif code == "D4":
+        # Home & Property
+        prop_lord, prop_st, prop_en = find_future_ad(["Mars", "Venus", h4_lord, "Jupiter"])
+        return (
+            f"{active_clocks}<br>"
+            f"<b>Domestic Sanctuary & Real Estate Timing:</b> Property consolidation under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+            f"<b>Prime Property Acquisition & Vehicle Upgrade Window:</b> <span style='color:#b57c38;font-weight:700;'>{prop_st} – {prop_en}</span> under <b>{curr_md}-{prop_lord}</b> "
+            f"(activating Bhoomi Karaka Mars and 4th house fixed assets)."
         )
 
     elif code == "D30":
-        # Health & Inner Resilience
+        # Health
         if is_child:
-            breakthrough_ad = None
-            for ad in curr_ad_list:
-                ad_l = ad.get("ad_lord") or ad.get("antardasha") or ""
-                if ad.get("status") in ("current", "future") or ad.get("is_current"):
-                    if ad_l in ("Mercury", "Jupiter", "Venus", "Moon"):
-                        breakthrough_ad = ad
-                        break
-            if not breakthrough_ad and curr_ad_list:
-                breakthrough_ad = curr_ad_list[0]
-
-            if breakthrough_ad:
-                ad_name = breakthrough_ad.get("ad_lord") or breakthrough_ad.get("antardasha") or "Supportive"
-                ad_st = _format_month_year(str(breakthrough_ad.get("start") or ""))
-                ad_en = _format_month_year(str(breakthrough_ad.get("end") or ""))
-                date_window = f"{ad_st} – {ad_en}" if (ad_st and ad_en) else (ad_en or "")
-                window_str = f" ({date_window})" if date_window else ""
-                healing_str = f"<b>Healing Catalyst:</b> <span style='color:#b57c38;font-weight:700;'>{ad_name} sub-period{window_str}</span> brings major stabilization in sensory regulation, nervous strength, and physical vitality."
-            else:
-                healing_str = "<b>Healing Catalyst:</b> Benefic sub-periods bring major stabilization in sensory regulation, nervous strength, and physical vitality."
-
+            rec_lord, rec_st, rec_en = find_future_ad(["Mercury", "Jupiter", "Venus", "Moon"])
             return (
-                f"<b>Vitality & Growth Rhythm:</b> Foundational immunity building under {period_str}.<br>"
-                f"{healing_str}"
+                f"{active_clocks}<br>"
+                f"<b>Vitality & Nervous Regulation:</b> Building foundational nervous and digestive strength.<br>"
+                f"<b>Major Healing & Physical Fortification Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b>, "
+                f"delivering rapid sensory recovery, emotional calm, and robust physical stamina."
             )
         else:
+            rec_lord, rec_st, rec_en = find_future_ad(["Jupiter", "Venus", "Sun", "Mercury", "Moon"])
             return (
-                f"<b>Vitality & Wellness Rhythm:</b> Running {period_str} period{until_str} emphasizes maintaining balanced work-rest cycles, nervous system rejuvenation, and consistent restorative routines."
+                f"{active_clocks}<br>"
+                f"<b>Immunity & Stress Rhythm:</b> Regulating work-rest balance under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}) during active {yog_name} ({yog_lord}) Yogini cycle.<br>"
+                f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b>, "
+                f"bringing deep physical rejuvenation, stress release, and cellular vitality."
             )
 
-    elif code == "D4":
-        # Property & Vehicles
-        return (
-            f"<b>Property & Domestic Timing:</b> Real estate acquisitions, home upgrades, and vehicle investments receive favorable planetary backing during supportive Mars, Venus, and 4th lord cycles under {period_str}."
-        )
+    elif code == "D3":
+        # Siblings & Initiative
+        if is_child:
+            sp_lord, sp_st, sp_en = find_future_ad(["Mercury", "Jupiter", "Venus", "Moon"])
+            return (
+                f"{active_clocks}<br>"
+                f"<b>Expressive Speech & Motor Pacing:</b> Active motor coordination under {curr_md}-{curr_ad_lord}.<br>"
+                f"<b>Expressive Breakthrough Window:</b> <span style='color:#b57c38;font-weight:700;'>{sp_st} – {sp_en}</span> under <b>{curr_md}-{sp_lord}</b>, "
+                f"activating vocal clarity, fluent sentence formation, and confident physical coordination."
+            )
+        else:
+            dr_lord, dr_st, dr_en = find_future_ad([bk, "Mars", h3_lord, "Mercury", "Venus"])
+            return (
+                f"{active_clocks}<br>"
+                f"<b>Everyday Drive & Sibling Ties:</b> Steady personal enterprise and collaborative peer dynamics under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+                f"<b>High-Impact Enterprise & Collaborative Venture Window:</b> <span style='color:#b57c38;font-weight:700;'>{dr_st} – {dr_en}</span> under <b>{curr_md}-{dr_lord}</b> "
+                f"(activating Bhratrukaraka {bk} and 3rd house courageous initiatives)."
+            )
 
     elif code == "D12":
-        # Family Roots & Ancestral Blessings
+        # Parents
+        par_lord, par_st, par_en = find_future_ad(["Sun", "Moon", h9_lord, h4_lord, "Jupiter"])
         return (
-            f"<b>Ancestral Lineage & Heritage:</b> Navigating the {period_str} cycle, where strong parental guidance and family heritage provide consistent emotional grounding and moral strength."
+            f"{active_clocks}<br>"
+            f"<b>Ancestral Lineage & Parental Blessings:</b> Grounding moral wisdom and family protection under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+            f"<b>Family Milestone & Ancestral Fulfillment Window:</b> <span style='color:#b57c38;font-weight:700;'>{par_st} – {par_en}</span> under <b>{curr_md}-{par_lord}</b>, "
+            f"bringing auspicious family harmony, paternal backing, and shared ancestral celebrations."
         )
 
     else:
         # D1 Core
+        core_lord, core_st, core_en = find_future_ad([ak, "Sun", "Jupiter", "Moon", "Mercury"])
         return (
-            f"<b>Core Constitution & Vitality:</b> Physical stamina and personal clarity strengthen steadily under {period_str} through disciplined lifestyle habits and spiritual grounding."
+            f"{active_clocks}<br>"
+            f"<b>Personal Constitution & Vitality:</b> Grounded self-realization under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+            f"<b>Personal Evolution & Clarity Window:</b> <span style='color:#b57c38;font-weight:700;'>{core_st} – {core_en}</span> under <b>{curr_md}-{core_lord}</b> "
+            f"(activating Atmakaraka {ak} and core constitutional vitality)."
         )
 
 
@@ -485,8 +583,20 @@ def build_divisional_insights(pc: dict) -> list[DivisionalInsight]:
     birth_year = int(dob_str[:4]) if (len(dob_str) >= 4 and dob_str[:4].isdigit()) else 2000
     current_age = this_yr - birth_year
 
+    DOMAIN_ID_MAP = {
+        "D1": "domain-self",
+        "D10": "domain-career",
+        "D9": "domain-marriage",
+        "D2": "domain-wealth",
+        "D7": "domain-children",
+        "D24": "domain-learning",
+        "D4": "domain-home",
+        "D30": "domain-health",
+        "D3": "domain-siblings",
+        "D12": "domain-parents",
+    }
+    codes = ["D1", "D10", "D9", "D2", "D7", "D24", "D4", "D30", "D3", "D12"]
     insights: list[DivisionalInsight] = []
-    codes = ["D1", "D2", "D3", "D7", "D9", "D10", "D12", "D24", "D30"]
 
     d1_lagna = _get_varga_lagna(pc, "D1")
     moon_sign = _get_varga_planet_sign(pc, "D1", "Moon")
@@ -646,6 +756,7 @@ def build_divisional_insights(pc: dict) -> list[DivisionalInsight]:
                 code=code,
                 name=meta.get("name", code),
                 governs=meta.get("governs", ""),
+                domain_id=DOMAIN_ID_MAP.get(code, f"domain-{code.lower()}"),
                 lagna_sign=v_lagna,
                 lord=lord,
                 lord_sign=lord_sign,
@@ -1031,7 +1142,7 @@ def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
             )
 
             card = (
-                f'<article class="card div-card" style="margin-bottom:16px;border-left:4px solid {border_color};background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
+                f'<article class="card div-card" id="{ins.domain_id}" style="margin-bottom:16px;border-left:4px solid {border_color};background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
                 f'  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">\n'
                 f'    <span style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#6a7080;">{html.escape(ins.code)} · {html.escape(ins.governs)}</span>\n'
                 f'    <span class="pill {pill_cls}" style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;">{pill_lbl}</span>\n'

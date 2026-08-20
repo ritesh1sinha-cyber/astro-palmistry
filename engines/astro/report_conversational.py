@@ -1435,19 +1435,18 @@ def render(
 
     {_analytical_html(analysis, paid=paid, today=today)}
 
-    <section class="conv-block about-you">
-      <div class="section-kicker">ABOUT YOU &amp; LIFE FOUNDATIONS</div>
-      <h2 id="sec-about-you">Who you are beneath the current period</h2>
-      <p class="lead-reading"><span class="ev-label">Constitutional Core</span> {about_meaning}</p>
+    {current_html}
+    {recent_html}
+
+    <section class="conv-block life-domains-block">
+      <div class="section-kicker">COMPREHENSIVE LIFE DOMAIN CONSULTATIONS</div>
+      <h2 id="sec-life-domains">Your Life Areas: Foundational Promise, Current Phase &amp; The Road Ahead</h2>
+      <p class="lead-reading"><span class="ev-label">Constitutional Baseline</span> {about_meaning}</p>
       {f'<p style="margin:12px 0 14px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{personality}</p>' if personality and personality != about_meaning else ""}
       {divisional_html}
     </section>
 
-    {current_html}
-    {recent_html}
-    {areas_html}
     {remedy_html}
-    {locked_html}
     {unlock}
 
     <footer>Astrological interpretation from your supplied birth details · guidance, not a substitute for professional advice</footer>
