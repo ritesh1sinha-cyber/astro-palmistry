@@ -116,9 +116,9 @@ VARGA_META: dict[str, dict[str, str]] = {
         "desc": "Your higher learning potential, analytical skills, and capacity to master complex disciplines.",
     },
     "D30": {
-        "name": "Health & Resilience (D30 · Trimsamsha)",
-        "governs": "Overcoming Obstacles & Inner Immunity",
-        "desc": "Your inner physiological/psychological resilience, latent sensitivities, and crisis recovery.",
+        "name": "Health, Physical Stamina & Resilience (D30 · Trimsamsha & D27 · Bhamsha)",
+        "governs": "Physical Stamina, Health Sensitivities & Inner Immunity",
+        "desc": "Your cellular stamina (D27), anatomical vulnerability patterns, and inner resilience to overcome obstacles (D30).",
     },
 }
 
@@ -1065,7 +1065,7 @@ def _interpret_varga_concrete(
         remedy_reason = "To Sharpen Memory & Academic Focus (Saraswati Upaya)"
 
     elif code == "D30":
-        headline = f"Health Sensitivities, Physical Vulnerabilities & Timely Upayas (Trimsamsha · D30)"
+        headline = f"Health Sensitivities, Physical Stamina & Timely Upayas (D30 · Trimsamsha & D27 · Bhamsha)"
         
         disease_res = {}
         conf = {}
@@ -1082,8 +1082,8 @@ def _interpret_varga_concrete(
         d30_malefics = [m for m in ("Rahu", "Ketu", "Saturn", "Mars", "Sun") if d30_dict.get(m) == d30_merc_sign and d30_merc_sign]
 
         reading_parts.append(
-            "Classical Trimsamsha (D30) analysis maps your constitutional resilience, "
-            "latent physiological sensitivities, and preventive wellness rhythms."
+            "Classical Trimsamsha (D30) and Saptavimshamsha (D27) analysis maps your cellular stamina, "
+            "constitutional resilience, latent anatomical sensitivities, and preventive wellness rhythms."
         )
 
         if d30_malefics:
