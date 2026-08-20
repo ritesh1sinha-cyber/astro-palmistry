@@ -86,9 +86,9 @@ VARGA_META: dict[str, dict[str, str]] = {
         "desc": "Your courage, everyday initiative, sibling relationships, and physical execution drive.",
     },
     "D4": {
-        "name": "Property & Fixed Assets (D4 · Chaturthamsha)",
-        "governs": "Home, Land, Vehicles & Domestic Peace",
-        "desc": "Fixed property ownership, land assets, conveyances, and long-term domestic security.",
+        "name": "Property, Residence & Relocation (D4 · Chaturthamsha)",
+        "governs": "Home, Land, Vehicles, Relocation & Living Abroad",
+        "desc": "Fixed property ownership, residential stability, geographical relocation, and foreign settlement potential.",
     },
     "D7": {
         "name": "Children & Lineage (D7 · Saptamsha)",
@@ -464,14 +464,15 @@ def _build_domain_specific_timeline(
         )
 
     elif code == "D4":
-        # Home & Property
-        prop_lord, prop_st, prop_en, prop_st_d, prop_en_d = find_target_ad(["Mars", "Venus", h4_lord, "Jupiter"])
-        chara_note, yog_note = get_overlapping_confluence_notes(prop_st_d, prop_en_d, ["Mars", "Bhramari", "Venus", "Siddha", "Jupiter", "Dhanya"])
+        # Home, Property & Relocation
+        h12_lord = get_h_lord(12)
+        prop_lord, prop_st, prop_en, prop_st_d, prop_en_d = find_target_ad(["Mars", "Venus", h4_lord, "Jupiter", h12_lord, "Rahu"])
+        chara_note, yog_note = get_overlapping_confluence_notes(prop_st_d, prop_en_d, ["Mars", "Bhramari", "Venus", "Siddha", "Jupiter", "Dhanya", "Rahu", "Sankata"])
         return (
             f"{active_clocks}<br>"
-            f"<b>Domestic Sanctuary & Real Estate Timing:</b> Property consolidation under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-            f"<b>Prime Property Acquisition & Vehicle Upgrade Window:</b> <span style='color:#b57c38;font-weight:700;'>{prop_st} – {prop_en}</span> under <b>{curr_md}-{prop_lord}</b> "
-            f"(activating Bhoomi Karaka {prop_lord} and 4th house fixed assets){yog_note}.{chara_note}"
+            f"<b>Domestic Sanctuary & Real Estate Timing:</b> Property consolidation and residential stability under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
+            f"<b>Prime Property Acquisition & Relocation Window:</b> <span style='color:#b57c38;font-weight:700;'>{prop_st} – {prop_en}</span> under <b>{curr_md}-{prop_lord}</b> "
+            f"(activating 4th/12th house property, conveyance upgrade, and geographical relocation){yog_note}.{chara_note}"
         )
 
     elif code == "D30":
@@ -881,6 +882,7 @@ def _interpret_varga_concrete(
 ) -> tuple[str, str, str]:
     """Generates rich, highly specific, practical life interpretations for each divisional chart."""
     div_dict = pc.get("divisional", {})
+    d1_planets = pc.get("planets", {})
 
     reading_parts: list[str] = []
     remedy_planet = lord
@@ -955,15 +957,64 @@ def _interpret_varga_concrete(
         remedy_reason = "To Boost Initiative & Courage (Mangal Upaya)"
 
     elif code == "D4":
-        headline = f"Home, Land & Fixed Assets (Chaturthamsha)"
+        headline = f"Home, Land, Vehicles & Relocation (Chaturthamsha · D4)"
+        
+        # 1. Real Estate & Domestic Sanctuary
         reading_parts.append(
-            f"This chart reflects domestic peace, home environment, and fixed property assets. "
-            f"You possess strong long-term promise for owning comfortable residential property, reliable vehicles, and creating a stable, peaceful home sanctuary in adulthood."
+            "The Chaturthamsha division (D4) classically maps <b>domestic peace (*Griha Sukha*), fixed property, land acquisition, conveyances (*Vahana*), and geographical relocation / foreign settlement (*Videsh Vasa*)</b>. "
+            "Your chart confirms a solid foundational promise for acquiring residential real estate, comfortable conveyances, and establishing an enduring personal sanctuary in adulthood."
         )
         if strong_planets:
             reading_parts.append(
-                f"Fortified placements ({', '.join(strong_planets)}) in D4 support significant land appreciation and smooth property transactions."
+                f"<br><br><b>Property & Asset Fortification:</b> Well-placed indicators ({', '.join(strong_planets)}) in D4 support significant land appreciation, smooth property transactions, and domestic comfort."
             )
+
+        # 2. Relocation & Foreign Travel / Settlement Analysis
+        d1_h4_lord = SIGN_LORDS.get(house_sign(d1_lagna, 4), "") if d1_lagna else ""
+        d1_h4_lord_house = d1_planets.get(d1_h4_lord, {}).get("house", 0) if d1_h4_lord else 0
+        d1_h9_lord = SIGN_LORDS.get(house_sign(d1_lagna, 9), "") if d1_lagna else ""
+        d1_h9_lord_house = d1_planets.get(d1_h9_lord, {}).get("house", 0) if d1_h9_lord else 0
+        d1_h12_lord = SIGN_LORDS.get(house_sign(d1_lagna, 12), "") if d1_lagna else ""
+        d1_h12_lord_house = d1_planets.get(d1_h12_lord, {}).get("house", 0) if d1_h12_lord else 0
+        rahu_h = d1_planets.get("Rahu", {}).get("house", 0)
+        moon_h = d1_planets.get("Moon", {}).get("house", 0)
+        moon_s = d1_planets.get("Moon", {}).get("sign", "")
+
+        MOVABLE = {"Aries", "Cancer", "Libra", "Capricorn"}
+        WATERY = {"Cancer", "Scorpio", "Pisces"}
+
+        has_foreign_settlement = (
+            d1_h4_lord_house in (9, 12, 8, 3) or
+            d1_h12_lord_house in (4, 9, 1) or
+            rahu_h in (9, 12, 7, 4) or
+            (d1_h4_lord_house in (1, 10) and d1_h12_lord_house in (10, 11))
+        )
+        has_frequent_travel = (
+            d1_h9_lord_house in (9, 10, 12, 1, 3) or
+            moon_h in (3, 7, 9, 12) or
+            moon_s in (MOVABLE | WATERY) or
+            rahu_h in (3, 11)
+        )
+
+        if has_foreign_settlement:
+            reading_parts.append(
+                f"<br><br><b>Geographical Relocation & Foreign Settlement Potential:</b> "
+                f"Strong classical connections between 4th house roots and 9th/12th house indicators confirm <b>favorable promise for living away from your birthplace, multi-city living, or foreign settlement</b>. "
+                f"Your fortune expands significantly when engaging with distant markets, international projects, or establishing residency across regions during supportive dasha phases."
+            )
+        elif has_frequent_travel:
+            reading_parts.append(
+                f"<br><br><b>Travel, Mobility & Professional Expansion:</b> "
+                f"Active 9th and 3rd house indicators indicate frequent long-distance travel, dynamic mobility, and business/educational journeys. "
+                f"Your chart favors maintaining a stable domestic base while undertaking purposeful international or inter-city travel."
+            )
+        else:
+            reading_parts.append(
+                f"<br><br><b>Home Foundation & Asset Anchoring:</b> "
+                f"Your chart reflects deep rootedness in your native region with strong domestic peace. "
+                f"Property acquisitions bring maximum stability when invested in well-established residential locations."
+            )
+
         remedy_planet = "Mars"
         remedy_reason = "To Energize Land & Property Assets (Bhoomi Upaya)"
 
