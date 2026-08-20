@@ -941,35 +941,18 @@ def _interpret_varga_concrete(
             sibling_str = "Your chart favors cultivating independent self-reliance while maintaining respectful, mature communication with siblings and peers."
 
         # 3. Motor Skills & Physical Coordination
-        motor_str = "You possess good physical coordination, manual dexterity, and the energy to carry projects across the finish line."
+        motor_str = "You possess good physical coordination, manual dexterity, and the active stamina to carry projects through to completion."
+        if "Saturn" in [tp.split()[0] for tp in trik_planets] or "Rahu" in [tp.split()[0] for tp in trik_planets]:
+            motor_str = "Physical pacing and manual stamina benefit from steady warmups, regular physical exercise, and avoiding erratic overexertion."
 
-        # 4. Childhood Developmental context (only if child & afflicted)
-        is_speech_sensitive = current_age < 18 and (d1_h2_lord_house in DUSTHANA or "Mercury" in [tp.split()[0] for tp in trik_planets] or "Mars" in [tp.split()[0] for tp in trik_planets])
-        if is_speech_sensitive:
-            development_str = (
-                "In early childhood development, because 2nd and 3rd house indicators connect with sensitive areas in early years, "
-                "this chart indicates a <b>temporary developmental pacing latency and heightened nervous sensitivity</b>. "
-                "This is a transient foundational phase: structured speech exercises, physical coordination play, and supportive encouragement "
-                "bring substantial, natural turnaround."
-            )
-            reading_parts.extend([
-                f"The Drekkana division (D3) classically governs <b>courage (*Parakrama*), sibling bonds (*Bhratru*), physical motor vitality, and expressive throat coordination</b>.",
-                courage_str,
-                sibling_str,
-                development_str
-            ])
-            remedy_planet = "Mercury"
-            remedy_type = "dusthana"
-            remedy_reason = "To Harmonize Speech & Motor Flow (Budha Upaya)"
-        else:
-            reading_parts.extend([
-                f"The Drekkana division (D3) classically maps <b>personal courage (*Parakrama*), sibling relationships (*Bhratru*), everyday enterprise, and physical motor coordination</b>.",
-                courage_str,
-                sibling_str,
-                motor_str
-            ])
-            remedy_planet = "Mars"
-            remedy_reason = "To Boost Initiative & Courage (Mangal Upaya)"
+        reading_parts.extend([
+            f"The Drekkana division (D3) classically maps <b>personal courage (*Parakrama*), sibling relationships (*Bhratru*), everyday enterprise, and physical motor coordination</b>.",
+            courage_str,
+            sibling_str,
+            motor_str
+        ])
+        remedy_planet = "Mars"
+        remedy_reason = "To Boost Initiative & Courage (Mangal Upaya)"
 
     elif code == "D4":
         headline = f"Home, Land & Fixed Assets (Chaturthamsha)"
@@ -1094,20 +1077,21 @@ def _interpret_varga_concrete(
         except Exception:
             pass
 
-        d30_merc = div_dict.get("D30", {}).get("Mercury", "")
-        d30_rahu = div_dict.get("D30", {}).get("Rahu", "")
-        is_neuro_sensitive = current_age < 18 and d30_merc and d30_rahu and d30_merc == d30_rahu
+        d30_dict = div_dict.get("D30", {})
+        d30_merc_sign = d30_dict.get("Mercury", "")
+        d30_malefics = [m for m in ("Rahu", "Ketu", "Saturn", "Mars", "Sun") if d30_dict.get(m) == d30_merc_sign and d30_merc_sign]
 
         reading_parts.append(
             "Classical Trimsamsha (D30) analysis synthesized with the classical medical astrological methodology of V.P. Goel "
             "maps your constitutional resilience, latent physiological sensitivities, and preventive wellness windows."
         )
 
-        if is_neuro_sensitive:
+        if d30_malefics:
+            malefics_str = ", ".join(d30_malefics)
             reading_parts.append(
-                f"<br><br><b>Childhood Sensory & Nervous Pacing:</b> Sensitive alignment in {d30_merc} indicates "
-                f"<b>temporary sensory fatigue and developmental speech pacing latency in early years</b>. "
-                f"Maintaining consistent sleep rhythms, calm vocal exercises, and reduced digital stimulation brings natural recovery."
+                f"<br><br><b>Sensory, Nervous & Expressive Coordination (Mercury conjunct {malefics_str} in D30 {d30_merc_sign}):</b> "
+                f"Classical Jyotish indicates heightened nervous system sensitivity, sensory fatigue, and transient expressive/speech pacing latency when under pressure. "
+                f"Maintaining consistent sleep rhythms, vocal clarity exercises, and structured daily routines brings robust natural recovery and mental resilience."
             )
 
         preds = conf.get("predictions", []) if isinstance(conf, dict) else []
