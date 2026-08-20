@@ -1137,6 +1137,31 @@ def _interpret_varga_concrete(
             "constitutional resilience, latent anatomical sensitivities, and preventive wellness rhythms."
         )
 
+        # D30 & D27 Classical Static Promise: Inherent Capacity to Overcome Adversities & Crises
+        d30_lagna_lord = lord
+        d30_lagna_lord_house = lord_house
+        d30_lagna_lord_dig = lord_dig
+        
+        if d30_lagna_lord_dig in ("exalted", "moolatrikona", "own_sign") or d30_lagna_lord_house in (1, 4, 5, 7, 9, 10, 11):
+            dig_txt = f" ({d30_lagna_lord_dig.replace('_', ' ').title()})" if d30_lagna_lord_dig else ""
+            resilience_str = (
+                f"<b>Inherent Capacity to Overcome Adversities & Physical Resilience:</b> "
+                f"Your chart reflects strong inner recuperative vitality (D30 ruling planet <b>{d30_lagna_lord}</b> sitting in {lord_sign}, house {d30_lagna_lord_house}{dig_txt}). "
+                f"This confers the cellular stamina and psychological fortitude to rebound quickly from physical fatigue, neutralize latent health sensitivities, and successfully overcome crises and bodily strain."
+            )
+        elif d30_lagna_lord_house in DUSTHANA:
+            resilience_str = (
+                f"<b>Inherent Vitality & Preventive Health Management:</b> "
+                f"With the D30 ruling planet (<b>{d30_lagna_lord}</b>) placed in the {ORDINALS.get(d30_lagna_lord_house, '8th')} house, your chart indicates that vitality builds through patient physical pacing, structured rest cycles, and early preventive care rather than pushing through extreme exhaustion."
+            )
+        else:
+            resilience_str = (
+                f"<b>Inherent Capacity to Overcome Adversities:</b> "
+                f"Your chart demonstrates steady constitutional stamina (D30 Lagna ruled by <b>{d30_lagna_lord}</b> in {lord_sign}), giving you the resilience to restore physical balance through wholesome daily routines and active stress management."
+            )
+
+        reading_parts.append(f"<br><br>{resilience_str}")
+
         if d30_malefics:
             malefics_str = ", ".join(d30_malefics)
             reading_parts.append(
