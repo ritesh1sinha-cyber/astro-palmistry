@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import html
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Optional
 
 from astro_precompute import (
@@ -477,6 +477,37 @@ def _build_domain_specific_timeline(
 
     elif code == "D30":
         # Health
+        h6_lord = SIGN_LORDS.get(house_sign(d1_lagna, 6), "") if d1_lagna else ""
+        h8_lord = SIGN_LORDS.get(house_sign(d1_lagna, 8), "") if d1_lagna else ""
+        h12_lord = SIGN_LORDS.get(house_sign(d1_lagna, 12), "") if d1_lagna else ""
+        h2_lord = SIGN_LORDS.get(house_sign(d1_lagna, 2), "") if d1_lagna else ""
+        h7_lord = SIGN_LORDS.get(house_sign(d1_lagna, 7), "") if d1_lagna else ""
+        
+        prec_pd_str = ""
+        try:
+            from daily_vedic_confluence import compute_pratyantars
+            curr_ad_row = next((a for a in ad_list if (a.get("ad_lord") or a.get("antardasha")) == curr_ad_lord), {})
+            st_d = _to_date(curr_ad_row.get("start"))
+            en_d = _to_date(curr_ad_row.get("end"))
+            if st_d and en_d:
+                pds = compute_pratyantars(curr_ad_lord, st_d, en_d)
+                for pd in pds:
+                    if pd["end"] >= t_now:
+                        if pd["lord"] in (h6_lord, h8_lord, h12_lord, h2_lord, h7_lord, "Mars", "Saturn", "Rahu"):
+                            pd_st_f = _format_month_year(str(pd["start"]))
+                            pd_en_f = _format_month_year(str(pd["end"]))
+                            is_act = pd["start"] <= t_now <= pd["end"]
+                            lbl = "Active Sensitive Window" if is_act else "Upcoming Precaution Window"
+                            c_note, y_note = get_overlapping_confluence_notes(pd["start"], pd["end"], ["Saturn", "Ulka", "Rahu", "Sankata", "Mars", "Bhramari", h6_lord, h8_lord, h12_lord])
+                            prec_pd_str = (
+                                f"<br><b>Focused Precaution & Preventive Phase (2–3 Months):</b> "
+                                f"<span style='color:#b57c38;font-weight:700;'>{pd_st_f} – {pd_en_f}</span> under <b>{curr_md}-{curr_ad_lord}-{pd['lord']}</b> "
+                                f"(prioritizing steady sleep, preventive checkups, and physical moderation){y_note}.{c_note}"
+                            )
+                            break
+        except Exception:
+            pass
+
         if is_child:
             rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Mercury", "Jupiter", "Venus", "Moon"])
             chara_note, yog_note = get_overlapping_confluence_notes(rec_st_d, rec_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Venus", "Siddha", "Moon", "Mangala"])
@@ -485,6 +516,7 @@ def _build_domain_specific_timeline(
                 f"<b>Vitality & Nervous Regulation:</b> Building foundational nervous and digestive strength.<br>"
                 f"<b>Major Healing & Physical Fortification Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b> "
                 f"delivering rapid sensory recovery, emotional calm, and robust physical stamina{yog_note}.{chara_note}"
+                f"{prec_pd_str}"
             )
         else:
             rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Jupiter", "Venus", "Sun", "Mercury", "Moon"])
@@ -494,6 +526,7 @@ def _build_domain_specific_timeline(
                 f"<b>Immunity & Stress Rhythm:</b> Regulating work-rest balance under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}) during active {yog_display} Yogini cycle.<br>"
                 f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b>, "
                 f"bringing deep physical rejuvenation, stress release, and cellular vitality{yog_note}.{chara_note}"
+                f"{prec_pd_str}"
             )
 
     elif code == "D3":
@@ -1164,39 +1197,181 @@ def _interpret_varga_concrete(
                 f"No single localized organ vulnerability shows extreme affliction; balanced nutrition, hydration, and regular sleep provide robust health preservation."
             )
 
-        def _clean_advisory_note(raw_n: str, l_name: str) -> str:
-            nl = raw_n.lower()
-            if "12th" in nl or "confinement" in nl:
-                return "Restorative phase prioritizing regular sleep rhythms, physical recuperation, and sensory balance."
-            elif "8th" in nl or "crisis" in nl:
-                return "Vitality management phase prioritizing steady daily routines, hydration, and proactive wellness checkups."
-            elif "6th" in nl or "acute" in nl:
-                return "Digestive and seasonal care window — pacing daily physical exertion and maintaining dietary discipline."
-            elif "mars" in nl:
-                return "Physical pacing and outdoor activity safety window — avoiding reckless sports or rushed physical strain."
-            elif "saturn" in nl:
-                return "Long-term wellness consolidation — cultivating steady joint care, posture, and regular work-rest balance."
-            elif "jupiter" in nl:
-                return "Deep metabolic and constitutional balance window — maintaining active lifestyle and wholesome diet."
-            return "Proactive health management window — maintaining balanced daily lifestyle habits."
+        # High-Precision Sensitive Health Precaution Windows (Pratyantar + Yogini + Jaimini + MB + D30 Confluence)
+        t_now = date.today()
+        h6_lord = SIGN_LORDS.get(house_sign(d1_lagna, 6), "") if d1_lagna else ""
+        h8_lord = SIGN_LORDS.get(house_sign(d1_lagna, 8), "") if d1_lagna else ""
+        h12_lord = SIGN_LORDS.get(house_sign(d1_lagna, 12), "") if d1_lagna else ""
+        h2_lord = SIGN_LORDS.get(house_sign(d1_lagna, 2), "") if d1_lagna else ""
+        h7_lord = SIGN_LORDS.get(house_sign(d1_lagna, 7), "") if d1_lagna else ""
 
-        # Sensitive Health Precaution Windows (Mishappening Detection)
-        active_w = disease_res.get("active_health_periods", []) if isinstance(disease_res, dict) else []
-        upcoming_w = (disease_res.get("upcoming_health_windows", []) if isinstance(disease_res, dict) else [])[:2]
+        # Jaimini Karakas
+        jaimini = pc.get("jaimini", {})
+        k_list = jaimini.get("karakas", [])
+        gk = ""
+        if isinstance(k_list, list):
+            for k_obj in k_list:
+                if "GNATI" in str(k_obj.get("role", "")).upper():
+                    gk = str(k_obj.get("planet", ""))
+        elif isinstance(k_list, dict):
+            gk = k_list.get("GK", "")
+
+        # Mrityu Bhaga sensitive degrees
+        mb_planets = []
+        try:
+            from astro_precompute import check_mrityu_bhaga
+            mb_list = check_mrityu_bhaga(pc.get("planets", {}))
+            mb_planets = [mb["planet"] for mb in mb_list if mb.get("within_one_deg") or mb.get("diff_deg", 99) <= 2.0]
+        except Exception:
+            pass
+
+        # D30 dusthana placements
+        d30_lagna = d30_dict.get("Lagna", "")
+        d30_dusthana_planets = []
+        if d30_lagna and d30_lagna in SIGNS:
+            for p, s in d30_dict.items():
+                if p != "Lagna" and s in SIGNS:
+                    h = (SIGNS.index(s) - SIGNS.index(d30_lagna)) % 12 + 1
+                    if h in (6, 8, 12):
+                        d30_dusthana_planets.append(p)
+
+        sensitive_lords = {}
+        if h6_lord: sensitive_lords[h6_lord] = "6th house digestive & immunity indicators"
+        if h8_lord: sensitive_lords[h8_lord] = "8th house vitality & deep resilience"
+        if h12_lord: sensitive_lords[h12_lord] = "12th house restorative pacing"
+        if gk and gk not in sensitive_lords: sensitive_lords[gk] = "Gnathikaraka physical resistance"
+        if h2_lord and h2_lord not in sensitive_lords: sensitive_lords[h2_lord] = "2nd house energy management"
+        if h7_lord and h7_lord not in sensitive_lords: sensitive_lords[h7_lord] = "7th house energy management"
+        for mb_p in mb_planets:
+            sensitive_lords[mb_p] = "sensitive degree alignment"
+
+        # Yogini periods
+        dob_raw = pc.get("meta", {}).get("birth_date") or pc.get("meta", {}).get("dob") or pc.get("dob")
+        dob_d = _to_date(dob_raw) or date(2000, 1, 1)
+        moon_nak = str((pc.get("planets", {}).get("Moon", {}) or {}).get("nakshatra", "Hasta"))
+        moon_deg = float((pc.get("planets", {}).get("Moon", {}) or {}).get("degree_in_sign", 0.0) or 0.0) % 13.333333
+        all_yogs = []
+        try:
+            from chara_yogini_timing import build_progressive_yogini_periods
+            all_yogs = build_progressive_yogini_periods(dob_d, moon_nak, moon_deg)
+        except Exception:
+            pass
+
+        chara_maha = jaimini.get("chara_dasha", {}).get("maha", [])
+
+        # Vimshottari Antardashas
+        vim = pc.get("vimshottari", {})
+        curr_md = vim.get("current_md", {}).get("md_lord", "")
+        ad_list = vim.get("current_md_antardashas", [])
+
+        candidate_windows = []
+        try:
+            from daily_vedic_confluence import compute_pratyantars
+            for ad in ad_list:
+                ad_lord = ad.get("ad_lord") or ad.get("antardasha") or ""
+                st_d = _to_date(ad.get("start"))
+                en_d = _to_date(ad.get("end"))
+                if not st_d or not en_d: continue
+                if en_d < t_now or st_d > t_now + timedelta(days=365*6): continue
+
+                pds = compute_pratyantars(ad_lord, st_d, en_d)
+                for pd in pds:
+                    pd_lord = pd["lord"]
+                    pd_st = pd["start"]
+                    pd_en = pd["end"]
+
+                    if pd_en < t_now: continue
+                    if pd_lord not in sensitive_lords and ad_lord not in sensitive_lords and pd_lord not in ("Mars", "Saturn", "Rahu"):
+                        continue
+
+                    score = 0
+                    confluence_reasons = []
+
+                    if pd_lord in sensitive_lords:
+                        score += 3
+                        confluence_reasons.append(f"Pratyantar {pd_lord} ({sensitive_lords[pd_lord]})")
+                    elif ad_lord in sensitive_lords:
+                        score += 2
+                        confluence_reasons.append(f"{ad_lord} Antardasha ({sensitive_lords[ad_lord]})")
+                    elif pd_lord in ("Mars", "Saturn", "Rahu"):
+                        score += 1
+                        confluence_reasons.append(f"Pratyantar {pd_lord}")
+
+                    if pd_lord in mb_planets:
+                        score += 3
+                        confluence_reasons.append(f"{pd_lord} sensitive degree")
+
+                    if pd_lord in d30_dusthana_planets:
+                        score += 1
+
+                    for yp in all_yogs:
+                        y_st = _to_date(yp.get("start"))
+                        y_en = _to_date(yp.get("end"))
+                        if y_st and y_en and y_en > pd_st and y_st < pd_en:
+                            if yp.get("lord") in (h6_lord, h8_lord, h12_lord, "Saturn", "Mars", "Rahu") or yp.get("yogini") in ("Ulka", "Sankata", "Bhramari"):
+                                score += 2
+                                confluence_reasons.append(f"Yogini {yp['maha_yogini']}-{yp['yogini']} ({yp['lord']})")
+                                break
+
+                    for cm in chara_maha:
+                        c_st = _to_date(cm.get("start"))
+                        c_en = _to_date(cm.get("end"))
+                        if c_st and c_en and c_en > pd_st and c_st < pd_en:
+                            s = cm.get("sign", "")
+                            if s and d1_lagna:
+                                h = (SIGNS.index(s) - SIGNS.index(d1_lagna)) % 12 + 1
+                                if h in (6, 8, 12):
+                                    score += 2
+                                    confluence_reasons.append(f"Chara {s} cycle")
+                                    break
+
+                    candidate_windows.append({
+                        "md": curr_md,
+                        "ad": ad_lord,
+                        "pd": pd_lord,
+                        "start": pd_st,
+                        "end": pd_en,
+                        "score": score,
+                        "reasons": confluence_reasons,
+                        "is_current": pd_st <= t_now <= pd_en,
+                    })
+        except Exception:
+            pass
+
+        candidate_windows.sort(key=lambda x: (0 if x["is_current"] else 1, x["start"]))
 
         precaution_items = []
-        for w in active_w:
-            note_str = _clean_advisory_note(w.get("note", ""), w.get("lord", ""))
-            precaution_items.append(f"• <b>Active Phase ({w.get('lord')} · {w.get('range')}):</b> {note_str}")
-        for w in upcoming_w:
-            note_str = _clean_advisory_note(w.get("note", ""), w.get("lord", ""))
-            precaution_items.append(f"• <b>Upcoming Precaution Window ({w.get('lord')} · {w.get('range')}):</b> {note_str}")
+        for w in candidate_windows:
+            if w["is_current"] or w["score"] >= 2:
+                st_fmt = _format_month_year(str(w["start"]))
+                en_fmt = _format_month_year(str(w["end"]))
+                p_name = w["pd"]
+                
+                if p_name == h6_lord or "6th" in " ".join(w["reasons"]):
+                    note = "Digestive & seasonal care window — pace daily physical exertion, maintain balanced nutrition, and observe calming routines."
+                elif p_name == h8_lord or "8th" in " ".join(w["reasons"]):
+                    note = "Vitality management & recuperation window — schedule routine checkups, maintain steady hydration, and avoid rushed fatigue."
+                elif p_name == h12_lord or "12th" in " ".join(w["reasons"]):
+                    note = "Restorative pacing phase — prioritize consistent sleep rhythms, stress reduction, and mindful relaxation."
+                elif p_name in ("Mars", "Rahu", "Saturn"):
+                    note = "Physical pacing & activity safety window — practice careful physical discipline, steady warmups, and avoid reckless exertion."
+                else:
+                    note = "Proactive health management — maintain balanced daily lifestyle habits and protective spiritual practices."
+
+                conf_str = "; ".join(w["reasons"][:2]) if w["reasons"] else f"Pratyantar {p_name} planetary sub-period"
+                status_hdr = "Active Sensitive Window" if w["is_current"] else "Upcoming Precaution Window"
+                precaution_items.append(
+                    f"• <b>{status_hdr} ({w['md']}-{w['ad']}-{w['pd']} · {st_fmt} – {en_fmt}):</b> {note} "
+                    f"<br><i>Astrological Confluence:</i> {conf_str}."
+                )
+                if len(precaution_items) >= 3:
+                    break
 
         if precaution_items:
             reading_parts.append(
-                "<br><br><b>Sensitive Timing Windows & Precaution Advisory:</b><br>" +
+                "<br><br><b>Acute Timing Windows & Precaution Advisory:</b><br>" +
                 "<br>".join(precaution_items) +
-                "<br><i>Proactive Advisory: During these key transition windows, prioritizing medical wellness checkups, avoiding reckless physical exhaustion, and maintaining steady spiritual practices ensure optimal protection.</i>"
+                "<br><i>Proactive Advisory: During these focused 1–3 month transition windows, prioritizing medical wellness checkups, avoiding reckless physical exhaustion, and maintaining steady spiritual practices ensure optimal protection.</i>"
             )
 
         # Remedy
