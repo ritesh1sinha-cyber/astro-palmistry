@@ -211,9 +211,10 @@ def _build_domain_specific_timeline(
     adulthood_md: str,
     adulthood_start_yr: int,
 ) -> str:
-    """Builds distinct, domain-specific multi-clock confluence timeline guidance (Vimshottari + Jaimini Chara + Yogini + Transits)."""
+    """Builds distinct, domain-specific multi-clock confluence timeline guidance (Vimshottari + Jaimini Chara + Yogini Antardashas + Transits)."""
     is_child = current_age < 18
     this_yr = date.today().year
+    t_now = date.today()
 
     # 1. Vimshottari Data
     vim = pc.get("vimshottari", {})
@@ -243,11 +244,45 @@ def _build_domain_specific_timeline(
     chara_m_end = _format_month_year(str(curr_chara_m.get("end") or ""))
     chara_a_sign = curr_chara_a.get("sign", "")
 
-    # 3. Yogini Dasha Data
-    yogini = pc.get("yogini", {})
-    curr_yog = yogini.get("current_yogini", {}) if isinstance(yogini, dict) else {}
-    yog_name = curr_yog.get("yogini", "")
-    yog_lord = curr_yog.get("lord", "")
+    # 3. Yogini Dasha Data (Progressive Antardashas)
+    dob_raw = pc.get("meta", {}).get("birth_date") or pc.get("meta", {}).get("dob") or pc.get("dob")
+    dob_d = date.fromisoformat(str(dob_raw)[:10]) if dob_raw else date(this_yr - current_age, 1, 1)
+    moon_nak = str((pc.get("planets", {}).get("Moon", {}) or {}).get("nakshatra", "Hasta"))
+    moon_deg = float((pc.get("planets", {}).get("Moon", {}) or {}).get("degree_in_sign", 0.0) or 0.0) % 13.333333
+
+    active_yog_antar = None
+    future_yog_antars = []
+    try:
+        from chara_yogini_timing import build_progressive_yogini_periods
+        all_y_antars = build_progressive_yogini_periods(dob_d, moon_nak, moon_deg)
+        for p in all_y_antars:
+            p_st = p.get("start")
+            p_en = p.get("end")
+            if isinstance(p_st, str): p_st = date.fromisoformat(p_st[:10])
+            if isinstance(p_en, str): p_en = date.fromisoformat(p_en[:10])
+            if p_st and p_en:
+                if p_st <= t_now <= p_en:
+                    active_yog_antar = p
+                elif p_st > t_now:
+                    future_yog_antars.append(p)
+    except Exception:
+        pass
+
+    if active_yog_antar:
+        yog_display = f"{active_yog_antar['maha_yogini']}-{active_yog_antar['yogini']} ({active_yog_antar['lord']})"
+    else:
+        yogini = pc.get("yogini", {})
+        curr_yog = yogini.get("current_yogini", {}) if isinstance(yogini, dict) else {}
+        yog_display = f"{curr_yog.get('yogini', 'Ulka')} ({curr_yog.get('lord', 'Saturn')})"
+
+    def get_yogini_support(target_lords: list[str]) -> str:
+        for yp in future_yog_antars[:6]:
+            if yp.get("lord") in target_lords or yp.get("yogini") in target_lords:
+                y_st = _format_month_year(str(yp.get("start") or ""))
+                y_en = _format_month_year(str(yp.get("end") or ""))
+                if y_st and y_en:
+                    return f" (amplified by <b>Yogini {yp['maha_yogini']}-{yp['yogini']}</b> phase from {y_st} to {y_en})"
+        return ""
 
     # 4. Karakas & Lords
     k_list = jaimini.get("karakas", [])
@@ -309,7 +344,7 @@ def _build_domain_specific_timeline(
 
     # Multi-Clock Status Line
     chara_str = f" · Chara Dasha: <b>{chara_m_sign}{f'-{chara_a_sign}' if chara_a_sign else ''}</b>" if chara_m_sign else ""
-    yog_str = f" · Yogini: <b>{yog_name} ({yog_lord})</b>" if yog_name else ""
+    yog_str = f" · Yogini: <b>{yog_display}</b>" if yog_display else ""
     active_clocks = f"<b>Active Multi-Clock Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> (until {curr_ad_end_fmt}){chara_str}{yog_str}."
 
     if code == "D10":
@@ -325,12 +360,13 @@ def _build_domain_specific_timeline(
             )
         else:
             c_lord, c_st, c_en = find_future_ad([amk, h10_lord, "Sun", "Jupiter", "Venus", "Mars"])
+            yog_boost = get_yogini_support(["Sun", "Mercury", "Jupiter", "Pingala", "Bhadrika", "Dhanya"])
             next_chara_info = f" Aligned with the upcoming <b>{chara_m_sign} → next major Chara cycle ({chara_m_end})</b>" if chara_m_end else ""
             return (
                 f"{active_clocks}<br>"
                 f"<b>Active Career Momentum:</b> Strategic consolidation and positioning under {curr_md}-{curr_ad_lord} (running until {curr_ad_end_fmt}).<br>"
                 f"<b>Career Surge & Executive Elevation Window:</b> <span style='color:#b57c38;font-weight:700;'>{c_st} – {c_en}</span> under <b>{curr_md}-{c_lord}</b> "
-                f"(activating Amatyakaraka {amk} and 10th house authority).{next_chara_info}."
+                f"(activating Amatyakaraka {amk} and 10th house authority){yog_boost}.{next_chara_info}."
             )
 
     elif code == "D9":
@@ -344,21 +380,23 @@ def _build_domain_specific_timeline(
             )
         else:
             m_lord, m_st, m_en = find_future_ad([dk, "Venus", h7_lord, "Jupiter"])
+            yog_boost = get_yogini_support(["Venus", "Jupiter", "Siddha", "Dhanya"])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Relationship Dynamics:</b> Emotional grounding and mutual understanding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
                 f"<b>Marital Fruition & Relational Harmony Window:</b> <span style='color:#b57c38;font-weight:700;'>{m_st} – {m_en}</span> under <b>{curr_md}-{m_lord}</b> "
-                f"(activating Darakaraka {dk} and 7th house partnership karaka)."
+                f"(activating Darakaraka {dk} and 7th house partnership karaka){yog_boost}."
             )
 
     elif code == "D2":
         # Wealth
         w_lord, w_st, w_en = find_future_ad([h2_lord, h11_lord, "Jupiter", "Venus", "Mercury"])
+        yog_boost = get_yogini_support(["Jupiter", "Venus", "Mercury", "Dhanya", "Siddha", "Bhadrika"])
         return (
             f"{active_clocks}<br>"
             f"<b>Financial Rhythm:</b> Structured capital preservation and disciplined compounding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-            f"<b>Major Asset Accumulation & Liquidity Window:</b> <span style='color:#b57c38;font-weight:700;'>{w_st} – {w_en}</span> under <b>{curr_md}-{w_lord}</b>, "
-            f"favoring high-yield compounding, asset acquisitions, and expanding income streams."
+            f"<b>Major Asset Accumulation & Liquidity Window:</b> <span style='color:#b57c38;font-weight:700;'>{w_st} – {w_en}</span> under <b>{curr_md}-{w_lord}</b> "
+            f"favoring high-yield compounding, asset acquisitions, and expanding income streams{yog_boost}."
         )
 
     elif code == "D7":
@@ -372,31 +410,34 @@ def _build_domain_specific_timeline(
             )
         else:
             p_lord, p_st, p_en = find_future_ad([pk, h5_lord, "Jupiter", "Moon", "Venus"])
+            yog_boost = get_yogini_support(["Jupiter", "Moon", "Venus", "Dhanya", "Mangala", "Siddha"])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Family Continuation Dynamics:</b> Foundational family nurturing under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
                 f"<b>Progeny Blessing & Family Expansion Window:</b> <span style='color:#b57c38;font-weight:700;'>{p_st} – {p_en}</span> under <b>{curr_md}-{p_lord}</b> "
-                f"(activating Putrakaraka {pk} and 5th house fertility guardians)."
+                f"(activating Putrakaraka {pk} and 5th house fertility guardians){yog_boost}."
             )
 
     elif code == "D24":
         # Learning
         l_lord, l_st, l_en = find_future_ad(["Mercury", "Jupiter", h5_lord, h4_lord, "Sun"])
+        yog_boost = get_yogini_support(["Mercury", "Jupiter", "Bhadrika", "Dhanya"])
         return (
             f"{active_clocks}<br>"
             f"<b>Intellectual Grasping Power:</b> Deep analytical assimilation and conceptual mastery under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Academic Distinction & Certification Milestone:</b> <span style='color:#b57c38;font-weight:700;'>{l_st} – {l_en}</span> under <b>{curr_md}-{l_lord}</b>, "
-            f"energizing executive credentials, specialized publications, and competitive examinations."
+            f"energizing executive credentials, specialized publications, and competitive examinations{yog_boost}."
         )
 
     elif code == "D4":
         # Home & Property
         prop_lord, prop_st, prop_en = find_future_ad(["Mars", "Venus", h4_lord, "Jupiter"])
+        yog_boost = get_yogini_support(["Mars", "Venus", "Bhramari", "Siddha"])
         return (
             f"{active_clocks}<br>"
             f"<b>Domestic Sanctuary & Real Estate Timing:</b> Property consolidation under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Prime Property Acquisition & Vehicle Upgrade Window:</b> <span style='color:#b57c38;font-weight:700;'>{prop_st} – {prop_en}</span> under <b>{curr_md}-{prop_lord}</b> "
-            f"(activating Bhoomi Karaka Mars and 4th house fixed assets)."
+            f"(activating Bhoomi Karaka Mars and 4th house fixed assets){yog_boost}."
         )
 
     elif code == "D30":
@@ -413,7 +454,7 @@ def _build_domain_specific_timeline(
             rec_lord, rec_st, rec_en = find_future_ad(["Jupiter", "Venus", "Sun", "Mercury", "Moon"])
             return (
                 f"{active_clocks}<br>"
-                f"<b>Immunity & Stress Rhythm:</b> Regulating work-rest balance under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}) during active {yog_name} ({yog_lord}) Yogini cycle.<br>"
+                f"<b>Immunity & Stress Rhythm:</b> Regulating work-rest balance under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}) during active {yog_display} Yogini cycle.<br>"
                 f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b>, "
                 f"bringing deep physical rejuvenation, stress release, and cellular vitality."
             )
@@ -430,31 +471,34 @@ def _build_domain_specific_timeline(
             )
         else:
             dr_lord, dr_st, dr_en = find_future_ad([bk, "Mars", h3_lord, "Mercury", "Venus"])
+            yog_boost = get_yogini_support(["Mars", "Mercury", "Bhramari", "Bhadrika"])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Everyday Drive & Sibling Ties:</b> Steady personal enterprise and collaborative peer dynamics under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
                 f"<b>High-Impact Enterprise & Collaborative Venture Window:</b> <span style='color:#b57c38;font-weight:700;'>{dr_st} – {dr_en}</span> under <b>{curr_md}-{dr_lord}</b> "
-                f"(activating Bhratrukaraka {bk} and 3rd house courageous initiatives)."
+                f"(activating Bhratrukaraka {bk} and 3rd house courageous initiatives){yog_boost}."
             )
 
     elif code == "D12":
         # Parents
         par_lord, par_st, par_en = find_future_ad(["Sun", "Moon", h9_lord, h4_lord, "Jupiter"])
+        yog_boost = get_yogini_support(["Sun", "Moon", "Jupiter", "Pingala", "Mangala", "Dhanya"])
         return (
             f"{active_clocks}<br>"
             f"<b>Ancestral Lineage & Parental Blessings:</b> Grounding moral wisdom and family protection under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Family Milestone & Ancestral Fulfillment Window:</b> <span style='color:#b57c38;font-weight:700;'>{par_st} – {par_en}</span> under <b>{curr_md}-{par_lord}</b>, "
-            f"bringing auspicious family harmony, paternal backing, and shared ancestral celebrations."
+            f"bringing auspicious family harmony, paternal backing, and shared ancestral celebrations{yog_boost}."
         )
 
     else:
         # D1 Core
         core_lord, core_st, core_en = find_future_ad([ak, "Sun", "Jupiter", "Moon", "Mercury"])
+        yog_boost = get_yogini_support(["Sun", "Jupiter", "Venus", "Siddha", "Dhanya", "Pingala"])
         return (
             f"{active_clocks}<br>"
             f"<b>Personal Constitution & Vitality:</b> Grounded self-realization under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Personal Evolution & Clarity Window:</b> <span style='color:#b57c38;font-weight:700;'>{core_st} – {core_en}</span> under <b>{curr_md}-{core_lord}</b> "
-            f"(activating Atmakaraka {ak} and core constitutional vitality)."
+            f"(activating Atmakaraka {ak} and core constitutional vitality){yog_boost}."
         )
 
 
