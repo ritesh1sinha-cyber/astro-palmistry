@@ -1082,15 +1082,15 @@ def _interpret_varga_concrete(
         d30_malefics = [m for m in ("Rahu", "Ketu", "Saturn", "Mars", "Sun") if d30_dict.get(m) == d30_merc_sign and d30_merc_sign]
 
         reading_parts.append(
-            "Classical Trimsamsha (D30) analysis synthesized with the classical medical astrological methodology of V.P. Goel "
-            "maps your constitutional resilience, latent physiological sensitivities, and preventive wellness windows."
+            "Classical Trimsamsha (D30) analysis maps your constitutional resilience, "
+            "latent physiological sensitivities, and preventive wellness rhythms."
         )
 
         if d30_malefics:
             malefics_str = ", ".join(d30_malefics)
             reading_parts.append(
-                f"<br><br><b>Sensory, Nervous & Expressive Coordination (Mercury conjunct {malefics_str} in D30 {d30_merc_sign}):</b> "
-                f"Classical Jyotish indicates heightened nervous system sensitivity, sensory fatigue, and transient expressive/speech pacing latency when under pressure. "
+                f"<br><br><b>Sensory, Nervous & Expressive Coordination (Mercury with {malefics_str} in D30 {d30_merc_sign}):</b> "
+                f"Classical principles indicate heightened nervous system sensitivity, sensory fatigue, and transient expressive/speech pacing latency when under pressure. "
                 f"Maintaining consistent sleep rhythms, vocal clarity exercises, and structured daily routines brings robust natural recovery and mental resilience."
             )
 
@@ -1113,21 +1113,39 @@ def _interpret_varga_concrete(
                 f"No single localized organ vulnerability shows extreme affliction; balanced nutrition, hydration, and regular sleep provide robust health preservation."
             )
 
+        def _clean_advisory_note(raw_n: str, l_name: str) -> str:
+            nl = raw_n.lower()
+            if "12th" in nl or "confinement" in nl:
+                return "Restorative phase prioritizing regular sleep rhythms, physical recuperation, and sensory balance."
+            elif "8th" in nl or "crisis" in nl:
+                return "Vitality management phase prioritizing steady daily routines, hydration, and proactive wellness checkups."
+            elif "6th" in nl or "acute" in nl:
+                return "Digestive and seasonal care window — pacing daily physical exertion and maintaining dietary discipline."
+            elif "mars" in nl:
+                return "Physical pacing and outdoor activity safety window — avoiding reckless sports or rushed physical strain."
+            elif "saturn" in nl:
+                return "Long-term wellness consolidation — cultivating steady joint care, posture, and regular work-rest balance."
+            elif "jupiter" in nl:
+                return "Deep metabolic and constitutional balance window — maintaining active lifestyle and wholesome diet."
+            return "Proactive health management window — maintaining balanced daily lifestyle habits."
+
         # Sensitive Health Precaution Windows (Mishappening Detection)
         active_w = disease_res.get("active_health_periods", []) if isinstance(disease_res, dict) else []
         upcoming_w = (disease_res.get("upcoming_health_windows", []) if isinstance(disease_res, dict) else [])[:2]
 
         precaution_items = []
         for w in active_w:
-            precaution_items.append(f"• <b>Active Phase:</b> {w.get('lord')} ({w.get('range')}) — {w.get('note')}")
+            note_str = _clean_advisory_note(w.get("note", ""), w.get("lord", ""))
+            precaution_items.append(f"• <b>Active Phase ({w.get('lord')} · {w.get('range')}):</b> {note_str}")
         for w in upcoming_w:
-            precaution_items.append(f"• <b>Upcoming Precaution Window:</b> {w.get('lord')} ({w.get('range')}) — {w.get('note')}")
+            note_str = _clean_advisory_note(w.get("note", ""), w.get("lord", ""))
+            precaution_items.append(f"• <b>Upcoming Precaution Window ({w.get('lord')} · {w.get('range')}):</b> {note_str}")
 
         if precaution_items:
             reading_parts.append(
                 "<br><br><b>Sensitive Timing Windows & Precaution Advisory:</b><br>" +
                 "<br>".join(precaution_items) +
-                "<br><i>Guidance: During these sensitive sub-periods, prioritize proactive medical checkups, avoid reckless physical exertion/driving, and adopt timely spiritual and lifestyle remedies.</i>"
+                "<br><i>Proactive Advisory: During these key transition windows, prioritizing medical wellness checkups, avoiding reckless physical exhaustion, and maintaining steady spiritual practices ensure optimal protection.</i>"
             )
 
         # Remedy
