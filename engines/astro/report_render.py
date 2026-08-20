@@ -687,78 +687,56 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
                   price: int = 298, lat: float = 0.0, lon: float = 0.0,
                   tz: float = 5.5, today: Optional[date] = None,
                   area: str = "") -> tuple:
-    import question_answer as QA
+    """Renders comprehensive, unified Vedic Consultation report for ANY life question."""
     today = today or date.today()
     first = (name or "").split()[0] if name else ""
 
-    result = QA.answer(pc, question, lat=lat, lon=lon, tz=tz, route=route,
-                       area=area)
-    result["pc"] = pc
+    from confluence_question_engine import (
+        analyze_question_confluence,
+        render_confluence_card_html,
+        synthesize_with_qwen,
+    )
 
-    prose_overlay: dict = {}
-    llm_meta: dict = {"enabled": False}
-    facts_payload: dict = {}
-    try:
-        from llm.facts import build_question_facts, project_for_access, public_fact_payload
-        from llm.humanize import humanize
-        qfacts_paid = build_question_facts(result, name=name, access="paid")
-        # Keep the original question text for the LLM (answer() stores it).
-        if not qfacts_paid.question:
-            qfacts_paid.question = (question or "")[:280]
-        qfacts_free = project_for_access(qfacts_paid, "free")
-        facts_payload = public_fact_payload(qfacts_paid)
-        free_llm = humanize("user_question", qfacts_free, access="free")
-        paid_llm = humanize("user_question", qfacts_paid, access="paid")
-        prose_overlay = {
-            "free": free_llm.get("overlay") or {},
-            "paid": paid_llm.get("overlay") or {},
-        }
-        llm_meta = {
-            "enabled": bool(paid_llm.get("enabled") or free_llm.get("enabled")),
-            "stats": paid_llm.get("stats") or {},
-            "free": {"stats": free_llm.get("stats") or {},
-                     "fallback_used": bool(free_llm.get("fallback_used"))},
-            "paid": {"stats": paid_llm.get("stats") or {},
-                     "fallback_used": bool(paid_llm.get("fallback_used"))},
-        }
-    except Exception as exc:                                         # noqa: BLE001
-        print(f"[report_render] question llm skipped: {exc}", flush=True)
+    conf = analyze_question_confluence(pc, question, domain_override=area)
+    qwen_consultation = synthesize_with_qwen(conf)
 
-    free_prose = prose_overlay.get("free", {}) if isinstance(prose_overlay, dict) else {}
-    paid_prose = prose_overlay.get("paid", {}) if isinstance(prose_overlay, dict) else {}
-    free_body = _voice_polish(QA.render(
-        result, name=first, paid=False, price=price, prose=free_prose))
-    paid_body = _voice_polish(QA.render(
-        result, name=first, paid=True, price=price, prose=paid_prose, pc=pc))
-    try:
-        import remedy_block as RB
-        rb = RB.build(pc, domain=result.get("area_key", ""), question=question,
-                      name=first, question_scoped=True)
-        # Timing is already in the body; remedy closes the paid reading — the
-        # two things a person asking a life question actually wants to act on.
-        paid_body += RB.render(
-            rb, paid=True, price=price,
-            heading="Targeted remedies & immediate relief",
-            lede="Practical first steps, mantra jaap for obstructing influences, and classical support for governing planets.")
-    except Exception:                                                # noqa: BLE001
-        pass
+    free_body = _voice_polish(render_confluence_card_html(conf, paid=False, qwen_text=""))
+    paid_body = _voice_polish(render_confluence_card_html(conf, paid=True, qwen_text=qwen_consultation))
 
-    title = f"Your question — {question[:60]}"
+    title = f"Your Question — {question[:60]}"
     free = RS.page(title, _scrub(free_body))
     paid = RS.page(title, _scrub(paid_body))
-    answer = QA.answer_meta(result)
-    meta = {"design": "cards-v2", "answer": answer, "question": question,
-            "area": area or result.get("area") or "",
-            "price": price,
-            "llm": llm_meta,
-            "_facts": facts_payload,
-            "freeSections": ["Question & birth chart focus",
-                             "Preview of locked consultation verdict & timeline"],
-            "paidSections": ["The verdict — what your chart actually says",
-                             "Planetary dynamics & supporting influences",
-                             "Key timing & dated windows",
-                             "Targeted remedies & immediate relief"],
-            "teasers": {}}
+
+    meta = {
+        "design": "cards-v2",
+        "answer": {
+            "label": conf.classical_verdict[:80],
+            "confidence": "high",
+            "direction": "caution" if conf.is_lord_in_dusthana else "support",
+            "breakthrough": conf.breakthrough_period,
+        },
+        "question": question,
+        "area": conf.domain_title,
+        "price": price,
+        "llm": {"enabled": bool(qwen_consultation)},
+        "_facts": {
+            "question": question,
+            "domain": conf.domain_title,
+            "lagna": conf.lagna,
+            "primary_house": conf.primary_house,
+            "primary_lord": conf.primary_house_lord,
+            "breakthrough_period": conf.breakthrough_period,
+        },
+        "freeSections": ["Question & Vedic Core Verdict", "Preview of Locked Upaya & Timeline"],
+        "paidSections": [
+            "Classical Astrological Verdict",
+            "Deep Jyotish Consultation Reading",
+            "Planetary Dynamics & Divisional Indicators",
+            "Dasha Timeline & Key Milestones",
+            "Targeted Vedic Upaya & Actionable Guidance"
+        ],
+        "teasers": {}
+    }
     return free, paid, meta
 
 

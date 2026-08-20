@@ -929,6 +929,100 @@ def _deterministic_confluence_html(aj: dict, *, today: date) -> str:
     )
 
 
+LAGNA_PROFILES: dict[str, dict[str, str]] = {
+    "Aries": {
+        "title": "Mesha (Aries) · The Dynamic Initiator",
+        "traits": "Ruled by Mars (Mangala), your Janma Lagna endows you with high physical vitality, quick reflexes, and an innate drive to take command. You are frank, courageous, and direct in all dealings, preferring self-reliance over dependence on others.",
+        "life_path": "In classical Jyotish, Mesha natives achieve their greatest fortune when leading independent enterprises, technical ventures, or commanding executive responsibilities.",
+    },
+    "Taurus": {
+        "title": "Vrishabha (Taurus) · The Enduring Accumulator",
+        "traits": "Ruled by Venus (Shukra), your Janma Lagna bestows an attractive countenance, steady endurance, refined speech, and natural financial prudence. You possess great patience and prefer proven, methodical paths to success.",
+        "life_path": "Classical texts predict steady material prosperity, land and vehicle ownership, and enduring success through commerce, banking, property, or luxury trades.",
+    },
+    "Gemini": {
+        "title": "Mithuna (Gemini) · The Agile Scholar & Trader",
+        "traits": "Ruled by Mercury (Budha), your Janma Lagna confers a sharp analytical intellect, eloquent speech, and versatility in trade, writing, and calculations. You have a quick grasp of diverse subjects and thrive in dynamic environments.",
+        "life_path": "Jyotish promises success through advisory roles, commercial trade, communications, analytics, diplomacy, and intellectual enterprises.",
+    },
+    "Cancer": {
+        "title": "Karka (Cancer) · The Nurturing Guardian",
+        "traits": "Ruled by the Moon (Chandra), your Janma Lagna grants deep emotional intelligence, sharp memory, protective family devotion, and strong moral grounding. You possess natural empathy and keen public intuition.",
+        "life_path": "Classical Vedic astrology predicts prosperity through public service, real estate, hospitality, administrative leadership, and community welfare.",
+    },
+    "Leo": {
+        "title": "Simha (Leo) · The Sovereign Leader",
+        "traits": "Ruled by the Sun (Surya), your Janma Lagna endows you with a commanding physical aura, high self-respect, noble character, and natural leadership authority. You value honor, generosity, and justice.",
+        "life_path": "Vedic texts predict high social stature, government or institutional favor, managerial command, and lasting prestige in your sphere of influence.",
+    },
+    "Virgo": {
+        "title": "Kanya (Virgo) · The Analytical Master",
+        "traits": "Ruled by Mercury (Budha), your Janma Lagna gives exceptional diagnostic precision, practical intelligence, methodical organization, and a dedication to duty. You excel at problem-solving and quality control.",
+        "life_path": "Jyotish promises high success in finance, medical/healthcare, analytical science, auditing, administration, and technical advisory.",
+    },
+    "Libra": {
+        "title": "Tula (Libra) · The Righteous Arbitrator",
+        "traits": "Ruled by Venus (Shukra), your Janma Lagna confers a balanced, dignified temperament, diplomatic eloquence, refined aesthetic judgment, and an innate sense of justice and fairness.",
+        "life_path": "Classical astrology predicts auspicious gains through partnerships, legal arbitration, trade, diplomacy, design, and public relations.",
+    },
+    "Scorpio": {
+        "title": "Vrishchika (Scorpio) · The Resilient Mystic",
+        "traits": "Ruled by Mars and Ketu, your Janma Lagna endows you with intense willpower, piercing investigative ability, psychological depth, and extraordinary resilience under pressure.",
+        "life_path": "Vedic Jyotish predicts success in research, strategic operations, medicine/surgery, occult sciences, defense, and high-stakes crisis management.",
+    },
+    "Sagittarius": {
+        "title": "Dhanu (Sagittarius) · The Virtuous Visionary",
+        "traits": "Ruled by Jupiter (Guru), your Janma Lagna bestows high moral character, expansive wisdom, optimism, and deep respect for dharma, truth, and higher knowledge.",
+        "life_path": "Classical texts predict honors in higher education, law, mentorship, spiritual institutions, publishing, and international advisory.",
+    },
+    "Capricorn": {
+        "title": "Makara (Capricorn) · The Steadfast Builder",
+        "traits": "Ruled by Saturn (Shani), your Janma Lagna gives pragmatic discipline, relentless perseverance, realistic judgment, and the endurance to scale long-term peaks.",
+        "life_path": "Jyotish indicates progressive rise through structured organizations, industrial enterprises, governance, land assets, and executive administration.",
+    },
+    "Aquarius": {
+        "title": "Kumbha (Aquarius) · The Progressive Reformer",
+        "traits": "Ruled by Saturn and Rahu, your Janma Lagna endows you with a broad humanitarian outlook, sharp conceptual intellect, and independent, future-oriented thinking.",
+        "life_path": "Classical astrology predicts success through large networks, institutional leadership, social reforms, scientific innovation, and global organizations.",
+    },
+    "Pisces": {
+        "title": "Meena (Pisces) · The Intuitive Sage",
+        "traits": "Ruled by Jupiter (Guru), your Janma Lagna gives a gentle, compassionate nature, deep intuitive perception, love for tranquility, and natural inclination toward spiritual, advisory, or investigative pursuits.",
+        "life_path": "Vedic texts predict auspicious success in advisory roles, research, foreign trade, spiritual education, charitable leadership, and creative arts.",
+    },
+}
+
+MOON_TEMPERAMENTS: dict[str, str] = {
+    "Aries": "Your Moon in Aries creates a swift, courageous emotional nature with quick decision-making and straightforward honesty in relationships.",
+    "Taurus": "Your exalted Moon in Taurus endows you with profound emotional stability, a peaceful disposition, strong family values, and natural financial prudence.",
+    "Gemini": "Your Moon in Gemini confers a nimble, inquisitive mind, versatile wit, and talent for communication, writing, and trade.",
+    "Cancer": "Your Moon in its own domicile Cancer gives deep emotional memory, strong protective family devotion, and sharp intuitive perception.",
+    "Leo": "Your Moon in Leo seeks honor, warmth, and creative dignity, expressing generous loyalty to family and allies.",
+    "Virgo": "Your Moon in Virgo tends to solve problems with practical intelligence, meticulous organizing, and humble service.",
+    "Libra": "Your Moon in Libra instinctually seeks harmony, righteous balance, and mutually supportive companionships.",
+    "Scorpio": "Your Moon in Scorpio feels with intense emotional depth, guarding inner truths and thriving through powerful spiritual rebirth.",
+    "Sagittarius": "Your Moon in Sagittarius brings natural optimism, moral clarity, and an expansive quest for truth and purpose.",
+    "Capricorn": "Your Moon in Capricorn maintains calm emotional restraint, high self-reliance, and channeled dedication to duty.",
+    "Aquarius": "Your Moon in Aquarius evaluates life with broad intellectual perspective, seeking justice, community welfare, and true friendship.",
+    "Pisces": "Your Moon in Pisces possesses deep empathy, artistic sensitivity, and spiritual yearning for higher wisdom.",
+}
+
+LAGNESHA_HOUSE_PREDICTIONS: dict[int, str] = {
+    1: "Your Lagnesha is situated in the 1st House (Tanu Bhava), indicating a self-reliant, self-made destiny with strong physical vitality and prominent personal independence.",
+    2: "Your Lagnesha occupies the 2nd House (Dhana Bhava), promising strong wealth accumulation karma, eloquence in speech, and deep family backing.",
+    3: "Your Lagnesha sits in the 3rd House (Sahaja Bhava), granting high personal courage (Parakrama), talent in writing, trade, or technical arts, and success through your own self-directed efforts.",
+    4: "Your Lagnesha resides in the 4th House (Sukha Bhava), blessing you with landed property, domestic happiness, vehicle prosperity, and strong maternal support.",
+    5: "Your Lagnesha is seated in the 5th House of Poorva Punya (past meritorious deeds), promising sharp intellect, academic honors, creative talent, and happiness through progeny.",
+    6: "Your Lagnesha occupies the 6th House (Shatru/Roga Bhava), conferring a warrior-like capacity to defeat competitors, overcome disputes, and rise through disciplined professional service.",
+    7: "Your Lagnesha sits in the 7th House (Jaya Bhava), indicating strong commercial acumen, public popularity, and a significant rise in fortune (Bhagyodaya) through marriage and partnerships.",
+    8: "Your Lagnesha occupies the 8th House (Randhra Bhava), signifying deep longevity, investigative insight, and major transformative turning points where sudden unexpected shifts unlock new fortunes.",
+    9: "Your Lagnesha resides in the 9th House of Dharma & Bhagya, bestowing auspicious good fortune, moral righteousness, higher educational honors, and divine grace throughout life.",
+    10: "Your Lagnesha sits in the 10th House of Karma, promising high career standing, executive authority, public prestige, and administrative leadership in your profession.",
+    11: "Your Lagnesha occupies the 11th House of Labha, indicating continuous fulfillment of desires, multiple income streams, and influential social networks.",
+    12: "Your Lagnesha resides in the 12th House (Moksha & Vyaya Bhava), indicating prosperity in foreign or distant lands, spiritual wisdom, and charitable inclinations.",
+}
+
+
 def render(
     pc: dict,
     *,
@@ -1072,11 +1166,31 @@ def render(
             else "Your birth chart is the foundation of this reading."
         )
 
-    about_meaning = interpretation or personality
-    if not about_meaning:
-        about_meaning = (
-            "The important distinction is between your underlying chart pattern "
-            "and the temporary period you are moving through."
+    lagna_clean = lagna or "Aries"
+    lp = LAGNA_PROFILES.get(lagna_clean, LAGNA_PROFILES["Aries"])
+    mp = MOON_TEMPERAMENTS.get(moon_sign, "")
+    from astro_precompute import SIGN_LORDS, get_dignity
+    lord = SIGN_LORDS.get(lagna_clean, "Sun")
+    lord_data = pc.get("planets", {}).get(lord, {})
+    lord_s = str(lord_data.get("sign") or "")
+    lord_h = int(lord_data.get("house") or 1)
+    lord_d = get_dignity(lord, lord_s) if lord_s else ""
+    ordinals = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th", 7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th"}
+    h_str = ordinals.get(lord_h, f"House {lord_h}")
+    d_str = f" in {lord_d.replace('_', ' ')}" if lord_d in ("exalted", "moolatrikona", "own_sign", "debilitated") else ""
+    h_pred = LAGNESHA_HOUSE_PREDICTIONS.get(lord_h, f"Your Lagnesha sits in the {h_str} house, shaping your life priorities.")
+    
+    moon_txt = f" and <b>Moon in {moon_sign}</b>" if moon_sign else ""
+    nak_txt = f" (under <b>{nakshatra}</b> nakshatra)" if nakshatra else ""
+    
+    about_meaning = (
+        f"With <b>{lagna_clean} rising</b>{moon_txt}{nak_txt}, your birth chart establishes <b>{lp['title']}</b>. "
+        f"{lp['traits']} <b>{h_pred}</b> (governed by Lagna lord <b>{lord} in the {h_str} house, {lord_s}{d_str}</b>)."
+    )
+    if not personality:
+        personality = (
+            f"{lp['life_path']} {mp} In classical Vedic astrology, while planetary periods (Dashas) and transits (Gochara) bring shifting life chapters, "
+            f"your Janma Lagna and Moon disposition define your enduring constitutional baseline and natural karma."
         )
 
     mind_sub_html = ""
@@ -1324,8 +1438,8 @@ def render(
     <section class="conv-block about-you">
       <div class="section-kicker">ABOUT YOU &amp; LIFE FOUNDATIONS</div>
       <h2 id="sec-about-you">Who you are beneath the current period</h2>
-      <p class="lead-reading"><span class="ev-label">What it means for you</span> {_e(about_meaning)}</p>
-      {f'<p>{_e(personality)}</p>' if personality and personality != about_meaning else ""}
+      <p class="lead-reading"><span class="ev-label">Constitutional Core</span> {about_meaning}</p>
+      {f'<p style="margin:12px 0 14px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{personality}</p>' if personality and personality != about_meaning else ""}
       {divisional_html}
     </section>
 

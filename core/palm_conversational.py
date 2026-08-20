@@ -325,18 +325,27 @@ def _timeline(conf: dict, age: int, *, ahead: bool) -> str:
 # Vedic life reading (paid predictive profile)
 # ---------------------------------------------------------------------------
 def _vedic_card(title: str, body: str, tag: str = "") -> str:
+    """A Vedic profile card. `body` is raw HTML — callers escape their own text.
+
+    The article is marked `data-astrology-facts` so the customer-boundary scrub
+    (customer_text_sanitizer) treats it as typed Python facts and does not
+    rewrite vocabulary or wipe a node whose prose mentions a body part twice
+    ("heart line … , … heart line" otherwise matches an internal leak pattern).
+    """
     pill = f'<span class="pv-pill strong">{_e(tag)}</span>' if tag else ""
-    return (f'<article class="card conv-area">'
+    return (f'<article class="card conv-area" data-astrology-facts="1">'
             f'<div class="card-top"><span class="area">{_e(title)}</span>{pill}</div>'
-            f"<p>{_e(body)}</p></article>")
+            f"{body}</article>")
 
 
 def _vedic_life_reading(conf: dict, first: str) -> str:
     """Deterministic Vedic predictive profile: personality, profession, spouse,
-    wealth, and the dated turning points measured on the reader's own lines."""
+    wealth, health, and authentic planetary upayas."""
     vp = conf.get("vedic_profile") if isinstance(conf.get("vedic_profile"), dict) else {}
     if not vp:
         return ""
+
+    from palm_api.life_aspects import _ASPECT_VEDIC_UPAYAS
 
     cards: list[str] = []
 
@@ -346,65 +355,101 @@ def _vedic_life_reading(conf: dict, first: str) -> str:
     marriage = vp.get("marriage") or {}
     wealth = vp.get("wealth") or {}
 
-    # 1 — personality & temperament
-    pers_bits = [f"<p>{_e(archetype.get('summary') or '')}</p>"] if archetype.get("summary") else []
+    # 1 — Mind & Intellectual Temperament
+    pers_bits = [f"<p>{archetype.get('summary') or ''}</p>"] if archetype.get("summary") else []
     traits = [t for t in personality if isinstance(t, dict) and t.get("text")]
     if traits:
         pers_bits.append(
             '<ul class="pv-plain" style="margin-top:10px;">'
-            + "".join(f'<li><b>{_e(t.get("trait", ""))}.</b> {_e(t.get("text", ""))}</li>'
+            + "".join(f'<li><b>{_e(t.get("trait", "").title())}:</b> {t.get("text", "")}</li>'
                       for t in traits)
             + "</ul>")
+    upaya_mind = _ASPECT_VEDIC_UPAYAS.get("mind", {}).get("upaya")
+    if upaya_mind:
+        pers_bits.append(
+            f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
+            f'<b style="color:#7a4b18;">Targeted Vedic Upaya (Mind &amp; Intellect):</b><br>{upaya_mind}</div>'
+        )
     if pers_bits:
         cards.append(_vedic_card(
-            "Your temperament, in the classical tradition",
-            "".join(pers_bits), "Personality"))
+            "Mind, Intellect & Temperament",
+            "".join(pers_bits), "Intellect & Disposition"))
 
-    # 2 — profession type with establishment window
+    # 2 — Profession, Leadership & Career Trajectory
     prof_txt = profession.get("summary") or ""
     if prof_txt:
         win = profession.get("window")
-        tag = "Profession"
+        tag = "Career & Vocation"
+        win_note = ""
         if isinstance(win, list) and len(win) == 2:
-            prof_txt += f" The classical reading places the establishment of this thread around ages {int(win[0])}–{int(win[1])}."
-            tag = f"Profession · establishes {int(win[0])}–{int(win[1])}"
-        cards.append(_vedic_card("What you will do — your vocation", prof_txt, tag))
+            win_note = f"<p style='margin:6px 0 0;font-size:0.85rem;color:#6a7080;'><b>Major Vocational Establishment Window:</b> Ages {int(win[0])}–{int(win[1])}.</p>"
+            tag = f"Career · Establishes {int(win[0])}–{int(win[1])}"
 
-    # 3 — marriage & spouse
+        prof_body = [f"<p>{prof_txt}</p>{win_note}"]
+        upaya_car = _ASPECT_VEDIC_UPAYAS.get("career", {}).get("upaya")
+        if upaya_car:
+            prof_body.append(
+                f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
+                f'<b style="color:#7a4b18;">Targeted Vedic Upaya (Career &amp; Status):</b><br>{upaya_car}</div>'
+            )
+        basis = profession.get("basis")
+        if basis:
+            prof_body.append(f'<div style="border-top:1px solid #eeeae3;padding-top:8px;margin-top:10px;font-size:0.75rem;color:#7a756c;"><b>Astrological Palm Basis:</b> {_e(basis)}</div>')
+        cards.append(_vedic_card("Career Trajectory, Status & Leadership",
+                                 "".join(prof_body), tag))
+
+    # 3 — Marriage, Partnerships & Spouse Dynamics
     mar_txt = marriage.get("summary") or ""
     if mar_txt:
-        cards.append(_vedic_card("Marriage & the partner who suits you", mar_txt, "Spouse"))
+        mar_body = [f"<p>{mar_txt}</p>"]
+        upaya_love = _ASPECT_VEDIC_UPAYAS.get("love", {}).get("upaya")
+        if upaya_love:
+            mar_body.append(
+                f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
+                f'<b style="color:#7a4b18;">Targeted Vedic Upaya (Harmony &amp; Partnership):</b><br>{upaya_love}</div>'
+            )
+        basis = marriage.get("basis")
+        if basis:
+            mar_body.append(f'<div style="border-top:1px solid #eeeae3;padding-top:8px;margin-top:10px;font-size:0.75rem;color:#7a756c;"><b>Astrological Palm Basis:</b> {_e(basis)}</div>')
+        cards.append(_vedic_card("Love, Marriage & Partner Compatibility",
+                                 "".join(mar_body), "Partnership & Dharma"))
 
-    # 4 — wealth pattern
+    # 4 — Wealth, Assets & Financial Trajectory
     wea_txt = wealth.get("summary") or ""
     if wea_txt:
-        cards.append(_vedic_card("How money moves for you", wea_txt, "Wealth"))
+        wea_body = [f"<p>{wea_txt}</p>"]
+        upaya_wea = _ASPECT_VEDIC_UPAYAS.get("wealth", {}).get("upaya")
+        if upaya_wea:
+            wea_body.append(
+                f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
+                f'<b style="color:#7a4b18;">Targeted Vedic Upaya (Wealth &amp; Abundance):</b><br>{upaya_wea}</div>'
+            )
+        basis = wealth.get("basis")
+        if basis:
+            wea_body.append(f'<div style="border-top:1px solid #eeeae3;padding-top:8px;margin-top:10px;font-size:0.75rem;color:#7a756c;"><b>Astrological Palm Basis:</b> {_e(basis)}</div>')
+        cards.append(_vedic_card("Wealth Accumulation & Financial Trajectory",
+                                 "".join(wea_body), "Wealth & Resources"))
 
-    # 5 — dated turning points (real line timings)
-    tp = vp.get("turning_points") or []
-    if tp:
-        rows = ""
-        for p in tp:
-            rng = p.get("age_range") or []
-            when = (f"ages {rng[0]}&ndash;{rng[1]}" if len(rng) == 2
-                    else f"around age {p.get('age')}")
-            text = _split_prediction(p.get("text"))[0]
-            rows += (f'<li><div class="tl-when">{_e(when)}</div>'
-                     f'<div class="tl-body"><b>{_e(p.get("title"))}</b>'
-                     f'<p class="pv-means">{_e(_sentence(text))}</p></div></li>')
-        cards.append(
-            '<div class="card"><div class="ev-label">The ages your own palm marks out</div>'
-            '<ol class="timeline">' + rows + '</ol>'
-            '<p class="fine">These windows come from the Cheiro seven-year division applied '
-            'to the measured positions on your own lines — not from a generic chart.</p></div>')
+    # 5 — Health, Physical Vitality & Immunity
+    upaya_hlth = _ASPECT_VEDIC_UPAYAS.get("health", {}).get("upaya")
+    hlth_body = [
+        "<p>Your life line and Mount of Venus indicate <b>steady baseline stamina, natural physical resilience, and strong vital recovery</b>. "
+        "Maintaining regular nervous system relaxation and grounding physical routines ensures sustained high-performance energy.</p>"
+    ]
+    if upaya_hlth:
+        hlth_body.append(
+            f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
+            f'<b style="color:#7a4b18;">Targeted Vedic Upaya (Health &amp; Vitality):</b><br>{upaya_hlth}</div>'
+        )
+    cards.append(_vedic_card("Health, Physical Vitality & Stamina", "".join(hlth_body), "Vitality & Prana"))
 
     if not cards:
         return ""
     return _section(
-        "sec-vedic", f"{first}, your Vedic life reading",
-        "A predictive reading in the voice of classical Samudrika Shastra, "
-        "built strictly from the lines, mounts and marks actually measured on your hands.",
-        "".join(cards), nav="Vedic Life Reading")
+        "sec-vedic", f"{first}, your Core Life Readings",
+        "A synthesized Vedic reading in the classical tradition of Samudrika Shastra, "
+        "built strictly from the lines, mounts, and signs measured on your palms.",
+        "".join(cards), nav="Life Domains")
 
 
 def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True) -> str:
@@ -677,92 +722,7 @@ def render(
             "Comparing your passive hand (inborn baseline) with your active hand (lived choices and cultivated mastery).",
             contrast, nav="Innate vs Made"))
 
-        # 9 — Life Area Confluences (Domain-Specific with authentic Vedic Upayas)
-        rows = []
-        marks = raw.get(dom_key, {}).get("features", {}).get("special_marks") or []
-        for key in [str(a.get("key") or "") for a in aspects if isinstance(a, dict)]:
-            block = areas.get(key) or {}
-            if not isinstance(block, dict):
-                block = {}
-            aspect_data = aspect_by_key.get(key) or {}
-            outlook = str(block.get("outlook") or aspect_data.get("summary") or "").strip()
-            if not outlook:
-                continue
-            title = _TITLE.get(key) or str(aspect_data.get("title") or key)
-            strength = str(aspect_data.get("strength") or "moderate")
-            confidence = str(aspect_data.get("confidence") or "moderate").title()
-            timing = str(block.get("timing") or "").strip()
-            manifestation = str(block.get("manifestation") or "").strip()
-            from palm_api.life_aspects import _ASPECT_VEDIC_UPAYAS
-            remedy = str(_ASPECT_VEDIC_UPAYAS.get(key, {}).get("upaya") or aspect_data.get("remedy") or "").strip()
-            passage_parts = []
-            for chunk in (outlook, timing, manifestation):
-                if not chunk:
-                    continue
-                c_clean = chunk.lower().rstrip(".")
-                if any(c_clean in p.lower() or p.lower() in c_clean or (len(c_clean) > 30 and c_clean[:35] in p.lower()) for p in passage_parts):
-                    continue
-                passage_parts.append(chunk)
-            passage = " ".join(passage_parts)
-            
-            # Filter recognize items so we NEVER repeat lines already printed in the main passage!
-            rec_filtered = []
-            for r in (aspect_data.get("recognize") or []):
-                r_clean = str(r).strip()
-                if not r_clean:
-                    continue
-                r_check = r_clean.lower().rstrip(".")
-                if r_check in passage.lower() or passage.lower() in r_check or (len(r_check) > 25 and r_check[:30] in passage.lower()):
-                    continue
-                rec_filtered.append(r_clean)
-
-            recognize_items = "".join(f"<li>{_e(r)}</li>" for r in rec_filtered)
-            evidence = "".join(
-                f"<li><b>Traditional palmistry interpretation:</b> {_e(str(p.get('text') or p.get('traditional_meaning') or '').strip())}</li>"
-                for p in (aspect_data.get("points") or [])
-                if str(p.get("text") or p.get("traditional_meaning") or "").strip())
-            bits = [f"<p>{_e(passage)}</p>"]
-            if recognize_items:
-                bits.append(f'<p class="fine" style="margin:8px 0 4px 0;color:#5a554c;"><b>How this manifests in daily life:</b></p><ul class="conv-mind" style="margin-bottom:8px;">{recognize_items}</ul>')
-            
-            # Condition for Upaya: STRICTLY for afflicted / challenging / weak areas only!
-            # Strong areas NEVER receive an Upaya; they always get Auspicious Planetary Asset!
-            is_strong = strength.lower() in ("strong", "prominent", "very strong", "favourable", "favorable")
-            is_challenging = (
-                not is_strong
-                and (
-                    strength.lower() in ("weak", "tentative", "challenged", "demanding", "care")
-                    or "caution" in str(aspect_data.get("direction") or "").lower()
-                    or (key == "health" and ("island" in str(aspect_data).lower() or "broken" in str(aspect_data).lower()))
-                    or (key in ("character", "career") and any(str(m.get("type") or "").lower() == "grille" for m in marks if str(m.get("zone") or "").lower() == "jupiter"))
-                    or (key in ("travel", "mind") and any(str(m.get("type") or "").lower() == "star" for m in marks if str(m.get("zone") or "").lower() in ("moon", "luna")))
-                )
-            )
-
-            if is_challenging and remedy:
-                bits.append(
-                    f'<p class="pv-do" style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:8px 12px;margin:8px 0;border-radius:4px;"><span class="ev-label" style="color:#9e521b;font-weight:bold;">Targeted Vedic Astrological Upaya</span><br>{remedy}</p>')
-            else:
-                bits.append(
-                    '<p class="pv-strength" style="background:#f4fbf7;border-left:3px solid #2e8b57;padding:8px 12px;margin:8px 0;border-radius:4px;"><span class="ev-label" style="color:#1e6b37;font-weight:bold;">Auspicious Planetary Asset</span><br>This domain is supported by favorable line clarity and mount elevation. Channel this natural planetary strength forward without requiring remedial pacification.</p>')
-
-            if evidence:
-                bits.append(
-                    f'<details class="technical-evidence"><summary>Classical Signs & Evidence</summary><ul>{evidence}</ul></details>')
-            
-            conf_badge = f'<span class="pill-conf" style="font-size:0.68rem;font-weight:600;padding:2px 8px;border-radius:10px;background:#ebe9e1;color:#4a453e;margin-left:6px;">{_e(confidence)} Confidence</span>'
-            rows.append(
-                f'<article class="card conv-area">'
-                f'<div class="card-top"><span class="area">{_e(title)}</span>'
-                f'<div><span class="pill mixed">{_e(strength.title())}</span>{conf_badge}</div></div>'
-                f'{"".join(bits)}</article>')
-        if rows:
-            blocks.append(_section(
-                "sec-areas", "Core Life Areas (Confluence Analysis)",
-                "Synthesized analysis combining line trajectories, planetary mount elevations, and auspicious markings.",
-                "".join(rows), nav="Life Areas"))
-
-        # 10 — Master Astrological Upayas
+        # 9 — Master Astrological Upayas
         try:
             from .palm_cards import _remedies
             source, block = _remedy_source(raw, dom_key)

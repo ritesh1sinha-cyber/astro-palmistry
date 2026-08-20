@@ -900,7 +900,8 @@ def _build_static_promise_section(result: dict, pc: Optional[dict], *, paid: boo
     <h3 style="font-family:Georgia,serif;font-size:1.05rem;margin:4px 0 8px;color:#1f2430;font-weight:600;">{_e(v_ins.headline)}</h3>
     <p style="margin:0 0 12px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{v_ins.prediction}</p>
     <div style="background:#f9f8f5;border-left:3px solid #8a6a1f;padding:10px 14px;border-radius:6px;margin:10px 0 12px;font-size:0.84rem;line-height:1.45;color:#4a453c;">
-      <b>Remedial &amp; Strategic Key:</b> {_e(v_ins.remedy)}
+      <div style="font-weight:700;color:#7a4b18;margin-bottom:4px;">Remedial &amp; Strategic Key:</div>
+      {v_ins.remedy}
     </div>
     <div style="border-top:1px solid #eeeae3;padding-top:8px;font-size:0.75rem;color:#7a756c;line-height:1.4;">
       <b>Astrological Basis ({_e(v_ins.name)}):</b> {v_ins.evidence}

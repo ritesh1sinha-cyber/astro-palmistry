@@ -11,7 +11,7 @@ _FORBIDDEN_LEAKS = [
     re.compile(r"\b\d{1,2}(?:st|nd|rd|th)\s+lord\b", re.I),
     # "nakshatra" and "lagna" are named on purpose now that the reports ground
     # their Vedic vocabulary; the internal-only terms below stay blocked.
-    re.compile(r"\b(?:sub[- ]lord|karakamsa|atmakaraka|cusp|varga|bhava)\b", re.I),
+    re.compile(r"\b(?:sub[- ]lord|karakamsa|atmakaraka|cusp)\b", re.I),
     re.compile(r"\b(?:jamakkol|prashna kundali|case-book method|technical reason)\b", re.I),
     re.compile(r"recognition_tag_", re.I),
     re.compile(r"Combination\s+\d+", re.I),

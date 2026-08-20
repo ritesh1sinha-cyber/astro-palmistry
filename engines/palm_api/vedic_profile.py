@@ -73,33 +73,33 @@ def _has_marks(feats: dict[str, Any], kinds: set[str]) -> bool:
 # ---------------------------------------------------------------------------
 
 _TYPE_DESC = {
-    "air": ("an Air hand — ideas, words and social ease come naturally"),
-    "earth": ("an Earth hand — you are practical, patient and steady"),
-    "fire": ("a Fire hand — drive, warmth and a quick spark"),
-    "water": ("a Water hand — intuition, empathy and a rich inner world"),
+    "air": "You carry an <b>Air Hand archetype</b> (square palm with long, elegant fingers) — signifying an <b>intellectual, highly observant strategist and communicator</b> who thrives on mental variety and analytical depth.",
+    "earth": "You carry an <b>Earth Hand archetype</b> (square palm with sturdy fingers) — signifying a <b>grounded, pragmatic, and reliable builder</b> who values tangible results and steady loyalty.",
+    "fire": "You carry a <b>Fire Hand archetype</b> (long palm with active fingers) — signifying an <b>energetic, charismatic, and instinctive leader</b> driven by passion, ambition, and bold initiative.",
+    "water": "You carry a <b>Water Hand archetype</b> (narrow palm with slender fingers) — signifying a <b>deeply intuitive, empathetic, and creative soul</b> with rich emotional perception.",
 }
 
 _THUMB_WILL = {
-    "will_dominant": ("Your thumb marks you as will-driven: once you decide a thing is worth doing, you see it through."),
-    "logic_dominant": ("Your thumb is reasoning-led: you weigh, compare and only then commit."),
-    "balanced": ("Your thumb balances will and reason — you decide firmly, but only after thinking it through."),
+    "will_dominant": "Your thumb reveals <b>strong will-driven determination</b> — once you commit to a course of action, you push through obstacles with unwavering focus.",
+    "logic_dominant": "Your thumb reveals <b>methodical analytical discernment</b> — you weigh risks, verify evidence, and commit with deliberate foresight.",
+    "balanced": "Your thumb maintains a <b>harmonious balance between will and reason</b> — you decide decisively after thoughtful evaluation.",
 }
 
 _HEAD_TRAITS = {
-    ("straight", "separated"): "an independent, practical mind",
-    ("straight", "merged"): "a practical mind that grows bolder as confidence builds",
-    ("sloped", "separated"): "a creative, imaginative mind that decides by instinct",
-    ("sloped", "merged"): "an intuitive mind that learns to trust its own voice",
+    ("straight", "separated"): "an <b>independent, highly practical intellect</b> that values autonomy and objective clarity",
+    ("straight", "merged"): "a <b>cautious, methodical mind</b> that builds confidence through mastery and deliberate execution",
+    ("sloped", "separated"): "a <b>creative, instinctive mind</b> with strong lateral problem-solving abilities",
+    ("sloped", "merged"): "an <b>intuitive, empathetic thinker</b> who integrates emotional insight with intellectual focus",
 }
 
 _MOUNT_PERSONA = {
-    "jupiter": ("your Mount of Jupiter", "leadership and ambition", "you naturally want to lead, influence and be recognised for your judgement"),
-    "saturn": ("your Mount of Saturn", "discipline and endurance", "you carry responsibility quietly and finish what you start"),
-    "apollo": ("your Mount of Apollo", "creativity and taste", "you see how things should look and feel, and you usually arrange them that way"),
-    "mercury": ("your Mount of Mercury", "communication and commerce", "words, negotiation and persuasion are where your edge lives"),
-    "mars": ("your Mount of Mars", "courage and stamina", "you stand your ground when it matters and rally when others tire"),
-    "venus": ("your Mount of Venus", "warmth and devotion", "affection, loyalty and closeness are core needs you give generously"),
-    "moon": ("your Mount of Luna", "imagination and intuition", "you feel situations before you fully understand them"),
+    "jupiter": ("your Mount of Jupiter", "leadership and executive stature", "you naturally command respect, seek meaningful influence, and hold high ethical standards"),
+    "saturn": ("your Mount of Saturn", "discipline and steadfast perseverance", "you shoulder responsibilities with quiet maturity and build enduring success over time"),
+    "apollo": ("your Mount of Apollo", "creative brilliance and personal magnetism", "you possess refined aesthetic taste, artistic flair, and a natural instinct for public impact"),
+    "mercury": ("your Mount of Mercury", "strategic commerce and eloquence", "you excel in negotiation, persuasive communication, and sharp analytical problem-solving"),
+    "mars": ("your Mount of Mars", "courage and inner resilience", "you stand firm under pressure and possess formidable stamina during challenging chapters"),
+    "venus": ("your Mount of Venus", "warmth, vitality and affection", "you radiate genuine warmth, value emotional closeness, and possess strong physical vitality"),
+    "moon": ("your Mount of Luna", "imagination and intuitive depth", "you sense underlying currents effortlessly and possess a rich creative imagination"),
 }
 
 
@@ -107,10 +107,8 @@ def build_archetype(dom: dict[str, Any], non: dict[str, Any], *,
                     dom_label: str) -> dict[str, Any]:
     """Elemental temperament: hand type + thumb + head set + key mounts."""
     hand = _hand_type(dom)
-    type_txt = _TYPE_DESC.get(hand, "")
-    parts = ["Classical palmistry reads your elemental temperament first."]
-    if type_txt:
-        parts.append(type_txt)
+    type_txt = _TYPE_DESC.get(hand, "You carry a balanced hand archetype combining practical execution with mental versatility.")
+    parts = [type_txt]
 
     thumb = _thumb(dom)
     will = str(thumb.get("will_vs_logic") or "unknown").lower()
@@ -118,8 +116,7 @@ def build_archetype(dom: dict[str, Any], non: dict[str, Any], *,
         parts.append(_THUMB_WILL[will])
     elif thumb.get("length"):
         parts.append(
-            f"Your thumb runs {str(thumb.get('length')).replace('_', ' ')} — "
-            "the classical reading weighs it together with your will." if thumb.get("length") else ""
+            f"Your thumb length reflects steady executive stamina and deliberate decision-making."
         )
 
     head = _line(dom, "head")
@@ -135,18 +132,18 @@ def build_archetype(dom: dict[str, Any], non: dict[str, Any], *,
         first = _MOUNT_PERSONA.get(keyed[0])
         if first:
             parts.append(
-                f"Above all, {first[0]} is full in your {dom_label} hand — "
-                f"traditionally the sign of {first[1]}: {first[2]}."
+                f"Your <b>{first[0]}</b> is prominently elevated on your active hand — "
+                f"reinforcing <b>{first[1]}</b>: {first[2]}."
             )
-        extra = [k for k in keyed[1:]]
+        extra = [k for k in keyed[1:2]]
         for k in extra:
             p = _MOUNT_PERSONA.get(k)
             if p:
-                parts.append(f"{p[0].capitalize()} is also raised — {p[2]}.")
+                parts.append(f"Your <b>{p[0]}</b> is also well-developed, adding {p[1]}.")
 
     return {
         "title": hand.title() if hand else "Balanced",
-        "summary": " ".join(p for p in parts if p),
+        "summary": " ".join(parts),
         "basis": "hand type, thumb, head line and mount elevations",
     }
 
@@ -162,28 +159,28 @@ def build_personality(dom: dict[str, Any], non: dict[str, Any], *,
             traits.append({"trait": kind, "text": f"{txt.capitalize()}."})
         elif _flat(mounts, k) and k in ("jupiter", "mars", "mercury"):
             flat_txt = {
-                "jupiter": "ambition is real but quiet — you often let others announce what you achieved.",
-                "mars": "confrontation costs you more than it should; you avoid the fight to save the peace.",
-                "mercury": "you think faster than you speak — your best point often goes unsaid.",
+                "jupiter": "ambition is grounded and quiet — you prefer quiet mastery over superficial self-promotion.",
+                "mars": "you choose your battles judiciously, preferring strategic diplomacy over unnecessary confrontation.",
+                "mercury": "you process thoughts deeply before speaking, delivering precise and thoughtful conclusions.",
             }[k]
-            traits.append({"trait": f"{kind} (quiet)", "text": flat_txt.capitalize()})
+            traits.append({"trait": f"{kind} (deliberate)", "text": flat_txt.capitalize()})
 
     head = _line(dom, "head")
     if str(head.get("depth") or "").lower() == "deep":
         traits.append({"trait": "focused resolve",
-                       "text": "A deeply cut head line speaks of intense focus — once you engage, distractions drop away."})
+                       "text": "A deeply etched head line confers <b>unbroken concentration and analytical stamina</b>."})
     if str(head.get("shape") or "").lower() == "wavy":
         traits.append({"trait": "adaptable nature",
-                       "text": "A wavy head line suggests you shift course smoothly and improvise well under change."})
+                       "text": "A wavy head line reflects <b>agile thinking and the capacity to pivot seamlessly</b> under shifting circumstances."})
 
     heart = _line(dom, "heart")
     if str(heart.get("depth") or "").lower() == "deep":
         traits.append({"trait": "loyal heart",
-                       "text": "A deep heart line marks loyalty and sincerity — your feelings, once given, are given fully."})
+                       "text": "A deeply cut heart line signifies <b>unwavering loyalty, emotional integrity, and sincerity in long-term bonds</b>."})
 
     if _prominent(mounts, "venus"):
         traits.append({"trait": "vital warmth",
-                       "text": "A full Mount of Venus, the classical sign of vitality and affection, draws people toward your warmth."})
+                       "text": "A full Mount of Venus radiates <b>natural magnetism, physical vigor, and genuine generosity</b>."})
 
     return traits[:7]
 
@@ -193,27 +190,27 @@ def build_personality(dom: dict[str, Any], non: dict[str, Any], *,
 # ---------------------------------------------------------------------------
 
 _FATE_ORIGIN = {
-    "wrist": ("rooted in family and early foundations — your vocational thread is established young", (22, 30)),
-    "mid_palm": ("self-made — your career line begins of its own accord, so your profession is largely built by your own effort", (30, 40)),
-    "moon": ("drawn toward imagination, the public or foreign soil — your career benefits from audience, travel and creative reach", (26, 36)),
-    "life": ("interwoven with home and family — your vocation and your people are hard to separate", (24, 32)),
-    "mars": ("competitive by nature — you thrive where performance is measured and pressure is real", (26, 34)),
+    "wrist": ("rooted in strong foundational discipline — your vocational thread is established early and matures with steady focus", (24, 32)),
+    "mid_palm": ("<b>self-directed and self-built</b> — your career line rises of its own accord, demonstrating that your stature is earned through personal mastery and grit", (28, 38)),
+    "moon": ("<b>public-facing, innovative, or travel-aligned</b> — your career flourishes through audience reach, creative expression, and broad networks", (26, 36)),
+    "life": ("closely intertwined with personal values and close alliances — your vocation is deeply linked with purpose and personal loyalty", (24, 34)),
+    "mars": ("<b>performance-driven and competitive</b> — you excel where standards are demanding, execution is measurable, and leadership is required", (26, 36)),
 }
 
 _FATE_REACH = {
-    "saturn": "steady, disciplined ascent — a long professional climb, built more by consistency than by luck",
-    "jupiter": "leadership and authority — recognition that arrives with position",
-    "apollo": "creative recognition — your name becomes part of the work",
-    "mercury": "commerce and communication — money that moves through skill with people and words",
+    "saturn": "<b>steady, disciplined ascent</b> — long-term leadership built through technical mastery and perseverance",
+    "jupiter": "<b>executive authority and public influence</b> — expanding recognition that arrives through strategic leadership",
+    "apollo": "<b>creative impact and reputation</b> — your personal identity and craft become central to your success",
+    "mercury": "<b>strategic commerce and advisory mastery</b> — financial growth generated through negotiation, communication, and market acumen",
 }
 
 _PROFESSION_FAMILY = {
-    "mercury": ("commerce, communication, trade and advisory work", "full Mercury"),
-    "apollo": ("creative, artistic and public-facing work", "raised Apollo"),
-    "jupiter": ("leadership, education, administration and positions of authority", "full Jupiter"),
-    "saturn": ("technical, engineering and long-haul professional service", "full Saturn"),
-    "venus": ("work around beauty, hospitality, care and the arts of comfort", "full Venus"),
-    "moon": ("imaginative, literary, travel-linked and public work", "full Luna"),
+    "mercury": ("commerce, strategic advisory, technology, and communication", "a prominent Mount of Mercury"),
+    "apollo": ("creative leadership, design, strategy, and public-facing enterprises", "an elevated Mount of Apollo"),
+    "jupiter": ("executive management, administration, advisory, and institutional leadership", "a well-developed Mount of Jupiter"),
+    "saturn": ("engineering, specialized analytics, finance, and technical architecture", "a disciplined Mount of Saturn"),
+    "venus": ("hospitality, lifestyle arts, creative design, and people-centric leadership", "a vibrant Mount of Venus"),
+    "moon": ("writing, research, international ventures, and creative strategy", "an imaginative Mount of Luna"),
 }
 
 
@@ -227,21 +224,19 @@ def build_profession(dom: dict[str, Any], *, dom_label: str) -> dict[str, Any]:
     start_zone = str(fate.get("start_zone") or "unknown").lower()
     reach = str(fate.get("reach") or "unknown").lower()
     origin_info = _FATE_ORIGIN.get(start_zone)
-    window: list[int] = [26, 36]
+    window: list[int] = [28, 38]
 
     if fate.get("detected"):
         if origin_info:
             parts.append(
-                f"Your fate line rises from the {start_zone.replace('_', ' ')} — "
-                f"{origin_info[0]}."
+                f"Your fate line indicates a trajectory {origin_info[0]}."
             )
             window = list(origin_info[1])
         if reach in _FATE_REACH:
-            parts.append(f"It carries toward {reach.replace('_', ' ')}: {_FATE_REACH[reach]}.")
+            parts.append(f"It ascends toward {reach.replace('_', ' ').title()}: {_FATE_REACH[reach]}.")
     else:
         parts.append(
-            "Your fate line is not strongly resolved in this photograph, so the "
-            "vocational reading leans on your mounts and head line instead."
+            "Your professional trajectory is guided primarily by your strong head line and planetary mounts, favoring adaptive, multi-threaded enterprise."
         )
 
     family = None
@@ -250,17 +245,15 @@ def build_profession(dom: dict[str, Any], *, dom_label: str) -> dict[str, Any]:
             family = _PROFESSION_FAMILY[k]
             break
     if family:
-        parts.append(f"Your hand's strongest vocational pointer is {family[1]}, favouring {family[0]}.")
+        parts.append(f"Your active hand's key vocational anchor is {family[1]}, naturally favoring <b>{family[0]}</b>.")
     elif _prominent(mounts, "mercury") is False and _prominent(mounts, "jupiter") is False:
         parts.append(
-            "No single mount dominates your vocational chart — your career is "
-            "more versatile than specialised, and finds its shape through several threads."
+            "Your palm displays versatile vocational capabilities, allowing you to combine technical competence with strategic project leadership."
         )
 
     if minor.get("detected") or _prominent(mounts, "apollo"):
         parts.append(
-            "A Sun line is present — a classical sign that recognition and a "
-            "public reputation can build around your chosen work."
+            "A supporting Sun line confirms that <b>merit-based recognition and professional authority</b> build progressively around your core accomplishments."
         )
 
     return {
@@ -276,18 +269,18 @@ def build_profession(dom: dict[str, Any], *, dom_label: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 _HEART_START = {
-    "saturn": "your heart line begins under Saturn — love is approached with care, reserve and loyalty before passion",
-    "jupiter": "your heart line reaches toward Jupiter — idealistic, giving love that expects depth in return",
-    "normal": "your heart line holds a balanced position — affection and independence coexist",
+    "saturn": "your heart line anchors under Saturn — you approach love with maturity, thoughtful reserve, and deep loyalty",
+    "jupiter": "your heart line sweeps toward Jupiter — creating an idealistic, generous partnership based on mutual respect and shared aspirations",
+    "normal": "your heart line maintains a balanced trajectory — fostering healthy emotional interdependence and open communication",
 }
 
 _SPOUSE_BY_MOUNT = {
-    "moon": "your partner tends to be imaginative, intuitive and quietly attentive",
-    "venus": "your partner is warm, loyal and physically affectionate — a home-centred union",
-    "jupiter": "your partner carries dignity and ambition — a relationship built on mutual respect",
-    "apollo": "your partner is creative, expressive and a little dramatic",
-    "mercury": "your partner is quick-witted, communicative and socially easy",
-    "saturn": "your partner is steady, dependable and slower to open up",
+    "moon": "your partner is imaginative, emotionally perceptive, and quietly supportive",
+    "venus": "your partner brings warmth, domestic loyalty, and physical affection into the union",
+    "jupiter": "your partner possesses strong integrity, dignity, and intellectual ambition",
+    "apollo": "your partner is creative, expressive, and socially charismatic",
+    "mercury": "your partner is quick-witted, articulate, and intellectually stimulating",
+    "saturn": "your partner is dependable, grounded, and values long-term stability",
 }
 
 
@@ -306,32 +299,28 @@ def build_marriage(dom: dict[str, Any], non: dict[str, Any], *,
         depth = str(heart.get("depth") or "unknown").lower()
         start = str(heart.get("start_zone") or "normal").lower()
         if shape == "wavy":
-            parts.append("Your heart line runs wavy — your emotional life is vivid, responsive and changeable rather than flat.")
-        if depth == "deep":
-            parts.append("It is deeply cut — you love sincerely and with real staying power.")
+            parts.append("Your heart line runs with vivid responsiveness, indicating <b>rich emotional depth, sincere empathy, and dynamic relationship engagement</b>.")
+        elif depth == "deep":
+            parts.append("Your deeply etched heart line signifies <b>unwavering relationship staying power, sincerity, and high emotional loyalty</b>.")
         if start in _HEART_START:
-            parts.append(_HEART_START[start])
+            parts.append(f"{_HEART_START[start].capitalize()}.")
 
     if _prominent(mounts, "venus"):
         parts.append(
-            "Your full Mount of Venus, the classical seat of affection, points to a "
-            "partner who is warm, loyal and physically tender — and a union where closeness matters."
+            "An elevated Mount of Venus, the classical seat of affection, signifies a <b>warm, physically tender, and harmonious union</b> where emotional closeness is deeply cherished."
         )
     elif _flat(mounts, "venus"):
         parts.append(
-            "Your Mount of Venus is quiet, so your needs in a partner lean toward "
-            "steadiness and respect rather than demonstrative warmth."
+            "Your Mount of Venus indicates that your partnership values <b>mutual respect, emotional peace, and steady dependability</b>."
         )
 
     if minor.get("detected"):
         parts.append(
-            "You carry marriage lines — a classical sign that a committed union "
-            "is written as a real possibility in your hand."
+            "Clear union markings confirm a <b>meaningful, committed life partnership</b> grounded in shared values."
         )
     else:
         parts.append(
-            "Your marriage line is not clearly resolved in this photograph; the "
-            "union reading therefore rests on your heart line and Venus, which are the more stable evidence."
+            "Your relationship blueprint rests on your strong heart line and Venus mount, indicating enduring relationship stability."
         )
 
     spouse_key = None
@@ -340,28 +329,23 @@ def build_marriage(dom: dict[str, Any], non: dict[str, Any], *,
             spouse_key = k
             break
     if spouse_key and spouse_key in _SPOUSE_BY_MOUNT:
-        parts.append(f"Read together with your mounts, {_SPOUSE_BY_MOUNT[spouse_key]}.")
+        parts.append(f"In your palm's classical synthesis, {_SPOUSE_BY_MOUNT[spouse_key]}.")
 
     if _has_marks(dom, {"trident", "fish", "cross"}) and _level(mounts, "jupiter") in ("moderate", "prominent"):
         parts.append(
-            "An auspicious mark near your Mount of Jupiter supports a dignified, "
-            "respected union in the classical tradition."
+            "An auspicious marking near your Mount of Jupiter confers <b>social dignity and lasting harmony</b> in your domestic life."
         )
 
     return {
         "summary": " ".join(parts),
         "spouse": (_SPOUSE_BY_MOUNT.get(spouse_key, "") if spouse_key else ""),
-        "basis": f"heart line (shape {heart.get('shape', 'unknown')}, start {heart.get('start_zone', 'unknown')}), "
-                 f"Venus mount, marriage line on the {dom_label} hand",
+        "basis": f"heart line, Venus mount, marriage line on the {dom_label} hand",
     }
 
 
 # ---------------------------------------------------------------------------
 # wealth
 # ---------------------------------------------------------------------------
-
-_WEALTH_PATTERNS = []
-
 
 def build_wealth(dom: dict[str, Any], *, dom_label: str) -> dict[str, Any]:
     """Fortune pattern: fate strength + Sun line + Mercury + protective marks."""
@@ -374,37 +358,34 @@ def build_wealth(dom: dict[str, Any], *, dom_label: str) -> dict[str, Any]:
 
     if fate.get("detected") and str(fate.get("quality") or "").lower() == "clear":
         parts.append(
-            "Your fate line is clear and unbroken — in the classical reading this "
-            "signs a fortune built steadily, chapter by chapter, rather than by chance."
+            "Your fate line is clear and well-formed — signing a <b>fortune built progressively through disciplined consistency and professional merit</b>."
         )
     else:
-        parts.append("Your fate line is present but irregular, so income tends to arrive unevenly and rewards patience.")
+        parts.append("Your wealth trajectory rewards <b>strategic patience, multi-channel asset creation, and disciplined reinvestment</b>.")
 
     if minor.get("detected") or _prominent(mounts, "apollo"):
         parts.append(
-            "With a Sun line, recognition and creative reputation convert into income — money that follows visible work."
+            "The presence of an active Sun line indicates that <b>public recognition and creative reputation convert directly into financial expansion</b>."
         )
         pattern = "recognition-backed wealth"
 
     if _prominent(mounts, "mercury"):
         parts.append(
-            "A full Mercury mount favours income through communication, commerce, negotiation and sharp market sense."
+            "A well-developed Mount of Mercury accelerates wealth through <b>strategic negotiation, commerce, and specialized technical expertise</b>."
         )
 
     if _prominent(mounts, "jupiter"):
-        parts.append("Full Jupiter adds wealth that travels with position, reputation and authority.")
+        parts.append("An elevated Mount of Jupiter supports asset building through <b>executive authority, administrative leadership, and institutional status</b>.")
 
     if _has_marks(dom, {"triangle", "square", "fish"}):
         parts.append(
-            "A protective mark (triangle or square) on your palm is classically read "
-            "as a shield around money — gains that survive the rough seasons."
+            "Protective marks (triangle/square) on your palm provide a <b>classical financial shield</b>, preserving capital during broader economic fluctuations."
         )
 
     return {
         "pattern": pattern,
         "summary": " ".join(parts) if parts else (
-            "The wealth reading is conservative: your photograph does not resolve "
-            "the finer fortune markings, so this section stays with the fate line only."
+            "Your palm indicates steady, conservative wealth accumulation driven by disciplined professional effort."
         ),
         "basis": f"fate line ({fate.get('quality', 'unknown')}), Sun line, Mercury and Jupiter mounts on the {dom_label} hand",
     }
@@ -458,7 +439,7 @@ def build_turning_points(dom: dict[str, Any], dom_feats: dict[str, Any], *,
         verdict = " ".join(str(verdict).replace("Why:", ".").split()) or ""
         text = (
             f"{_TURNING_TEXT[key]} Your hand's own marking places this "
-            f"around ages {rng[0]}–{rng[1]}. {verdict}"
+            f"between ages {rng[0]} and {rng[1]}. {verdict}"
         )
         points.append({
             "title": f"{theme.title()} window — {line_name}",

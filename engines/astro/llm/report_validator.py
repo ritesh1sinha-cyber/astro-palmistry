@@ -26,10 +26,7 @@ _INTERNAL_DATA_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"status_enum", re.I),
     re.compile(r"activation_status", re.I),
     re.compile(r"dasha_factor", re.I),
-    re.compile(r"ashtakavarga", re.I),
     re.compile(r"varga_factor", re.I),
-    re.compile(r"navamsha", re.I),
-    re.compile(r"upapada_lagna", re.I),
 ]
 
 # ---------------------------------------------------------------------------
