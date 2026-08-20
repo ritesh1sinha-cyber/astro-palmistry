@@ -212,6 +212,177 @@ def _to_date(v) -> date | None:
         return None
 
 
+# ── Classical Parāśarī Ashtakavarga Benefic-Point Tables (SAV Total = 337) ──
+AV_SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+AV_TABLE = {
+    "Sun": {
+        "Sun": [1, 2, 4, 7, 8, 9, 10, 11], "Moon": [3, 6, 10, 11],
+        "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [3, 5, 6, 9, 10, 11, 12],
+        "Jupiter": [5, 6, 9, 11], "Venus": [6, 7, 12],
+        "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Lagna": [3, 4, 6, 10, 11, 12]},
+    "Moon": {
+        "Sun": [3, 6, 7, 8, 10, 11], "Moon": [1, 3, 6, 7, 10, 11],
+        "Mars": [2, 3, 5, 6, 9, 10, 11], "Mercury": [1, 3, 4, 5, 7, 8, 10, 11],
+        "Jupiter": [1, 2, 4, 7, 8, 10, 11], "Venus": [3, 4, 5, 7, 9, 10, 11],
+        "Saturn": [3, 5, 6, 11], "Lagna": [3, 6, 10, 11]},
+    "Mars": {
+        "Sun": [3, 5, 6, 10, 11], "Moon": [3, 6, 11],
+        "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [3, 5, 6, 11],
+        "Jupiter": [6, 10, 11, 12], "Venus": [6, 8, 11, 12],
+        "Saturn": [1, 4, 7, 8, 9, 10, 11], "Lagna": [1, 3, 6, 10, 11]},
+    "Mercury": {
+        "Sun": [5, 6, 9, 11, 12], "Moon": [2, 4, 6, 8, 10, 11],
+        "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [1, 3, 5, 6, 9, 10, 11, 12],
+        "Jupiter": [6, 8, 11, 12], "Venus": [1, 2, 3, 4, 5, 8, 9, 11],
+        "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Lagna": [1, 2, 4, 6, 8, 10, 11]},
+    "Jupiter": {
+        "Sun": [1, 2, 3, 4, 7, 8, 9, 10, 11], "Moon": [2, 5, 7, 9, 11],
+        "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [1, 2, 4, 5, 6, 9, 10, 11],
+        "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11], "Venus": [2, 5, 6, 9, 10, 11],
+        "Saturn": [3, 5, 6, 12], "Lagna": [1, 2, 4, 5, 6, 7, 9, 10, 11]},
+    "Venus": {
+        "Sun": [8, 11, 12], "Moon": [1, 2, 3, 4, 5, 8, 9, 11, 12],
+        "Mars": [3, 5, 6, 9, 11, 12], "Mercury": [3, 5, 6, 9, 11],
+        "Jupiter": [5, 8, 9, 10, 11], "Venus": [1, 2, 3, 4, 5, 8, 9, 10, 11],
+        "Saturn": [3, 4, 5, 8, 9, 10, 11], "Lagna": [1, 2, 3, 4, 5, 8, 9, 11]},
+    "Saturn": {
+        "Sun": [1, 2, 4, 7, 8, 10, 11], "Moon": [3, 6, 11],
+        "Mars": [3, 5, 6, 10, 11, 12], "Mercury": [6, 8, 9, 10, 11, 12],
+        "Jupiter": [5, 6, 11, 12], "Venus": [6, 11, 12],
+        "Saturn": [3, 5, 6, 11], "Lagna": [1, 3, 4, 6, 10, 11]},
+}
+
+
+def compute_chart_ashtakavarga(pc: dict) -> dict[str, Any]:
+    planets = pc.get("planets", {})
+    lagna_sign = pc.get("meta", {}).get("lagna_sign", "") or (pc.get("lagna", {}) or {}).get("sign", "")
+    if not lagna_sign or lagna_sign not in SIGNS:
+        return {}
+    pos = {}
+    for p in AV_SEVEN:
+        s = planets.get(p, {}).get("sign", "")
+        if s in SIGNS:
+            pos[p] = SIGNS.index(s)
+    if lagna_sign in SIGNS:
+        pos["Lagna"] = SIGNS.index(lagna_sign)
+
+    bav = {p: [0] * 12 for p in AV_SEVEN}
+    for planet in AV_SEVEN:
+        for contrib, houses in AV_TABLE[planet].items():
+            if contrib in pos:
+                base_idx = pos[contrib]
+                for h in houses:
+                    sign_idx = (base_idx + h - 1) % 12
+                    bav[planet][sign_idx] += 1
+
+    sav = [0] * 12
+    for s_idx in range(12):
+        sav[s_idx] = sum(bav[p][s_idx] for p in AV_SEVEN)
+
+    return {
+        "sav": {SIGNS[i]: sav[i] for i in range(12)},
+        "bav": {p: {SIGNS[i]: bav[p][i] for i in range(12)} for p in AV_SEVEN},
+    }
+
+
+def get_live_transit_positions(target_date: date) -> dict[str, str]:
+    try:
+        import swisseph as swe
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        jd = swe.julday(target_date.year, target_date.month, target_date.day, 12.0)
+        bodies = {
+            "Sun": swe.SUN, "Moon": swe.MOON, "Mars": swe.MARS, "Mercury": swe.MERCURY,
+            "Jupiter": swe.JUPITER, "Venus": swe.VENUS, "Saturn": swe.SATURN, "Rahu": swe.TRUE_NODE,
+        }
+        out = {}
+        for name, pid in bodies.items():
+            lon = swe.calc_ut(jd, pid, swe.FLG_SIDEREAL)[0][0]
+            out[name] = SIGNS[int(lon // 30) % 12]
+        out["Ketu"] = SIGNS[(SIGNS.index(out["Rahu"]) + 6) % 12]
+        return out
+    except Exception:
+        return {}
+
+
+def get_transit_ashtakavarga_domain_note(
+    domain_code: str,
+    target_start: date | None,
+    target_end: date | None,
+    pc: dict,
+    av_data: dict,
+) -> str:
+    if not target_start or not target_end or not av_data:
+        return ""
+    d1_lagna = pc.get("meta", {}).get("lagna_sign", "") or (pc.get("lagna", {}) or {}).get("sign", "")
+    if not d1_lagna or d1_lagna not in SIGNS:
+        return ""
+
+    def h_sign(h: int) -> str:
+        return SIGNS[(SIGNS.index(d1_lagna) + h - 1) % 12]
+
+    sav = av_data.get("sav", {})
+    t_mid = target_start + (target_end - target_start) // 2
+    transits = get_live_transit_positions(t_mid)
+    if not transits:
+        return ""
+    
+    jup_sign = transits.get("Jupiter", "")
+    sat_sign = transits.get("Saturn", "")
+    notes = []
+
+    if domain_code == "D10":
+        h10_s = h_sign(10)
+        h1_s = h_sign(1)
+        h11_s = h_sign(11)
+        if jup_sign in (h10_s, h1_s, h11_s):
+            b = sav.get(jup_sign, 28)
+            b_eval = "amplified traction" if b >= 30 else "favorable support" if b >= 28 else "steady progress"
+            notes.append(f"Transit Jupiter crossing your {jup_sign} ({b} SAV Bindus · {b_eval})")
+        if sat_sign in (h10_s, h1_s, h11_s):
+            b = sav.get(sat_sign, 28)
+            notes.append(f"Transit Saturn structuring {sat_sign} ({b} SAV Bindus)")
+
+    elif domain_code == "D9":
+        h7_s = h_sign(7)
+        v_sign = pc.get("planets", {}).get("Venus", {}).get("sign", "")
+        if jup_sign in (h7_s, v_sign, h_sign(1), h_sign(5)):
+            b = sav.get(jup_sign, 28)
+            b_eval = "high relationship harmony" if b >= 28 else "conscious patience"
+            notes.append(f"Transit Jupiter activating {jup_sign} ({b} SAV Bindus · {b_eval})")
+
+    elif domain_code == "D4":
+        h4_s = h_sign(4)
+        h12_s = h_sign(12)
+        if jup_sign in (h4_s, h12_s, h_sign(9)):
+            b = sav.get(jup_sign, 28)
+            b_eval = "fruitful property/relocation traction" if b >= 28 else "steady timing"
+            notes.append(f"Transit Jupiter supporting {jup_sign} ({b} SAV Bindus · {b_eval})")
+
+    elif domain_code == "D2":
+        h2_s = h_sign(2)
+        h11_s = h_sign(11)
+        if jup_sign in (h2_s, h11_s, h_sign(9), h_sign(1)):
+            b = sav.get(jup_sign, 28)
+            b_eval = "strong compounding capacity" if b >= 30 else "positive cashflow support" if b >= 28 else "disciplined budgeting"
+            notes.append(f"Transit Jupiter backing {jup_sign} ({b} SAV Bindus · {b_eval})")
+
+    elif domain_code == "D30":
+        h1_s = h_sign(1)
+        h6_s = h_sign(6)
+        h8_s = h_sign(8)
+        if sat_sign in (h1_s, h6_s, h8_s):
+            b = sav.get(sat_sign, 28)
+            b_eval = "strong natural protective buffer" if b >= 28 else "conscious vitality pacing recommended"
+            notes.append(f"Transit Saturn crossing {sat_sign} ({b} SAV Bindus · {b_eval})")
+        if jup_sign in (h1_s, h6_s, h8_s, h_sign(5), h_sign(9)):
+            b = sav.get(jup_sign, 28)
+            notes.append(f"Transit Jupiter protective aspect over {jup_sign} ({b} SAV Bindus)")
+
+    if notes:
+        return f" · <b>Gochar & Ashtakavarga Confluence:</b> {'; '.join(notes)}"
+    return ""
+
+
 def _build_domain_specific_timeline(
     pc: dict,
     code: str,
@@ -382,6 +553,9 @@ def _build_domain_specific_timeline(
     yog_str = f" · Yogini: <b>{yog_display}</b>" if yog_display else ""
     active_clocks = f"<b>Active Multi-Clock Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> (until {curr_ad_end_fmt}){chara_str}{yog_str}."
 
+    # Compute Ashtakavarga SAV & BAV Data for Chart
+    av_data = compute_chart_ashtakavarga(pc)
+
     if code == "D10":
         # Career
         if is_child:
@@ -396,11 +570,12 @@ def _build_domain_specific_timeline(
         else:
             c_lord, c_st, c_en, c_st_d, c_en_d = find_target_ad(["Venus", amk, "Sun", h10_lord, "Jupiter", "Mars"])
             chara_note, yog_note = get_overlapping_confluence_notes(c_st_d, c_en_d, ["Venus", "Siddha", amk, "Sun", "Pingala", "Mercury", "Bhadrika", "Jupiter", "Dhanya"])
+            transit_note = get_transit_ashtakavarga_domain_note("D10", c_st_d, c_en_d, pc, av_data)
             return (
                 f"{active_clocks}<br>"
                 f"<b>Active Career Momentum:</b> Strategic consolidation and positioning under {curr_md}-{curr_ad_lord} (running until {curr_ad_end_fmt}).<br>"
                 f"<b>Career Surge & Executive Elevation Window:</b> <span style='color:#b57c38;font-weight:700;'>{c_st} – {c_en}</span> under <b>{curr_md}-{c_lord}</b> "
-                f"(activating 10th house executive authority and significators){yog_note}.{chara_note}"
+                f"(activating 10th house executive authority and significators){yog_note}.{chara_note}{transit_note}"
             )
 
     elif code == "D9":
@@ -415,22 +590,24 @@ def _build_domain_specific_timeline(
         else:
             m_lord, m_st, m_en, m_st_d, m_en_d = find_target_ad(["Venus", dk, h7_lord, "Jupiter"])
             chara_note, yog_note = get_overlapping_confluence_notes(m_st_d, m_en_d, ["Venus", "Siddha", "Jupiter", "Dhanya", dk])
+            transit_note = get_transit_ashtakavarga_domain_note("D9", m_st_d, m_en_d, pc, av_data)
             return (
                 f"{active_clocks}<br>"
                 f"<b>Relationship Dynamics:</b> Emotional grounding and mutual understanding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
                 f"<b>Marital Fruition & Relational Harmony Window:</b> <span style='color:#b57c38;font-weight:700;'>{m_st} – {m_en}</span> under <b>{curr_md}-{m_lord}</b> "
-                f"(activating Kalatrakaraka {m_lord} and 7th house partnership dynamics){yog_note}.{chara_note}"
+                f"(activating Kalatrakaraka {m_lord} and 7th house partnership dynamics){yog_note}.{chara_note}{transit_note}"
             )
 
     elif code == "D2":
         # Wealth
         w_lord, w_st, w_en, w_st_d, w_en_d = find_target_ad(["Venus", "Jupiter", h2_lord, h11_lord, "Mercury"])
         chara_note, yog_note = get_overlapping_confluence_notes(w_st_d, w_en_d, ["Venus", "Siddha", "Jupiter", "Dhanya", "Mercury", "Bhadrika"])
+        transit_note = get_transit_ashtakavarga_domain_note("D2", w_st_d, w_en_d, pc, av_data)
         return (
             f"{active_clocks}<br>"
             f"<b>Financial Rhythm:</b> Structured capital preservation and disciplined compounding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Major Asset Accumulation & Liquidity Window:</b> <span style='color:#b57c38;font-weight:700;'>{w_st} – {w_en}</span> under <b>{curr_md}-{w_lord}</b>, "
-            f"favoring high-yield compounding, asset acquisitions, and expanding income streams{yog_note}.{chara_note}"
+            f"favoring high-yield compounding, asset acquisitions, and expanding income streams{yog_note}.{chara_note}{transit_note}"
         )
 
     elif code == "D7":
@@ -445,22 +622,24 @@ def _build_domain_specific_timeline(
         else:
             p_lord, p_st, p_en, p_st_d, p_en_d = find_target_ad([pk, h5_lord, "Jupiter", "Moon", "Venus"])
             chara_note, yog_note = get_overlapping_confluence_notes(p_st_d, p_en_d, ["Jupiter", "Dhanya", "Moon", "Mangala", "Venus", "Siddha", pk])
+            transit_note = get_transit_ashtakavarga_domain_note("D7", p_st_d, p_en_d, pc, av_data)
             return (
                 f"{active_clocks}<br>"
                 f"<b>Family Continuation Dynamics:</b> Foundational family nurturing under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
                 f"<b>Progeny Blessing & Family Expansion Window:</b> <span style='color:#b57c38;font-weight:700;'>{p_st} – {p_en}</span> under <b>{curr_md}-{p_lord}</b> "
-                f"(activating Putrakaraka {pk} and 5th house fertility guardians){yog_note}.{chara_note}"
+                f"(activating Putrakaraka {pk} and 5th house fertility guardians){yog_note}.{chara_note}{transit_note}"
             )
 
     elif code == "D24":
         # Learning
         l_lord, l_st, l_en, l_st_d, l_en_d = find_target_ad(["Mercury", "Jupiter", h5_lord, h4_lord, "Sun"])
         chara_note, yog_note = get_overlapping_confluence_notes(l_st_d, l_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Sun", "Pingala"])
+        transit_note = get_transit_ashtakavarga_domain_note("D24", l_st_d, l_en_d, pc, av_data)
         return (
             f"{active_clocks}<br>"
             f"<b>Intellectual Grasping Power:</b> Deep analytical assimilation and conceptual mastery under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Academic Distinction & Certification Milestone:</b> <span style='color:#b57c38;font-weight:700;'>{l_st} – {l_en}</span> under <b>{curr_md}-{l_lord}</b>, "
-            f"energizing executive credentials, specialized publications, and competitive examinations{yog_note}.{chara_note}"
+            f"energizing executive credentials, specialized publications, and competitive examinations{yog_note}.{chara_note}{transit_note}"
         )
 
     elif code == "D4":
@@ -468,11 +647,12 @@ def _build_domain_specific_timeline(
         h12_lord = get_h_lord(12)
         prop_lord, prop_st, prop_en, prop_st_d, prop_en_d = find_target_ad(["Mars", "Venus", h4_lord, "Jupiter", h12_lord, "Rahu"])
         chara_note, yog_note = get_overlapping_confluence_notes(prop_st_d, prop_en_d, ["Mars", "Bhramari", "Venus", "Siddha", "Jupiter", "Dhanya", "Rahu", "Sankata"])
+        transit_note = get_transit_ashtakavarga_domain_note("D4", prop_st_d, prop_en_d, pc, av_data)
         return (
             f"{active_clocks}<br>"
             f"<b>Domestic Sanctuary & Real Estate Timing:</b> Property consolidation and residential stability under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Prime Property Acquisition & Relocation Window:</b> <span style='color:#b57c38;font-weight:700;'>{prop_st} – {prop_en}</span> under <b>{curr_md}-{prop_lord}</b> "
-            f"(activating 4th/12th house property, conveyance upgrade, and geographical relocation){yog_note}.{chara_note}"
+            f"(activating 4th/12th house property, conveyance upgrade, and geographical relocation){yog_note}.{chara_note}{transit_note}"
         )
 
     elif code == "D30":
@@ -480,20 +660,22 @@ def _build_domain_specific_timeline(
         if is_child:
             rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Mercury", "Jupiter", "Venus", "Moon"])
             chara_note, yog_note = get_overlapping_confluence_notes(rec_st_d, rec_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Venus", "Siddha", "Moon", "Mangala"])
+            transit_note = get_transit_ashtakavarga_domain_note("D30", rec_st_d, rec_en_d, pc, av_data)
             return (
                 f"{active_clocks}<br>"
                 f"<b>Vitality & Nervous Regulation:</b> Building foundational nervous and digestive strength.<br>"
                 f"<b>Major Healing & Physical Fortification Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b> "
-                f"delivering rapid sensory recovery, emotional calm, and robust physical stamina{yog_note}.{chara_note}"
+                f"delivering rapid sensory recovery, emotional calm, and robust physical stamina{yog_note}.{chara_note}{transit_note}"
             )
         else:
             rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Jupiter", "Venus", "Sun", "Mercury", "Moon"])
             chara_note, yog_note = get_overlapping_confluence_notes(rec_st_d, rec_en_d, ["Jupiter", "Dhanya", "Venus", "Siddha", "Sun", "Pingala", "Moon", "Mangala"])
+            transit_note = get_transit_ashtakavarga_domain_note("D30", rec_st_d, rec_en_d, pc, av_data)
             return (
                 f"{active_clocks}<br>"
                 f"<b>Immunity & Stress Rhythm:</b> Regulating work-rest balance under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}) during active {yog_display} Yogini cycle.<br>"
                 f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b>, "
-                f"bringing deep physical rejuvenation, stress release, and cellular vitality{yog_note}.{chara_note}"
+                f"bringing deep physical rejuvenation, stress release, and cellular vitality{yog_note}.{chara_note}{transit_note}"
             )
 
     elif code == "D3":
