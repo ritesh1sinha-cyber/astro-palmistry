@@ -243,6 +243,98 @@ DOMAINS_CONFIG = {
 }
 
 
+# ── Classical Parāśarī Ashtakavarga Benefic-Point Tables (SAV Total = 337) ──
+AV_SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+AV_TABLE = {
+    "Sun": {
+        "Sun": [1, 2, 4, 7, 8, 9, 10, 11], "Moon": [3, 6, 10, 11],
+        "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [3, 5, 6, 9, 10, 11, 12],
+        "Jupiter": [5, 6, 9, 11], "Venus": [6, 7, 12],
+        "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Lagna": [3, 4, 6, 10, 11, 12]},
+    "Moon": {
+        "Sun": [3, 6, 7, 8, 10, 11], "Moon": [1, 3, 6, 7, 10, 11],
+        "Mars": [2, 3, 5, 6, 9, 10, 11], "Mercury": [1, 3, 4, 5, 7, 8, 10, 11],
+        "Jupiter": [1, 2, 4, 7, 8, 10, 11], "Venus": [3, 4, 5, 7, 9, 10, 11],
+        "Saturn": [3, 5, 6, 11], "Lagna": [3, 6, 10, 11]},
+    "Mars": {
+        "Sun": [3, 5, 6, 10, 11], "Moon": [3, 6, 11],
+        "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [3, 5, 6, 11],
+        "Jupiter": [6, 10, 11, 12], "Venus": [6, 8, 11, 12],
+        "Saturn": [1, 4, 7, 8, 9, 10, 11], "Lagna": [1, 3, 6, 10, 11]},
+    "Mercury": {
+        "Sun": [5, 6, 9, 11, 12], "Moon": [2, 4, 6, 8, 10, 11],
+        "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [1, 3, 5, 6, 9, 10, 11, 12],
+        "Jupiter": [6, 8, 11, 12], "Venus": [1, 2, 3, 4, 5, 8, 9, 11],
+        "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Lagna": [1, 2, 4, 6, 8, 10, 11]},
+    "Jupiter": {
+        "Sun": [1, 2, 3, 4, 7, 8, 9, 10, 11], "Moon": [2, 5, 7, 9, 11],
+        "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [1, 2, 4, 5, 6, 9, 10, 11],
+        "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11], "Venus": [2, 5, 6, 9, 10, 11],
+        "Saturn": [3, 5, 6, 12], "Lagna": [1, 2, 4, 5, 6, 7, 9, 10, 11]},
+    "Venus": {
+        "Sun": [8, 11, 12], "Moon": [1, 2, 3, 4, 5, 8, 9, 11, 12],
+        "Mars": [3, 5, 6, 9, 11, 12], "Mercury": [3, 5, 6, 9, 11],
+        "Jupiter": [5, 8, 9, 10, 11], "Venus": [1, 2, 3, 4, 5, 8, 9, 10, 11],
+        "Saturn": [3, 4, 5, 8, 9, 10, 11], "Lagna": [1, 2, 3, 4, 5, 8, 9, 11]},
+    "Saturn": {
+        "Sun": [1, 2, 4, 7, 8, 10, 11], "Moon": [3, 6, 11],
+        "Mars": [3, 5, 6, 10, 11, 12], "Mercury": [6, 8, 9, 10, 11, 12],
+        "Jupiter": [5, 6, 11, 12], "Venus": [6, 11, 12],
+        "Saturn": [3, 5, 6, 11], "Lagna": [1, 3, 4, 6, 10, 11]},
+}
+
+
+def compute_chart_ashtakavarga(pc: dict) -> dict[str, Any]:
+    planets = pc.get("planets", {})
+    lagna_sign = pc.get("meta", {}).get("lagna_sign", "") or (pc.get("lagna", {}) or {}).get("sign", "")
+    if not lagna_sign or lagna_sign not in SIGNS:
+        return {}
+    pos = {}
+    for p in AV_SEVEN:
+        s = planets.get(p, {}).get("sign", "")
+        if s in SIGNS:
+            pos[p] = SIGNS.index(s)
+    if lagna_sign in SIGNS:
+        pos["Lagna"] = SIGNS.index(lagna_sign)
+
+    bav = {p: [0] * 12 for p in AV_SEVEN}
+    for planet in AV_SEVEN:
+        for contrib, houses in AV_TABLE[planet].items():
+            if contrib in pos:
+                base_idx = pos[contrib]
+                for h in houses:
+                    sign_idx = (base_idx + h - 1) % 12
+                    bav[planet][sign_idx] += 1
+
+    sav = [0] * 12
+    for s_idx in range(12):
+        sav[s_idx] = sum(bav[p][s_idx] for p in AV_SEVEN)
+
+    return {
+        "sav": {SIGNS[i]: sav[i] for i in range(12)},
+        "bav": {p: {SIGNS[i]: bav[p][i] for i in range(12)} for p in AV_SEVEN},
+    }
+
+
+def get_live_transit_positions(target_date: date) -> dict[str, str]:
+    try:
+        import swisseph as swe
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        jd = swe.julday(target_date.year, target_date.month, target_date.day, 12.0)
+        bodies = {
+            "Sun": swe.SUN, "Moon": swe.MOON, "Mars": swe.MARS, "Mercury": swe.MERCURY,
+            "Jupiter": swe.JUPITER, "Venus": swe.VENUS, "Saturn": swe.SATURN, "Rahu": swe.TRUE_NODE,
+        }
+        out = {}
+        for name, pid in bodies.items():
+            lon = swe.calc_ut(jd, pid, swe.FLG_SIDEREAL)[0][0]
+            out[name] = SIGNS[int(lon // 30) % 12]
+        out["Ketu"] = SIGNS[(SIGNS.index(out["Rahu"]) + 6) % 12]
+        return out
+    except Exception:
+        return {}
+
+
 @dataclass
 class QuestionConfluenceReport:
     question: str
@@ -262,6 +354,9 @@ class QuestionConfluenceReport:
     supporting_factors: list[str] = field(default_factory=list)
     karaka_findings: list[str] = field(default_factory=list)
     varga_findings: list[str] = field(default_factory=list)
+    ashtakavarga_finding: str = ""
+    transit_finding: str = ""
+    triple_dasha_confluence: str = ""
     current_dasha: str = ""
     dasha_timeline: list[str] = field(default_factory=list)
     breakthrough_period: str = ""
@@ -514,21 +609,65 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
         if not breakthrough_period_str and curr_ad_list:
             breakthrough_period_str = f"Upcoming Antardasha ({curr_ad_list[-1].get('ad_lord')} starting {curr_ad_list[-1].get('start')})"
 
-    # 7. Classical Verdict Synthesis
+    # 7. Ashtakavarga (SAV & BAV) Strength Analysis
+    av_data = compute_chart_ashtakavarga(pc)
+    sav = av_data.get("sav", {})
+    prim_b = sav.get(prim_sign, 28)
+    if prim_b >= 30:
+        av_eval = f"amplified manifestation capacity and strong traction ({prim_b} SAV Bindus, well above 28-point average)"
+    elif prim_b >= 28:
+        av_eval = f"stable structural support ({prim_b} SAV Bindus, meeting the classical 28-point benchmark)"
+    else:
+        av_eval = f"thinner baseline requiring disciplined pacing and perseverance ({prim_b} SAV Bindus, below 28-point average)"
+    ashtakavarga_finding = f"House {prim_h} ({prim_sign}) holds {prim_b} Sarvāṣṭakavarga (SAV) Bindus — indicating {av_eval}."
+
+    # 8. Live Planetary Transits (Gochar)
+    t_now = date.today()
+    transits = get_live_transit_positions(t_now)
+    jup_s = transits.get("Jupiter", "")
+    sat_s = transits.get("Saturn", "")
+    transit_items = []
+    if jup_s:
+        j_b = sav.get(jup_s, 28)
+        transit_items.append(f"Transit Jupiter in {jup_s} ({j_b} SAV Bindus)")
+    if sat_s:
+        s_b = sav.get(sat_s, 28)
+        transit_items.append(f"Transit Saturn in {sat_s} ({s_b} SAV Bindus)")
+    transit_finding = f"Active Gochar: {', '.join(transit_items) if transit_items else 'Transits aligned with natal matrix.'}"
+
+    # 9. Triple Dasha Confluence (Vimshottari + Jaimini Chara + Yogini)
+    jaimini = pc.get("jaimini", {})
+    chara = jaimini.get("chara_dasha", {})
+    curr_chara_m = chara.get("current_maha", {}) if isinstance(chara, dict) else {}
+    curr_chara_a = chara.get("current_antar", {}) if isinstance(chara, dict) else {}
+    chara_str = f"{curr_chara_m.get('sign', '')}-{curr_chara_a.get('sign', '')}" if curr_chara_m.get("sign") else ""
+
+    yogini = pc.get("yogini", {})
+    curr_yog = yogini.get("current_yogini", {}) if isinstance(yogini, dict) else {}
+    yog_str = f"{curr_yog.get('yogini', '')} ({curr_yog.get('lord', '')})" if curr_yog.get("yogini") else ""
+
+    triple_dasha_parts = [f"Vimshottari: {current_dasha_str}"]
+    if chara_str:
+        triple_dasha_parts.append(f"Jaimini Chara Dasha: {chara_str}")
+    if yog_str:
+        triple_dasha_parts.append(f"Yogini Dasha: {yog_str}")
+    triple_dasha_confluence = " · ".join(triple_dasha_parts)
+
+    # 10. Classical Verdict Synthesis
     if is_in_dusthana:
         verdict = (
             f"The chart indicates genuine classical vulnerability in {cfg['title']} due to primary ruler {prim_lord} occupying "
             f"the {lord_h}th Dusthana ({lord_sign}) and key natural significators facing specific afflictions in foundational divisional charts (D9/D30). "
-            f"This represents an atypical, non-linear timeline rather than permanent obstruction. With targeted planetary remedies and structured support, "
-            f"the upcoming {breakthrough_period_str} acts as the primary classical catalyst for decisive breakthroughs."
+            f"This represents an atypical, non-linear timeline rather than permanent obstruction. With targeted planetary remedies, favorable Ashtakavarga support ({prim_b} SAV Bindus in House {prim_h}), "
+            f"and supportive planetary transits, the upcoming {breakthrough_period_str} acts as the primary classical catalyst for decisive breakthroughs."
         )
     else:
         verdict = (
             f"The chart shows constructive underlying potential for {cfg['title']} anchored by {prim_lord} in the {lord_h}th house ({lord_dig.replace('_', ' ')}). "
-            f"While current timing requires disciplined effort, the chart carries sufficient static promise to overcome immediate friction."
+            f"Backed by {prim_b} SAV Bindus in House {prim_h} and supportive multi-clock alignment, the chart carries sufficient static promise to overcome immediate friction."
         )
 
-    # 8. Targeted Remedial Guidance
+    # 11. Targeted Remedial Guidance
     remedies = []
     if is_in_dusthana:
         remedies.append(f"Harmonize Obstructing Planet ({prim_lord}): Offer targeted donations or planetary prayers on {prim_lord}'s day to neutralize 8th/6th house friction.")
@@ -555,6 +694,9 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
         supporting_factors=supp_findings,
         karaka_findings=karaka_findings,
         varga_findings=varga_findings,
+        ashtakavarga_finding=ashtakavarga_finding,
+        transit_finding=transit_finding,
+        triple_dasha_confluence=triple_dasha_confluence,
         current_dasha=current_dasha_str,
         dasha_timeline=timeline_items[:5],
         breakthrough_period=breakthrough_period_str,
@@ -583,7 +725,8 @@ def synthesize_with_qwen(confluence: QuestionConfluenceReport) -> str:
             "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
             "and deeply insightful consultation reading for the seeker's specific life problem. "
             "You have been provided with rigorous, verified classical confluence facts (Houses, Lords, Dignities, "
-            "Natural Karakas, Divisional Charts D9/D30, Active Dashas, and Vedic Upaya). "
+            "Natural Karakas, Divisional Charts D9/D30, Sarvashtakavarga SAV Bindu strength, Live Planetary Transits Gochar, "
+            "Triple Dashas Vimshottari + Jaimini Chara + Yogini, and Vedic Upaya). "
             "Write a beautifully articulated, structured consultation response in clear, fluent English that directly answers the question, "
             "explains the exact astrological mechanics clearly, provides the precise timing milestone, and details actionable remedies. "
             "DO NOT use raw JSON keys or robotic phrasing. Speak directly to the seeker as an experienced astrologer."
@@ -603,19 +746,25 @@ VERIFIED ASTROLOGICAL CONFLUENCE FACTS:
 {chr(10).join('   • ' + f for f in confluence.karaka_findings)}
 6. Divisional Cross-Checks (Vargas D9 / D30 / Specialized):
 {chr(10).join('   • ' + f for f in confluence.varga_findings)}
-7. Active Dasha Timeline & Milestones:
+7. Sarvāṣṭakavarga (SAV) Bindu Strength:
+   • {confluence.ashtakavarga_finding}
+8. Live Planetary Transits (Gochar):
+   • {confluence.transit_finding}
+9. Triple-Dasha Alignment (Vimshottari + Jaimini Chara + Yogini):
+   • {confluence.triple_dasha_confluence}
+10. Active Dasha Timeline & Milestones:
    • Current Period: {confluence.current_dasha}
    • Key Milestone / Breakthrough Period: {confluence.breakthrough_period}
    • Chronology:
 {chr(10).join('     - ' + t for t in confluence.dasha_timeline)}
-8. Targeted Vedic Remedies (Upaya):
+11. Targeted Vedic Remedies (Upaya):
 {chr(10).join('   • ' + r for r in confluence.remedies)}
 
 INSTRUCTIONS:
 Write a comprehensive, professional Vedic consultation response containing:
 1. DIRECT ASTROLOGICAL VERDICT: Direct, honest answer addressing whether the chart indicates the issue and its nature.
-2. CORE PLANETARY MECHANICS: Detailed explanation of the primary house, lord in 8th/Dusthana, natural karakas, and D9/D30 divisional confirmations in natural, user-understandable language.
-3. TIMELINE & KEY MILESTONE: Clear breakdown of the past origin, current active phase, and the exact upcoming breakthrough window where conditions decisively improve.
+2. CORE PLANETARY MECHANICS: Detailed explanation of the primary house, lord in 8th/Dusthana, natural karakas, Ashtakavarga SAV support, and D9/D30 divisional confirmations in natural, user-understandable language.
+3. TIMELINE & KEY MILESTONE: Clear breakdown of the past origin, current active phase, and the exact upcoming breakthrough window (citing dasha + transit confluence) where conditions decisively improve.
 4. ACTIONABLE REMEDIAL GUIDANCE: Step-by-step practical and spiritual remedies for immediate and long-term relief.
 """
 
@@ -649,9 +798,12 @@ Write a comprehensive, professional Vedic consultation response containing:
         f"#### 2. Planetary Mechanics & Supporting Indicators\n"
         f"• **Primary Governing House:** House {confluence.primary_house} ({confluence.primary_house_sign}) governed by {confluence.primary_house_lord} seated in {confluence.primary_lord_placement}.\n"
         f"• **Dusthana Analysis:** {confluence.dusthana_finding}\n"
+        f"• **Ashtakavarga (SAV) Strength:** {confluence.ashtakavarga_finding}\n"
+        f"• **Live Gochar (Transits):** {confluence.transit_finding}\n"
         f"• **Natural Significators:**\n" + "\n".join(f"  - {f}" for f in confluence.karaka_findings) + "\n\n"
         f"#### 3. Divisional Chart Confirmations (D9 & D30)\n" + "\n".join(f"• {f}" for f in confluence.varga_findings) + "\n\n"
         f"#### 4. Dasha Timeline & Major Breakthrough Window\n"
+        f"• **Triple-Dasha Alignment:** {confluence.triple_dasha_confluence}\n"
         f"• **Current Period:** {confluence.current_dasha}\n"
         f"• **Key Breakthrough Catalyst:** **{confluence.breakthrough_period}**\n\n"
         f"#### 5. Actionable Vedic Remedial Upaya\n" + "\n".join(f"• {r}" for r in confluence.remedies)
@@ -735,6 +887,14 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
             f'</article>\n'
         )
 
+    confluence_bar = (
+        f'<div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:10px 14px;border-radius:8px;margin:14px 0 16px;font-size:0.86rem;line-height:1.5;color:#2c3140;">\n'
+        f'  <b>Active Multi-Clock Alignment:</b> {confluence.triple_dasha_confluence}<br>\n'
+        f'  <b>Ashtakavarga Strength:</b> {confluence.ashtakavarga_finding}<br>\n'
+        f'  <b>Planetary Transits (Gochar):</b> {confluence.transit_finding}\n'
+        f'</div>\n'
+    )
+
     if paid:
         remedy_section = (
             f'<article class="card remedy-card" style="background:#f9fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:18px 20px;margin-top:18px;">\n'
@@ -773,11 +933,13 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         f'      <b>Classical Verdict:</b> {html.escape(confluence.classical_verdict)}\n'
         f'    </p>\n'
         f'  </article>\n'
+        f'  {confluence_bar}\n'
         f'  {qwen_block}\n'
         f'  <article class="card mechanics-card" style="background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
         f'    <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:8px;">Planetary Mechanics &amp; Divisional Proof</div>\n'
         f'    <ul style="margin:0 0 10px 18px;padding:0;font-size:0.86rem;line-height:1.55;color:#333;">\n'
         f'      <li><b>Primary House ({confluence.primary_house}th):</b> {html.escape(confluence.dusthana_finding)}</li>\n'
+        f'      <li><b>Ashtakavarga Strength:</b> {html.escape(confluence.ashtakavarga_finding)}</li>\n'
         f'      {karakas_html}\n'
         f'      {vargas_html}\n'
         f'    </ul>\n'
