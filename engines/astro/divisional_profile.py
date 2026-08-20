@@ -201,6 +201,17 @@ def _format_month_year(date_str: str) -> str:
     return date_str[:7]
 
 
+def _to_date(v) -> date | None:
+    if not v:
+        return None
+    if isinstance(v, date):
+        return v
+    try:
+        return date.fromisoformat(str(v)[:10])
+    except Exception:
+        return None
+
+
 def _build_domain_specific_timeline(
     pc: dict,
     code: str,
@@ -241,8 +252,8 @@ def _build_domain_specific_timeline(
     curr_chara_m = chara.get("current_maha", {}) if isinstance(chara, dict) else {}
     curr_chara_a = chara.get("current_antar", {}) if isinstance(chara, dict) else {}
     chara_m_sign = curr_chara_m.get("sign", "")
-    chara_m_end = _format_month_year(str(curr_chara_m.get("end") or ""))
     chara_a_sign = curr_chara_a.get("sign", "")
+    chara_maha_list = chara.get("maha", []) if isinstance(chara, dict) else []
 
     # 3. Yogini Dasha Data (Progressive Antardashas)
     dob_raw = pc.get("meta", {}).get("birth_date") or pc.get("meta", {}).get("dob") or pc.get("dob")
@@ -251,20 +262,16 @@ def _build_domain_specific_timeline(
     moon_deg = float((pc.get("planets", {}).get("Moon", {}) or {}).get("degree_in_sign", 0.0) or 0.0) % 13.333333
 
     active_yog_antar = None
-    future_yog_antars = []
+    all_yog_antars = []
     try:
         from chara_yogini_timing import build_progressive_yogini_periods
-        all_y_antars = build_progressive_yogini_periods(dob_d, moon_nak, moon_deg)
-        for p in all_y_antars:
-            p_st = p.get("start")
-            p_en = p.get("end")
-            if isinstance(p_st, str): p_st = date.fromisoformat(p_st[:10])
-            if isinstance(p_en, str): p_en = date.fromisoformat(p_en[:10])
-            if p_st and p_en:
-                if p_st <= t_now <= p_en:
-                    active_yog_antar = p
-                elif p_st > t_now:
-                    future_yog_antars.append(p)
+        all_yog_antars = build_progressive_yogini_periods(dob_d, moon_nak, moon_deg)
+        for p in all_yog_antars:
+            p_st = _to_date(p.get("start"))
+            p_en = _to_date(p.get("end"))
+            if p_st and p_en and p_st <= t_now <= p_en:
+                active_yog_antar = p
+                break
     except Exception:
         pass
 
@@ -274,15 +281,6 @@ def _build_domain_specific_timeline(
         yogini = pc.get("yogini", {})
         curr_yog = yogini.get("current_yogini", {}) if isinstance(yogini, dict) else {}
         yog_display = f"{curr_yog.get('yogini', 'Ulka')} ({curr_yog.get('lord', 'Saturn')})"
-
-    def get_yogini_support(target_lords: list[str]) -> str:
-        for yp in future_yog_antars[:6]:
-            if yp.get("lord") in target_lords or yp.get("yogini") in target_lords:
-                y_st = _format_month_year(str(yp.get("start") or ""))
-                y_en = _format_month_year(str(yp.get("end") or ""))
-                if y_st and y_en:
-                    return f" (amplified by <b>Yogini {yp['maha_yogini']}-{yp['yogini']}</b> phase from {y_st} to {y_en})"
-        return ""
 
     # 4. Karakas & Lords
     k_list = jaimini.get("karakas", [])
@@ -326,21 +324,58 @@ def _build_domain_specific_timeline(
     h3_lord = get_h_lord(3)
     h9_lord = get_h_lord(9)
 
-    def find_future_ad(target_lords: list[str]) -> tuple[str, str, str]:
+    def find_target_ad(target_lords: list[str]) -> tuple[str, str, str, date | None, date | None]:
         for t in target_lords:
             for ad in future_ads:
                 l = ad.get("ad_lord") or ad.get("antardasha") or ""
                 if l == t:
+                    st_d = _to_date(ad.get("start"))
+                    en_d = _to_date(ad.get("end"))
                     st = _format_month_year(str(ad.get("start") or ""))
                     en = _format_month_year(str(ad.get("end") or ""))
-                    return l, st, en
+                    return l, st, en, st_d, en_d
         if future_ads:
             ad = future_ads[0]
             l = ad.get("ad_lord") or ad.get("antardasha") or ""
+            st_d = _to_date(ad.get("start"))
+            en_d = _to_date(ad.get("end"))
             st = _format_month_year(str(ad.get("start") or ""))
             en = _format_month_year(str(ad.get("end") or ""))
-            return l, st, en
-        return "", "", ""
+            return l, st, en, st_d, en_d
+        return "", "", "", None, None
+
+    def get_overlapping_confluence_notes(st_d: date | None, en_d: date | None, target_karakas: list[str]) -> tuple[str, str]:
+        if not st_d or not en_d:
+            return "", ""
+        # 1. Overlapping Chara sign (primary)
+        overlapping_chara = []
+        for cm in chara_maha_list:
+            c_st = _to_date(cm.get("start"))
+            c_en = _to_date(cm.get("end"))
+            if c_st and c_en and c_en > st_d and c_st < en_d:
+                s_name = str(cm.get("sign", ""))
+                if s_name and s_name not in overlapping_chara:
+                    overlapping_chara.append(s_name)
+        chara_note = ""
+        if overlapping_chara:
+            chara_signs_str = " → ".join(overlapping_chara[:2])
+            chara_note = f" Aligned with the <b>{chara_signs_str} Chara Dasha</b>."
+
+        # 2. Overlapping Yogini Antardashas
+        yog_note = ""
+        matching_yogs = []
+        for yp in all_yog_antars:
+            y_st = _to_date(yp.get("start"))
+            y_en = _to_date(yp.get("end"))
+            if y_st and y_en and y_en > st_d and y_st < en_d:
+                if yp.get("lord") in target_karakas or yp.get("yogini") in target_karakas:
+                    y_st_fmt = _format_month_year(str(yp.get("start") or ""))
+                    y_en_fmt = _format_month_year(str(yp.get("end") or ""))
+                    if y_st_fmt and y_en_fmt:
+                        matching_yogs.append(f"<b>Yogini {yp['maha_yogini']}-{yp['yogini']} ({yp['lord']})</b> from {y_st_fmt} to {y_en_fmt}")
+        if matching_yogs:
+            yog_note = f" (coinciding with {'; '.join(matching_yogs[:2])})"
+        return chara_note, yog_note
 
     # Multi-Clock Status Line
     chara_str = f" · Chara Dasha: <b>{chara_m_sign}{f'-{chara_a_sign}' if chara_a_sign else ''}</b>" if chara_m_sign else ""
@@ -359,14 +394,13 @@ def _build_domain_specific_timeline(
                 f"<b>Executive Promotion & Authority Surge:</b> <span style='color:#b57c38;font-weight:700;'>{peak_yr}–{peak_yr+6} (Ages 28–34)</span>."
             )
         else:
-            c_lord, c_st, c_en = find_future_ad([amk, h10_lord, "Sun", "Jupiter", "Venus", "Mars"])
-            yog_boost = get_yogini_support(["Sun", "Mercury", "Jupiter", "Pingala", "Bhadrika", "Dhanya"])
-            next_chara_info = f" Aligned with the upcoming <b>{chara_m_sign} → next major Chara cycle ({chara_m_end})</b>" if chara_m_end else ""
+            c_lord, c_st, c_en, c_st_d, c_en_d = find_target_ad(["Venus", amk, "Sun", h10_lord, "Jupiter", "Mars"])
+            chara_note, yog_note = get_overlapping_confluence_notes(c_st_d, c_en_d, ["Venus", "Siddha", amk, "Sun", "Pingala", "Mercury", "Bhadrika", "Jupiter", "Dhanya"])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Active Career Momentum:</b> Strategic consolidation and positioning under {curr_md}-{curr_ad_lord} (running until {curr_ad_end_fmt}).<br>"
                 f"<b>Career Surge & Executive Elevation Window:</b> <span style='color:#b57c38;font-weight:700;'>{c_st} – {c_en}</span> under <b>{curr_md}-{c_lord}</b> "
-                f"(activating Amatyakaraka {amk} and 10th house authority){yog_boost}.{next_chara_info}."
+                f"(activating 10th house executive authority and significators){yog_note}.{chara_note}"
             )
 
     elif code == "D9":
@@ -379,24 +413,24 @@ def _build_domain_specific_timeline(
                 f"under supportive Venus and 7th house planetary activations."
             )
         else:
-            m_lord, m_st, m_en = find_future_ad([dk, "Venus", h7_lord, "Jupiter"])
-            yog_boost = get_yogini_support(["Venus", "Jupiter", "Siddha", "Dhanya"])
+            m_lord, m_st, m_en, m_st_d, m_en_d = find_target_ad(["Venus", dk, h7_lord, "Jupiter"])
+            chara_note, yog_note = get_overlapping_confluence_notes(m_st_d, m_en_d, ["Venus", "Siddha", "Jupiter", "Dhanya", dk])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Relationship Dynamics:</b> Emotional grounding and mutual understanding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
                 f"<b>Marital Fruition & Relational Harmony Window:</b> <span style='color:#b57c38;font-weight:700;'>{m_st} – {m_en}</span> under <b>{curr_md}-{m_lord}</b> "
-                f"(activating Darakaraka {dk} and 7th house partnership karaka){yog_boost}."
+                f"(activating Kalatrakaraka {m_lord} and 7th house partnership dynamics){yog_note}.{chara_note}"
             )
 
     elif code == "D2":
         # Wealth
-        w_lord, w_st, w_en = find_future_ad([h2_lord, h11_lord, "Jupiter", "Venus", "Mercury"])
-        yog_boost = get_yogini_support(["Jupiter", "Venus", "Mercury", "Dhanya", "Siddha", "Bhadrika"])
+        w_lord, w_st, w_en, w_st_d, w_en_d = find_target_ad(["Venus", "Jupiter", h2_lord, h11_lord, "Mercury"])
+        chara_note, yog_note = get_overlapping_confluence_notes(w_st_d, w_en_d, ["Venus", "Siddha", "Jupiter", "Dhanya", "Mercury", "Bhadrika"])
         return (
             f"{active_clocks}<br>"
             f"<b>Financial Rhythm:</b> Structured capital preservation and disciplined compounding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-            f"<b>Major Asset Accumulation & Liquidity Window:</b> <span style='color:#b57c38;font-weight:700;'>{w_st} – {w_en}</span> under <b>{curr_md}-{w_lord}</b> "
-            f"favoring high-yield compounding, asset acquisitions, and expanding income streams{yog_boost}."
+            f"<b>Major Asset Accumulation & Liquidity Window:</b> <span style='color:#b57c38;font-weight:700;'>{w_st} – {w_en}</span> under <b>{curr_md}-{w_lord}</b>, "
+            f"favoring high-yield compounding, asset acquisitions, and expanding income streams{yog_note}.{chara_note}"
         )
 
     elif code == "D7":
@@ -409,96 +443,99 @@ def _build_domain_specific_timeline(
                 f"when Putrakaraka and 5th house significators activate."
             )
         else:
-            p_lord, p_st, p_en = find_future_ad([pk, h5_lord, "Jupiter", "Moon", "Venus"])
-            yog_boost = get_yogini_support(["Jupiter", "Moon", "Venus", "Dhanya", "Mangala", "Siddha"])
+            p_lord, p_st, p_en, p_st_d, p_en_d = find_target_ad([pk, h5_lord, "Jupiter", "Moon", "Venus"])
+            chara_note, yog_note = get_overlapping_confluence_notes(p_st_d, p_en_d, ["Jupiter", "Dhanya", "Moon", "Mangala", "Venus", "Siddha", pk])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Family Continuation Dynamics:</b> Foundational family nurturing under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
                 f"<b>Progeny Blessing & Family Expansion Window:</b> <span style='color:#b57c38;font-weight:700;'>{p_st} – {p_en}</span> under <b>{curr_md}-{p_lord}</b> "
-                f"(activating Putrakaraka {pk} and 5th house fertility guardians){yog_boost}."
+                f"(activating Putrakaraka {pk} and 5th house fertility guardians){yog_note}.{chara_note}"
             )
 
     elif code == "D24":
         # Learning
-        l_lord, l_st, l_en = find_future_ad(["Mercury", "Jupiter", h5_lord, h4_lord, "Sun"])
-        yog_boost = get_yogini_support(["Mercury", "Jupiter", "Bhadrika", "Dhanya"])
+        l_lord, l_st, l_en, l_st_d, l_en_d = find_target_ad(["Mercury", "Jupiter", h5_lord, h4_lord, "Sun"])
+        chara_note, yog_note = get_overlapping_confluence_notes(l_st_d, l_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Sun", "Pingala"])
         return (
             f"{active_clocks}<br>"
             f"<b>Intellectual Grasping Power:</b> Deep analytical assimilation and conceptual mastery under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Academic Distinction & Certification Milestone:</b> <span style='color:#b57c38;font-weight:700;'>{l_st} – {l_en}</span> under <b>{curr_md}-{l_lord}</b>, "
-            f"energizing executive credentials, specialized publications, and competitive examinations{yog_boost}."
+            f"energizing executive credentials, specialized publications, and competitive examinations{yog_note}.{chara_note}"
         )
 
     elif code == "D4":
         # Home & Property
-        prop_lord, prop_st, prop_en = find_future_ad(["Mars", "Venus", h4_lord, "Jupiter"])
-        yog_boost = get_yogini_support(["Mars", "Venus", "Bhramari", "Siddha"])
+        prop_lord, prop_st, prop_en, prop_st_d, prop_en_d = find_target_ad(["Mars", "Venus", h4_lord, "Jupiter"])
+        chara_note, yog_note = get_overlapping_confluence_notes(prop_st_d, prop_en_d, ["Mars", "Bhramari", "Venus", "Siddha", "Jupiter", "Dhanya"])
         return (
             f"{active_clocks}<br>"
             f"<b>Domestic Sanctuary & Real Estate Timing:</b> Property consolidation under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Prime Property Acquisition & Vehicle Upgrade Window:</b> <span style='color:#b57c38;font-weight:700;'>{prop_st} – {prop_en}</span> under <b>{curr_md}-{prop_lord}</b> "
-            f"(activating Bhoomi Karaka Mars and 4th house fixed assets){yog_boost}."
+            f"(activating Bhoomi Karaka {prop_lord} and 4th house fixed assets){yog_note}.{chara_note}"
         )
 
     elif code == "D30":
         # Health
         if is_child:
-            rec_lord, rec_st, rec_en = find_future_ad(["Mercury", "Jupiter", "Venus", "Moon"])
+            rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Mercury", "Jupiter", "Venus", "Moon"])
+            chara_note, yog_note = get_overlapping_confluence_notes(rec_st_d, rec_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Venus", "Siddha", "Moon", "Mangala"])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Vitality & Nervous Regulation:</b> Building foundational nervous and digestive strength.<br>"
-                f"<b>Major Healing & Physical Fortification Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b>, "
-                f"delivering rapid sensory recovery, emotional calm, and robust physical stamina."
+                f"<b>Major Healing & Physical Fortification Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b> "
+                f"delivering rapid sensory recovery, emotional calm, and robust physical stamina{yog_note}.{chara_note}"
             )
         else:
-            rec_lord, rec_st, rec_en = find_future_ad(["Jupiter", "Venus", "Sun", "Mercury", "Moon"])
+            rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Jupiter", "Venus", "Sun", "Mercury", "Moon"])
+            chara_note, yog_note = get_overlapping_confluence_notes(rec_st_d, rec_en_d, ["Jupiter", "Dhanya", "Venus", "Siddha", "Sun", "Pingala", "Moon", "Mangala"])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Immunity & Stress Rhythm:</b> Regulating work-rest balance under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}) during active {yog_display} Yogini cycle.<br>"
                 f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b>, "
-                f"bringing deep physical rejuvenation, stress release, and cellular vitality."
+                f"bringing deep physical rejuvenation, stress release, and cellular vitality{yog_note}.{chara_note}"
             )
 
     elif code == "D3":
         # Siblings & Initiative
         if is_child:
-            sp_lord, sp_st, sp_en = find_future_ad(["Mercury", "Jupiter", "Venus", "Moon"])
+            sp_lord, sp_st, sp_en, sp_st_d, sp_en_d = find_target_ad(["Mercury", "Jupiter", "Venus", "Moon"])
+            chara_note, yog_note = get_overlapping_confluence_notes(sp_st_d, sp_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Venus", "Siddha"])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Expressive Speech & Motor Pacing:</b> Active motor coordination under {curr_md}-{curr_ad_lord}.<br>"
-                f"<b>Expressive Breakthrough Window:</b> <span style='color:#b57c38;font-weight:700;'>{sp_st} – {sp_en}</span> under <b>{curr_md}-{sp_lord}</b>, "
-                f"activating vocal clarity, fluent sentence formation, and confident physical coordination."
+                f"<b>Expressive Breakthrough Window:</b> <span style='color:#b57c38;font-weight:700;'>{sp_st} – {sp_en}</span> under <b>{curr_md}-{sp_lord}</b> "
+                f"activating vocal clarity, fluent sentence formation, and confident physical coordination{yog_note}.{chara_note}"
             )
         else:
-            dr_lord, dr_st, dr_en = find_future_ad([bk, "Mars", h3_lord, "Mercury", "Venus"])
-            yog_boost = get_yogini_support(["Mars", "Mercury", "Bhramari", "Bhadrika"])
+            dr_lord, dr_st, dr_en, dr_st_d, dr_en_d = find_target_ad([bk, "Mars", h3_lord, "Mercury", "Venus"])
+            chara_note, yog_note = get_overlapping_confluence_notes(dr_st_d, dr_en_d, ["Mars", "Bhramari", "Mercury", "Bhadrika", bk])
             return (
                 f"{active_clocks}<br>"
                 f"<b>Everyday Drive & Sibling Ties:</b> Steady personal enterprise and collaborative peer dynamics under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
                 f"<b>High-Impact Enterprise & Collaborative Venture Window:</b> <span style='color:#b57c38;font-weight:700;'>{dr_st} – {dr_en}</span> under <b>{curr_md}-{dr_lord}</b> "
-                f"(activating Bhratrukaraka {bk} and 3rd house courageous initiatives){yog_boost}."
+                f"(activating Bhratrukaraka {bk} and 3rd house courageous initiatives){yog_note}.{chara_note}"
             )
 
     elif code == "D12":
         # Parents
-        par_lord, par_st, par_en = find_future_ad(["Sun", "Moon", h9_lord, h4_lord, "Jupiter"])
-        yog_boost = get_yogini_support(["Sun", "Moon", "Jupiter", "Pingala", "Mangala", "Dhanya"])
+        par_lord, par_st, par_en, par_st_d, par_en_d = find_target_ad(["Sun", "Moon", h9_lord, h4_lord, "Jupiter"])
+        chara_note, yog_note = get_overlapping_confluence_notes(par_st_d, par_en_d, ["Sun", "Pingala", "Moon", "Mangala", "Jupiter", "Dhanya"])
         return (
             f"{active_clocks}<br>"
             f"<b>Ancestral Lineage & Parental Blessings:</b> Grounding moral wisdom and family protection under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Family Milestone & Ancestral Fulfillment Window:</b> <span style='color:#b57c38;font-weight:700;'>{par_st} – {par_en}</span> under <b>{curr_md}-{par_lord}</b>, "
-            f"bringing auspicious family harmony, paternal backing, and shared ancestral celebrations{yog_boost}."
+            f"bringing auspicious family harmony, paternal backing, and shared ancestral celebrations{yog_note}.{chara_note}"
         )
 
     else:
         # D1 Core
-        core_lord, core_st, core_en = find_future_ad([ak, "Sun", "Jupiter", "Moon", "Mercury"])
-        yog_boost = get_yogini_support(["Sun", "Jupiter", "Venus", "Siddha", "Dhanya", "Pingala"])
+        core_lord, core_st, core_en, core_st_d, core_en_d = find_target_ad([ak, "Sun", "Jupiter", "Moon", "Mercury"])
+        chara_note, yog_note = get_overlapping_confluence_notes(core_st_d, core_en_d, ["Sun", "Pingala", "Jupiter", "Dhanya", "Venus", "Siddha", ak])
         return (
             f"{active_clocks}<br>"
             f"<b>Personal Constitution & Vitality:</b> Grounded self-realization under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
             f"<b>Personal Evolution & Clarity Window:</b> <span style='color:#b57c38;font-weight:700;'>{core_st} – {core_en}</span> under <b>{curr_md}-{core_lord}</b> "
-            f"(activating Atmakaraka {ak} and core constitutional vitality){yog_boost}."
+            f"(activating Atmakaraka {ak} and core constitutional vitality){yog_note}.{chara_note}"
         )
 
 
