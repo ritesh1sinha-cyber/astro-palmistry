@@ -1082,29 +1082,87 @@ def _interpret_varga_concrete(
         remedy_reason = "To Sharpen Memory & Academic Focus (Saraswati Upaya)"
 
     elif code == "D30":
-        headline = f"Health Sensitivities & Inner Resilience (Trimsamsha)"
+        headline = f"Health Sensitivities, Physical Vulnerabilities & Timely Upayas (Trimsamsha · D30)"
+        
+        disease_res = {}
+        conf = {}
+        try:
+            from goel_disease_analysis import analyze_disease_chart
+            from goel_disease_confluence import build_health_confluence
+            disease_res = analyze_disease_chart(pc)
+            conf = build_health_confluence(disease_res, pc)
+        except Exception:
+            pass
+
         d30_merc = div_dict.get("D30", {}).get("Mercury", "")
         d30_rahu = div_dict.get("D30", {}).get("Rahu", "")
         is_neuro_sensitive = current_age < 18 and d30_merc and d30_rahu and d30_merc == d30_rahu
+
+        reading_parts.append(
+            "Classical Trimsamsha (D30) analysis synthesized with the classical medical astrological methodology of V.P. Goel "
+            "maps your constitutional resilience, latent physiological sensitivities, and preventive wellness windows."
+        )
+
         if is_neuro_sensitive:
             reading_parts.append(
-                f"This chart helps identify latent physical sensitivities and how you bounce back from stress. "
-                f"The presence of sensitive planetary placements (Mercury and Rahu closely aligned in {d30_merc}) highlights <b>nervous system sensitivity, sensory fatigue, and developmental speech vulnerability in early years</b>. "
-                f"Your chart carries strong inherent recovery power: maintaining regular sleep routines, minimizing digital overstimulation, and gentle spiritual remedies help you overcome childhood challenges and build lasting physical and mental strength."
+                f"<br><br><b>Childhood Sensory & Nervous Pacing:</b> Sensitive alignment in {d30_merc} indicates "
+                f"<b>temporary sensory fatigue and developmental speech pacing latency in early years</b>. "
+                f"Maintaining consistent sleep rhythms, calm vocal exercises, and reduced digital stimulation brings natural recovery."
             )
-            remedy_planet = "Mercury"
-            remedy_type = "dusthana"
-            remedy_reason = "To Fortify Nervous System & Vitality (Maha Mrityunjaya Upaya)"
-        else:
-            reading_parts.append(
-                f"The Trimsamsha confirms strong natural immunity and the inner fortitude to bounce back rapidly from physical or emotional fatigue through balanced daily habits."
-            )
-            if trik_planets:
-                reading_parts.append(
-                    f"Paying attention to bodily signals during dusthana transits ({', '.join(trik_planets)}) prevents minor exhaustion."
+
+        preds = conf.get("predictions", []) if isinstance(conf, dict) else []
+        if preds:
+            zone_bullets = []
+            for p in preds:
+                zone_bullets.append(
+                    f"• <b>{p['title']} ({p['match_pct']}% Chart Alignment):</b> {p['prediction']} "
+                    f"<br><i>Preventive Protocol:</i> {p['preventive']}"
                 )
-            remedy_planet = "Saturn"
-            remedy_reason = "To Fortify Inner Immunity & Resilience (Shani Upaya)"
+            reading_parts.append(
+                "<br><br><b>Key Anatomical Vulnerability Zones:</b><br>" + "<br>".join(zone_bullets)
+            )
+        else:
+            baseline = disease_res.get("constitutional_baseline", []) if isinstance(disease_res, dict) else []
+            base_str = " ".join(baseline[:2]) if baseline else "Your chart shows steady natural vitality and good recuperative capacity."
+            reading_parts.append(
+                f"<br><br><b>Constitutional Baseline:</b> {base_str} "
+                f"No single localized organ vulnerability shows extreme affliction; balanced nutrition, hydration, and regular sleep provide robust health preservation."
+            )
+
+        # Sensitive Health Precaution Windows (Mishappening Detection)
+        active_w = disease_res.get("active_health_periods", []) if isinstance(disease_res, dict) else []
+        upcoming_w = (disease_res.get("upcoming_health_windows", []) if isinstance(disease_res, dict) else [])[:2]
+
+        precaution_items = []
+        for w in active_w:
+            precaution_items.append(f"• <b>Active Phase:</b> {w.get('lord')} ({w.get('range')}) — {w.get('note')}")
+        for w in upcoming_w:
+            precaution_items.append(f"• <b>Upcoming Precaution Window:</b> {w.get('lord')} ({w.get('range')}) — {w.get('note')}")
+
+        if precaution_items:
+            reading_parts.append(
+                "<br><br><b>Sensitive Timing Windows & Precaution Advisory:</b><br>" +
+                "<br>".join(precaution_items) +
+                "<br><i>Guidance: During these sensitive sub-periods, prioritize proactive medical checkups, avoid reckless physical exertion/driving, and adopt timely spiritual and lifestyle remedies.</i>"
+            )
+
+        # Remedy
+        rems = [r for r in (disease_res.get("remedies", []) if isinstance(disease_res, dict) else []) if r.get("planet") != "General"]
+        top_rem = rems[0] if rems else {}
+        rem_lines = []
+        if top_rem:
+            rem_lines.append(f"<b>Primary Upaya ({top_rem.get('planet')}):</b> Chant {top_rem.get('mantra')}; perform charity: {top_rem.get('charity')}.")
+        rem_lines.append("<b>Universal Health Protection (Maha Mrityunjaya):</b> Recite the Maha Mrityunjaya Mantra (108 times daily) during sensitive planetary transitions; cultivate calm breathing, wholesome nutrition, and steady restorative routines.")
+        
+        prediction = "".join(reading_parts)
+        remedy = "<br>".join(rem_lines)
+        return headline, prediction, remedy
+
+    else:
+        headline = f"Life Focus Area ({code})"
+        prediction = " ".join(reading_parts) if reading_parts else f"Fortified placements in this division support positive life focus."
+        remedy = "Maintain regular spiritual grounding and mindful daily habits."
+        return headline, prediction, remedy
 
     prediction = " ".join(reading_parts)
 
