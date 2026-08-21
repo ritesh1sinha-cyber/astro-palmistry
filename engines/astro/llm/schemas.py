@@ -161,6 +161,16 @@ class RecentMonthFact(BaseModel):
     direction_label: str = ""
     headline: str = Field(default="", max_length=220)
     manifests: list[str] = Field(default_factory=list, max_length=3)
+    # Complete confluence as it stood at the start of this window. Same lane
+    # weights as the current and future judgements, evaluated backwards, so a
+    # reader can check the claim about the past against the same calculation.
+    judgement: Literal["good", "moderate", "challenging", "mixed", "insufficient"] = "insufficient"
+    agreement: Literal["strong", "good", "mixed", "conflicting", "insufficient"] = "insufficient"
+    lane_judgements: dict[str, str] = Field(default_factory=dict, max_length=10)
+    supporting_factors: list[str] = Field(default_factory=list, max_length=4)
+    caution_factors: list[str] = Field(default_factory=list, max_length=4)
+    divisional_chart: str = ""
+    divisional_verdict: str = ""
 
 
 class DomainStateFact(BaseModel):

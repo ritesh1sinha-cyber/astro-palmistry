@@ -1635,8 +1635,12 @@ def get_108_snapshot_summary_paragraph(pc: dict) -> str:
         )
 
 
-def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
-    """Renders the comprehensive 9-divisional charts + 108 snapshot HTML block.
+def render_divisional_blocks(pc: dict, *, paid: bool = False) -> tuple[str, str]:
+    """Build the divisional block as two independently placeable pieces.
+
+    Returns ``(baseline_html, areas_html)``. The report puts the foundational
+    baseline card next to the personality reading, well above the timing
+    sections, and keeps the per-varga life-area cards below them.
 
     Free tier:
       - Full cards for D1 (Self), D2 (Wealth), D3 (Speech/Motor/Drive), D12 (Parents).
@@ -1758,4 +1762,10 @@ def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
         f'</article>\n'
     )
 
-    return f"{snapshot_108_html}\n{''.join(div_cards_html)}\n{teaser_html}"
+    return snapshot_108_html, f"{''.join(div_cards_html)}\n{teaser_html}"
+
+
+def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
+    """Baseline card and life-area cards as one contiguous block."""
+    baseline_html, areas_html = render_divisional_blocks(pc, paid=paid)
+    return f"{baseline_html}\n{areas_html}"

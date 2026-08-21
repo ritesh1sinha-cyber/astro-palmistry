@@ -474,7 +474,11 @@ def project_for_access(facts: T, access: str) -> T:
             j["activated_houses"] = []
         for a in data.get("life_area_judgements") or []:
             if isinstance(a, dict):
-                a["house_lord"] = ""; a["depositor"] = ""; a["house_strength"] = ""; a["divisional_chart"] = ""; a["divisional_verdict"] = ""
+                # divisional_chart / divisional_verdict stay in Free on purpose.
+                # They are verdict words with no dates or positions, and they
+                # are the one piece of evidence that lets a free reader see the
+                # divisional cross-check behind a claim about right now.
+                a["house_lord"] = ""; a["depositor"] = ""; a["house_strength"] = ""
                 a["current_transit"] = ""; a["next_period"] = ""; a["remedy_reason"] = ""
                 # Future complete-confluence is paid-depth because it contains
                 # exact dates and technical lane judgements. Never expose it in
@@ -1721,6 +1725,29 @@ def _life_area_judgements(pc: dict, cards: list, clocks: list[DashaClockFact], s
         ))
     return out
 
+def _hardest_from_confluence(judgements: list[LifeAreaJudgementFact]) -> list[tuple[str, str]]:
+    """Rank the areas genuinely under pressure by complete confluence.
+
+    An area only qualifies when the six lanes actually agreed on something: a
+    judgement of challenging or mixed, and an agreement level other than
+    insufficient. Ordering is by confluence score ascending, so the area the
+    whole stack likes least is named first.
+    """
+    ranked = [
+        j for j in (judgements or [])
+        if str(getattr(j, "final_judgement", "")) in ("challenging", "mixed")
+        and str(getattr(j, "confluence_agreement", "")) != "insufficient"
+    ]
+    ranked.sort(key=lambda j: float(getattr(j, "confluence_score", 0.0) or 0.0))
+    out: list[tuple[str, str]] = []
+    for j in ranked:
+        area = str(getattr(j, "area", "") or "")
+        if not area or area in [a for a, _ in out]:
+            continue
+        out.append((area, str(getattr(j, "label", "") or area.title())))
+    return out[:4]
+
+
 def _validate_authoritative_dasha_context(vedic: VedicContext, clocks: list[DashaClockFact]) -> None:
     """Fail closed if the report has two different current Vimshottari clocks."""
     vim = next((c for c in clocks if c.system == "vimshottari"), None)
@@ -2119,7 +2146,7 @@ def build_report_facts(
 
     personality_traits = _personality_traits(pc)
     phase_direction, phase_tone, phase_end, phase_notes = _phase_facts(pc, today)
-    recent_months = _recent_month_facts(pc, today)
+    recent_months = _recent_month_facts(pc, today, card_facts)
     # Personality reads thin when it comes from one source. The specialist
     # engines already describe the same person; personal_life keeps only the
     # sentences that survive the customer boundary.
@@ -2133,15 +2160,6 @@ def build_report_facts(
         personality_traits = personality_traits[:10]
     except Exception as exc:  # noqa: BLE001
         print(f"[llm.facts] personal life evidence skipped: {exc}", flush=True)
-    # What may be occupying them now, read off the same canonical cards the
-    # paid areas use, so the two halves of the page cannot disagree.
-    life_state = None
-    try:
-        from .life_state import build_life_state
-        life_state = build_life_state(
-            card_facts, phase_tone=phase_tone, needs_care=hardest_areas)
-    except Exception as exc:  # noqa: BLE001
-        print(f"[llm.facts] life state skipped: {exc}", flush=True)
     # Ground month/year tokens used in phase and recent-months prose.
     for ev in recent_months:
         for d in (ev.start, ev.end):
@@ -2206,6 +2224,28 @@ def build_report_facts(
         life_area_judgements = _life_area_judgements(pc, card_facts, timing_systems, slow_transits, _today)
     except Exception as exc:
         print(f"[llm.facts] life-area confluence layer unavailable: {exc}", flush=True)
+
+    # Which areas are actually under pressure is a confluence question, not a
+    # card-direction question. The complete confluence already weighs natal
+    # promise against Vimshottari, Chara, Yogini, slow transits, the running
+    # period lords' own transits and the Jaimini karakas; the promise dashboard
+    # only sees aggregated card direction. Prefer the confluence and keep the
+    # dashboard ranking as the fallback when that layer could not be built.
+    conf_hard = _hardest_from_confluence(life_area_judgements)
+    if conf_hard:
+        hardest_areas = [a for a, _ in conf_hard]
+        hardest_labels = [l for _, l in conf_hard]
+
+    # What may be occupying them now, read off the confluence-ranked areas so
+    # the prose, the hardest-area line and the evidence drawer cannot disagree.
+    life_state = None
+    try:
+        from .life_state import build_life_state
+        life_state = build_life_state(
+            card_facts, phase_tone=phase_tone, needs_care=hardest_areas)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[llm.facts] life state skipped: {exc}", flush=True)
+
     lords = [x for x in (vedic.period_lord, vedic.sub_period_lord) if x]
     for cf in card_facts:
         planets = list(cf.allowed_planets or [])
@@ -2381,9 +2421,35 @@ def _phase_facts(pc: dict, today: date) -> tuple[str, str, str, list[str]]:
     return direction, tone, phase_end, notes[:6]
 
 
-def _recent_month_facts(pc: dict, today: date) -> list[RecentMonthFact]:
+def _retro_confluence(pc: dict, card: Any, when: date) -> dict[str, Any]:
+    """Complete confluence for one area as it stood on a past date.
+
+    The forward path recalculates every lane at each future checkpoint; nothing
+    stopped the same snapshot being taken backwards. Doing so is what lets the
+    report say *why* the last few months read the way they did, using the exact
+    calculation it uses for today and for the road ahead.
+    """
+    try:
+        clocks = _timing_state_at(pc, when, [])
+        slow = _slow_transits_at(pc, when)
+        return _area_confluence_snapshot(pc, card, when, clocks, slow)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[llm.facts] retrospective confluence skipped for {when}: {exc}", flush=True)
+        return {}
+
+
+def _recent_month_facts(pc: dict, today: date, cards: Optional[list] = None) -> list[RecentMonthFact]:
     """Last ~4 months of checkable past windows for the free trust section."""
     out: list[RecentMonthFact] = []
+    by_area = {str(getattr(c, "area", "") or ""): c for c in (cards or [])}
+    try:
+        from report_confluence import AREA_VARGA
+    except Exception:  # noqa: BLE001
+        AREA_VARGA = {}
+    try:
+        from interpretation.evidence_builder import build_evidence
+    except Exception:  # noqa: BLE001
+        build_evidence = None
     try:
         import past_validation as PVH
         hist = PVH.build(pc, today=today, months=4, max_events=4) or {}
@@ -2397,17 +2463,42 @@ def _recent_month_facts(pc: dict, today: date) -> list[RecentMonthFact]:
                 str(m)[:120] for m in list(ev.get("manifests") or [])[:3]
                 if str(m).strip() and not _PLANET_TOKEN.search(str(m))
             ]
+            area = str(ev.get("area") or "")[:40]
+            snap: dict[str, Any] = {}
+            card = by_area.get(area)
+            started = _as_date(ev.get("start"))
+            if card is not None and started:
+                snap = _retro_confluence(pc, card, started)
+            div, _ = AREA_VARGA.get(area, ("", ""))
+            div_verdict = ""
+            if div and card is not None and build_evidence is not None:
+                try:
+                    ev_bundle = build_evidence(
+                        pc, area=area, house=int(getattr(card, "house", 0) or 0),
+                        direction=str(getattr(card, "direction", "") or "mixed"),
+                        row=None, dasha={"md": "", "ad": "", "promise": "", "bav": 0})
+                    div_verdict = str(getattr(ev_bundle, "divisional_support", "") or "")
+                except Exception:  # noqa: BLE001
+                    div_verdict = ""
             out.append(RecentMonthFact(
                 start=_pretty_date(ev.get("start")),
                 end=_pretty_date(ev.get("end")),
-                area=str(ev.get("area") or "")[:40],
+                area=area,
                 label=str(ev.get("label") or ev.get("area") or "")[:80],
                 direction=str(ev.get("direction") or "mixed")[:20],
                 direction_label=str(ev.get("direction_label") or "")[:40],
                 headline=headline[:220],
                 manifests=manifests,
+                judgement=str(snap.get("judgement") or "insufficient"),  # type: ignore[arg-type]
+                agreement=str(snap.get("agreement") or "insufficient"),  # type: ignore[arg-type]
+                lane_judgements=dict(snap.get("lanes") or {}),
+                supporting_factors=list(snap.get("supporting") or [])[:4],
+                caution_factors=list(snap.get("caution") or [])[:4],
+                divisional_chart=str(div or ""),
+                divisional_verdict=div_verdict,
             ))
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        print(f"[llm.facts] recent-month facts unavailable: {exc}", flush=True)
         out = []
     return out
 

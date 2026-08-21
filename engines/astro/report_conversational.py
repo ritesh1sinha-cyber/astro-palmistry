@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import html as _html
 import re
+from collections import Counter
 from datetime import date
 from typing import Any, Optional
 
@@ -104,6 +105,33 @@ TRANSITION_MAP_CSS = """
 .det-confluence-head span{font-size:.66rem;color:#6a7080}
 .det-confluence .evidence-grid{margin-top:4px}
 .future-conf-summary{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;font-size:.72rem;color:#3d4250}
+.conf-now{margin-top:18px;border-top:1px solid #e0ded8;padding-top:14px}
+.conf-list{display:grid;gap:10px;margin-top:10px}
+.conf-item{background:#fff;border:1px solid #e4ded3;border-left:4px solid #8a6a1f;border-radius:11px;padding:13px 15px}
+.conf-item.good{border-left-color:#1c6b45}.conf-item.bad{border-left-color:#a3341f}
+.conf-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.conf-head b{font-family:Georgia,serif;font-size:1rem;color:#1f2430}
+.conf-item p{margin:8px 0 0!important;font-size:.88rem!important;line-height:1.58!important}
+.why-said{margin-top:10px;border-top:1px solid #eeeae3;padding-top:8px}
+.why-said summary{cursor:pointer;font-size:.72rem;color:#6a7080;font-weight:700;letter-spacing:.02em}
+.why-said .evidence-grid{margin-top:8px}
+.conf-cross{margin-top:8px;padding:8px 10px;background:#f7f4ec;border-radius:8px;font-size:.74rem;color:#4a4f5c}
+.recent-list{display:grid;gap:10px;margin-top:12px}
+.recent-item{background:#fff;border:1px solid #e4ded3;border-left:4px solid #8a6a1f;border-radius:11px;padding:13px 15px}
+.recent-item.good{border-left-color:#1c6b45}.recent-item.bad{border-left-color:#a3341f}
+.recent-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.recent-when{font-size:.72rem;font-weight:700;color:#6a7080}
+.recent-item h3{font-family:Georgia,serif;font-size:1rem;margin:6px 0 0;color:#1f2430}
+.recent-item p{margin:6px 0 0!important;font-size:.86rem!important;line-height:1.55!important}
+.recent-manifest{margin:8px 0 0;padding-left:18px}
+.recent-manifest li{font-size:.84rem;line-height:1.5;color:#3d4250;margin:0 0 5px}
+.confidence{margin:10px 0 0!important;font-size:.82rem!important;line-height:1.55!important;color:#4a4f5c!important}
+.vrow{display:grid;grid-template-columns:72px 1fr;gap:5px 12px;margin:9px 0 0}
+.vrow dt{font-size:.63rem;letter-spacing:.11em;text-transform:uppercase;color:#6a7080;font-weight:700;padding-top:3px}
+.vrow dd{margin:0;font-size:.88rem;line-height:1.55;color:#2c3140}
+.vchips{display:flex;flex-wrap:wrap;gap:6px}
+.chip-fact{background:#f4f1ea;border:1px solid #e4ded3;border-radius:99px;padding:3px 9px;font-size:.72rem;line-height:1.45;color:#4a4f5c}
+@media(max-width:520px){.vrow{grid-template-columns:1fr;gap:2px}.vrow dt{padding-top:9px}}
 """
 
 
@@ -728,7 +756,15 @@ def _free_area_teaser(cards: list, today: Optional[date] = None) -> str:
 
 
 def _analytical_html(analysis: Any, *, paid: bool, today: date) -> str:
-    """Render deterministic astrological evidence; Qwen never writes this block."""
+    """Render deterministic astrological evidence; Qwen never writes this block.
+
+    No longer placed in the customer report. The raw clock/transit/Jaimini
+    tables were engine working, not something a reader wants — and the same
+    evidence now reaches them in plain language through the "why we say this"
+    drawers in the current-chapter and recent-windows sections. Kept because
+    the confluence regression tests render it directly as a readable dump of
+    what the engine decided.
+    """
     if not paid or not analysis:
         return ""
     if hasattr(analysis, "model_dump"):
@@ -929,6 +965,490 @@ def _deterministic_confluence_html(aj: dict, *, today: date) -> str:
     )
 
 
+# The engine names its six lanes after the technique. A customer needs to know
+# what each one watches, so the drawer renames them without renaming the data.
+_LANE_PLAIN: dict[str, str] = {
+    "Vimshottari": "Main life cycle",
+    "Chara": "Sign-based cycle",
+    "Yogini": "Emotional cycle",
+    "Slow transit": "Slow planets moving now",
+    "Dasha-planet transit": "Where your period lords are now",
+    "Jaimini": "Karaka cross-check",
+}
+_LANE_READING: dict[str, str] = {
+    "good": "Supportive",
+    "moderate": "Workable",
+    "mixed": "Pulling both ways",
+    "challenging": "Demanding",
+}
+_JUDGEMENT_CHIP: dict[str, str] = {"good": "good", "moderate": "mid", "mixed": "mid", "challenging": "bad"}
+
+
+def _as_dicts(value: Any) -> list[dict]:
+    """Normalise a list of pydantic facts or plain dicts into dicts."""
+    out: list[dict] = []
+    for row in list(value or []):
+        if hasattr(row, "model_dump"):
+            row = row.model_dump(mode="json")
+        if isinstance(row, dict):
+            out.append(row)
+    return out
+
+
+def _analysis_data(analysis: Any) -> dict:
+    if hasattr(analysis, "model_dump"):
+        return analysis.model_dump(mode="json")
+    return analysis if isinstance(analysis, dict) else {}
+
+
+def _lane_evidence_rows(lanes: dict) -> str:
+    """The six-lane matrix in customer language."""
+    rows = []
+    for key, plain in _LANE_PLAIN.items():
+        raw = str((lanes or {}).get(key) or "")
+        if not raw:
+            continue
+        rows.append(
+            f'<div class="evidence-row"><span class="evidence-family">{_e(plain)}</span>'
+            f'<span class="evidence-text">{_e(_LANE_READING.get(raw, raw.title()))}</span></div>'
+        )
+    return f'<div class="evidence-grid">{"".join(rows)}</div>' if rows else ""
+
+
+def _factor_cols(aj: dict) -> str:
+    supports = "".join(f"<li>{_e(x)}</li>" for x in (aj.get("supporting_factors") or [])[:4])
+    cautions = "".join(f"<li>{_e(x)}</li>" for x in (aj.get("caution_factors") or [])[:4])
+    if not supports and not cautions:
+        return ""
+    out = '<div class="aj-factor-cols">'
+    if supports:
+        out += f"<div><small>What is helping</small><ul>{supports}</ul></div>"
+    if cautions:
+        out += f"<div><small>What is pulling</small><ul>{cautions}</ul></div>"
+    return out + "</div>"
+
+
+def _cross_check_line(aj: dict) -> str:
+    """Name the divisional chart that governs this area and what it reads.
+
+    This is the most checkable line in the drawer: the reader can see that the
+    claim was tested against the varga for their own question, not against the
+    birth chart alone.
+    """
+    chart = str(aj.get("divisional_chart") or "").strip()
+    verdict = str(aj.get("divisional_verdict") or "").strip()
+    if not chart or not verdict or verdict == "not available":
+        return ""
+    return (
+        '<div class="conf-cross">Divisional cross-check &middot; the '
+        f'<b>{_e(chart)}</b> chart that governs this area reads <b>{_e(verdict)}</b>.</div>'
+    )
+
+
+_LANE_WORD: dict[str, str] = {
+    "challenging": "demanding", "good": "supportive",
+    "moderate": "workable", "mixed": "mixed",
+}
+
+
+def _lane_tally(aj: dict) -> str:
+    """How the six clocks split, as a countable phrase rather than a paragraph.
+
+    Reports whichever reading actually dominates. Ranking "demanding" ahead of
+    a larger group produced "1 of 6 cycles demanding" for a window whose drawer
+    plainly showed five mixed lanes and one demanding one.
+    """
+    counted = [str(v) for v in (aj.get("lane_judgements") or {}).values() if str(v)]
+    total = len(counted)
+    if not total:
+        return ""
+    tally = Counter(counted)
+    # Ties resolve towards the harder reading — understating pressure is the
+    # worse error of the two.
+    top, count = max(tally.items(),
+                     key=lambda kv: (kv[1], kv[0] == "challenging"))
+    word = _LANE_WORD.get(top, top)
+    if count == total:
+        return f"all {total} cycles {word}"
+    return f"{count} of {total} cycles {word}"
+
+
+def _ordinal(n: int) -> str:
+    return {1: "1st", 2: "2nd", 3: "3rd"}.get(n, f"{n}th")
+
+
+def _why_chips(aj: dict) -> str:
+    """The chart factors behind the verdict, as scannable chips.
+
+    Deliberately not prose. Every chip is a field the engine calculated — the
+    house, its karaka and ruler, the varga that governs the area, the slow
+    transit touching it, and how the six clocks split. A reader who knows
+    astrology can check each one; a reader who does not can still see that the
+    verdict came from somewhere specific.
+
+    Wording avoids the customer firewall's blocked forms — no "2nd lord", no
+    technique names — without dropping the fact itself.
+    """
+    chips: list[str] = []
+    house = int(aj.get("house") or 0)
+    if house:
+        chips.append(f"{_ordinal(house)} house")
+    karakas = [str(x).strip() for x in (aj.get("natural_karakas") or []) if str(x).strip()]
+    if karakas:
+        chips.append(f"karaka {karakas[0]}")
+    ruler = str(aj.get("house_lord") or "").strip()
+    if ruler:
+        role = str(aj.get("house_lord_role") or "").strip()
+        chips.append(f"ruled by {ruler}" + (f" ({role})" if role else ""))
+    chart = str(aj.get("divisional_chart") or "").strip()
+    verdict = str(aj.get("divisional_verdict") or "").strip()
+    if chart and verdict and verdict != "not available":
+        chips.append(f"{chart} reads {verdict}")
+    transit = str(aj.get("current_transit") or "").strip()
+    if transit:
+        chips.append(transit.split(";")[0].strip())
+    tally = _lane_tally(aj)
+    if tally:
+        chips.append(tally)
+    if not chips:
+        return ""
+    return ('<div class="vchips">'
+            + "".join(f'<span class="chip-fact">{_e(c)}</span>' for c in chips[:6])
+            + "</div>")
+
+
+_VERDICT_SENTENCE: dict[str, str] = {
+    "challenging": "{label} is under real pressure right now",
+    "mixed": "{label} is pulling both ways right now",
+    "good": "{label} is well supported right now",
+    "moderate": "{label} is workable right now",
+}
+
+_STRONG_DIV = ("strong", "supportive", "good", "favourable")
+_WEAK_DIV = ("weak", "afflicted", "poor", "challenging")
+
+
+def _verdict_sentence(aj: dict, label: str) -> str:
+    """A verdict that says something different for each area.
+
+    The judgement word alone produced three identical sentences in a row when
+    three areas happened to share a verdict. The area's own divisional chart and
+    its natal footing are what actually distinguish them, so the qualifier is
+    built from those.
+    """
+    judgement = str(aj.get("final_judgement") or "mixed")
+    base = _VERDICT_SENTENCE.get(judgement, "").format(label=label)
+    if not base:
+        return ""
+    chart = str(aj.get("divisional_chart") or "").strip()
+    div = str(aj.get("divisional_verdict") or "").strip().lower()
+    try:
+        natal = float(aj.get("natal_foundation_score") or 0.0)
+    except (TypeError, ValueError):
+        natal = 0.0
+
+    tail = ""
+    if chart and div in _STRONG_DIV:
+        tail = (f", though the {chart} chart behind it stays strong"
+                if judgement in ("challenging", "mixed")
+                else f", and the {chart} chart behind it agrees")
+    elif chart and div in _WEAK_DIV:
+        tail = f", and the {chart} chart behind it is weak too"
+    elif natal <= -0.55:
+        tail = ", on a base that was already thin here"
+    elif natal >= 0.55:
+        tail = ", on a base that is genuinely strong here"
+    return f"{base}{tail}."
+
+_AGREEMENT_LINE: dict[str, str] = {
+    "strong": "The timing systems agree strongly on this.",
+    "good": "The timing systems mostly agree on this.",
+    "mixed": "The timing systems are split, so read this as a tendency, not a certainty.",
+    "conflicting": "The timing systems disagree, so read this as a tendency, not a certainty.",
+}
+_AGREEMENT_RANK = ["conflicting", "mixed", "good", "strong"]
+
+
+def _join_labels(names: list[str]) -> str:
+    if len(names) <= 1:
+        return names[0] if names else ""
+    return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _current_verdict_headline(analysis: Any) -> str:
+    """State the finding in the heading instead of describing the section."""
+    live = _live_area_judgements(analysis)
+    if not live:
+        return "Where your chart is putting its weight right now"
+    hard = [str(a.get("label") or a.get("area") or "") for a in live
+            if str(a.get("final_judgement")) == "challenging"]
+    good = [str(a.get("label") or a.get("area") or "") for a in live
+            if str(a.get("final_judgement")) == "good"]
+    hard = [x for x in hard if x][:2]
+    good = [x for x in good if x][:2]
+    if hard:
+        verb = "needs" if len(hard) == 1 else "need"
+        line = f"{_join_labels(hard)} {verb} care right now"
+        if good:
+            line += f", {_join_labels(good[:1])} is backing you"
+        return line + "."
+    if good:
+        verb = "is" if len(good) == 1 else "are"
+        return f"{_join_labels(good)} {verb} your strongest ground right now."
+    # Everything the confluence can speak to is mixed. Name the areas anyway —
+    # "most of your chart is pulling both ways" tells the reader nothing.
+    split = [str(a.get("label") or a.get("area") or "") for a in live[:3]]
+    split = [x for x in split if x]
+    if split:
+        verb = "is" if len(split) == 1 else "are"
+        return f"{_join_labels(split)} {verb} pulling both ways right now."
+    return "Your chart is pulling both ways right now."
+
+
+def _confidence_line(shown: list[dict]) -> str:
+    """One honest line on how firmly the clocks back the verdicts below."""
+    ranks = [str(a.get("confluence_agreement") or "") for a in shown]
+    ranks = [r for r in ranks if r in _AGREEMENT_LINE]
+    if not ranks:
+        return ""
+    weakest = min(ranks, key=lambda r: _AGREEMENT_RANK.index(r))
+    return _AGREEMENT_LINE[weakest]
+
+
+def _live_area_judgements(analysis: Any) -> list[dict]:
+    """Areas the confluence can actually speak to, hardest first."""
+    areas = _as_dicts(_analysis_data(analysis).get("life_area_judgements"))
+    live = [
+        a for a in areas
+        if str(a.get("final_judgement") or "") in ("good", "challenging", "mixed")
+        and str(a.get("confluence_agreement") or "insufficient") != "insufficient"
+    ]
+    # Hardest first: the reader is here because something is pressing.
+    live.sort(key=lambda a: float(a.get("confluence_score") or 0.0))
+    return live
+
+
+def _remedy_for_area(area: str, label: str, cards: Optional[list]) -> str:
+    """The practical step already derived for this area, if there is one.
+
+    Deliberately the bare step, not ``_fallback_help`` — that appends an easing
+    note which belongs in the life-area consultation further down and makes this
+    row three sentences long.
+    """
+    card = next((c for c in (cards or []) if str(getattr(c, "area", "")) == area), None)
+    if card is None:
+        return ""
+    try:
+        from llm.fallback import _area_remedy_sentence
+        return _area_remedy_sentence(card, label).strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _window_label(value: str) -> str:
+    """Windows arrive as ISO dates; a reader wants a month."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return _fmt_full_month(text) or text
+
+
+def _current_confluence_html(analysis: Any, cards: Optional[list] = None,
+                             *, paid: bool = False) -> str:
+    """A direct verdict per life area, then the chart factors, then the fix.
+
+    This follows the shape the question reading uses — answer first, evidence
+    second, action last — because that is the order a reader actually wants and
+    because it is the only order in which a remedy means anything. Everything
+    here is read straight off ``life_area_judgements``; the language layer never
+    writes this block.
+    """
+    live = _live_area_judgements(analysis)
+    if not live:
+        return ""
+    shown = live[:3]
+    items = []
+    for aj in shown:
+        judgement = str(aj.get("final_judgement") or "mixed")
+        chip = _JUDGEMENT_CHIP.get(judgement, "mid")
+        label = str(aj.get("label") or aj.get("area") or "").strip()
+        if not label:
+            continue
+
+        rows = ""
+        sentence = _verdict_sentence(aj, label)
+        if sentence:
+            rows += f"<dt>Verdict</dt><dd>{_e(sentence)}</dd>"
+        chips = _why_chips(aj)
+        if chips:
+            rows += f"<dt>Why</dt><dd>{chips}</dd>"
+        # relief_window / stronger_window are blanked in the free projection,
+        # so this row simply does not appear there.
+        needs_relief = judgement in ("challenging", "mixed")
+        window = _window_label(aj.get("relief_window") if needs_relief
+                               else aj.get("stronger_window"))
+        if window:
+            rows += (f"<dt>{'Eases' if needs_relief else 'Strongest'}</dt>"
+                     f"<dd>{_e(window)}</dd>")
+
+        if judgement in ("challenging", "mixed"):
+            remedy = _remedy_for_area(str(aj.get("area") or ""), label, cards) if paid else ""
+            if paid and remedy:
+                rows += f"<dt>Do this</dt><dd>{_e(remedy)}</dd>"
+            elif not paid:
+                rows += (
+                    '<dt>Do this</dt><dd><div class="lock-wrap">'
+                    '<div class="lock-blur">The chart-targeted step for this area, '
+                    'and the period it works best in.</div>'
+                    '<div class="lock-over"><span class="lock-chip">Locked &#183; in the full reading</span></div>'
+                    "</div></dd>"
+                )
+
+        drawer = (_lane_evidence_rows(aj.get("lane_judgements") or {})
+                  + _cross_check_line(aj) + _factor_cols(aj))
+        drawer_html = (
+            f'<details class="why-said"><summary>Why we say this</summary>{drawer}</details>'
+            if drawer else ""
+        )
+        tone = "good" if chip == "good" else "bad" if chip == "bad" else ""
+        rows_html = f'<dl class="vrow">{rows}</dl>' if rows else ""
+        verdict_chip = str(aj.get("confluence_label") or judgement).title()
+        items.append(
+            f'<article class="conf-item {tone}">'
+            f'<div class="conf-head"><b>{_e(label)}</b>'
+            f'<span class="aj-verdict {chip}">{_e(verdict_chip)}</span></div>'
+            f'{rows_html}'
+            f'{drawer_html}'
+            '</article>'
+        )
+    if not items:
+        return ""
+    return f'<div class="conf-list">{"".join(items)}</div>'
+
+
+_DIRECTION_TONE: dict[str, str] = {
+    "up": "good", "support": "good", "supportive": "good",
+    "down": "bad", "caution": "bad", "challenging": "bad",
+}
+
+#: Primary bhava for each life area, mirroring ``report_cards.AREAS``. Recent
+#: windows carry the area key but not its house, and a reader asking "what is
+#: this area" deserves the house rather than a mood word.
+_AREA_HOUSE: dict[str, int] = {
+    "career": 10, "money": 2, "love": 7, "home": 4,
+    "children": 5, "health": 1, "learning": 9, "inner": 12,
+}
+
+_PAST_READING: dict[str, str] = {
+    "good": "Genuinely supported through this window",
+    "moderate": "Held up through this window",
+    "mixed": "Pulled both ways through this window",
+    "challenging": "Under real pressure through this window",
+}
+
+
+def _recent_verdict_sentence(ev: dict) -> str:
+    """State what the charts read at the time, not how it may have felt.
+
+    The window headline arriving from the facts layer has had every planet name
+    scrubbed out of it, so it can only ever be a mood sentence. The divisional
+    verdict and the lane split survived that scrub, and they are what actually
+    answers "why this window".
+
+    Kept subject-less and short: the area name sits in the header directly
+    above, and the governing varga is already a chip, so naming either again
+    would be the third time the reader saw the same fact in one card.
+    """
+    base = _PAST_READING.get(str(ev.get("judgement") or "").strip(), "")
+    if not base:
+        return ""
+    chart = str(ev.get("divisional_chart") or "").strip()
+    div = str(ev.get("divisional_verdict") or "").strip().lower()
+    tail = ""
+    if chart and div in _STRONG_DIV:
+        tail = f", though the {chart} chart behind it stayed strong"
+    elif chart and div in _WEAK_DIV:
+        tail = f", and the {chart} chart behind it was weak too"
+    return f"{base}{tail}."
+
+
+def _recent_chips(ev: dict) -> str:
+    """House, governing varga and the lane split for one past window."""
+    chips: list[str] = []
+    house = _AREA_HOUSE.get(str(ev.get("area") or ""), 0)
+    if house:
+        chips.append(f"{_ordinal(house)} house")
+    chart = str(ev.get("divisional_chart") or "").strip()
+    div = str(ev.get("divisional_verdict") or "").strip()
+    if chart and div and div != "not available":
+        chips.append(f"{chart} reads {div}")
+    tally = _lane_tally(ev)
+    if tally:
+        chips.append(tally)
+    if not chips:
+        return ""
+    return ('<div class="vchips">'
+            + "".join(f'<span class="chip-fact">{_e(c)}</span>' for c in chips)
+            + "</div>")
+
+
+def _recent_windows_html(analysis: Any) -> str:
+    """The last few months as dated windows, each with its own evidence.
+
+    One blended paragraph asks the reader to take the whole period on faith. A
+    dated window they can check against their own memory, with the complete
+    confluence as it stood at the time, asks them to verify it instead.
+    """
+    rows = _as_dicts(_analysis_data(analysis).get("recent_months"))
+    items = []
+    for ev in rows[:4]:
+        when = _fmt_when(str(ev.get("start") or ""), str(ev.get("end") or ""))
+        label = str(ev.get("label") or ev.get("area") or "").strip()
+        if not when and not label:
+            continue
+        tone = _DIRECTION_TONE.get(str(ev.get("direction") or "").lower(), "")
+        # The scrubbed LLM headline is dropped in favour of the chart reading.
+        verdict = _recent_verdict_sentence(ev)
+        chips = _recent_chips(ev)
+        manifests = [str(m).strip() for m in (ev.get("manifests") or []) if str(m).strip()]
+        manifest_html = ""
+        if manifests:
+            manifest_html = (
+                '<div class="mini-label" style="margin-top:9px">What this may have looked like</div>'
+                f'<ul class="recent-manifest">{"".join(f"<li>{_e(m)}</li>" for m in manifests[:3])}</ul>'
+            )
+        drawer = _lane_evidence_rows(ev.get("lane_judgements") or {}) + _cross_check_line(ev) + _factor_cols(ev)
+        drawer_html = (
+            f'<details class="why-said"><summary>Why we say this</summary>{drawer}</details>'
+            if drawer else ""
+        )
+        # The window's verdict rides in the header as a chip. It used to be a
+        # sentence inside the drawer, where nobody opening the report would see
+        # it and where it cost three lines to say one word.
+        judged = str(ev.get("judgement") or "").strip()
+        verdict_chip = ""
+        if judged and judged != "insufficient":
+            verdict_chip = (
+                f'<span class="aj-verdict {_JUDGEMENT_CHIP.get(judged, "mid")}">'
+                f'{_e(_LANE_READING.get(judged, judged.title()))}</span>'
+            )
+        rows = ""
+        if verdict:
+            rows += f"<dt>Verdict</dt><dd>{_e(verdict)}</dd>"
+        if chips:
+            rows += f"<dt>Why</dt><dd>{chips}</dd>"
+        rows_html = f'<dl class="vrow">{rows}</dl>' if rows else ""
+        items.append(
+            f'<article class="recent-item {tone}">'
+            f'<div class="recent-head"><span class="recent-when">{_e(when)}</span>'
+            f'<span class="mini-label">{_e(label)}</span>{verdict_chip}</div>'
+            f'{rows_html}'
+            f'{manifest_html}{drawer_html}'
+            '</article>'
+        )
+    return f'<div class="recent-list">{"".join(items)}</div>' if items else ""
+
+
 LAGNA_PROFILES: dict[str, dict[str, str]] = {
     "Aries": {
         "title": "Mesha (Aries) · The Dynamic Initiator",
@@ -1104,7 +1624,13 @@ def render(
         shown_end = _fmt_full_month(md_end) or md_end
         authoritative_timing_text += (" " if authoritative_timing_text else "") + f"It runs through {shown_end}."
     if next_vim:
-        authoritative_timing_text += (" " if authoritative_timing_text else "") + f"Next Vimshottari period: {next_vim}."
+        # "Next Vimshottari period: X" was two problems in one line. The word
+        # Vimshottari is a document-level leak pattern, and the customer
+        # firewall drops the whole text node when it matches — which silently
+        # took the two useful sentences above with it and left the reader an
+        # empty Current timing box. Say the same thing as a plain sentence.
+        authoritative_timing_text += (
+            (" " if authoritative_timing_text else "") + f"After that, the {next_vim} period begins.")
 
     chips = []
     if lagna:
@@ -1138,11 +1664,10 @@ def render(
             flags=re.I,
         )
     interpretation = _sanitize_customer_text(prose.get("interpretation"))
-    current_phase = _sanitize_customer_text(prose.get("current_phase"))
-    recent_months = _sanitize_customer_text(prose.get("recent_months"))
-    hardest = _sanitize_customer_text(prose.get("hardest_area_note"))
-    why_now = _sanitize_customer_text(prose.get("why_now"))
-    mind_now = [_sanitize_customer_text(x) for x in prose.get("mind_now", []) if str(x).strip()]
+    # current_phase / recent_months / hardest_area_note / why_now / mind_now are
+    # still produced by the language layer and still validated, but the current
+    # chapter no longer renders them. They restated the verdict at essay length
+    # without naming a single chart factor.
     family_note = [_sanitize_customer_text(x) for x in prose.get("family_note", []) if str(x).strip()]
     areas = prose.get("areas") if isinstance(prose.get("areas"), dict) else {}
 
@@ -1193,39 +1718,36 @@ def render(
             f"your Janma Lagna and Moon disposition define your enduring constitutional baseline and natural karma."
         )
 
-    mind_sub_html = ""
-    if mind_now:
-        mind_sub_html = f"""
-        <div style="margin-top:18px;border-top:1px solid #e0ded8;padding-top:14px">
-          <div style="font-size:0.7rem;letter-spacing:.12em;text-transform:uppercase;color:#8a6a1f;font-weight:700;margin-bottom:6px">WHAT MAY BE OCCUPYING YOUR MIND</div>
-          <p class="sec-note" style="margin-bottom:8px">These are chart-activated possibilities, not private facts we assume about you.</p>
-          <ul class="conv-mind">
-            {"".join(f"<li>{_e(x)}</li>" for x in mind_now[:3])}
-          </ul>
-        </div>
-        """
+    # The current chapter is a verdict, not an essay. The phase lead-in, the
+    # "why this period feels this way" drawer, the hardest-areas line and the
+    # "what may be occupying your mind" list all said roughly the same soft
+    # thing at different lengths, and none of them named a chart factor. They
+    # are replaced by one deterministic headline and one verdict card per area.
+    current_confluence_html = _current_confluence_html(analysis, cards, paid=paid)
+    current_headline = _current_verdict_headline(analysis)
+    confidence = _confidence_line(_live_area_judgements(analysis)[:3])
 
     current_html = ""
-    if current_phase or why_now or md_lord or authoritative_timing_text or mind_now:
+    if authoritative_timing_text or current_confluence_html:
         current_html = f"""
         <section class="conv-block current-block">
           <div class="section-kicker">YOUR CURRENT CHAPTER</div>
-          <h2 id="sec-your-current-chapter" data-nav="Right now">Where life is putting its weight right now</h2>
+          <h2 id="sec-your-current-chapter" data-nav="Right now">{_e(current_headline)}</h2>
           {f'<p class="fact-lead"><span class="ev-label">Current timing</span> {_e(authoritative_timing_text)}</p>' if authoritative_timing_text else ""}
-          {f'<p class="lead-reading">{_e(current_phase)}</p>' if current_phase else ""}
-          {f'<div class="why-now"><span class="ev-label">Why this period feels this way</span><p>{_e(why_now)}</p></div>' if why_now else ""}
-          {f'<p class="hardest">{_e(hardest)}</p>' if hardest else ""}
-          {mind_sub_html}
+          {f'<p class="confidence"><strong>How sure is this?</strong> {_e(confidence)}</p>' if confidence else ""}
+          {current_confluence_html}
         </section>
         """
 
+    recent_windows_html = _recent_windows_html(analysis)
+
     recent_html = ""
-    if recent_months:
+    if recent_windows_html:
         recent_html = f"""
         <section class="conv-block">
           <div class="section-kicker">RECENTLY</div>
           <h2 id="sec-recently" data-nav="The last few months">The last few months</h2>
-          <p>{_e(recent_months)}</p>
+          {recent_windows_html}
         </section>
         """
 
@@ -1409,10 +1931,11 @@ def render(
         </section>
             """
 
+    baseline_card_html = ""
     divisional_html = ""
     try:
-        from divisional_profile import render_divisional_about_you_html
-        divisional_html = render_divisional_about_you_html(pc, paid=paid)
+        from divisional_profile import render_divisional_blocks
+        baseline_card_html, divisional_html = render_divisional_blocks(pc, paid=paid)
     except Exception as exc:
         print(f"[report_conversational] divisional profile skipped: {exc}", flush=True)
 
@@ -1433,16 +1956,20 @@ def render(
       <p>{_e(astrological_basis)}</p>
     </section>
 
-    {_analytical_html(analysis, paid=paid, today=today)}
+    <section class="conv-block who-you-are-block">
+      <div class="section-kicker">WHO YOU ARE</div>
+      <h2 id="sec-who-you-are" data-nav="Who you are">Your foundational promise</h2>
+      <p class="lead-reading"><span class="ev-label">Constitutional Baseline</span> {about_meaning}</p>
+      {f'<p style="margin:12px 0 14px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{personality}</p>' if personality and personality != about_meaning else ""}
+      {baseline_card_html}
+    </section>
 
     {current_html}
     {recent_html}
 
     <section class="conv-block life-domains-block">
       <div class="section-kicker">COMPREHENSIVE LIFE DOMAIN CONSULTATIONS</div>
-      <h2 id="sec-life-domains" data-nav="Your life areas">Your Life Areas: Foundational Promise, Current Phase &amp; The Road Ahead</h2>
-      <p class="lead-reading"><span class="ev-label">Constitutional Baseline</span> {about_meaning}</p>
-      {f'<p style="margin:12px 0 14px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{personality}</p>' if personality and personality != about_meaning else ""}
+      <h2 id="sec-life-domains" data-nav="Your life areas">Your Life Areas: Current Phase &amp; The Road Ahead</h2>
       {divisional_html}
     </section>
 

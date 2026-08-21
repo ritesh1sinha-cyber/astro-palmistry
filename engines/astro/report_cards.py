@@ -65,8 +65,8 @@ AREAS: tuple[Area, ...] = (
     Area("home", "Home & Family", 4, (2,), "home and family"),
     Area("children", "Children", 5, (9,), "children"),
     Area("health", "Health & Energy", 1, (6, 8), "your health"),
-    Area("learning", "Learning & Luck", 9, (5,), "study and good fortune"),
-    Area("inner", "Inner Peace & Spirituality", 12, (9,), "your inner peace and spirituality"),
+    Area("learning", "Fortune & Higher Learning", 9, (5,), "study and good fortune"),
+    Area("inner", "Outgoings, Solitude & Release", 12, (9,), "outgoings, solitude and what you let go of"),
 )
 
 PLANET_VOICE = {

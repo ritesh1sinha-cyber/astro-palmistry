@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from interpretation.life_stage import is_minor
 
+# The 9th and 12th areas used to be labelled "Learning & Luck" and "Inner Peace
+# & Spirituality", which read as mood categories rather than the bhavas they
+# actually score. The 9th is Bhagya/Dharma — fortune, higher study, mentors. The
+# 12th is Vyaya/Moksha — outgoings, withdrawal, release. Naming them plainly is
+# what lets the verdict beside them sound like astrology instead of advice.
 ADULT_LABELS: dict[str, str] = {
     "career": "Work & Career",
     "money": "Money",
@@ -11,8 +16,8 @@ ADULT_LABELS: dict[str, str] = {
     "home": "Home & Family",
     "children": "Children",
     "health": "Health & Energy",
-    "learning": "Learning & Luck",
-    "inner": "Inner Peace & Spirituality",
+    "learning": "Fortune & Higher Learning",
+    "inner": "Outgoings, Solitude & Release",
 }
 
 YOUNG_ADULT_LABELS: dict[str, str] = {
@@ -22,8 +27,8 @@ YOUNG_ADULT_LABELS: dict[str, str] = {
     "home": "Home & Family",
     "children": "Creativity & Projects",
     "health": "Health & Energy",
-    "learning": "Learning & Luck",
-    "inner": "Inner Peace & Spirituality",
+    "learning": "Fortune & Higher Learning",
+    "inner": "Outgoings, Solitude & Release",
 }
 
 MINOR_LABELS: dict[str, str] = {
@@ -33,8 +38,8 @@ MINOR_LABELS: dict[str, str] = {
     "home": "Home & Family",
     "children": "Creativity & Projects",
     "health": "Health & Energy",
-    "learning": "Learning & Luck",
-    "inner": "Inner Peace & Spirituality",
+    "learning": "Fortune & Higher Learning",
+    "inner": "Outgoings, Solitude & Release",
 }
 
 ADULT_AREA_NAMES: dict[str, str] = {

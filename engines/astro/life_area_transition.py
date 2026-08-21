@@ -753,7 +753,7 @@ def easing_note(nodes: list[Any], *, today: date | None = None) -> str:
     if last_end > today:
         return (
             f"The demanding stretch holds to {_month_label(last_end)}, so treat "
-            f"the step below as the way through it rather than a quick fix."
+            f"this step as the way through it rather than a quick fix."
         )
     return ""
 

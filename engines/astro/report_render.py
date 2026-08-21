@@ -103,6 +103,17 @@ def _strip_forbidden_patterns(html: str) -> str:
     html = re.sub(r"  +", " ", html)
     # Clean up empty paragraphs
     html = re.sub(r"<p>\s*</p>", "", html)
+    # The customer firewall blanks a whole text node when any part of it trips a
+    # leak pattern. A labelled box then survives as a heading with nothing under
+    # it — the reader sees an empty grey "Current timing" panel and concludes the
+    # report is broken. Drop any labelled block left with no content.
+    html = re.sub(
+        r'<p class="fact-lead">\s*<span class="ev-label">[^<]*</span>\s*</p>',
+        "", html)
+    html = re.sub(
+        r'<div class="why-now">\s*<span class="ev-label">[^<]*</span>\s*'
+        r'<p>\s*</p>\s*</div>',
+        "", html)
     return html
 
 
