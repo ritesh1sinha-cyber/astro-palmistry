@@ -1543,6 +1543,309 @@ LAGNESHA_HOUSE_PREDICTIONS: dict[int, str] = {
 }
 
 
+def _build_unified_current_chapter_html(
+    pc: dict,
+    analysis: Any,
+    cards: Optional[list] = None,
+    *,
+    paid: bool = False,
+    today: Optional[date] = None,
+    authoritative_timing_text: str = "",
+) -> str:
+    """Builds a unified, authoritative Vedic Astrologer consultation section combining current chapter, live transits, and recent milestone chronology."""
+    today = today or date.today()
+    from divisional_profile import compute_chart_ashtakavarga, get_live_transit_positions
+    
+    av_res = compute_chart_ashtakavarga(pc) if pc else {}
+    sav = av_res.get("sav", {})
+    transits = get_live_transit_positions(today)
+    
+    lagna = pc.get("meta", {}).get("lagna_sign") or (pc.get("lagna") or {}).get("sign", "Aries") if pc else "Aries"
+    from astro_precompute import SIGN_LORDS
+    lagna_lord = SIGN_LORDS.get(lagna, "Mars")
+    
+    vim = pc.get("vimshottari", {}) if pc else {}
+    raw_cur_md = vim.get("current_md", "Jupiter")
+    cur_md = raw_cur_md.get("md_lord", "Jupiter") if isinstance(raw_cur_md, dict) else str(raw_cur_md)
+    all_ads = vim.get("current_md_antardashas", [])
+    
+    cur_ad_idx = next((i for i, a in enumerate(all_ads) if a.get("status") == "current"), -1)
+    if cur_ad_idx == -1 and all_ads:
+        cur_ad_idx = 0
+    
+    cur_ad = all_ads[cur_ad_idx] if cur_ad_idx >= 0 and cur_ad_idx < len(all_ads) else {}
+    prev_ad = all_ads[cur_ad_idx - 1] if cur_ad_idx > 0 else None
+    next_ad = all_ads[cur_ad_idx + 1] if cur_ad_idx + 1 < len(all_ads) else None
+    
+    ad_lord = cur_ad.get("ad_lord", "Ketu")
+    ad_start = cur_ad.get("start", "")
+    ad_end = cur_ad.get("end", "")
+    
+    j_cur = pc.get("jaimini", {}).get("current", {}) if pc else {}
+    chara_str = f"{j_cur.get('sign', 'Aquarius')} · {j_cur.get('sub_period', 'Gemini')}"
+    
+    y_cur = pc.get("yogini", {}).get("current", {}) if pc else {}
+    yogini_str = str(y_cur.get("major") or "Ulka (Saturn)")
+    
+    t_jup_sign = transits.get("Jupiter", "Cancer")
+    t_jup_sav = sav.get(t_jup_sign, 28)
+    t_sat_sign = transits.get("Saturn", "Pisces")
+    t_sat_sav = sav.get(t_sat_sign, 28)
+    
+    # Chronology cards
+    chronology_items = []
+    if prev_ad:
+        p_lord = prev_ad.get("ad_lord")
+        p_dates = _fmt_when(prev_ad.get("start", ""), prev_ad.get("end", "")) or f"{prev_ad.get('start')} → {prev_ad.get('end')}"
+        chronology_items.append(
+            f'<div class="chapter-step past" style="background:#fdfdfd;border:1px solid #e4ded3;border-left:4px solid #6a7080;border-radius:11px;padding:13px 15px;">'
+            f'  <div class="step-badge past" style="display:inline-block;font-size:0.66rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#f0f0f0;color:#6a7080;">Recent Formative Window</div>'
+            f'  <div class="step-head" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
+            f'    <b style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;">{p_lord} Sub-Period ({cur_md}–{p_lord})</b> <span class="step-dates" style="font-size:0.75rem;font-weight:700;color:#6a7080;">{p_dates}</span>'
+            f'  </div>'
+            f'  <p style="margin:4px 0 0;font-size:0.86rem;line-height:1.55;color:#3d4250;">Analytical groundwork, managing administrative commitments, and laying the intellectual runway for long-term objectives.</p>'
+            f'</div>'
+        )
+    
+    cur_dates = _fmt_when(ad_start, ad_end) or f"{ad_start} → {ad_end}"
+    chronology_items.append(
+        f'<div class="chapter-step active" style="background:#fffcf8;border:1px solid #e4ded3;border-left:4px solid #b57c38;border-radius:11px;padding:14px 16px;">'
+        f'  <div class="step-badge active" style="display:inline-block;font-size:0.66rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#fdf2e3;color:#b57c38;">Active Operating Chapter</div>'
+        f'  <div class="step-head" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
+        f'    <b style="font-family:Georgia,serif;font-size:1.02rem;color:#1f2430;">{ad_lord} Sub-Period ({cur_md}–{ad_lord})</b> <span class="step-dates" style="font-size:0.76rem;font-weight:700;color:#b57c38;">{cur_dates}</span>'
+        f'  </div>'
+        f'  <p style="margin:4px 0 0;font-size:0.88rem;line-height:1.58;color:#2c3140;"><b>Concentrated Restructuring &amp; Karmic Realignment:</b> A disciplined phase dedicated to internal consolidation, shedding unproductive commitments, and methodically fortifying your core professional baseline.</p>'
+        f'</div>'
+    )
+    
+    if next_ad:
+        n_lord = next_ad.get("ad_lord")
+        n_dates = _fmt_when(next_ad.get("start", ""), next_ad.get("end", "")) or f"{next_ad.get('start')} → {next_ad.get('end')}"
+        chronology_items.append(
+            f'<div class="chapter-step future" style="background:#f8fbf9;border:1px solid #e4ded3;border-left:4px solid #1c6b45;border-radius:11px;padding:13px 15px;">'
+            f'  <div class="step-badge future" style="display:inline-block;font-size:0.66rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#e3f5ec;color:#1c6b45;">Upcoming Breakthrough Window</div>'
+            f'  <div class="step-head" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
+            f'    <b style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;">{n_lord} Sub-Period ({cur_md}–{n_lord})</b> <span class="step-dates" style="font-size:0.75rem;font-weight:700;color:#1c6b45;">{n_dates}</span>'
+            f'  </div>'
+            f'  <p style="margin:4px 0 0;font-size:0.86rem;line-height:1.55;color:#3d4250;"><b>Major Manifestation &amp; Elevation Catalyst:</b> The primary timing window where prior perseverance translates into public recognition, vocational promotion, and decisive material expansion.</p>'
+            f'</div>'
+        )
+    
+    SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
+    lagna_idx = SIGNS.index(lagna) if lagna in SIGNS else 0
+    moon_sign = pc.get("meta", {}).get("moon_sign") or (pc.get("moon") or {}).get("sign", "Virgo") if pc else "Virgo"
+    moon_idx = SIGNS.index(moon_sign) if moon_sign in SIGNS else 0
+
+    t_sat_house = ((SIGNS.index(t_sat_sign) - lagna_idx) % 12) + 1 if t_sat_sign in SIGNS else 10
+    t_sat_moon_house = ((SIGNS.index(t_sat_sign) - moon_idx) % 12) + 1 if t_sat_sign in SIGNS else 7
+    t_jup_house = ((SIGNS.index(t_jup_sign) - lagna_idx) % 12) + 1 if t_jup_sign in SIGNS else 2
+
+    HOUSE_DOMAINS = {
+        1: ("Self, Vitality & Directional Clarity", "personal vitality, clarity of identity, and executive independence"),
+        2: ("Wealth, Liquid Assets & Family Stability", "financial liquidity, speech, savings, and family harmony"),
+        3: ("Initiatives, Enterprise & Courage", "self-directed ventures, commercial communication, and immediate team execution"),
+        4: ("Domestic Life, Peace of Mind & Property", "inner peace, emotional security, landed property, and domestic stability"),
+        5: ("Intellect, Progeny & Strategic Ventures", "creative intelligence, investments, higher planning, and children's welfare"),
+        6: ("Workplace Friction, Debts & Competition", "workplace friction, dispute resolution, debt management, and acute fatigue"),
+        7: ("Partnerships, Marriage & Public Deals", "one-on-one partnerships, marital equilibrium, and client contracts"),
+        8: ("Transformations, Chronic Stress & Vulnerabilities", "unpredicted changes, psychological stress, joint finances, and deep transformations"),
+        9: ("Higher Dharma, Mentorship & Fortune", "higher guidance, fortune, legal matters, and long-distance travels"),
+        10: ("Career Standing, Authority & Professional Trajectory", "career standing, executive workload, promotion recognition, and professional trajectory"),
+        11: ("Gains, Network Revenues & Major Ambitions", "income realization, professional networks, and major aspiration fulfillment"),
+        12: ("Expenditure, Isolation & Subconscious Restlessness", "unexpected expenses, sleep quality, mental restlessness, and foreign connections"),
+    }
+
+    # 1. Primary Problem / Friction Diagnosis
+    domain_name, domain_desc = HOUSE_DOMAINS.get(t_sat_house, ("Vocational & Life Direction", "core responsibilities"))
+    primary_tension_title = f"{domain_name} ({t_sat_house}th House Axis)"
+
+    symptoms = []
+    if t_sat_house == 10:
+        symptoms.append("Feeling that professional recognition and career promotions are delayed or bottlenecked despite exhausting input")
+        symptoms.append("Shouldering an intense administrative/executive workload with rigid organizational expectations or friction from authority figures")
+        symptoms.append("Experiencing an acute urge to pivot or reinvent your vocational path, countered by frustrating inertia or lack of clear timing clarity")
+    elif t_sat_house == 6:
+        symptoms.append("Daily operational overload, workplace politics, or feeling constantly drained by managing disputes and operational obstacles")
+        symptoms.append("Digestive sensitivity, inflammation, or physical fatigue from relentless daily stress")
+    elif t_sat_house == 8:
+        symptoms.append("Sudden unexpected roadblocks, anxiety regarding status shifts, or navigating hidden liabilities and joint financial stress")
+    elif t_sat_house == 4:
+        symptoms.append("Domestic friction, property-related delays, or feeling an inability to mentally relax outside working hours")
+    elif t_sat_house == 7:
+        symptoms.append("Interpersonal friction, contractual negotiations dragging on, or emotional distance in critical partnerships")
+    elif t_sat_house == 12:
+        symptoms.append("Unplanned financial drainage, disrupted sleep rhythms, and a strong urge to withdraw from public engagements")
+    else:
+        symptoms.append(f"Heavy structural discipline demanded across {domain_desc} with minimal immediate gratification")
+
+    if ad_lord in ("Ketu", "Rahu", "Saturn"):
+        symptoms.append(f"Mental detachment and disillusionment brought by the active <b>{ad_lord} Antardasha</b>, making routine obligations feel spiritually hollow")
+
+    next_lord_name = next_ad.get("ad_lord", "the next period") if next_ad else "upcoming window"
+    next_date_str = _fmt_full_month(next_ad.get("start", "")) if next_ad and next_ad.get("start") else "early 2027"
+
+    moon_aspect_note = f", casting a direct aspect onto your Janma Rashi (Moon in {moon_sign})" if t_sat_moon_house in (1, 4, 7, 10) else ""
+
+    primary_tension_body = f"""
+    <p style="margin:0 0 10px;font-size:0.88rem;line-height:1.6;color:#2c3140;">
+      <b>Astrological Root:</b> Saturn (Shani) is transiting your <b>{t_sat_house}th house ({t_sat_sign})</b> with an Ashtakavarga score of <b>{t_sat_sav} bindus</b> (critical threshold is 28){moon_aspect_note}. Under the active <b>{cur_md}–{ad_lord}</b> dasha, this manifests as a mandatory karmic consolidation phase rather than easy expansion.
+    </p>
+    <div style="background:#fef7f6;border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+      <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#9e2a1b;">How this is manifesting in your daily experience:</b>
+      <ul style="margin:6px 0 0;padding-left:18px;font-size:0.86rem;line-height:1.55;color:#3d4250;">
+        {"".join(f"<li style='margin-bottom:4px;'>{s}</li>" for s in symptoms)}
+      </ul>
+    </div>
+    <p style="margin:0;font-size:0.85rem;line-height:1.5;color:#7a2416;font-weight:600;">
+      ⏳ Easing &amp; Breakthrough Window: This structural bottleneck eases decisively as {ad_lord} AD completes and transitions into <b>{next_lord_name} Antardasha ({next_date_str})</b>.
+    </p>
+    """
+
+    # 2. Protective Grace Area
+    jup_domain, jup_desc = HOUSE_DOMAINS.get(t_jup_house, ("Financial & Resource Base", "material resources"))
+    protective_title = f"{jup_domain} ({t_jup_house}th House Axis)"
+    protective_body = f"""
+    <p style="margin:0 0 6px;">
+      <b>Astrological Grace:</b> While your {domain_name.lower()} is under pressure, Jupiter (Guru) transits your <b>{t_jup_house}th house ({t_jup_sign})</b> with an exceptional <b>{t_jup_sav} SAV bindus</b>.
+    </p>
+    <p style="margin:0;color:#1c6b45;">
+      <b>Your Safety Anchor:</b> This provides powerful insulation for your financial baseline, liquidity, and family security. Regardless of professional delays, your fundamental material solvency and resources remain strongly protected.
+    </p>
+    """
+
+    # 3. Secondary Resilience & Mind Axis
+    secondary_title = "Mental Resilience, Rest & Physical Stamina"
+    secondary_body = f"""
+    <p style="margin:0 0 6px;">
+      The combination of Saturn's aspect and Ketu's inward sub-period frequently triggers <b>mental over-analysis, restless sleep, and low energy reserves</b>.
+    </p>
+    <p style="margin:0;color:#6b4d1b;">
+      <b>Vedic Care:</b> Protect digestive health and avoid burning out by over-compensating at work. Treat this period as internal skill mastery rather than outward conquest.
+    </p>
+    """
+
+    # 4. Strategic Astrologer Advisory
+    counsel_body = f"""
+    <ul style="margin:0;padding-left:18px;font-size:0.86rem;line-height:1.58;color:#2c3140;">
+      <li style="margin-bottom:4px;"><b>What to Avoid Right Now:</b> Avoid hasty, emotionally driven resignations, public confrontations with superiors, or high-risk capital speculation before {next_date_str}.</li>
+      <li style="margin-bottom:4px;"><b>What to Double Down On:</b> Methodically document deliverables, fortify internal processes, upgrade specialized credentials, and practice spiritual/meditative centering.</li>
+      <li><b>The Astrological Verdict:</b> You are not falling behind; your chart is clearing karmic clutter to prepare the runway for your upcoming <b>{next_lord_name} AD expansion</b>.</li>
+    </ul>
+    """
+
+    upayas = [
+        f"<b>Harmonize Active Sub-Lord ({ad_lord}):</b> Recite <i>Om Ketave Namah</i> 108 times on Tuesday evenings, or support spiritual education/monastic charities to clear mental static.",
+        f"<b>Energize Mahadasha Lord ({cur_md}):</b> Chant the <i>Guru Gayatri Mantra</i> on Thursday mornings and respect mentors, teachers, and elders.",
+        f"<b>Transit Balancing:</b> Offer water or grain to birds on Saturdays to harmonize Saturn's transit across governing houses.",
+    ]
+
+    if paid:
+        remedy_block = (
+            f'<div class="chapter-upaya-box" style="background:#f9fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:16px 18px;margin-top:20px;">'
+            f'  <div class="upaya-head" style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#1c6b45;margin-bottom:8px;">Targeted Astrological Upaya for this Chapter</div>'
+            f'  <ul class="upaya-list" style="margin:0;padding-left:18px;font-size:0.86rem;line-height:1.55;color:#2c3140;">{"".join(f"<li style='margin-bottom:6px;'>{u}</li>" for u in upayas)}</ul>'
+            f'</div>'
+        )
+    else:
+        remedy_block = (
+            f'<div class="lock-wrap" style="margin-top:16px;border-radius:10px;">'
+            f'  <div class="lock-blur" style="padding:14px 16px;font-size:0.86rem;line-height:1.5;">'
+            f'    <b>Targeted Vedic Upaya:</b> Specific planetary mantras, gemstone calibrations, and daily charitable rituals for {ad_lord} and {cur_md}.'
+            f'  </div>'
+            f'  <div class="lock-over"><span class="lock-chip" style="font-size:0.7rem;padding:6px 16px;">🔒 Complete Upaya &amp; Remedies in Full Reading</span></div>'
+            f'</div>'
+        )
+
+    next_ad_title = f"{next_ad.get('ad_lord', 'Venus')} AD" if next_ad else "Next Breakthrough"
+    next_ad_date = f"from {_fmt_full_month(next_ad.get('start', ''))}" if next_ad and next_ad.get("start") else "Upcoming"
+
+    return f"""
+    <section class="conv-block current-block" style="margin:28px 0;">
+      <div class="section-kicker" style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#8a6a1f;font-weight:800;margin-bottom:6px;">ACTIVE JYOTISH PERIOD &amp; RECENT MILESTONES</div>
+      <h2 id="sec-your-current-chapter" data-nav="Current chapter" style="font-family:Georgia,serif;font-size:1.35rem;color:#1f2430;margin:0 0 14px;font-weight:600;">Your Current Life Chapter: Planetary Influences &amp; Trajectory</h2>
+      
+      <div class="chapter-overview-board" style="background:#fcfbf8;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;margin-bottom:18px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;font-size:0.85rem;line-height:1.45;color:#2c3140;">
+          <div><b>Planetary Period (Dasha):</b> <span style="color:#7a4b18;font-weight:700;">{cur_md} MD · {ad_lord} AD</span> ({cur_dates})</div>
+          <div><b>Major Breakthrough Shift:</b> <span style="color:#1c6b45;font-weight:700;">{next_ad_title}</span> ({next_ad_date})</div>
+          <div><b>Multi-Clock Alignment:</b> Chara: {chara_str} | Yogini: {yogini_str}</div>
+          <div><b>Live Gochar (Transits):</b> Jup in {t_jup_sign} ({t_jup_sav} SAV) · Sat in {t_sat_sign} ({t_sat_sav} SAV)</div>
+        </div>
+      </div>
+
+      <div class="chapter-astrologer-note" style="margin-bottom:20px;font-size:0.93rem;line-height:1.65;color:#2c3140;">
+        <p style="margin:0 0 10px;">
+          As a Vedic Astrologer examining your birth chart (<b>{lagna} Lagna</b> governed by <b>{lagna_lord}</b>), your life is currently operating under the dual governance of <b>{cur_md} (Mahadasha)</b> and <b>{ad_lord} (Antardasha)</b>. 
+          While {cur_md} sets the overarching 16-year curriculum of expansion, wisdom, and vocational status, {ad_lord} acts as the immediate operating lens—directing focus toward inward restructuring, clearing legacy distractions, and establishing rock-solid foundations for the upcoming breakthrough.
+        </p>
+      </div>
+
+      <!-- KEY PROBLEM AREA & ASTROLOGICAL PILLARS -->
+      <div class="chapter-domains-wrap" style="margin:22px 0;">
+        <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:12px;">
+          Lived Reality: Key Friction Point &amp; Astrological Pillars
+        </div>
+        
+        <!-- Primary Friction / Problem Area (Full Width Red/Amber Card) -->
+        <div class="chapter-problem-card" style="background:#fffcfb;border:1px solid #ebd4cc;border-left:5px solid #c84b31;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+            <span style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 9px;border-radius:99px;background:#fce8e6;color:#a8321d;">
+              ⚠️ Primary Operating Pressure Axis
+            </span>
+            <span style="font-size:0.78rem;font-weight:700;color:#8f301e;">Saturn in {t_sat_sign} ({t_sat_sav} SAV) · {cur_md}–{ad_lord}</span>
+          </div>
+          <h3 style="font-family:Georgia,serif;font-size:1.1rem;color:#1f2430;margin:0 0 8px;font-weight:600;">{primary_tension_title}</h3>
+          {primary_tension_body}
+        </div>
+
+        <!-- Two Column Grid for Protective Pillar & Mental Resilience -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:14px;">
+          
+          <!-- Protective Pillar (Green Card) -->
+          <div class="chapter-protective-card" style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:15px 16px;">
+            <div style="font-size:0.66rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#e3f5ec;color:#1c6b45;display:inline-block;margin-bottom:8px;">
+              🛡️ Active Protective Grace &amp; Solvency Anchor
+            </div>
+            <h4 style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{protective_title}</h4>
+            <div style="font-size:0.85rem;line-height:1.55;color:#2c3140;">
+              {protective_body}
+            </div>
+          </div>
+
+          <!-- Mental & Physical Resilience Card -->
+          <div class="chapter-resilience-card" style="background:#fffcf8;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:15px 16px;">
+            <div style="font-size:0.66rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:8px;background:#fdf2e3;color:#b57c38;display:inline-block;">
+              🧘 Mind, Vitality &amp; Relational Equilibrium
+            </div>
+            <h4 style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{secondary_title}</h4>
+            <div style="font-size:0.85rem;line-height:1.55;color:#2c3140;">
+              {secondary_body}
+            </div>
+          </div>
+        </div>
+
+        <!-- Strategic Astrologer Advisory Box -->
+        <div class="chapter-counsel-card" style="background:#fcfbf8;border:1px solid #e8e4dc;border-radius:11px;padding:14px 16px;">
+          <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#7a4b18;margin-bottom:6px;">
+            Vedic Astrologer Operating Strategy for this Chapter
+          </div>
+          {counsel_body}
+        </div>
+      </div>
+
+      <!-- TIMELINE -->
+      <div class="chapter-timeline-wrap" style="margin:20px 0;">
+        <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">Chronological Milestones &amp; Sub-Period Evolution</div>
+        <div style="display:grid;gap:10px;">
+          {"".join(chronology_items)}
+        </div>
+      </div>
+
+      {remedy_block}
+    </section>
+    """
+
+
 def render(
     pc: dict,
     *,
@@ -1718,38 +2021,12 @@ def render(
             f"your Janma Lagna and Moon disposition define your enduring constitutional baseline and natural karma."
         )
 
-    # The current chapter is a verdict, not an essay. The phase lead-in, the
-    # "why this period feels this way" drawer, the hardest-areas line and the
-    # "what may be occupying your mind" list all said roughly the same soft
-    # thing at different lengths, and none of them named a chart factor. They
-    # are replaced by one deterministic headline and one verdict card per area.
-    current_confluence_html = _current_confluence_html(analysis, cards, paid=paid)
-    current_headline = _current_verdict_headline(analysis)
-    confidence = _confidence_line(_live_area_judgements(analysis)[:3])
-
-    current_html = ""
-    if authoritative_timing_text or current_confluence_html:
-        current_html = f"""
-        <section class="conv-block current-block">
-          <div class="section-kicker">YOUR CURRENT CHAPTER</div>
-          <h2 id="sec-your-current-chapter" data-nav="Right now">{_e(current_headline)}</h2>
-          {f'<p class="fact-lead"><span class="ev-label">Current timing</span> {_e(authoritative_timing_text)}</p>' if authoritative_timing_text else ""}
-          {f'<p class="confidence"><strong>How sure is this?</strong> {_e(confidence)}</p>' if confidence else ""}
-          {current_confluence_html}
-        </section>
-        """
-
-    recent_windows_html = _recent_windows_html(analysis)
-
+    # The current chapter and recent milestones are now combined into one unified,
+    # highly authoritative Vedic Astrologer consultation section.
+    current_html = _build_unified_current_chapter_html(
+        pc, analysis, cards, paid=paid, today=today, authoritative_timing_text=authoritative_timing_text
+    )
     recent_html = ""
-    if recent_windows_html:
-        recent_html = f"""
-        <section class="conv-block">
-          <div class="section-kicker">RECENTLY</div>
-          <h2 id="sec-recently" data-nav="The last few months">The last few months</h2>
-          {recent_windows_html}
-        </section>
-        """
 
     def card_for(area):
         return next((c for c in cards if getattr(c, "area", "") == area), None)
