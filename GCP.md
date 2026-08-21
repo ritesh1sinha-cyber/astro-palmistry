@@ -56,7 +56,21 @@ Do **not** open Postgres `5432` or Redis `6379` to the internet.
 
 ## 3. Create the VM + static IP
 
-Reserve a static IP first so DNS does not drift after a restart:
+One-shot (Linux / Cloud Shell):
+
+```bash
+export GCP_PROJECT=YOUR_PROJECT_ID
+bash deploy/gcp-create-vm.sh
+```
+
+On Windows (after installing the [Cloud SDK](https://cloud.google.com/sdk/docs/install) 【官方】):
+
+```powershell
+$env:GCP_PROJECT = "YOUR_PROJECT_ID"
+.\deploy\gcp-create-vm.ps1
+```
+
+Or manually — reserve a static IP first so DNS does not drift after a restart:
 
 ```bash
 gcloud compute addresses create graharekha-api-ip \
@@ -269,4 +283,6 @@ gcloud compute instances stop graharekha-api --zone=asia-south1-a
 - Change live Razorpay / Vercel until step 9.
 
 See also: `deploy/docker-compose.gcp.yml`, `deploy/.env.gcp.example`,
-`deploy/gcp-setup-vm.sh`, `deploy/gcp-migrate-data.sh`, Railway notes in `RAILWAY.md`.
+`deploy/gcp-create-vm.sh`, `deploy/gcp-create-vm.ps1`, `deploy/gcp-setup-vm.sh`,
+`deploy/gcp-migrate-data.sh`, `deploy/gcp-prove-payments.md`,
+`deploy/gcp-cutover.md`, Railway notes in `RAILWAY.md`.
