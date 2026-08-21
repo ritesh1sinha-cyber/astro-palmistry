@@ -586,10 +586,34 @@ def report_chat(rid: str, body: ChatIn, user: dict = Depends(current_user)):
         "That question goes beyond the facts we have here."
     )
     try:
-        from llm.humanize import humanize_chat
-        from llm.rules import OUT_OF_SCOPE_REFUSAL
-        refusal = OUT_OF_SCOPE_REFUSAL
-        result = humanize_chat(facts, question, history=history[:-1])
+        pc = None
+        cid = rep.get("chart_id")
+        if cid:
+            try:
+                from core.db import chart_get
+                from astro_precompute import resolve_precompute
+                cinfo = chart_get(cid)
+                if cinfo:
+                    pc = resolve_precompute(
+                        cinfo.get("person_name") or "Seeker",
+                        str(cinfo.get("dob")),
+                        birth_time=str(cinfo.get("tob") or "12:00"),
+                        latitude=float(cinfo.get("lat") or 0.0),
+                        longitude=float(cinfo.get("lon") or 0.0),
+                        timezone=float(cinfo.get("tz_offset") or 5.5)
+                    )
+            except Exception as e_pc:
+                print(f"[chat] resolve_precompute error: {e_pc}", flush=True)
+
+        if pc and str(facts.get("kind") if isinstance(facts, dict) else "") != "palm":
+            from confluence_question_engine import answer_chat_with_confluence
+            result = answer_chat_with_confluence(pc, question, history=history[:-1])
+        else:
+            from llm.humanize import humanize_chat
+            from llm.rules import OUT_OF_SCOPE_REFUSAL
+            refusal = OUT_OF_SCOPE_REFUSAL
+            result = humanize_chat(facts, question, history=history[:-1])
+
         answer = (result.get("answer") or refusal).strip()
         out_of_scope = bool(result.get("out_of_scope"))
         used = list(result.get("used_fact_ids") or [])

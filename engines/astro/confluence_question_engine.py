@@ -958,3 +958,68 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         f'</div>\n'
     )
 
+
+def answer_chat_with_confluence(pc: dict, question: str, history: Optional[list[dict]] = None) -> dict:
+    """Answers follow-up conversational chat turns using full real-time confluence, gochar, SAV bindus and multi-clock timing."""
+    conf = analyze_question_confluence(pc, question)
+    
+    system_prompt = (
+        "You are a master Vedic Astrologer answering a follow-up question in the user's private consultation chat. "
+        "You have access to their exact chart confluence: Houses, Lords, Dignities, Divisional Vargas (D9, D30, D10, D4, D24, D7, D2), "
+        "Sarvāṣṭakavarga (SAV) Bindu strength, Live Ephemeris Transits (Gochar of Jupiter & Saturn), "
+        "and Triple-Dasha timing (Vimshottari + Jaimini Chara + Yogini). "
+        "Answer warmly, directly, and authoritatively as their personal astrologer in 3-5 concise, insightful sentences. "
+        "Cite the exact astrological indicators and upcoming timing windows naturally. Maintain conversational continuity with the previous chat history."
+    )
+    
+    confluence_context = f"""
+CHART CONFLUENCE:
+• Domain: {conf.domain_title}
+• Primary Ruler: House {conf.primary_house} ({conf.primary_house_sign}) governed by {conf.primary_house_lord} ({conf.primary_lord_placement}, {conf.primary_lord_dignity}).
+• Dusthana Finding: {conf.dusthana_finding}
+• Ashtakavarga SAV Score: {conf.ashtakavarga_finding}
+• Live Gochar Transits: {conf.transit_finding}
+• Triple-Dasha Alignment: {conf.triple_dasha_confluence}
+• Breakthrough / Key Timing Window: {conf.breakthrough_period}
+• Targeted Remedies: {'; '.join(conf.remedies[:2])}
+"""
+    
+    from openai import OpenAI
+    from core.config import S
+    base_url = getattr(S, "llm_base_url", "http://host.docker.internal:8000/v1") or "http://host.docker.internal:8000/v1"
+    api_key = getattr(S, "llm_api_key", "dummy") or "dummy"
+    model = getattr(S, "llm_model", "Qwen/Qwen2.5-7B-Instruct-AWQ") or "Qwen/Qwen2.5-7B-Instruct-AWQ"
+    
+    messages = [{"role": "system", "content": system_prompt + "\n" + confluence_context}]
+    for h in (history or [])[-4:]:
+        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+    messages.append({"role": "user", "content": question})
+    
+    try:
+        client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key, timeout=60.0)
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.3,
+            max_tokens=600
+        )
+        ans = (resp.choices[0].message.content or "").strip()
+        if ans:
+            return {
+                "answer": ans,
+                "out_of_scope": False,
+                "used_fact_ids": [conf.domain_key, "gochar", "ashtakavarga", "triple_dasha"],
+                "stats": {"accepted": 1, "rejected": 0},
+            }
+    except Exception as exc:
+        print(f"[confluence_question_engine] chat Qwen call failed: {exc}", flush=True)
+
+    fallback_ans = f"Based on your chart, {conf.classical_verdict} Your primary breakthrough timing window is {conf.breakthrough_period}."
+    return {
+        "answer": fallback_ans,
+        "out_of_scope": False,
+        "used_fact_ids": [conf.domain_key, "breakthrough_period"],
+        "stats": {"accepted": 1, "rejected": 0},
+    }
+
+
