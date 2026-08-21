@@ -2,7 +2,8 @@
 	email {$ACME_EMAIL}
 }
 
-{$DOMAIN} {
+# Production site + API (no Vercel). gcp kept so rollback subdomain still works.
+www.graharekha.com, gcp.graharekha.com {
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -30,4 +31,9 @@
 		file_server
 		header /index.html Cache-Control "no-cache"
 	}
+}
+
+# Apex → www
+graharekha.com {
+	redir https://www.graharekha.com{uri} permanent
 }

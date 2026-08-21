@@ -18,7 +18,7 @@ x-app-env: &app-env
     ENV: ${ENV:-prod}
     DATABASE_URL: postgresql+psycopg://${PG_USER:-astro}:${PG_PASSWORD}@postgres:5432/${PG_DB:-astro}
     REDIS_URL: redis://redis:6379/0
-    ALLOWED_ORIGINS: https://${DOMAIN},https://www.${DOMAIN}
+    ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://www.graharekha.com,https://graharekha.com,https://gcp.graharekha.com}
     LOCAL_STORE: /data/storage
     INLINE_WORKER: "1"
     INLINE_WORKER_THREADS: ${INLINE_WORKER_THREADS:-2}
@@ -74,7 +74,7 @@ services:
       ENV: ${ENV:-prod}
       DATABASE_URL: postgresql+psycopg://${PG_USER:-astro}:${PG_PASSWORD}@postgres:5432/${PG_DB:-astro}
       REDIS_URL: redis://redis:6379/0
-      ALLOWED_ORIGINS: https://${DOMAIN},https://www.${DOMAIN}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://www.graharekha.com,https://graharekha.com,https://gcp.graharekha.com}
       LOCAL_STORE: /data/storage
       INLINE_WORKER: "1"
       INLINE_WORKER_THREADS: ${INLINE_WORKER_THREADS:-2}
