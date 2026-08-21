@@ -1819,6 +1819,9 @@ function go(v, opts){
     toast('Analysis is admin only');
     v = 'home';
   }
+  if((v === 'reports' || v === 'analysis') && !(S.user && apSessionToken)){
+    v = 'home';
+  }
   if(!VIEWS.includes(v)) v = 'home';
   // Leaving the reading view by any route — Back, a hash change, a tab —
   // retires the contents rail with it, so nothing keeps measuring a report
@@ -3040,7 +3043,12 @@ function logout(){
   if(!MOCK) fetch(CONFIG.apiBase + '/api/auth/logout', { method:'POST' }).catch(()=>{});
   S.user=null; S.reading=null; S.readingId=null; S.unlocked=false; S.details=null; S.imgs={left:null,right:null};
   S.lastAstro=null; // keep astroBirth / horaryPlace for autofill on next sign-in
-  save(); paintAuth(); ['left','right'].forEach(clearHand); $('#s-result').innerHTML=''; syncFlow(); syncAstroGate(); toast('Signed out');
+  _reportRows = [];
+  const rl = $('#reportsList'); if(rl) rl.innerHTML = '';
+  save(); paintAuth(); ['left','right'].forEach(clearHand); $('#s-result').innerHTML=''; syncFlow(); syncAstroGate();
+  // Leave private views (reports / analysis / reading) — land on home for sign-in.
+  go('home', {replace:true, instant:true});
+  toast('Signed out');
 }
 
 /* Real Google Identity Services — activates when a Client ID is set
