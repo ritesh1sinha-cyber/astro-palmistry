@@ -4,8 +4,8 @@ Use your **$300 free trial credit** for a second production-like stack:
 one GCE VM running the same shape as Railway (API + MiniLM inline workers),
 plus Postgres, Redis, and Caddy (HTTPS + static site).
 
-Railway can keep serving `www.graharekha.co.in` via Vercel; GCP can serve a
-subdomain such as `gcp.graharekha.co.in` until you cut over DNS.
+Railway keeps serving `www.graharekha.com` via Vercel until you cut over.
+GCP serves a parallel subdomain `gcp.graharekha.com` for proving the stack.
 
 ```
 Browser ──▶ Caddy (80/443) ──▶ site/ (static)
@@ -52,8 +52,21 @@ gcloud compute firewall-rules create graharekha-http-https \
 ```
 
 SSH (optional if using IAP): default `default-allow-ssh` is usually fine.
+Do **not** open Postgres `5432` or Redis `6379` to the internet.
 
-## 3. Create the VM
+## 3. Create the VM + static IP
+
+Reserve a static IP first so DNS does not drift after a restart:
+
+```bash
+gcloud compute addresses create graharekha-api-ip \
+  --region=asia-south1
+
+gcloud compute addresses describe graharekha-api-ip \
+  --region=asia-south1 --format='get(address)'
+```
+
+Create the instance attached to that address:
 
 ```bash
 gcloud compute instances create graharekha-api \
@@ -64,26 +77,37 @@ gcloud compute instances create graharekha-api \
   --image-family=ubuntu-2204-lts \
   --image-project=ubuntu-os-cloud \
   --tags=graharekha-web \
-  --scopes=cloud-platform
+  --scopes=cloud-platform \
+  --address=graharekha-api-ip
 ```
 
-Note the **external IP**:
+Confirm the external IP:
 
 ```bash
 gcloud compute instances describe graharekha-api \
   --zone=asia-south1-a --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
 ```
 
-## 4. DNS
+## 4. DNS and OAuth
 
 Create an **A record**:
 
 | Host | Type | Value |
 |------|------|--------|
-| `gcp.graharekha.co.in` | A | *(VM external IP)* |
-| `www.gcp.graharekha.co.in` | A | *(same, optional)* |
+| `gcp.graharekha.com` | A | *(static IP from step 3)* |
+| `www.gcp.graharekha.com` | A | *(same, optional)* |
 
 Wait for DNS before Caddy can get a Let's Encrypt cert.
+
+In [Google Cloud OAuth credentials](https://console.cloud.google.com/apis/credentials),
+add Authorized JavaScript origin:
+
+- `https://gcp.graharekha.com`
+
+Keep `https://www.graharekha.com` (and Railway) origins too.
+
+Do **not** change the live Razorpay webhook yet — payments stay on Railway
+during the parallel window.
 
 ## 5. Install & start the stack on the VM
 
@@ -111,27 +135,20 @@ Edit secrets before (or after first generate):
 
 ```bash
 nano ~/astro-palmistry/deploy/.env
-# set DOMAIN=gcp.graharekha.co.in
+# set DOMAIN=gcp.graharekha.com
+# set ACME_EMAIL=admin@graharekha.com
+# paste RAZORPAY_* and LLM_* from Railway
 # confirm GOOGLE_CLIENT_ID
 sudo docker compose -f deploy/docker-compose.gcp.yml --env-file deploy/.env up -d --build
 ```
 
 First image build often takes **15–25 minutes** (torch + MiniLM).
 
-## 6. Google Sign-In origins
-
-In [Google Cloud OAuth credentials](https://console.cloud.google.com/apis/credentials),
-add Authorized JavaScript origin:
-
-- `https://gcp.graharekha.co.in`
-
-(Keep Railway / `www.graharekha.co.in` origins too.)
-
-## 7. Verify
+## 6. Verify the empty stack
 
 ```bash
-curl -sS https://gcp.graharekha.co.in/health
-curl -sS https://gcp.graharekha.co.in/api/public-config
+curl -sS https://gcp.graharekha.com/health
+curl -sS https://gcp.graharekha.com/api/public-config
 # googleClientId should be set
 ```
 
@@ -142,15 +159,96 @@ cd ~/astro-palmistry
 docker compose -f deploy/docker-compose.gcp.yml --env-file deploy/.env logs -f api
 ```
 
-## 8. Point Vercel at GCP later (optional)
+Admin login on `https://gcp.graharekha.com` → Analysis → Payment health:
+key id, key secret, and webhook secret should all read as set.
 
-In `vercel.json`, change the Railway rewrite host to your GCP domain (or keep
-Vercel → Railway and use GCP only as backup). Same-origin via Caddy on the VM
-means you can also open `https://gcp.graharekha.co.in` directly with no Vercel.
+## 7. Copy Railway data (once GCP is healthy)
 
-Webhook for Razorpay if you cut over:
+Two stores matter. Redis is a job queue — do **not** copy it.
 
-`https://gcp.graharekha.co.in/api/payment/webhook`
+### Postgres
+
+From a machine that can reach Railway Postgres (Railway dashboard → Postgres →
+Connect → copy the public URL, or use `railway connect`):
+
+```bash
+# on your laptop — dump Railway
+pg_dump --no-owner --no-acl "$RAILWAY_DATABASE_URL" -Fc -f railway.dump
+
+# copy dump to the VM
+gcloud compute scp railway.dump graharekha-api:~/railway.dump --zone=asia-south1-a
+```
+
+On the VM (GCP subdomain only — Railway stays live):
+
+```bash
+cd ~/astro-palmistry
+# restore into the compose Postgres (container name may be project_postgres_1)
+docker compose -f deploy/docker-compose.gcp.yml --env-file deploy/.env \
+  exec -T postgres pg_restore --clean --if-exists --no-owner --no-acl -U astro -d astro \
+  < ~/railway.dump
+# if pg_restore complains about roles, drop/recreate the DB once then retry:
+# docker compose … exec postgres psql -U astro -c "DROP DATABASE IF EXISTS astro; CREATE DATABASE astro OWNER astro;"
+```
+
+Or use the helper: [`deploy/gcp-migrate-data.sh`](deploy/gcp-migrate-data.sh).
+
+### Report HTML (`LOCAL_STORE`)
+
+Railway volume is `/data/storage`. Without these files, DB rows exist but reports
+404.
+
+```bash
+# From Railway shell / volume download, or:
+# railway run tar czf - -C /data storage > railway-storage.tgz
+gcloud compute scp railway-storage.tgz graharekha-api:~/ --zone=asia-south1-a
+```
+
+On the VM:
+
+```bash
+cd ~/astro-palmistry
+VOL=$(docker volume ls -q | grep reportstore | head -1)
+# find the mount path
+docker run --rm -v "$VOL":/data -v "$HOME":/backup alpine \
+  sh -c 'mkdir -p /data/storage && tar xzf /backup/railway-storage.tgz -C /data'
+docker compose -f deploy/docker-compose.gcp.yml --env-file deploy/.env restart api
+```
+
+## 8. Prove payments before cutting over
+
+On `https://gcp.graharekha.com` (not www):
+
+1. Admin login → Payment health: all three Razorpay secrets set.
+2. Generate a free report.
+3. Start a paid unlock — confirm Razorpay checkout shows `gatewayOrderId`
+   (overlay with ₹298, not the blue shared-button fallback).
+4. Optional ₹298 test payment; refund from the Razorpay dashboard.
+
+For the test payment only, add a **second** Razorpay webhook:
+
+- URL: `https://gcp.graharekha.com/api/payment/webhook`
+- Events: `payment.captured`, `order.paid` (and optionally `payment.failed`)
+- Same signing secret as `RAZORPAY_WEBHOOK_SECRET`
+
+Leave the live `https://www.graharekha.com/api/payment/webhook` webhook alone.
+Remove the GCP test webhook if you abort the migration.
+
+## 9. Cut over (later, after you confirm GCP)
+
+Reversible — keep Railway running 24–48 h:
+
+1. Re-dump Postgres + reports if Railway accepted new orders during the test
+   window (repeat step 7).
+2. Change [`vercel.json`](vercel.json) rewrites from
+   `astro-api-production-af42.up.railway.app` to `https://gcp.graharekha.com`
+   (or serve www from Caddy and skip the Vercel API proxy).
+3. Point the **primary** Razorpay webhook at whichever host owns `/api`
+   (`https://www.graharekha.com/api/payment/webhook` if Vercel still proxies,
+   or `https://gcp.graharekha.com/api/payment/webhook` if Caddy is apex).
+4. Rollback: restore `vercel.json` to Railway and redeploy Vercel.
+
+Do **not** delete the Railway project until rollback is no longer needed.
 
 ## Useful ops
 
@@ -159,7 +257,7 @@ Webhook for Razorpay if you cut over:
 cd ~/astro-palmistry && git pull && git lfs pull
 docker compose -f deploy/docker-compose.gcp.yml --env-file deploy/.env up -d --build
 
-# stop billing quickly
+# stop billing quickly (trial credit)
 gcloud compute instances stop graharekha-api --zone=asia-south1-a
 ```
 
@@ -168,6 +266,7 @@ gcloud compute instances stop graharekha-api --zone=asia-south1-a
 - Open Postgres (`5432`) or Redis (`6379`) on `0.0.0.0` — keep them Docker-internal.
 - Use a shared/guessable `APP_SECRET` / `PG_PASSWORD`.
 - Expect free-tier micro VMs to run MiniLM — always **≥16 GB** RAM for this image.
+- Change live Razorpay / Vercel until step 9.
 
 See also: `deploy/docker-compose.gcp.yml`, `deploy/.env.gcp.example`,
-`deploy/gcp-setup-vm.sh`, Railway notes in `RAILWAY.md`.
+`deploy/gcp-setup-vm.sh`, `deploy/gcp-migrate-data.sh`, Railway notes in `RAILWAY.md`.
