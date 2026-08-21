@@ -1,8 +1,5 @@
 {
 	email {$ACME_EMAIL}
-	servers {
-		protocols h1 h2 h3
-	}
 }
 
 {$DOMAIN} {
@@ -20,11 +17,7 @@
 	}
 
 	handle /api/* {
-		reverse_proxy api:3000 {
-			transport http {
-				read_timeout 300s
-			}
-		}
+		reverse_proxy api:3000
 	}
 
 	handle /health {
