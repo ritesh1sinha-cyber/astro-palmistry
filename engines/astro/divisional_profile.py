@@ -69,55 +69,68 @@ class DivisionalInsight:
     evidence: str
 
 
+#: ``nav`` is the label this varga gets in the report's contents rail. The rail
+#: is a narrow column read at a glance, so it carries the life area the reader
+#: is looking for — "Career", not "Career Growth, Status & Public Respect".
 VARGA_META: dict[str, dict[str, str]] = {
     "D1": {
         "name": "Birth Chart (D1)",
         "governs": "Core Nature & Personal Vitality",
+        "nav": "Self & vitality",
         "desc": "Your foundational personality, physical vitality, and overall life orientation.",
     },
     "D2": {
         "name": "Wealth Division (D2 · Hora)",
         "governs": "Wealth, Savings & Financial Stability",
+        "nav": "Money & wealth",
         "desc": "Your wealth accumulation instincts, asset building, and liquid resource holding power.",
     },
     "D3": {
         "name": "Courage, Siblings & Initiative (D3 · Drekkana)",
         "governs": "Siblings, Courage & Initiative",
+        "nav": "Siblings & courage",
         "desc": "Your courage, everyday initiative, sibling relationships, and physical execution drive.",
     },
     "D4": {
         "name": "Property, Residence & Relocation (D4 · Chaturthamsha)",
         "governs": "Home, Land, Vehicles, Relocation & Living Abroad",
+        "nav": "Home & property",
         "desc": "Fixed property ownership, residential stability, geographical relocation, and foreign settlement potential.",
     },
     "D7": {
         "name": "Children & Lineage (D7 · Saptamsha)",
         "governs": "Children, Family Continuation & Legacy",
+        "nav": "Children",
         "desc": "Your progeny prospects, reproductive vitality, family continuation, and children's dharma.",
     },
     "D9": {
         "name": "Marriage & Soul Journey (D9 · Navamsha)",
         "governs": "Life Partner, Marriage & Inner Growth",
+        "nav": "Marriage & partner",
         "desc": "Your inner spiritual maturity, spouse compatibility, and lifelong partnership harmony.",
     },
     "D10": {
         "name": "Career & Profession (D10 · Dasamsha)",
         "governs": "Career Growth, Status & Public Respect",
+        "nav": "Career & status",
         "desc": "Your professional karma, public recognition, authority, and vocational trajectory.",
     },
     "D12": {
         "name": "Family Roots (D12 · Dwadashamsha)",
         "governs": "Parents & Ancestral Blessings",
+        "nav": "Parents & roots",
         "desc": "Your ancestral foundation, parental heritage, and inherited moral grounding.",
     },
     "D24": {
         "name": "Higher Learning (D24 · Chaturvimshamsha)",
         "governs": "Education, Memory & Intellectual Skills",
+        "nav": "Learning & study",
         "desc": "Your higher learning potential, analytical skills, and capacity to master complex disciplines.",
     },
     "D30": {
         "name": "Health, Physical Stamina & Resilience (D30 · Trimsamsha & D27 · Bhamsha)",
         "governs": "Physical Stamina, Health Sensitivities & Inner Immunity",
+        "nav": "Health & stamina",
         "desc": "Your cellular stamina (D27), anatomical vulnerability patterns, and inner resilience to overcome obstacles (D30).",
     },
 }
@@ -1684,13 +1697,16 @@ def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
                 f'  </details>\n'
             )
 
+            # The kicker doubles as this card's entry in the contents rail, so
+            # it names the life area rather than repeating the headline below.
+            area = VARGA_META.get(ins.code, {}).get("nav") or ins.governs
             card = (
                 f'<article class="card div-card" id="{ins.domain_id}" style="margin-bottom:16px;border-left:4px solid {border_color};background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
-                f'  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">\n'
-                f'    <span style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#6a7080;">{html.escape(ins.code)} · {html.escape(ins.governs)}</span>\n'
-                f'    <span class="pill {pill_cls}" style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;">{pill_lbl}</span>\n'
+                f'  <div class="card-top">\n'
+                f'    <span class="area">{html.escape(area)} · {html.escape(ins.code)}</span>\n'
+                f'    <span class="pill {pill_cls}">{pill_lbl}</span>\n'
                 f'  </div>\n'
-                f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;margin:4px 0 8px;color:#1f2430;font-weight:600;">{html.escape(ins.headline)}</h3>\n'
+                f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;margin:8px 0 8px;color:#1f2430;font-weight:600;">{html.escape(ins.headline)}</h3>\n'
                 f'  <div style="margin:0 0 10px;font-size:0.9rem;line-height:1.58;color:#2c3140;">{ins.prediction}</div>\n'
                 f'{timeline_box}'
                 f'{remedy_box}'
@@ -1713,9 +1729,9 @@ def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
     teaser_html = ""
     if not paid and teaser_items:
         teaser_html = (
-            f'<div class="card div-teaser-card" style="background:#fcfbf9;border:1px dashed #d5cfc4;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
-            f'  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">\n'
-            f'    <span style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#7a4b18;">Specialized Life Divisions (D7, D9, D10, D24, D30)</span>\n'
+            f'<article class="card div-teaser-card" id="domain-locked" style="background:#fcfbf9;border:1px dashed #d5cfc4;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
+            f'  <div class="card-top">\n'
+            f'    <span class="area">The other five areas</span>\n'
             f'    <span style="font-size:0.68rem;font-weight:700;background:#ebdcc7;color:#6b4012;padding:2px 8px;border-radius:99px;">Available in Full Reading</span>\n'
             f'  </div>\n'
             f'  <p style="font-size:0.84rem;color:#5a554c;margin:0 0 12px;line-height:1.45;">\n'
@@ -1727,17 +1743,17 @@ def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
             f'  <div style="text-align:center;margin-top:14px;">\n'
             f'    <a href="#unlock" data-unlock="1" style="display:inline-block;background:#16181d;color:#f7f5f1;font-size:0.82rem;font-weight:600;padding:8px 18px;border-radius:99px;text-decoration:none;">Unlock Complete Divisional Breakdown</a>\n'
             f'  </div>\n'
-            f'</div>\n'
+            f'</article>\n'
         )
 
     # 108 Rule Snapshot Card
     snapshot_108_html = (
-        f'<article class="card snapshot-108-card" style="margin-bottom:16px;background:#fbfbf9;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
-        f'  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">\n'
-        f'    <span style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#7a4b18;">Classical Confluence Synthesis</span>\n'
-        f'    <span class="pill up" style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;">Static Promise</span>\n'
+        f'<article class="card snapshot-108-card" id="domain-baseline" style="margin-bottom:16px;background:#fbfbf9;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
+        f'  <div class="card-top">\n'
+        f'    <span class="area">Foundational baseline</span>\n'
+        f'    <span class="pill up">Static Promise</span>\n'
         f'  </div>\n'
-        f'  <h3 style="font-family:Georgia,serif;font-size:1.05rem;margin:4px 0 8px;color:#1f2430;font-weight:600;">Foundational Astrological Baseline</h3>\n'
+        f'  <h3 style="font-family:Georgia,serif;font-size:1.05rem;margin:8px 0 8px;color:#1f2430;font-weight:600;">Foundational Astrological Baseline</h3>\n'
         f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{summary_108}</p>\n'
         f'</article>\n'
     )

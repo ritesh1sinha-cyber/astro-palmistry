@@ -181,12 +181,6 @@ main{position:relative;z-index:1;padding-bottom:120px}
 .path p{margin:0 0 16px;font-size:14.5px;color:var(--muted)}
 .readingmount{animation:mountIn .45s ease}
 @keyframes mountIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.subnav{
-  display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:20px;
-  border-bottom:1px solid var(--line);padding-bottom:12px;
-  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin
-}
-.subnav button{flex:0 0 auto;white-space:nowrap}
 .apane .card{position:relative}
 .admin-gen-stat{
   display:none;font-size:11px;color:var(--muted-2);line-height:1.35;
@@ -424,13 +418,6 @@ input[type=file]{display:none}
 
 
 /* ---------- astrology ---------- */
-/* subnav base lives with hero section (scrollable row) */
-.subnav button{
-  background:var(--paper);border:1px solid var(--line);border-radius:999px;
-  padding:9px 17px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--muted);transition:.16s
-}
-.subnav button:hover{border-color:var(--gold-dim);color:var(--ink)}
-.subnav button[aria-current="true"]{background:var(--gold);border-color:var(--gold);color:#1b1405;font-weight:600}
 .cg{border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--paper)}
 .vcard{border:1px solid var(--line);border-radius:18px;padding:20px;text-align:center;background:var(--paper)}
 .placelist{
@@ -575,12 +562,213 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 .mobnav div{display:flex;justify-content:space-around}
 .mobnav button{background:none;border:0;font-size:10.5px;display:grid;gap:4px;justify-items:center;padding:6px 10px;cursor:pointer;font-weight:600;letter-spacing:.04em}
 .mobnav button svg{width:21px;height:21px}
+
+/* ---------- reading mode ----------
+   A report is a document, not a widget. It gets its own view, a sticky
+   toolbar, and exactly one scrollbar — the page's. */
+:root{--readbar-h:58px;--header-h:66px}
+.readbar{
+  position:sticky;top:var(--header-h);z-index:55;
+  background:rgba(251,250,248,.94);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line)
+}
+.readbar-in{display:flex;align-items:center;gap:12px;min-height:var(--readbar-h);
+  padding-top:8px;padding-bottom:8px}
+.readback{
+  display:inline-flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;
+  color:var(--muted);font-size:13.5px;font-weight:600;padding:8px 8px 8px 0;flex:0 0 auto
+}
+.readback:hover{color:var(--ink)}
+.readback svg{width:18px;height:18px;flex:0 0 auto}
+.readtitle{min-width:0;flex:1 1 auto}
+.readtitle b{display:block;font-family:var(--serif);font-size:16px;font-weight:600;
+  line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.readtitle small{display:block;font-size:11.5px;color:var(--muted-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.readacts{display:flex;gap:8px;flex:0 0 auto}
+.tocbtn{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px}
+.tocbtn svg{width:16px;height:16px;flex:0 0 auto}
+.tocbtn[hidden],.readtoc[hidden]{display:none!important}
+.readingwrap{padding:20px 0 64px}
+#readingHead:empty,#readingAside:empty{display:none}
+#readingAside>*:first-child{margin-top:18px}
+
+/* Contents rail. A long reading is a dozen screens; the rail is how you get
+   to the part you paid for without scrolling past everything else. */
+.readtoc{display:none}
+.readtoc .navlbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--muted-2);padding:0 10px 10px}
+.readtoc ol{list-style:none;margin:0;padding:0}
+.readtoc a{display:block;text-decoration:none;color:var(--muted);font-size:13px;
+  line-height:1.35;padding:7px 10px;border-radius:9px;
+  border-left:2px solid transparent;transition:color .15s,background .15s}
+.readtoc a:hover{color:var(--ink);background:var(--line-2);text-decoration:none}
+.readtoc a.here{color:var(--ink);background:#fff;border-left-color:var(--gold-soft);
+  font-weight:600;box-shadow:0 1px 3px rgba(22,24,29,.05)}
+.readtoc li.lvl2 a{padding-left:22px;font-size:12.5px;color:var(--muted-2)}
+.readtoc li.lvl2 a:hover,.readtoc li.lvl2 a.here{color:var(--ink)}
+@media(min-width:1100px){
+  .readingwrap{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+  body.toc-on .readingwrap{grid-template-columns:228px minmax(0,1fr);gap:30px}
+  body.toc-on .readtoc{
+    display:block;position:sticky;align-self:start;
+    top:calc(var(--header-h) + var(--readbar-h) + 20px);
+    max-height:calc(100dvh - var(--header-h) - var(--readbar-h) - 40px);
+    overflow-y:auto;overscroll-behavior:contain;padding-bottom:8px
+  }
+  .readtoc::-webkit-scrollbar{width:6px}
+  .readtoc::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+  body.toc-on .tocbtn{display:none}
+}
+.tocsheet{list-style:none;margin:0;padding:0}
+.tocsheet a{display:block;text-decoration:none;color:var(--ink);font-size:15px;
+  padding:11px 12px;border-radius:11px;border:1px solid transparent}
+.tocsheet a:hover{background:var(--line-2);text-decoration:none}
+.tocsheet a.here{background:#fff;border-color:var(--line);font-weight:600}
+.tocsheet li.lvl2 a{padding-left:28px;font-size:14px;color:var(--muted)}
+.tocsheet li.lvl2 a.here{color:var(--ink)}
+.reportframe.rf-auto{height:auto;min-height:70vh;border-radius:0;background:transparent;margin-top:0}
+.reportframe.rf-fill{height:calc(100dvh - var(--header-h) - var(--readbar-h));border-radius:0;margin-top:0}
+body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
+
+/* ---------- astrology chooser ---------- */
+.chooser-group+.chooser-group{margin-top:36px}
+.chooser-group>h3{font-size:clamp(19px,3.4vw,23px);margin:0 0 4px}
+.chooser-group>p{margin:0 0 18px;color:var(--muted);font-size:14px;max-width:60ch}
+.toolgrid{display:grid;gap:14px}
+@media(min-width:680px){.toolgrid{grid-template-columns:1fr 1fr}}
+@media(min-width:1040px){.toolgrid{grid-template-columns:repeat(3,1fr)}}
+.toolcard{
+  display:flex;flex-direction:column;align-items:stretch;text-align:left;width:100%;
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:20px;cursor:pointer;font:inherit;color:inherit;transition:.18s;
+  box-shadow:0 4px 18px rgba(22,24,29,.04)
+}
+.toolcard:hover{border-color:var(--gold-dim);transform:translateY(-2px);box-shadow:var(--shadow)}
+.toolcard:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.tc-top{display:flex;align-items:center;gap:10px}
+.tc-top svg{width:22px;height:22px;color:var(--gold);flex:0 0 auto}
+.tc-top h4{font-family:var(--serif);font-size:18px;font-weight:600;margin:0;line-height:1.25;flex:1 1 auto}
+.toolcard p{margin:11px 0 0;font-size:13.5px;color:var(--muted);line-height:1.55;flex:1 1 auto}
+.tc-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.tag{
+  font-size:11px;letter-spacing:.03em;border:1px solid var(--line);border-radius:999px;
+  padding:4px 10px;color:var(--muted-2);white-space:nowrap
+}
+.tag.need{border-color:var(--gold-dim);color:var(--gold-soft);background:rgba(201,162,39,.07)}
+.tag.free{border-color:rgba(28,107,69,.26);color:var(--ok);background:rgba(28,107,69,.07)}
+
+/* ---------- astrology tool switcher ---------- */
+#astroResume:empty{display:none}
+#astroResume{margin-bottom:26px}
+.astroswitch{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;
+  border-bottom:1px solid var(--line);padding-bottom:12px
+}
+.astroswitch .pills{display:none;gap:6px;flex-wrap:wrap;flex:1 1 100%}
+.astroswitch .pills button{
+  background:var(--paper);border:1px solid var(--line);border-radius:999px;
+  padding:8px 15px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:.16s
+}
+.astroswitch .pills button:hover{border-color:var(--gold-dim);color:var(--ink)}
+.astroswitch .pills button[aria-current="true"]{
+  background:var(--gold);border-color:var(--gold);color:#1b1405;font-weight:600}
+/* Only show the pill row where all of it fits on one line; below that the
+   sheet is better anyway, because it can carry the descriptions. */
+@media(min-width:1120px){
+  .astroswitch .pills{display:flex}
+  .astroswitch .switchbtn,.astroswitch .cur{display:none}
+}
+.astroswitch .allbtn{
+  display:inline-flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;
+  color:var(--muted);font-size:13.5px;font-weight:600;padding:8px 0;flex:0 0 auto
+}
+.astroswitch .allbtn:hover{color:var(--ink)}
+.astroswitch .allbtn svg{width:16px;height:16px}
+.astroswitch .cur{
+  font-family:var(--serif);font-size:17px;font-weight:600;flex:1 1 auto;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.switchbtn{
+  display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;cursor:pointer;
+  background:var(--paper);border:1px solid var(--line);border-radius:999px;
+  padding:8px 14px;font-size:13px;font-weight:600;color:var(--ink-2)
+}
+.switchbtn:hover{border-color:var(--gold-dim)}
+.switchbtn svg{width:13px;height:13px;color:var(--gold-soft)}
+
+/* ---------- sheet (tool switcher / more menu) ---------- */
+.sheet{position:fixed;inset:0;z-index:200;display:none}
+.sheet.on{display:block}
+.sheet-bg{position:absolute;inset:0;background:rgba(22,24,29,.42)}
+.sheet-box{
+  position:absolute;left:0;right:0;bottom:0;max-height:86vh;overflow-y:auto;
+  background:var(--paper);border-radius:22px 22px 0 0;border-top:1px solid var(--line);
+  padding:10px 0 calc(18px + env(safe-area-inset-bottom));
+  box-shadow:0 -18px 50px rgba(22,24,29,.18);animation:sheetUp .26s cubic-bezier(.22,.8,.3,1)
+}
+@keyframes sheetUp{from{transform:translateY(22px);opacity:.5}to{transform:none;opacity:1}}
+.sheet-grip{width:40px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 14px}
+.sheet-in{padding:0 clamp(18px,5vw,28px)}
+.sheet-in>.eyebrow{margin-bottom:10px}
+.sheetitem{
+  display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;cursor:pointer;
+  background:none;border:0;border-top:1px solid var(--line-2);padding:14px 2px;font:inherit;color:inherit
+}
+.sheetitem:first-of-type{border-top:0}
+.sheetitem:hover{background:rgba(201,162,39,.06)}
+.sheetitem svg{width:20px;height:20px;color:var(--gold);flex:0 0 auto;margin-top:3px}
+.sheetitem span{min-width:0}
+.sheetitem b{display:block;font-size:14.5px;font-weight:600;line-height:1.3}
+.sheetitem small{display:block;font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:2px}
+.sheetitem[aria-current="true"] b{color:var(--gold-soft)}
+@media(min-width:700px){
+  .sheet-box{
+    left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);
+    width:min(580px,92vw);max-height:80vh;border-radius:20px;
+    border:1px solid var(--line);animation:none
+  }
+}
+
+/* ---------- collapsed birth details ---------- */
+.birthchip{display:none}
+#astroBirth.collapsed{padding:16px clamp(16px,3vw,22px)}
+#astroBirth.collapsed .birthfull{display:none}
+#astroBirth.collapsed .birthchip{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.birthchip>svg{width:20px;height:20px;color:var(--gold);flex:0 0 auto}
+.birthchip .bc-txt{flex:1 1 200px;min-width:0}
+.birthchip .bc-txt b{display:block;font-size:14.5px;font-weight:600;line-height:1.3}
+.birthchip .bc-txt small{display:block;font-size:12.5px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.birthchip .bc-acts{display:flex;gap:8px;flex:0 0 auto;flex-wrap:wrap}
+#astroBirth.collapsed #astroSummaryOut:not(:empty){margin-top:16px}
+
+/* ---------- reports library ---------- */
+.repfilter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.repfilter button{
+  background:var(--paper);border:1px solid var(--line);border-radius:999px;cursor:pointer;
+  padding:7px 14px;font-size:13px;font-weight:500;color:var(--muted);transition:.16s
+}
+.repfilter button:hover{border-color:var(--gold-dim);color:var(--ink)}
+.repfilter button[aria-current="true"]{background:var(--gold);border-color:var(--gold);
+  color:#1b1405;font-weight:600}
+
 @media(max-width:760px){
   nav.tabs{display:none}
   .mobnav{display:block}
   main{padding-bottom:120px}
   .who{display:none}
   .hbar{height:60px}
+  :root{--header-h:60px}
+  .readacts .lbl{display:none}
+  .readacts .btn{padding:9px 12px}
+  /* A phone-width toolbar cannot hold everything and still say which reading
+     you are in. The chevron carries "back" on its own, and the report already
+     fills the screen, so "open full screen" has nothing left to offer. */
+  .readback #readBackLabel{display:none}
+  .readacts .act-full{display:none}
+  .tocbtn{padding:9px 12px}
+  body.reading-on main{padding-bottom:40px}
 }
 @media print{
   header,.mobnav,.toast,footer,.btn{display:none!important}
@@ -602,6 +790,12 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3.5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V15"/></symbol>
 <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></symbol>
 <symbol id="i-num" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 3v18M14 3v18M3 8h18M3 16h18"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+<symbol id="i-q" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.4"/><path d="M12 17h.01"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></symbol>
+<symbol id="i-rings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="14" r="6"/><circle cx="15" cy="14" r="6"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/></symbol>
 </defs></svg>
 
 <header>
@@ -617,7 +811,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   <nav class="tabs" id="tabs">
    <button onclick="go('home')" data-v="home">Home</button>
    <button onclick="go('read')" data-v="read">Palm reading</button>
-   <button onclick="go('astro')" data-v="astro">Astrology</button>
+   <button onclick="goAstro()" data-v="astro">Astrology</button>
    <button onclick="go('soon')" data-v="soon">Roadmap</button>
    <button onclick="go('contact')" data-v="contact">Contact</button>
    <button onclick="go('reports')" data-v="reports" id="navReports" style="display:none">My reports</button>
@@ -824,20 +1018,52 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
   </div>
 
   <div id="astroMain" style="display:none">
-  <div class="subnav" id="astroNav">
-   <button data-a="report"  aria-current="true">Full report</button>
-   <button data-a="classical" id="subnavClassical" hidden style="display:none">Classical Vedic</button>
-   <button data-a="horary">Horary</button>
-   <button data-a="question">Ask your chart</button>
-   <button data-a="daily">Daily reading</button>
-   <button data-a="numero">Numerology</button>
-   <button data-a="match">Kundali Matching</button>
-   <button data-a="muhurat">Muhurat</button>
-   <button data-a="btr">Birth time rectification</button>
+
+  <!-- "Where you left off" — offered, never forced. -->
+  <div id="astroResume"></div>
+
+  <!-- Landing state: pick a reading by what you actually have to hand. -->
+  <div id="astroChooser">
+   <div class="chooser-group">
+    <h3>You know your date, time and place of birth</h3>
+    <p>These are read from your birth chart, so they need all four details. If the time is a guess, run
+       rectification first — twenty minutes can move your rising sign.</p>
+    <div class="toolgrid" id="toolsBirth"></div>
+   </div>
+   <div class="chooser-group">
+    <h3>No birth time? Start here</h3>
+    <p>None of these need a birth chart. A question, or a photograph of your hands, is enough.</p>
+    <div class="toolgrid" id="toolsNoBirth"></div>
+   </div>
+  </div>
+
+  <!-- Replaces the chooser once a reading is picked. Pills on wide screens,
+       a sheet with descriptions on narrow ones — nothing ever clips. -->
+  <div class="astroswitch" id="astroSwitch" style="display:none">
+   <button class="allbtn" type="button" onclick="setAstroPane(null)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    All readings
+   </button>
+   <span class="cur" id="astroCurTool"></span>
+   <button class="switchbtn" type="button" onclick="openToolSheet()">Switch
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+   </button>
+   <div class="pills" id="astroPills"></div>
   </div>
 
   <!-- birth details (shared) -->
   <div class="card" id="astroBirth">
+   <!-- Collapsed form: 850px of fields becomes one line once we have them. -->
+   <div class="birthchip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><use href="#i-moon"/></svg>
+    <span class="bc-txt"><b id="bcName">Birth details</b><small id="bcLine"></small></span>
+    <span class="bc-acts">
+     <button type="button" class="btn btn-ghost btn-sm" onclick="astroSummary()" title="Lagna, Moon, nakshatra and current dasha">Chart summary</button>
+     <button type="button" class="btn btn-ghost btn-sm" onclick="expandBirth()">Edit</button>
+     <button type="button" class="btn btn-ghost btn-sm" onclick="clearAstroBirthForm()" title="Clear saved birth details for a new chart">New person</button>
+    </span>
+   </div>
+   <div class="birthfull">
    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
     <div>
      <h3 style="font-size:22px;margin:0">Birth details</h3>
@@ -870,6 +1096,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
     <button class="btn btn-ghost btn-sm" onclick="astroSummary()">Show my chart summary — free</button>
     <span class="hint">Lagna, Moon, nakshatra and current dasha, at no cost.</span>
    </div>
+   </div><!-- /.birthfull -->
    <div id="astroSummaryOut"></div>
   </div>
 
@@ -1362,8 +1589,38 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
  <div class="wrap sec">
   <div class="sec-head"><div class="eyebrow">Your library</div><h2>Unlocked reports</h2>
    <p>Every reading you have paid for — reopen it any time, or download a PDF.</p></div>
+  <div id="reportsFilter" class="repfilter" style="display:none"></div>
   <div id="reportsList"><div class="card hint">Sign in to see your unlocked reports.</div></div>
-  <div id="reportsViewer" style="display:none;margin-top:22px"></div>
+ </div>
+</section>
+
+<!-- ================= READING MODE =================
+     Every generated or reopened report lands here: full width, one scrollbar,
+     and a sticky bar that always gets you back where you came from. -->
+<section class="view" id="v-reading">
+ <div class="readbar">
+  <div class="wrap readbar-in">
+   <button class="readback" type="button" onclick="closeReading()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    <span id="readBackLabel">Back</span>
+   </button>
+   <div class="readtitle"><b id="readTitle">Your reading</b><small id="readSub"></small></div>
+   <button class="btn btn-ghost btn-sm tocbtn" id="tocBtn" type="button" onclick="openTocSheet()" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    <span class="lbl">Contents</span>
+   </button>
+   <div class="readacts" id="readActs"></div>
+  </div>
+ </div>
+ <div class="wrap readingwrap">
+  <!-- The report is rendered in an iframe grown to its full height, so a
+       contents rail inside it cannot stay on screen. The host page owns it. -->
+  <aside class="readtoc" id="readToc" aria-label="Report sections" hidden></aside>
+  <div class="readmain">
+   <div id="readingHead"></div>
+   <div id="readingBody"></div>
+   <div id="readingAside"></div>
+  </div>
  </div>
 </section>
 
@@ -1394,12 +1651,22 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 <nav class="mobnav"><div>
  <button onclick="go('home')" data-v="home"><svg><use href="#i-star"/></svg>Home</button>
  <button onclick="go('read')" data-v="read"><svg><use href="#i-hand"/></svg>Palm</button>
- <button onclick="go('astro')" data-v="astro"><svg><use href="#i-moon"/></svg>Astro</button>
- <button onclick="go('soon')" data-v="soon"><svg><use href="#i-lock"/></svg>Roadmap</button>
- <button onclick="go('contact')" data-v="contact"><svg><use href="#i-chat"/></svg>Contact</button>
+ <button onclick="goAstro()" data-v="astro"><svg><use href="#i-moon"/></svg>Astro</button>
  <button onclick="go('reports')" data-v="reports" id="mobReports" style="display:none"><svg><use href="#i-lock"/></svg>Reports</button>
- <button onclick="go('analysis')" data-v="analysis" id="mobAnalysis" hidden style="display:none"><svg><use href="#i-star"/></svg>Analysis</button>
+ <button onclick="openMoreSheet()" type="button"><svg><use href="#i-chat"/></svg>More</button>
 </div></nav>
+
+<!-- Generic bottom sheet: astrology tool switcher on tap, "More" menu on mobile. -->
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+ <div class="sheet-bg" onclick="closeSheet()"></div>
+ <div class="sheet-box">
+  <div class="sheet-grip"></div>
+  <div class="sheet-in">
+   <div class="eyebrow" id="sheetTitle">Choose</div>
+   <div id="sheetBody"></div>
+  </div>
+ </div>
+</div>
 
 <div class="modal admin-modal" id="guestModal" role="dialog" aria-modal="true" aria-labelledby="guestTitle">
  <div class="modal-box">
@@ -1536,21 +1803,108 @@ const S = Object.assign({ user:null, details:null, imgs:{left:null,right:null}, 
 delete S.token;
 S.busy=false; S.job=null;   // never resume a stale job across reloads
 
-/* ---------- routing ---------- */
-function go(v){
+/* ---------- routing ----------
+   Every view switch writes a hash entry, so browser Back and the Android
+   hardware key walk the app instead of leaving the site. */
+const VIEWS = ['home','read','astro','soon','contact','privacy','terms',
+               'refunds','reports','analysis','reading'];
+const READING = { open:false, origin:{view:'astro', pane:null}, kind:null,
+                  reportId:null, link:null };
+let CURRENT_VIEW = 'home';
+let _hashLock = false;
+
+function go(v, opts){
+  const o = opts || {};
   if(v === 'analysis' && !isAdmin()){
     toast('Analysis is admin only');
     v = 'home';
   }
+  if(!VIEWS.includes(v)) v = 'home';
+  // Leaving the reading view by any route — Back, a hash change, a tab —
+  // retires the contents rail with it, so nothing keeps measuring a report
+  // nobody is looking at.
+  if(v !== 'reading'){ READING.open = false; clearToc(); }
+  CURRENT_VIEW = v;
+  document.body.classList.toggle('reading-on', v === 'reading');
   $$('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
-  $$('nav.tabs button,.mobnav button').forEach(b=>b.setAttribute('aria-current', b.dataset.v===v));
-  scrollTo({top:0,behavior:'smooth'});
+  // While reading, keep the tab the report came from lit up.
+  const lit = v === 'reading' ? ((READING.origin && READING.origin.view) || '') : v;
+  $$('nav.tabs button,.mobnav button').forEach(b=>b.setAttribute('aria-current', b.dataset.v===lit));
+  // 'instant' beats 'auto' here: html{scroll-behavior:smooth} would otherwise
+  // animate all the way back up a 10,000px report.
+  scrollTo({top:0, behavior: o.instant ? 'instant' : 'smooth'});
   if(v==='read') syncFlow();
   if(v==='astro') syncAstroGate();
   if(v==='reports') loadMyReports();
   if(v==='analysis') loadAdminAnalysis();
+  if(!o.silent) writeHash(o.replace);
   trackPageView(v);
 }
+/* Top-nav "Astrology" always lands on the chooser; the programmatic
+   go('astro') calls elsewhere set their own pane straight after. */
+function goAstro(){ go('astro'); setAstroPane(null, {clear:true, replace:true}); }
+
+function writeHash(replace){
+  let h = '#/' + CURRENT_VIEW;
+  if(CURRENT_VIEW === 'reading'){
+    h += '/' + (READING.reportId || READING.kind || 'report');
+  }else if(CURRENT_VIEW === 'astro' && typeof ASTRO !== 'undefined' && ASTRO.pane){
+    h += '/' + ASTRO.pane;
+  }
+  if(location.hash === h) return;
+  _hashLock = true;
+  try{
+    if(replace) history.replaceState(history.state || {gr:1}, '', h);
+    else history.pushState({gr:1}, '', h);
+  }catch(e){ location.hash = h; }
+  setTimeout(()=>{ _hashLock = false; }, 0);
+}
+function applyHash(){
+  const parts = (location.hash||'').replace(/^#\/?/, '').split('/').filter(Boolean);
+  const v = parts[0] || 'home';
+  if(v === 'reading'){
+    // A report cannot be rebuilt from the URL alone. If the rendered document
+    // is still in the DOM, reopen it; otherwise send them somewhere useful.
+    if($('#readingBody') && $('#readingBody').innerHTML.trim()){
+      READING.open = true;
+      go('reading', {silent:true, instant:true});
+    }else{
+      go(S.user ? 'reports' : 'home', {silent:true, instant:true});
+    }
+    return;
+  }
+  const view = VIEWS.includes(v) ? v : 'home';
+  go(view, {silent:true, instant:true});
+  if(view === 'astro') setAstroPane(parts[1] || null, {clear:true, silent:true});
+}
+addEventListener('popstate', ()=>{ if(!_hashLock) applyHash(); });
+
+/* ---------- sheet (tool switcher / more menu) ---------- */
+function openSheet(title, html){
+  const s = $('#sheet');
+  if(!s) return;
+  $('#sheetTitle').textContent = title || 'Choose';
+  $('#sheetBody').innerHTML = html || '';
+  s.classList.add('on');
+}
+function closeSheet(){ const s=$('#sheet'); if(s) s.classList.remove('on'); }
+function sheetGo(view){ closeSheet(); go(view); }
+function openMoreSheet(){
+  const item = (view, label, sub, icon)=>
+    `<button class="sheetitem" type="button" onclick="sheetGo('${view}')" ${
+      CURRENT_VIEW===view?'aria-current="true"':''}>
+      <svg fill="none" stroke="currentColor" stroke-width="1.6"><use href="#i-${icon}"/></svg>
+      <span><b>${esc(label)}</b><small>${esc(sub)}</small></span></button>`;
+  let html = item('soon','Roadmap','What we are building next','star')
+           + item('contact','Contact','Questions, or book a consultation','chat')
+           + item('privacy','Privacy','How your data and photos are handled','lock')
+           + item('terms','Terms','Terms of use','doc')
+           + item('refunds','Refunds','Refund and cancellation policy','doc');
+  if(isAdmin()) html += item('analysis','Analysis','Admin usage and revenue','num');
+  openSheet('More', html);
+}
+addEventListener('keydown', e=>{ if(e.key === 'Escape') closeSheet(); });
+
 function syncAstroGate(){
   const on = !!S.user;
   const gate = $('#astroAuthGate'), main = $('#astroMain');
@@ -1725,6 +2079,263 @@ function astroReportFrame(r, dailyOpen){
   const link = open ? r.links.paid : r.links.free;
   return frameFor(link, open ? (r.reportId||ASTRO.lastReportId) : null);
 }
+
+/* ============================================================
+   READING MODE
+   A report is a document. It gets the whole view, and the frame grows to
+   its content so the host page owns the only scrollbar.
+   ============================================================ */
+function readingFrame(link){
+  const id = 'rf-' + Math.random().toString(36).slice(2, 9);
+  setTimeout(()=>{
+    const f = document.getElementById(id);
+    wireReportFrame(f);
+    autosizeReportFrame(f);
+  }, 0);
+  // No loading="lazy": the frame is built while the view is still hidden.
+  return `<iframe id="${id}" class="reportframe rf-auto" src="${esc(absUrl(link))}" title="Your reading"></iframe>`;
+}
+
+function autosizeReportFrame(f){
+  if(!f || f.dataset.grAuto) return;
+  f.dataset.grAuto = '1';
+  let last = 0, pending = 0;
+  // Cross-origin, or a document we cannot measure: let the frame fill the
+  // viewport instead, so there is still only one scrollbar in play.
+  const giveUp = ()=>{ f.classList.remove('rf-auto'); f.classList.add('rf-fill'); };
+  const measure = ()=>{
+    pending = 0;
+    let d;
+    try{ d = f.contentDocument; }catch(e){ giveUp(); return; }
+    if(!d || !d.body || !d.documentElement) return;
+    const de = d.documentElement;
+    // A report wide enough to overflow sideways gets a horizontal scrollbar,
+    // and that scrollbar steals the last ~15px — enough to leave the frame
+    // scrolling vertically. Give the height back.
+    const scrollbar = Math.max(0, de.offsetHeight - de.clientHeight);
+    const h = Math.max(de.scrollHeight, d.body.scrollHeight) + scrollbar;
+    if(h > 0 && Math.abs(h - last) > 4){ last = h; f.style.height = h + 'px'; }
+  };
+  // A backgrounded tab never runs its animation frames, and a report left to
+  // size itself there would still be 70vh with its own scrollbar when the
+  // reader came back to it. Measure straight away instead of never.
+  const fit = ()=>{
+    if(pending) return;
+    // Measuring straight from the resize callback makes the observer complain
+    // about undelivered notifications, so a hidden tab still defers — just on
+    // a timer, since it will not be given an animation frame.
+    pending = document.hidden ? setTimeout(measure, 0)
+                              : requestAnimationFrame(measure);
+  };
+  f.addEventListener('load', ()=>{
+    let d;
+    try{ d = f.contentDocument; }catch(e){ giveUp(); return; }
+    if(!d || !d.body || !d.head){ giveUp(); return; }
+    try{
+      // The report ships its own contents rail, pinned to the frame's
+      // viewport. The frame no longer has one — it is as tall as the report —
+      // so that rail would scroll away after the first screen. The host takes
+      // the list over and keeps it on screen for the whole document.
+      const st = d.createElement('style');
+      st.textContent = 'html,body{overflow:visible!important;height:auto!important}'
+        + '.secnav{display:none!important}';
+      d.head.appendChild(st);
+      adoptReportToc(f, d);
+      hostAnchorScroll(f, d);
+      if(window.ResizeObserver){
+        const ro = new ResizeObserver(fit);
+        ro.observe(d.documentElement);
+        ro.observe(d.body);
+      }
+      d.addEventListener('click', ()=>{ fit(); setTimeout(fit, 90); setTimeout(fit, 400); });
+      if(d.fonts && d.fonts.ready) d.fonts.ready.then(fit).catch(()=>{});
+    }catch(e){}
+    fit();
+    [60, 250, 800, 2000].forEach(ms => setTimeout(fit, ms));
+  });
+  addEventListener('resize', fit, {passive:true});
+}
+
+/* ---------- contents rail ----------
+   Built from the report's own section list so the rail always matches the
+   document, and owned by the host so it survives the whole scroll. */
+const TOC = {items:[], frame:null, spy:0, active:-1};
+
+function adoptReportToc(f, d){
+  const nav = d.querySelector('.secnav');
+  const links = nav ? nav.querySelectorAll('a[href^="#"]') : [];
+  TOC.frame  = f;
+  TOC.active = -1;
+  TOC.items  = Array.prototype.map.call(links, a => ({
+      id:    (a.getAttribute('href') || '').slice(1),
+      label: (a.textContent || '').trim(),
+      lvl:   (a.parentElement && a.parentElement.classList.contains('lvl2')) ? 2 : 1
+    })).filter(it => it.id && it.label && d.getElementById(it.id));
+  paintToc();
+}
+function clearToc(){
+  TOC.items = []; TOC.frame = null; TOC.active = -1;
+  const el = $('#readToc'), btn = $('#tocBtn');
+  if(el){ el.hidden = true; el.innerHTML = ''; }
+  if(btn) btn.hidden = true;
+  document.body.classList.remove('toc-on');
+}
+function tocRows(cls){
+  return TOC.items.map((it,i) =>
+    `<li class="lvl${it.lvl}"><a class="${cls}" href="#" data-toc="${i}"
+      onclick="return tocGo(${i})">${esc(it.label)}</a></li>`).join('');
+}
+function paintToc(){
+  const el = $('#readToc'), btn = $('#tocBtn');
+  if(!el) return;
+  // Two links is a heading, not a table of contents.
+  if(TOC.items.length < 3){ clearToc(); return; }
+  el.innerHTML = `<div class="navlbl">In this reading</div><ol>${tocRows('')}</ol>`;
+  el.hidden = false;
+  if(btn) btn.hidden = false;
+  document.body.classList.add('toc-on');
+  tocSpy();
+}
+function openTocSheet(){
+  if(!TOC.items.length) return;
+  openSheet('In this reading', `<ol class="tocsheet">${tocRows('')}</ol>`);
+}
+/* Where each section sits on the host page right now. The frame grows as
+   fonts land and <details> open, so this is measured, never cached. */
+function tocOffsets(){
+  const f = TOC.frame;
+  let d = null;
+  try{ d = f && f.contentDocument; }catch(e){}
+  if(!d) return [];
+  const base = f.getBoundingClientRect().top + scrollY;
+  return TOC.items.map(it => {
+    const t = d.getElementById(it.id);
+    return t ? base + t.getBoundingClientRect().top : Infinity;
+  });
+}
+function tocGo(i){
+  const ys = tocOffsets();
+  if(!ys[i] || ys[i] === Infinity) return false;
+  closeSheet();
+  scrollTo({top: Math.max(0, ys[i] - readingOffset()), behavior:'smooth'});
+  return false;
+}
+function tocSpy(){
+  TOC.spy = 0;
+  if(!TOC.items.length) return;
+  const ys = tocOffsets();
+  const line = scrollY + readingOffset() + 8;
+  let cur = 0;
+  for(let i = 0; i < ys.length; i++){ if(ys[i] <= line) cur = i; }
+  if(cur === TOC.active) return;
+  TOC.active = cur;
+  const rail = $('#readToc');
+  document.querySelectorAll('[data-toc]').forEach(a =>
+    a.classList.toggle('here', +a.dataset.toc === cur));
+  // Keep the current entry visible in the rail without moving the page.
+  const a = rail && rail.querySelector(`[data-toc="${cur}"]`);
+  if(a){
+    const top = a.offsetTop, bottom = top + a.offsetHeight;
+    if(top < rail.scrollTop) rail.scrollTop = top - 8;
+    else if(bottom > rail.scrollTop + rail.clientHeight)
+      rail.scrollTop = bottom - rail.clientHeight + 8;
+  }
+}
+addEventListener('scroll', ()=>{
+  if(!TOC.items.length || TOC.spy) return;
+  if(document.hidden){ tocSpy(); return; }
+  TOC.spy = requestAnimationFrame(tocSpy);
+}, {passive:true});
+
+/* The report's own table of contents used to scroll the frame. The frame no
+   longer scrolls, so move the host page to the same place instead. */
+function hostAnchorScroll(f, d){
+  d.addEventListener('click', e=>{
+    const a = e.target && e.target.closest && e.target.closest('a[href^="#"]');
+    if(!a) return;
+    const id = (a.getAttribute('href') || '').slice(1);
+    if(!id) return;
+    let t = null;
+    try{ t = d.getElementById(id); }catch(err){}
+    if(!t) return;
+    e.preventDefault();
+    const top = f.getBoundingClientRect().top + scrollY
+              + t.getBoundingClientRect().top - readingOffset();
+    scrollTo({top: Math.max(0, top), behavior:'smooth'});
+  }, true);
+}
+function readingOffset(){
+  const h = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-h'),10) || 66;
+  const b = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--readbar-h'),10) || 58;
+  return h + b + 12;
+}
+
+function backLabelFor(origin){
+  const v = (origin && origin.view) || 'astro';
+  return v === 'reports' ? 'My reports'
+       : v === 'read'    ? 'Palm reading'
+       : v === 'astro'   ? 'All readings' : 'Back';
+}
+function readingActions(){
+  const rid = READING.reportId;
+  const href = READING.link ? esc(absUrl(READING.link)) : '';
+  let h = '';
+  if(rid) h += `<button class="btn btn-ghost btn-sm" type="button" onclick="downloadReportPdf('${esc(rid)}')"><span class="lbl">Download </span>PDF</button>`;
+  if(href) h += `<a class="btn btn-ghost btn-sm act-full" href="${href}" target="_blank" rel="noopener noreferrer"><span class="lbl">Open </span>full screen</a>`;
+  return h;
+}
+
+function openReading(o){
+  if(!$('#v-reading')) return;
+  clearToc();   // the frame this rail described is about to be replaced
+  READING.origin   = o.origin || {view:'astro', pane:(typeof ASTRO !== 'undefined' ? ASTRO.pane : null)};
+  READING.kind     = o.kind || null;
+  READING.reportId = o.reportId || null;
+  READING.link     = o.link || null;
+  $('#readTitle').textContent    = o.title || 'Your reading';
+  $('#readSub').textContent      = o.subtitle || '';
+  const back = backLabelFor(READING.origin);
+  $('#readBackLabel').textContent= back;
+  // The label is hidden at phone widths, so the button carries it too.
+  $('#readBackLabel').parentNode.setAttribute('aria-label', back);
+  $('#readActs').innerHTML       = readingActions();
+  $('#readingHead').innerHTML    = o.headHtml || '';
+  $('#readingBody').innerHTML    = o.link ? readingFrame(o.link) : (o.bodyHtml || '');
+  $('#readingAside').innerHTML   = (o.asideHtml || '')
+    + ((READING.reportId && CONFIG.chatEnabled) ? reportChatPanel(READING.reportId) : '');
+  READING.open = true;
+  go('reading', {instant:true});
+}
+function closeReading(){
+  const o = READING.origin || {view:'astro', pane:null};
+  const v = o.view || 'astro';
+  READING.open = false;
+  go(v, {instant:true});
+  if(v === 'astro') setAstroPane(o.pane || null, {clear:false, replace:true});
+}
+
+/* Shared entry for every astrology kind: header block above, paywall below. */
+function openAstroReading(kind, r, o){
+  o = o || {};
+  const open = o.forceOpen || reportIsUnlocked(r);
+  const links = r.links || {};
+  const link = open ? links.paid : links.free;
+  if(!link){
+    const out = $('#astroOut');
+    if(out) out.innerHTML = `<div class="card"><p style="margin:0;color:var(--warn)">That reading could not be opened.</p></div>`;
+    return;
+  }
+  const label = (KIND_UI[kind] || {}).label || 'Reading';
+  openReading({
+    kind, link,
+    reportId: open ? (r.reportId || ASTRO.lastReportId) : null,
+    title: o.title || label,
+    subtitle: o.subtitle || (open ? 'Unlocked · full reading' : 'Free half'),
+    origin: o.origin,
+    headHtml: (o.banner || '') + (o.headHtml || ''),
+    asideHtml: open ? '' : (o.payHtml || '')
+  });
+}
 function paintReportsNav(){
   const show = !!S.user;
   ['navReports','mobReports'].forEach(id=>{ const el=$('#'+id); if(el) el.style.display = show ? '' : 'none'; });
@@ -1733,13 +2344,15 @@ function paintReportsNav(){
 function paintAnalysisNav(){
   // Admin only — never show on home or for promocode / Google / signed-out.
   const show = isAdmin();
-  ['navAnalysis','mobAnalysis','subnavClassical'].forEach(id=>{
+  ['navAnalysis','mobAnalysis'].forEach(id=>{
     const el=$('#'+id);
     if(!el) return;
     el.style.display = show ? '' : 'none';
     if(!show) el.setAttribute('hidden','');
     else el.removeAttribute('hidden');
   });
+  // The Classical Vedic card/pill is admin-only too, so rebuild the chooser.
+  if(typeof renderAstroChooser === 'function') renderAstroChooser();
 }
 function trackPageView(path){
   if(!path || !CONFIG.liveApi && !CONFIG.apiBase) return;
@@ -1814,10 +2427,66 @@ async function loadAdminAnalysis(){
     el.innerHTML = '<div class="card hint">Could not load analysis. Try again.</div>';
   }
 }
-async function loadMyReports(){
-  const listEl = $('#reportsList'), viewer = $('#reportsViewer');
+/* The API title falls back to the bare kind when meta carries no name or
+   question, which is how twenty-five rows all end up reading "Palm reading".
+   Pull whatever else identifies the report out of meta. */
+function reportSubtitle(r){
+  const m = r.meta || {};
+  const bits = [];
+  if(m.name || m.personName) bits.push(m.name || m.personName);
+  if(m.couple && (m.couple.groom || m.couple.bride)) bits.push([m.couple.groom, m.couple.bride].filter(Boolean).join(' & '));
+  if(m.handType) bits.push(m.handType + ' hand');
+  if(m.dominantHand) bits.push(m.dominantHand + '-dominant');
+  if(m.lagna) bits.push(m.lagna + ' ascendant');
+  if(m.eventId) bits.push(String(m.eventId).replace(/_/g,' '));
+  if(m.date) bits.push(m.date);
+  return bits.slice(0, 3).join(' · ');
+}
+let _reportRows = [], _reportFilter = 'all';
+function setReportFilter(k){ _reportFilter = k; paintMyReports(); }
+
+function paintMyReports(){
+  const listEl = $('#reportsList'), filterEl = $('#reportsFilter');
   if(!listEl) return;
-  if(viewer){ viewer.style.display='none'; viewer.innerHTML=''; }
+  const kinds = [...new Set(_reportRows.map(r=>r.kind))];
+  if(filterEl){
+    filterEl.style.display = kinds.length > 1 ? '' : 'none';
+    const chip = (k, label, n) =>
+      `<button type="button" onclick="setReportFilter('${esc(k)}')"${
+        _reportFilter===k?' aria-current="true"':''}>${esc(label)} <span>(${n})</span></button>`;
+    filterEl.innerHTML = chip('all', 'All', _reportRows.length)
+      + kinds.map(k => chip(k, (KIND_UI[k]||{}).label || k,
+          _reportRows.filter(r=>r.kind===k).length)).join('');
+  }
+  const rows = _reportFilter === 'all' ? _reportRows : _reportRows.filter(r=>r.kind===_reportFilter);
+  // Several readings of the same kind on one day are otherwise identical
+  // rows — palm reports carry no name to tell them apart. Add the clock.
+  const dayKey = r => r.kind + '|' + String(r.createdAt||'').slice(0,10);
+  const perDay = {};
+  rows.forEach(r=>{ perDay[dayKey(r)] = (perDay[dayKey(r)]||0) + 1; });
+  listEl.innerHTML = '<div class="reports-list">'+rows.map(r=>{
+    const withTime = perDay[dayKey(r)] > 1;
+    const d = r.createdAt ? new Date(r.createdAt).toLocaleString(undefined,
+      Object.assign({day:'numeric',month:'short',year:'numeric'},
+                    withTime ? {hour:'numeric',minute:'2-digit'} : {})) : '';
+    const kind = esc((KIND_UI[r.kind]||{}).label || r.kind || 'Report');
+    const rid = esc(r.reportId);
+    const sub = reportSubtitle(r);
+    return `<div class="report-row"><div>
+      <h3>${esc(r.title||kind)}</h3>
+      <div class="meta">${kind}${sub?' · '+esc(sub):''}${d?' · '+esc(d):''}</div></div>
+      <div class="acts">
+        <button class="btn btn-gold btn-sm" onclick="openSavedReport('${rid}','${esc(r.kind)}')">View</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadReportPdf('${rid}')">Download PDF</button>
+        <button class="btn btn-danger btn-sm" type="button" onclick="deleteSavedReport('${rid}')">Delete</button>
+      </div></div>`;
+  }).join('')+'</div>';
+}
+
+async function loadMyReports(){
+  const listEl = $('#reportsList'), filterEl = $('#reportsFilter');
+  if(!listEl) return;
+  if(filterEl) filterEl.style.display = 'none';
   if(!S.user || !apSessionToken){
     listEl.innerHTML = '<div class="card hint">Sign in to see your unlocked reports.</div>';
     return;
@@ -1829,19 +2498,9 @@ async function loadMyReports(){
       listEl.innerHTML = '<div class="card hint">Unlocked reports will appear here after you pay.</div>';
       return;
     }
-    listEl.innerHTML = '<div class="reports-list">'+rows.map(r=>{
-      const d = r.createdAt ? new Date(r.createdAt).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}) : '';
-      const kind = esc((KIND_UI[r.kind]||{}).label || r.kind || 'Report');
-      const rid = esc(r.reportId);
-      return `<div class="report-row"><div>
-        <h3>${esc(r.title||kind)}</h3>
-        <div class="meta">${kind}${d?' · '+esc(d):''}</div></div>
-        <div class="acts">
-          <button class="btn btn-gold btn-sm" onclick="openSavedReport('${rid}','${esc(r.kind)}')">View</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadReportPdf('${rid}')">Download PDF</button>
-          <button class="btn btn-danger btn-sm" type="button" onclick="deleteSavedReport('${rid}')">Delete</button>
-        </div></div>`;
-    }).join('')+'</div>';
+    _reportRows = rows;
+    if(_reportFilter !== 'all' && !rows.some(r=>r.kind===_reportFilter)) _reportFilter = 'all';
+    paintMyReports();
   }catch(e){
     listEl.innerHTML = '<div class="card hint">Could not load reports. Try again in a moment.</div>';
   }
@@ -1852,8 +2511,6 @@ async function deleteSavedReport(reportId){
   try{
     await api('/api/reports/'+reportId, {method:'DELETE'});
     toast('Report removed');
-    const viewer = $('#reportsViewer');
-    if(viewer){ viewer.style.display='none'; viewer.innerHTML=''; }
     await loadMyReports();
   }catch(e){ toast(e.message||'Could not delete that report'); }
 }
@@ -1861,22 +2518,21 @@ async function openSavedReport(reportId, kind){
   if(!reportId) return;
   try{
     const r = await api('/api/reports/'+reportId);
+    // Reopening from the library always returns you to the library.
+    const origin = {view:'reports'};
     if(kind === 'palm'){
       S.readingId = reportId;
       S.reading = Object.assign({}, S.reading||{}, {reportId, links:r.links, paid:r.paid, meta:r.meta||{}});
       S.unlocked = reportIsUnlocked(r);
-      save(); go('read'); syncFlow(); renderReading();
-      setTimeout(()=>$('#s-result')?.scrollIntoView({behavior:'smooth', block:'start'}), 120);
+      save();
+      renderReading();
+      openPalmReading(origin);
       return;
     }
-    const pane = ASTRO_PANE[kind] || 'report';
-    go('astro');
-    setAstroPane(pane, {clear:false});
     ASTRO.lastReportId = reportId;
     ASTRO.lastKind = kind;
     rememberLastAstro(kind, reportId);
-    renderAstroResult(kind, enrichReport(r, kind));
-    $('#astroOut')?.scrollIntoView({behavior:'smooth', block:'start'});
+    renderAstroResult(kind, enrichReport(r, kind), origin);
   }catch(e){ toast(e.message||'Could not open that report'); }
 }
 
@@ -2674,7 +3330,7 @@ function watchJob(jobId){
       S.readingId=data.reportId || data.readingId;
       S.unlocked=!!(data.paid || data.unlocked || hasFullAccess());
       S.busy=false; S.job=null;
-      save(); renderReading(); syncFlow();
+      save(); renderReading(); syncFlow(); openPalmReading();
       refreshAdminReportStats();
       toast('Your reading is ready');
     }
@@ -2839,30 +3495,54 @@ function mockReading(){
 
 /* ---------- render ---------- */
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* Open the palm document in reading mode. Called from the result card and
+   straight after a reading finishes or is unlocked. */
+function openPalmReading(origin){
+  const R = S.reading, d = S.details || {};
+  if(!R || !R.links || !R.links.free){ toast('No reading to open yet'); return; }
+  const m = R.meta || {};
+  const unlocked = reportIsUnlocked(R) || (MOCK && S.unlocked) || hasFullAccess();
+  const paidLink = unlocked && R.links.paid;
+  const today = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+  const bits = [ d.age ? d.age+' years' : '', d.gender || '',
+                 (d.dominant || m.dominantHand) ? (d.dominant||m.dominantHand)+'-dominant' : '',
+                 unlocked ? 'unlocked' : 'free half' ].filter(Boolean);
+  openReading({
+    kind: 'palm',
+    link: paidLink || R.links.free,
+    reportId: paidLink ? (R.reportId || S.readingId) : null,
+    title: `${d.name ? d.name+'’s' : 'Your'} palm, read to ${today}`,
+    subtitle: bits.join(' · '),
+    origin: origin || {view:'read'},
+    headHtml: takePaySuccessBanner() + metaBar(m) + photoWarning(m),
+    asideHtml: (unlocked ? '' : palmPayCard(R)) + overlayGallery(R.overlays || m.overlays)
+  });
+}
+
 function renderReading(){
   const R=S.reading, d=S.details || {};
   const unlocked = reportIsUnlocked(R) || (MOCK && S.unlocked) || hasFullAccess();
   const banner = takePaySuccessBanner();
   // HTML path (same as astrology): free/paid documents via signed /api/file links.
+  // The document itself opens in reading mode; this stays as the landing card
+  // you come back to, so returning to the Palm tab is not a wall of iframe.
   if(R && R.links && R.links.free){
     const m = R.meta || {};
     const today=new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
     const freeBits = (m.freeSections||[]).map(esc).join(' · ');
-    const rid = R.reportId || S.readingId;
     $('#s-result').innerHTML = banner + `
      <div class="card">
       <div class="reading-head">
        <div><div class="eyebrow">${unlocked ? 'Palmistry · unlocked' : 'Free — your hands, and what each area says'}</div>
-        <h2 style="font-size:clamp(26px,4.4vw,36px);margin-top:8px">${esc(d.name||'Your')} palm, read to ${today}</h2>
+        <h2 style="font-size:clamp(26px,4.4vw,36px);margin-top:8px">${d.name?esc(d.name)+'’s':'Your'} palm, read to ${today}</h2>
         <p style="color:var(--muted);font-size:14px;margin:6px 0 0">${d.age?d.age+' years · ':''}${esc(d.gender||'')} · ${esc(d.dominant||m.dominantHand||'')}-dominant · both palms analysed</p>
         ${freeBits?`<p class="hint" style="margin-top:8px">${freeBits}</p>`:''}</div>
        <button class="btn btn-ghost btn-sm" onclick="restart()">New reading</button>
       </div>
       ${metaBar(m)}
       ${photoWarning(m)}
-      ${unlocked && R.links.paid
-        ? frameFor(R.links.paid, rid)
-        : frameFor(R.links.free)}
+      <button class="btn btn-gold btn-block" style="margin-top:18px" onclick="openPalmReading()">Open my reading</button>
       ${overlayGallery(R.overlays || m.overlays)}
      </div>` +
       (unlocked ? '' : palmPayCard(R)) +
@@ -3183,10 +3863,9 @@ async function unlock(){
     S.reading.paid = true;
     S.reading.links = S.reading.links || {free:'#', paid:'#'};
     S.unlocked = true;
-    _paySuccessMsg = 'Payment successful — your full report is below.';
-    save(); renderReading();
+    _paySuccessMsg = 'Payment successful — your full report is open.';
+    save(); renderReading(); openPalmReading();
     toast('Your full report is ready');
-    setTimeout(()=>$('#s-result')?.scrollIntoView({behavior:'smooth', block:'start'}), 120);
     return;
   }
   const rep = await waitForUnlockedReport(S.readingId);
@@ -3213,10 +3892,9 @@ async function _applyUnlockedPalmReport(readingId, rep){
   }catch(e){}
   S.unlocked = true;
   S.reading.paid = true;
-  _paySuccessMsg = 'Payment successful — your full report is below.';
-  save(); renderReading();
+  _paySuccessMsg = 'Payment successful — your full report is open.';
+  save(); renderReading(); openPalmReading();
   toast('Your full report is ready');
-  setTimeout(()=>$('#s-result')?.scrollIntoView({behavior:'smooth', block:'start'}), 120);
 }
 
 /* ---------- enquiry / notify ---------- */
@@ -3269,7 +3947,7 @@ async function notifyMe(){
 /* ============================================================
    ASTROLOGY — talks to astro_server.py
    ============================================================ */
-const ASTRO = { base: CONFIG.apiBase || '', token: apSessionToken, pane: 'report', poll: null, tick: null, lastKind: null, lastReportId: null };
+const ASTRO = { base: CONFIG.apiBase || '', token: apSessionToken, pane: null, poll: null, tick: null, lastKind: null, lastReportId: null, resume: null };
 
 function astroApi(path, body, method){
   const tok = ASTRO.token || apSessionToken;
@@ -3301,10 +3979,85 @@ async function astroAuth(){
   }
 }
 
-$$('#astroNav button').forEach(b=>b.onclick=()=>{
-  setAstroPane(b.dataset.a, {clear:true});
-  if(ASTRO.pane === 'muhurat') loadMuhuratEvents();
-});
+/* ---------- the readings, in one place ----------
+   Drives the chooser cards, the desktop pill row and the mobile sheet, so a
+   new reading only ever has to be described once. `needsBirth` decides
+   whether the shared birth-details card is on screen for that pane. */
+const ASTRO_TOOLS = [
+  { pane:'report', icon:'doc', group:'birth', needsBirth:true,
+    title:'Full report',
+    when:'The whole picture — nine classical methods run on your chart at once, with every life area scored and the disagreements shown.',
+    needs:'Needs birth details', price:'Half free · ₹298' },
+  { pane:'classical', icon:'doc', group:'birth', needsBirth:true, admin:true,
+    title:'Classical Vedic',
+    when:'The same chart, written the way a traditional astrologer writes it — every line named to a house, lord or planet.',
+    needs:'Needs birth details', price:'Part free · ₹298' },
+  { pane:'question', icon:'q', group:'birth', needsBirth:true,
+    title:'Ask your chart',
+    when:'One question in your own words, answered from your birth chart — house lords, dashas and dated timing windows.',
+    needs:'Needs birth details', price:'Half free · ₹298' },
+  { pane:'daily', icon:'sun', group:'birth', needsBirth:true,
+    title:'Daily reading',
+    when:'A reading built each morning from your running dasha and today\'s transits. Not sun-sign filler.',
+    needs:'Needs birth details', price:'Free daily · ₹298/mo' },
+  { pane:'numero', icon:'num', group:'birth', needsBirth:true,
+    title:'Numerology',
+    when:'Every number you carry, worked from your name and date of birth, with the Lo Shu grid and your empty cells named.',
+    needs:'Needs name and date', price:'All numbers free' },
+  { pane:'match', icon:'rings', group:'birth', needsBirth:false,
+    title:'Kundali matching',
+    when:'Two charts side by side — the full 36-guna score, which doshas are actually active, and what the Navamsha says about the marriage.',
+    needs:'Needs both birth charts', price:'Guna score free' },
+  { pane:'muhurat', icon:'cal', group:'birth', needsBirth:true,
+    title:'Muhurat',
+    when:'Is this a good day for it? Sixteen occasions scored against the day\'s panchang and, where it matters, your own chart.',
+    needs:'Needs a date', price:'Verdict free · ₹298' },
+  { pane:'horary', icon:'q', group:'nobirth', needsBirth:false,
+    title:'Horary — ask right now',
+    when:'No chart needed at all. Horary is cast from the moment you ask, so one clear question is the only thing required.',
+    needs:'Needs only a question', price:'Reading free · ₹298' },
+  { pane:'btr', icon:'clock', group:'nobirth', needsBirth:true,
+    title:'Birth time rectification',
+    when:'Your recorded time looks wrong? Give us dates for things that already happened and we work backwards to the real one.',
+    needs:'Needs a rough time', price:'Verdict free · ₹298' }
+];
+const PALM_TOOL = { icon:'hand', title:'Palm reading',
+  when:'Nothing about your birth at all. Photograph both palms and get a line-by-line reading up to today.',
+  needs:'Needs two photos', price:'Half free · ₹298' };
+
+function astroTool(pane){ return ASTRO_TOOLS.find(t=>t.pane===pane) || null; }
+function visibleTools(){ return ASTRO_TOOLS.filter(t=>!t.admin || isAdmin()); }
+function toolIcon(name){
+  return `<svg fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+}
+function toolCard(t, action){
+  return `<button class="toolcard" type="button" onclick="${action}">
+    <div class="tc-top">${toolIcon(t.icon)}<h4>${esc(t.title)}</h4></div>
+    <p>${esc(t.when)}</p>
+    <div class="tc-meta"><span class="tag need">${esc(t.needs)}</span><span class="tag free">${esc(t.price)}</span></div>
+  </button>`;
+}
+function renderAstroChooser(){
+  const a = $('#toolsBirth'), b = $('#toolsNoBirth'), pills = $('#astroPills');
+  if(!a || !b) return;
+  const vis = visibleTools();
+  const card = t => toolCard(t, `setAstroPane('${t.pane}')`);
+  a.innerHTML = vis.filter(t=>t.group==='birth').map(card).join('');
+  b.innerHTML = vis.filter(t=>t.group==='nobirth').map(card).join('')
+              + toolCard(PALM_TOOL, "go('read')");
+  if(pills) pills.innerHTML = vis.map(t=>
+    `<button type="button" data-a="${t.pane}" onclick="setAstroPane('${t.pane}')"${
+      ASTRO.pane===t.pane?' aria-current="true"':''}>${esc(t.title)}</button>`).join('');
+}
+function openToolSheet(){
+  const row = (icon, title, when, action, cur) =>
+    `<button class="sheetitem" type="button" onclick="${action}"${cur?' aria-current="true"':''}>
+      ${toolIcon(icon)}<span><b>${esc(title)}</b><small>${esc(when)}</small></span></button>`;
+  const html = visibleTools().map(t =>
+      row(t.icon, t.title, t.when, `closeSheet();setAstroPane('${t.pane}')`, ASTRO.pane===t.pane)).join('')
+    + row(PALM_TOOL.icon, PALM_TOOL.title, PALM_TOOL.when, "closeSheet();go('read')", false);
+  openSheet('Choose a reading', html);
+}
 
 // Report iframes (often cross-origin on Vercel→Railway) ask the host to switch tabs.
 window.addEventListener('message', (e)=>{
@@ -3330,19 +4083,31 @@ window.addEventListener('message', (e)=>{
   }
 });
 
-function setAstroPane(pane, {clear=true}={}){
-  if(!pane) return;
+/* pane === null is the chooser. Anything unknown falls back to the chooser
+   rather than silently doing nothing, so a stale deep link cannot dead-end. */
+function setAstroPane(pane, o){
+  o = o || {};
+  const clear = o.clear !== false;
+  if(pane && !astroTool(pane)) pane = null;
   if(pane === 'classical' && !isAdmin()){
     toast('Classical Vedic report is admin only');
     pane = 'report';
   }
   ASTRO.pane = pane;
-  $$('#astroNav button').forEach(x=>x.setAttribute('aria-current', x.dataset.a===pane));
-  $$('.apane').forEach(p=>p.style.display = (p.id === 'ap-'+pane) ? '' : 'none');
+  const t = pane ? astroTool(pane) : null;
+  const chooser = $('#astroChooser'), sw = $('#astroSwitch');
+  if(chooser) chooser.style.display = pane ? 'none' : '';
+  if(sw) sw.style.display = pane ? '' : 'none';
+  $$('.apane').forEach(p=>p.style.display = (pane && p.id === 'ap-'+pane) ? '' : 'none');
+  $$('#astroPills button').forEach(x=>x.setAttribute('aria-current', x.dataset.a===pane));
+  const cur = $('#astroCurTool'); if(cur) cur.textContent = t ? t.title : '';
   const birth = $('#astroBirth');
-  if(birth) birth.style.display = ['horary','match'].includes(pane) ? 'none' : '';
+  if(birth) birth.style.display = (t && t.needsBirth) ? '' : 'none';
+  syncBirthChip();
   if(clear){ const out=$('#astroOut'); if(out) out.innerHTML=''; clearAstroQueue(); }
-  trackPageView('astro:'+pane);
+  if(pane === 'muhurat') loadMuhuratEvents();
+  if(!o.silent && CURRENT_VIEW === 'astro') writeHash(o.replace !== false);
+  trackPageView(pane ? 'astro:'+pane : 'astro:choose');
 }
 
 /* ---------- browser cache: forms + last reading pointer ----------
@@ -3371,6 +4136,38 @@ function applyDefaultPlace(){
     }
   }
 }
+/* ---------- collapsed birth details ----------
+   The full card is ~850px tall and repeats on every pane. Once we already
+   have the details, one line is enough until you want to change them. */
+let _birthForcedOpen = false;
+function birthIsComplete(){
+  return ['#aName','#aDob','#aTob','#aPlace','#aLat','#aLon']
+    .every(sel => { const el=$(sel); return el && (el.value||'').trim(); });
+}
+function prettyDob(iso){
+  if(!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'});
+}
+function syncBirthChip(){
+  const card = $('#astroBirth');
+  if(!card) return;
+  const collapse = birthIsComplete() && !_birthForcedOpen;
+  card.classList.toggle('collapsed', collapse);
+  if(!collapse) return;
+  const g = sel => { const el=$(sel); return el ? (el.value||'').trim() : ''; };
+  const name = $('#bcName'), line = $('#bcLine');
+  if(name) name.textContent = g('#aName') || 'Birth details';
+  if(line) line.textContent = [prettyDob(g('#aDob')), g('#aTob'), g('#aPlace')].filter(Boolean).join(' · ');
+}
+function expandBirth(){
+  _birthForcedOpen = true;
+  syncBirthChip();
+  const el = $('#aName');
+  if(el) el.focus({preventScroll:true});
+}
+
 function captureAstroBirth(){
   const g = id => { const el=$(id); return el ? (el.value||'').trim() : ''; };
   return {
@@ -3416,10 +4213,13 @@ function clearAstroBirthForm(){
   // Don't reopen previous person's report after clearing.
   S.lastAstro = null;
   ASTRO.lastReportId = null;
+  ASTRO.resume = null;
   const out=$('#astroOut'); if(out) out.innerHTML='';
   const sum=$('#astroSummaryOut'); if(sum) sum.innerHTML='';
+  const res=$('#astroResume'); if(res) res.innerHTML='';
   clearAstroQueue();
   save();
+  expandBirth();
   const focus=$('#aName'); if(focus) focus.focus();
   toast('Cleared — enter the new person’s birth details');
 }
@@ -3464,8 +4264,8 @@ function wireFormPersist(){
 function paneForKind(kind){
   return ({
     full_report:'report', classical_report:'classical', chart_summary:'report',
-    numerology:'numero', horary:'horary', daily:'daily', kundali_match:'match',
-    muhurat:'muhurat', btr:'btr'
+    user_question:'question', numerology:'numero', horary:'horary', daily:'daily',
+    kundali_match:'match', muhurat:'muhurat', btr:'btr'
   })[kind] || 'report';
 }
 function rememberLastAstro(kind, reportId){
@@ -3475,25 +4275,38 @@ function rememberLastAstro(kind, reportId){
   ASTRO.lastReportId = reportId;
   save();
 }
+/* Offer the last reading rather than yanking the visitor into it. Landing
+   straight in a full-screen report on every reload — and stamping over a
+   deep link while doing it — is worse than one obvious button. */
 async function resumeLastAstro(){
   if(!apSessionToken || !S.lastAstro || !S.lastAstro.reportId) return false;
   try{
     await astroAuth();
     const r = await astroApi('/api/reports/'+S.lastAstro.reportId);
     const kind = S.lastAstro.kind || r.kind || 'full_report';
-    go('astro');
-    setAstroPane(S.lastAstro.pane || paneForKind(kind), {clear:false});
+    const price = r.price ?? r.meta?.price ?? CONFIG.astroPrices[kind] ?? CONFIG.astroPrices.numerology_full;
     ASTRO.lastKind = kind;
     ASTRO.lastReportId = r.reportId;
-    const price = r.price ?? r.meta?.price ?? CONFIG.astroPrices[kind] ?? CONFIG.astroPrices.numerology_full;
-    renderAstroResult(kind, enrichReport(Object.assign({}, r, { price }), kind));
-    toast(r.paid ? 'Welcome back — your unlocked reading is open' : 'Welcome back — continuing your free reading');
+    ASTRO.resume = { kind, report: enrichReport(Object.assign({}, r, { price }), kind) };
+    const box = $('#astroResume');
+    if(box) box.innerHTML = `<div class="card" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1 1 240px;min-width:0">
+        <div class="eyebrow">Where you left off</div>
+        <h3 style="font-size:20px;margin:6px 0 4px">${esc((KIND_UI[kind]||{}).label || 'Your reading')}</h3>
+        <p class="hint" style="margin:0">${r.paid ? 'Unlocked — reopen it any time.' : 'Your free half is still here.'}</p>
+      </div>
+      <button class="btn btn-gold btn-sm" type="button" onclick="reopenLastAstro()">Open it</button>
+    </div>`;
     return true;
   }catch(e){
     // Report gone / other account — drop the pointer so we don't loop.
     S.lastAstro = null; save();
     return false;
   }
+}
+function reopenLastAstro(){
+  if(!ASTRO.resume) return;
+  renderAstroResult(ASTRO.resume.kind, ASTRO.resume.report);
 }
 
 function clearAstroQueue(){
@@ -3522,6 +4335,7 @@ function birthPayload(){
   }
   if(!ok){ toast('Please complete the highlighted birth details'); return null; }
   S.astroBirth = captureAstroBirth(); save();
+  _birthForcedOpen = false;   // details are confirmed good — collapse on return
   return { name:v('#aName'), dob:v('#aDob'), tob:v('#aTob'), place:v('#aPlace'),
            lat:parseFloat(lat), lon:parseFloat(lon),
            tz:parseFloat($('#aTz').value||'5.5'), gender:parseInt($('#aGender').value,10) };
@@ -3858,11 +4672,10 @@ async function astroRefreshReports(refId, item){
     // entitlement" is what left customers staring at a still-locked report
     // right after a "Payment successful" message.
     if(reportIsUnlocked(r)){
-      _paySuccessMsg = 'Payment successful — your full report is below.';
+      _paySuccessMsg = 'Payment successful — your full report is open.';
       toast('Your full report is ready');
     }
     renderAstroResult(kind, enrichReport(r, kind));
-    $('#astroOut')?.scrollIntoView({behavior:'smooth', block:'start'});
   };
   try{
     let r = rid ? await waitForUnlockedReport(rid) : null;
@@ -3936,45 +4749,36 @@ async function loadMuhuratEvents(){
 }
 
 /* ---------- renderers (cards-v2 HTML via iframe; thin host chrome only) ---------- */
-function renderMatch(r){
+/* Each of these returns either {legacy:html} to draw in place, or a reading
+   descriptor that renderAstroResult hands to openAstroReading. */
+function matchDescriptor(r){
   const m=r.meta||{};
   const couple=((m.couple&&m.couple.groom)||'')+' & '+((m.couple&&m.couple.bride)||'');
   if(!(r.links&&r.links.free)){
-    return `<div class="card"><p style="margin:0;color:var(--warn)">Kundali Matching report unavailable.</p></div>`;
+    return {legacy:`<div class="card"><p style="margin:0;color:var(--warn)">Kundali Matching report unavailable.</p></div>`};
   }
-  if(reportIsUnlocked(r) && r.links.paid){
-    return `<div class="card">
-      <div class="eyebrow">Kundali milan · unlocked</div>
-      <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">${esc(couple.trim()==='&'?'Compatibility':couple)}</h3>
-      ${astroReportFrame(r)}</div>`;
-  }
-  return `<div class="card">
-    <div class="eyebrow">Kundali milan · free half</div>
-    <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">${esc(couple.trim()==='&'?'Compatibility':couple)}</h3>
-    ${m.total!=null?`<p class="hint">${esc(m.total)}/${esc(m.maxGuna||36)} guna · ${esc(m.bandPlain||m.band||'')}</p>`:''}
-    ${astroReportFrame(r)}</div>` +
-   astroPayCard('kundali_match', r.price, r.reportId, m.paidSections, m.teasers);
+  const guna = m.total!=null ? `${m.total}/${m.maxGuna||36} guna · ${m.bandPlain||m.band||''}` : '';
+  return {
+    title: couple.trim()==='&' ? 'Compatibility' : couple,
+    subtitle: reportIsUnlocked(r) ? 'Kundali milan · unlocked' : (guna || 'Kundali milan · free half'),
+    payHtml: astroPayCard('kundali_match', r.price, r.reportId, m.paidSections, m.teasers)
+  };
 }
 
-function renderMuhurat(r){
+function muhuratDescriptor(r){
   const m=r.meta||{};
   if(r.links&&r.links.free){
-    if(reportIsUnlocked(r)){
-      return `<div class="card">
-        <div class="eyebrow">Muhurat · unlocked · ${esc(r.eventId||m.eventId||'day')} · ${esc(r.date||m.date||'')}</div>
-        <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Is this day right?</h3>
-        ${astroReportFrame(r)}</div>`;
-    }
-    return `<div class="card">
-      <div class="eyebrow">Muhurat · ${esc(r.eventId||m.eventId||'day')} · ${esc(r.date||m.date||'')}</div>
-      <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Is this day right?</h3>
-      ${astroReportFrame(r)}</div>` +
-      astroPayCard('muhurat', r.price, r.reportId, m.paidSections, m.teasers);
+    const when = [r.eventId||m.eventId||'day', r.date||m.date||''].filter(Boolean).join(' · ');
+    return {
+      title: 'Is this day right?',
+      subtitle: (reportIsUnlocked(r) ? 'Muhurat · unlocked · ' : 'Muhurat · ') + when,
+      payHtml: astroPayCard('muhurat', r.price, r.reportId, m.paidSections, m.teasers)
+    };
   }
   // Legacy JSON fallback
   const s=r.summary||{};
   const cls={good:'yes',mixed:'uncertain',poor:'no',avoid:'no'}[String(s.verdict||'').toLowerCase()]||'uncertain';
-  return `<div class="card">
+  return {legacy:`<div class="card">
     <div class="eyebrow">${esc(s.event_label||r.eventId)} · ${esc(r.date)}</div>
     <div class="vcard ${cls}" style="margin-top:12px">
       <div class="vlabel">This day for ${esc(s.event_plain||'this')}</div>
@@ -3982,179 +4786,137 @@ function renderMuhurat(r){
       <div class="vconf">${esc(s.summary||'')}</div>
     </div>
     ${astroPayCard('muhurat', r.price, r.reportId||'', m.paidSections||['Every panchang check on the day'], m.teasers)}
+    </div>`};
+}
+
+function btrDescriptor(r){
+  if(r.skipped) return {legacy:`<div class="card"><p style="margin:0;color:var(--warn)">${esc(r.reason||'Give us a couple of dated life events to work from.')}</p></div>`};
+  const m=r.meta||{};
+  if(r.links&&r.links.free){
+    return {
+      title: 'Does your recorded time hold up?',
+      subtitle: reportIsUnlocked(r) ? 'Birth time rectification · unlocked' : 'Birth time rectification · free half',
+      payHtml: astroPayCard('btr', r.price, r.reportId, m.paidSections, m.teasers)
+    };
+  }
+  return {legacy:`<div class="card"><p style="margin:0;color:var(--warn)">Birth time rectification report unavailable.</p></div>`};
+}
+
+/* The verdict block that leads horary and "ask your chart" — it stays pinned
+   above the document in reading mode. */
+function answerCard(ans){
+  if(!ans || !ans.label) return '';
+  const conf = String(ans.confidence||'').toLowerCase();
+  const cls = conf.startsWith('high') ? 'ok' : (conf.startsWith('low') ? 'warn' : '');
+  const window_ = ans.best_from ? ` · strongest window ${esc(ans.best_from)}–${esc(ans.best_to||'')}` : '';
+  const caution = ans.contradicted ? ' · the methods disagreed, so this is deliberately cautious' : '';
+  return `<div class="vcard ${cls}" style="margin-bottom:18px">
+      <div class="vlabel">The answer</div>
+      <div class="vbig">${esc(ans.label)}</div>
+      <div class="vconf">confidence ${esc(String(ans.confidence||'moderate'))}${window_}${caution}</div>
     </div>`;
 }
 
-function renderBtr(r){
-  if(r.skipped) return `<div class="card"><p style="margin:0;color:var(--warn)">${esc(r.reason||'Give us a couple of dated life events to work from.')}</p></div>`;
-  const m=r.meta||{};
-  if(r.links&&r.links.free){
-    if(reportIsUnlocked(r)){
-      return `<div class="card">
-        <div class="eyebrow">Birth time rectification · unlocked</div>
-        <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Does your recorded time hold up?</h3>
-        ${astroReportFrame(r)}</div>`;
-    }
-    return `<div class="card">
-      <div class="eyebrow">Birth time rectification · free half</div>
-      <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Does your recorded time hold up?</h3>
-      ${astroReportFrame(r)}</div>` +
-      astroPayCard('btr', r.price, r.reportId, m.paidSections, m.teasers);
-  }
-  return `<div class="card"><p style="margin:0;color:var(--warn)">Birth time rectification report unavailable.</p></div>`;
-}
-
-function renderAstroResult(kind, r){
+function renderAstroResult(kind, r, originArg){
   const out = $('#astroOut');
   const banner = takePaySuccessBanner();
   if(r && r.reportId) ASTRO.lastReportId = r.reportId;
   if(kind) ASTRO.lastKind = kind;
+  const m = (r && r.meta) || {};
+  const unlocked = reportIsUnlocked(r);
+  const freeLine = (m.freeSections||[]).map(String).join(' · ');
+  const origin = originArg || { view:'astro', pane: paneForKind(kind) };
+  const open = o => openAstroReading(kind, r, Object.assign({origin, banner}, o));
+  // Everything below moves to reading mode; #astroOut only ever holds the
+  // queue panel or a failure card now.
+  if(out) out.innerHTML = '';
+
   if(kind === 'numerology'){
-    const m = r.meta || {};
     const price = r.price ?? m.price ?? CONFIG.astroPrices.numerology_full;
-    if(reportIsUnlocked(r)){
-      out.innerHTML = banner + `<div class="card"><div class="eyebrow">Numerology · unlocked</div>
-        <h3 style="font-size:24px;margin:8px 0 6px">Your numbers</h3>
-        <p class="hint">The working, the dates and the name corrections are open.</p>
-        ${astroReportFrame(r)}</div>`;
-      return;
-    }
-    out.innerHTML = banner + `<div class="card"><div class="eyebrow">Free — every number, and what each one says</div>
-      <h3 style="font-size:24px;margin:8px 0 6px">Your numbers</h3>
-      <p class="hint">${(m.freeSections||[]).map(esc).join(' · ')}</p>
-      ${astroReportFrame(r)}</div>` +
-      astroPayCard('numerology_full', price, r.reportId,
+    return open({
+      title: 'Your numbers',
+      subtitle: unlocked ? 'Numerology · unlocked'
+        : (freeLine || 'Free — every number, and what each one says'),
+      payHtml: astroPayCard('numerology_full', price, r.reportId,
         m.paidSections || ['The working — every number derived letter by letter',
          'Your chapters, dated, and this year cut into nine slices',
          'What to do about each empty Lo Shu cell',
          'Name corrections that move your number'],
         m.teasers,
-        { head:'The working, the dates and the fix', teaser:m.teaser });
-    return;
+        { head:'The working, the dates and the fix', teaser:m.teaser })
+    });
   }
   if(kind === 'full_report'){
-    const m = r.meta || {};
-    if(reportIsUnlocked(r)){
-      out.innerHTML = banner + `<div class="card"><div class="eyebrow">Full reading · unlocked</div>
-        <h3 style="font-size:24px;margin:8px 0 6px">Your confluence reading</h3>
-        <p class="hint">Dates, what helps, and remedies are open.</p>
-        ${astroReportFrame(r)}</div>`;
-      return;
-    }
-    out.innerHTML = banner + `<div class="card"><div class="eyebrow">Free — your chart, and which way each area leans</div>
-        <h3 style="font-size:24px;margin:8px 0 6px">Your confluence reading</h3>
-        <p class="hint">${(m.freeSections||[]).map(esc).join(' · ')}</p>
-        ${astroReportFrame(r)}</div>` +
-      astroPayCard('full_report', r.price, r.reportId, m.paidSections, m.teasers);
-    return;
+    return open({
+      title: 'Your confluence reading',
+      subtitle: unlocked ? 'Full reading · unlocked'
+        : (freeLine || 'Free — your chart, and which way each area leans'),
+      payHtml: astroPayCard('full_report', r.price, r.reportId, m.paidSections, m.teasers)
+    });
   }
   if(kind === 'classical_report'){
-    const m = r.meta || {};
     const line = [m.lagna && (m.lagna+' ascendant'), m.moonSign && ('Moon in '+m.moonSign),
                   m.nakshatra, m.mahadasha && (m.mahadasha+' mahadasha')]
-                 .filter(Boolean).map(esc).join(' · ');
-    if(reportIsUnlocked(r)){
-      out.innerHTML = banner + `<div class="card"><div class="eyebrow">Classical reading · unlocked</div>
-        <h3 style="font-size:24px;margin:8px 0 6px">Your classical Vedic report</h3>
-        <p class="hint">${line}</p>
-        ${astroReportFrame(r)}</div>`;
-      return;
-    }
-    out.innerHTML = banner + `<div class="card"><div class="eyebrow">Free — your chart, personality and family</div>
-        <h3 style="font-size:24px;margin:8px 0 6px">Your classical Vedic report</h3>
-        <p class="hint">${line}</p>
-        ${astroReportFrame(r)}</div>` +
-      astroPayCard('classical_report', r.price, r.reportId,
+                 .filter(Boolean).join(' · ');
+    return open({
+      title: 'Your classical Vedic report',
+      subtitle: line || (unlocked ? 'Classical reading · unlocked'
+                                  : 'Free — your chart, personality and family'),
+      payHtml: astroPayCard('classical_report', r.price, r.reportId,
         ['Career and professional nature', 'Relationship and marriage indications',
          'What you are going through currently',
          'Future predictions — 6 months, 12 months, 2–3 years',
-         'Remedies planet by planet']);
-    return;
+         'Remedies planet by planet'])
+    });
   }
   if(kind === 'user_question'){
-    const m = r.meta || {};
-    const ans = m.answer || {};
-    const conf = String(ans.confidence||'').toLowerCase();
-    const cls = conf.startsWith('high') ? 'ok' : (conf.startsWith('low') ? 'warn' : '');
-    out.innerHTML = banner + `<div class="card">
-        <div class="eyebrow">Ask your chart</div>
-        <h3 style="font-size:22px;margin:8px 0 4px">“${esc((m.question||''))}”</h3>
-        ${(r.paid && ans.label)?`<div class="vcard ${cls}" style="margin:14px 0">
-            <div class="vlabel">The answer</div>
-            <div class="vbig">${esc(ans.label)}</div>
-            <div class="vconf">confidence ${esc(String(ans.confidence||'moderate'))}${
-              ans.best_from?` · strongest window ${esc(ans.best_from)}–${esc(ans.best_to||'')}`:''}</div>
-          </div>`:''}
-        ${astroReportFrame(r)}</div>` +
-      (reportIsUnlocked(r) ? ''
-              : astroPayCard('user_question', r.price, r.reportId, (m.paidSections||[]), (m.teasers||{})));
-    return;
+    return open({
+      title: m.question ? '“'+m.question+'”' : 'Ask your chart',
+      subtitle: unlocked ? 'Ask your chart · unlocked' : 'Ask your chart · free half',
+      headHtml: r.paid ? answerCard(m.answer) : '',
+      payHtml: astroPayCard('user_question', r.price, r.reportId, (m.paidSections||[]), (m.teasers||{}))
+    });
   }
   if(kind === 'horary'){
-    const v = (r.meta||{}).verdicts || {};
-    const card = (tag, d)=>{
-      if(!d || d.error) return `<div class="vcard"><div class="vlabel">${tag}</div>
-        <div class="vbig" style="font-size:20px;color:var(--muted-2)">unavailable</div>
-        <div class="vconf">${esc((d&&d.error)||'')}</div></div>`;
-      const cls = String(d.verdict||'').toLowerCase().replace(/[^a-z]/g,'');
-      return `<div class="vcard ${cls}"><div class="vlabel">${tag}</div>
-        <div class="vbig">${esc(d.verdict||'—')}</div>
-        <div class="vconf">confidence ${esc(String(d.confidence||'—'))}${d.score!=null?` · score ${Number(d.score).toFixed(2)}`:''}</div>
-        ${d.systems?`<div class="vsys">${Object.entries(d.systems).map(([k,val])=>`<span>${esc(k)}: <b>${esc(val)}</b></span>`).join('')}</div>`:''}</div>`;
-    };
-    const vv = v.vedic || {}, ww = v.western || {};
     // ONE answer. The two-engine verdict grid and the "the two traditions
-    // disagree" box used to sit here, above the report — which read to a
-    // customer as us not knowing, and directly contradicted the reconciled
-    // answer the report itself now leads with (Western 60 / Vedic 40, and on a
-    // real contradiction Western's direction wins at low confidence). The
-    // per-engine workings are still there, behind the paywall, for anyone who
-    // wants to check them.
-    const ans = (r.meta||{}).answer || {};
-    const conf = String(ans.confidence||'').toLowerCase();
-    const cls = conf.startsWith('high') ? 'ok' : (conf.startsWith('low') ? 'warn' : '');
-    out.innerHTML = banner + `<div class="card">
-        <div class="eyebrow">Horary · Prashna</div>
-        <h3 style="font-size:22px;margin:8px 0 4px">“${esc((r.meta||{}).question||'')}”</h3>
-        <p class="hint">asked ${esc((r.meta||{}).asked||'')}</p>
-        ${(r.paid && ans.label)?`<div class="vcard ${cls}" style="margin:14px 0">
-            <div class="vlabel">The answer</div>
-            <div class="vbig">${esc(ans.label)}</div>
-            <div class="vconf">confidence ${esc(String(ans.confidence||'moderate'))}${
-              ans.contradicted?' · the methods disagreed, so this is deliberately cautious':''}</div>
-          </div>`:''}
-        ${astroReportFrame(r)}</div>` +
-      (reportIsUnlocked(r) ? ''
-              : astroPayCard('horary', r.price, r.reportId, (r.meta||{}).paidSections, (r.meta||{}).teasers));
-    return;
+    // disagree" box used to sit above the report — which read to a customer as
+    // us not knowing, and contradicted the reconciled answer the report itself
+    // leads with. The per-engine workings are still there, behind the paywall.
+    return open({
+      title: m.question ? '“'+m.question+'”' : 'Horary · Prashna',
+      subtitle: 'Horary · Prashna' + (m.asked ? ' · asked '+m.asked : ''),
+      headHtml: r.paid ? answerCard(m.answer) : '',
+      payHtml: astroPayCard('horary', r.price, r.reportId, m.paidSections, m.teasers)
+    });
   }
-  if(kind === 'kundali_match'){ out.innerHTML = banner + renderMatch(r); return; }
-  if(kind === 'muhurat'){ out.innerHTML = banner + renderMuhurat(r); return; }
-  if(kind === 'btr'){ out.innerHTML = banner + renderBtr(r); return; }
+  if(kind === 'kundali_match' || kind === 'muhurat' || kind === 'btr'){
+    const d = kind === 'kundali_match' ? matchDescriptor(r)
+            : kind === 'muhurat'       ? muhuratDescriptor(r)
+            :                            btrDescriptor(r);
+    if(d.legacy){ if(out) out.innerHTML = banner + d.legacy; return; }
+    return open(d);
+  }
   if(kind === 'daily'){
-    if(r.links&&r.links.free){
-      const m = r.meta || {};
+    if(r.links && r.links.free){
       // Free every morning, forever — the verdict, the Moon proof and the
       // lucky number/colour. The subscription opens the working behind them.
-      const open = !!(r.subscribed && r.links.paid);
-      out.innerHTML = banner + `<div class="card">
-        <div class="eyebrow">Daily reading · ${esc(r.date||m.date||'')}</div>
-        <h3 style="font-size:clamp(22px,4vw,28px);margin:8px 0 6px">Today from your chart</h3>
-        <p class="hint">${open?'Subscription active — the full working is open.'
-          :'Your verdict, your Moon and your number are free every morning.'}</p>
-        ${astroReportFrame(r, open)}
-        </div>` +
-        (open ? '' : astroPayCard('subscription', r.price ?? m.price ?? 298, '',
+      const sub = !!(r.subscribed && r.links.paid);
+      return open({
+        forceOpen: sub,
+        title: 'Today from your chart',
+        subtitle: 'Daily reading · ' + (r.date || m.date || '')
+          + (sub ? ' · subscription active' : ''),
+        payHtml: astroPayCard('subscription', r.price ?? m.price ?? 298, '',
           m.paidSections || ['Every lane that voted on today',
            'The dasha you are running, with dates',
            'Ashtakavarga on your dasha lords',
            'Rahu Kaal and choghadiya for your location'],
-          m.teasers, {head:'Why today reads this way', teaser:m.teaser}));
-      return;
+          m.teasers, {head:'Why today reads this way', teaser:m.teaser})
+      });
     }
     // Legacy JSON fallback
     const d = r.reading || {};
-    out.innerHTML = `<div class="card">
+    if(out) out.innerHTML = `<div class="card">
       <div class="eyebrow">${esc(r.date)}</div>
       <h3 style="font-size:clamp(23px,4vw,30px);margin:8px 0 10px">Today reads <em style="color:var(--gold);font-style:italic">${esc(d.tone||'—')}</em></h3>
       ${d.opening?`<p class="summary-quote">${esc(d.opening)}</p>`:''}
@@ -4222,6 +4984,12 @@ function renderAstroResult(kind, r){
   }
   if(S.user&&S.details&&S.reading) renderReading();
   $$('.logo')[0].addEventListener('keypress',e=>{ if(e.key==='Enter') go('home'); });
+  renderAstroChooser();
+  setAstroPane(null, {clear:true, silent:true});
+  // Deep links and refreshes: honour the hash, otherwise seed one so the very
+  // first Back press stays inside the app.
+  if((location.hash||'').replace(/^#\/?/,'')) applyHash();
+  else writeHash(true);
 })();
 </script>
 </body>

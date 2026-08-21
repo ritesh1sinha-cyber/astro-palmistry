@@ -709,7 +709,7 @@ font-weight:700;color:var(--muted);padding:0 10px 8px}
   .secnav a.here{background:none;border-bottom-color:var(--mixed)}
 }
 @media print{.secnav{display:none}}
-[id^="sec-"]{scroll-margin-top:64px}
+[id^="sec-"],[id^="domain-"]{scroll-margin-top:64px}
 """
 
 SECTION_NAV_JS = """
@@ -798,10 +798,12 @@ def _nav_slug(text: str, taken: set[str]) -> str:
 def _nav_label(inner: str) -> str:
     text = _html.unescape(_re.sub(r"<[^>]+>", " ", inner))
     text = _re.sub(r"\s+", " ", text).strip(" .·—-")
-    # Long headings are written to be read in place, not in a 210px rail.
-    if len(text) > 30:
-        cut = text[:30].rsplit(" ", 1)[0]
-        text = (cut or text[:30]).rstrip(",;:") + "…"
+    # Long headings are written to be read in place, not in a narrow rail. The
+    # rail wraps to two lines, so the cut is generous enough to keep a whole
+    # short sentence and only bites on headings that are really a paragraph.
+    if len(text) > 34:
+        cut = text[:34].rsplit(" ", 1)[0]
+        text = (cut or text[:34]).rstrip(",;:") + "…"
     return text
 
 

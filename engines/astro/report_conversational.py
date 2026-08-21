@@ -1210,7 +1210,7 @@ def render(
         current_html = f"""
         <section class="conv-block current-block">
           <div class="section-kicker">YOUR CURRENT CHAPTER</div>
-          <h2 id="sec-your-current-chapter">Where life is putting its weight right now</h2>
+          <h2 id="sec-your-current-chapter" data-nav="Right now">Where life is putting its weight right now</h2>
           {f'<p class="fact-lead"><span class="ev-label">Current timing</span> {_e(authoritative_timing_text)}</p>' if authoritative_timing_text else ""}
           {f'<p class="lead-reading">{_e(current_phase)}</p>' if current_phase else ""}
           {f'<div class="why-now"><span class="ev-label">Why this period feels this way</span><p>{_e(why_now)}</p></div>' if why_now else ""}
@@ -1224,7 +1224,7 @@ def render(
         recent_html = f"""
         <section class="conv-block">
           <div class="section-kicker">RECENTLY</div>
-          <h2 id="sec-recently">The last few months</h2>
+          <h2 id="sec-recently" data-nav="The last few months">The last few months</h2>
           <p>{_e(recent_months)}</p>
         </section>
         """
@@ -1440,7 +1440,7 @@ def render(
 
     <section class="conv-block life-domains-block">
       <div class="section-kicker">COMPREHENSIVE LIFE DOMAIN CONSULTATIONS</div>
-      <h2 id="sec-life-domains">Your Life Areas: Foundational Promise, Current Phase &amp; The Road Ahead</h2>
+      <h2 id="sec-life-domains" data-nav="Your life areas">Your Life Areas: Foundational Promise, Current Phase &amp; The Road Ahead</h2>
       <p class="lead-reading"><span class="ev-label">Constitutional Baseline</span> {about_meaning}</p>
       {f'<p style="margin:12px 0 14px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{personality}</p>' if personality and personality != about_meaning else ""}
       {divisional_html}
