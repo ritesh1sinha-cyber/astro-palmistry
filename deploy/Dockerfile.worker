@@ -96,16 +96,9 @@ RUN printf '%s\n' \
   '  echo "[entrypoint] no ephemeris data (set EPHE_PATH for JHora-exact positions)"' \
   'fi' \
   'if [ "$WITH_CONFLUENCE" = "1" ]; then python /app/deploy/ensure_semantic_models.py || exit 1; fi' \
-  'NEW_ARGS=""' \
-  'for A in "$@"; do' \
-  '  case "$A" in' \
-  '    *\$PORT*) NEW_ARGS="$NEW_ARGS $PORT" ;;' \
-  '    *)        NEW_ARGS="$NEW_ARGS $A" ;;' \
-  '  esac' \
-  'done' \
-  'set -- $NEW_ARGS' \
   'exec "$@"' \
   > /entrypoint.sh && chmod +x /entrypoint.sh && sh -n /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD uvicorn api:app --host 0.0.0.0 --port 3000
+# Exec-form CMD so entrypoint receives argv correctly (shell-form broke uvicorn APP).
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "3000"]
