@@ -610,9 +610,9 @@ def _bundle(bundle_price: int) -> str:
   numerology, questions, daily readings and remedies — is arranged by hand.
   Write to us and we will set it up for you.</p>
   <p style="margin:0 0 14px;font-size:.9rem">
-    <a href="mailto:admin@graharekha.co.in"
+    <a href="mailto:admin@graharekha.com"
        style="color:#f4d79b;font-weight:600;text-decoration:underline">
-      admin@graharekha.co.in</a></p>
+      admin@graharekha.com</a></p>
   <p style="margin:0;font-size:.78rem;opacity:.6">If your birth time is
   uncertain, start with birth-time rectification — every other reading is built
   on it.</p>

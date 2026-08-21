@@ -958,6 +958,9 @@ async def payment_webhook(request: Request):
         billing.refund(order["public_id"])
         return {"ok": True, "refunded": True}
 
+    if event not in ("payment.captured", "order.paid"):
+        return {"ok": True, "ignored": event}
+
     pay_id = _dig(payload, "payload", "payment", "entity", "id") or ""
     return billing.mark_paid(order["public_id"], gateway_payment_id=pay_id)
 

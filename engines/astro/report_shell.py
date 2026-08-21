@@ -949,7 +949,7 @@ def page(title: str, body: str, *, eyebrow: str = "", heading: str = "",
                 "and are not scientifically validated methods of prediction. "
                 "Not a substitute for medical, legal, financial or "
                 "psychological advice. We never estimate anyone's remaining "
-                "years. GrahaRekha · graharekha.co.in</footer>")
+                "years. GrahaRekha · graharekha.com</footer>")
     rail = ""
     if nav:
         body, rail = build_section_nav(body)

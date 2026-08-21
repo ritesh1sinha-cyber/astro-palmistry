@@ -95,8 +95,8 @@ def _allowed_origins() -> list:
             "http://127.0.0.1:8080",
         ]
     return [
-        "https://www.graharekha.co.in",
-        "https://graharekha.co.in",
+        "https://www.graharekha.com",
+        "https://graharekha.com",
     ]
 
 
