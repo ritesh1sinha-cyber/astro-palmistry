@@ -7,8 +7,10 @@ Two ideas keep this honest at scale:
      separate tables, so a refund revokes access without erasing payment history,
      and a promo or support grant uses the same access path as a purchase.
 
-  2. A webhook is the ONLY thing that can mark an order paid, and it must carry
-     a valid gateway signature. Nothing the browser sends is trusted.
+  2. An order is marked paid only against a valid Razorpay HMAC signature. That
+     signature reaches us two ways — the webhook, and the checkout callback the
+     browser relays — and both are verified with the same key material here.
+     Nothing unsigned is trusted, from either direction.
 """
 
 from __future__ import annotations
@@ -282,6 +284,15 @@ def order_by_public(public_id: str) -> Optional[dict]:
 
 
 def _razorpay_create_order(receipt: str, amount_paise: int) -> Optional[str]:
+    """Create the gateway order that ties a payment back to `receipt`.
+
+    Returning None is not harmless. Without a gateway order the checkout cannot
+    carry our order id, the customer falls through to the shared payment button,
+    and the resulting capture has nothing in it that identifies which order to
+    credit. So a failure here is logged loudly rather than swallowed — it is the
+    difference between a payment that reconciles itself and one that needs a
+    human.
+    """
     import base64
     import urllib.request
     auth = base64.b64encode(
@@ -294,8 +305,43 @@ def _razorpay_create_order(receipt: str, amount_paise: int) -> Optional[str]:
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             return json.load(resp).get("id")
-    except Exception:                                                # noqa: BLE001
+    except Exception as exc:                                         # noqa: BLE001
+        detail = ""
+        body_text = getattr(exc, "read", None)
+        if callable(body_text):
+            try:
+                detail = body_text().decode("utf-8", "replace")[:400]
+            except Exception:                                        # noqa: BLE001
+                detail = ""
+        print(f"[billing] RAZORPAY ORDER CREATE FAILED for receipt={receipt} "
+              f"amount={amount_paise}: {type(exc).__name__}: {exc} {detail}",
+              flush=True)
         return None      # order still exists locally; retry or fall back to UPI
+
+
+def verify_checkout_signature(*, gateway_order_id: str, payment_id: str,
+                              signature: str) -> bool:
+    """Verify the success payload Razorpay Checkout hands the browser.
+
+    Razorpay signs ``order_id|payment_id`` with the API key secret. That is the
+    same proof strength as the webhook signature, so honouring it is safe — and
+    necessary, because the webhook is an asynchronous callback that can be
+    delayed, misconfigured or blocked, and until now it was the only path to
+    "paid". A charged customer staring at a locked report was the result.
+    """
+    if not (S.razorpay_key_secret and gateway_order_id and payment_id and signature):
+        return False
+    expected = hmac.new(S.razorpay_key_secret.encode(),
+                        f"{gateway_order_id}|{payment_id}".encode(),
+                        hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature.strip())
+
+
+def order_by_gateway_order_id(gateway_order_id: str) -> Optional[dict]:
+    with engine().connect() as c:
+        row = c.execute(text("SELECT * FROM orders WHERE gateway_order_id = :g"),
+                        {"g": gateway_order_id}).fetchone()
+    return jrow(row) if row else None
 
 
 # ---------------------------------------------------------------------------

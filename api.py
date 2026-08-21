@@ -673,6 +673,14 @@ class OrderIn(BaseModel):
     turnstileToken: str = ""
 
 
+class CheckoutVerifyIn(BaseModel):
+    """The success payload Razorpay Checkout hands the browser, relayed back."""
+    orderId: str = ""                 # our public id, for the audit trail
+    razorpayOrderId: str = ""
+    razorpayPaymentId: str = ""
+    razorpaySignature: str = ""
+
+
 @app.get("/api/prices")
 def prices():
     return {"prices": {k: v // 100 for k, v in S.prices.items()},
@@ -730,7 +738,118 @@ def order_mark_paid_admin(public_id: str, user: dict = Depends(current_user)):
     o = billing.order_by_public(public_id)
     if not o:
         raise HTTPException(404, "no such order")
-    return billing.mark_paid(public_id)
+    result = billing.mark_paid(public_id)
+    print(f"[billing] admin unlock by {user.get('email')} for order {public_id}",
+          flush=True)
+    return {**result, "orderId": public_id, "status": "paid",
+            "item": o["item"], "refId": o.get("ref_id"),
+            "amount": o["amount_paise"] // 100}
+
+
+@app.get("/api/admin/order/{public_id}")
+def order_lookup_admin(public_id: str, user: dict = Depends(current_user)):
+    """Admin-only: who an order belongs to, so support can confirm before unlocking."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    o = billing.order_by_public(public_id.strip().upper())
+    if not o:
+        raise HTTPException(404, "no such order")
+    from sqlalchemy import text as _t
+    email = ""
+    with engine().connect() as c:
+        row = c.execute(_t("SELECT email FROM users WHERE id = :u"),
+                        {"u": o["user_id"]}).fetchone()
+        if row:
+            email = row[0] or ""
+    return {"orderId": o["public_id"], "status": o["status"], "item": o["item"],
+            "amount": o["amount_paise"] // 100, "refId": o.get("ref_id"),
+            "email": email, "createdAt": str(o.get("created_at") or ""),
+            "paidAt": str(o.get("paid_at") or ""),
+            "gatewayOrderId": o.get("gateway_order_id") or "",
+            "gatewayPaymentId": o.get("gateway_payment_id") or ""}
+
+
+@app.get("/api/admin/payment-health")
+def payment_health(user: dict = Depends(current_user)):
+    """Admin-only: is the payment path actually working, and if not, where.
+
+    Every webhook is already written to `payment_events` with its signature
+    result, so whether Razorpay is reaching us — and whether our secret matches
+    theirs — is a recorded fact rather than something to infer from a stuck
+    modal. This reports it alongside the gateway configuration and any orders
+    left unpaid.
+    """
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    from sqlalchemy import text as _t
+
+    out: dict[str, Any] = {"config": {
+        "gateway": S.gateway,
+        "keyId": bool(S.razorpay_key_id),
+        "keySecret": bool(S.razorpay_key_secret),
+        "webhookSecret": bool(S.razorpay_webhook_secret),
+        "paymentButtonId": bool(S.razorpay_payment_button_id),
+        "env": S.env,
+    }}
+    with engine().connect() as c:
+        rows = c.execute(_t(
+            "SELECT event_type, signature_ok, order_id, received_at"
+            " FROM payment_events ORDER BY received_at DESC LIMIT 10")).fetchall()
+        out["recentEvents"] = [
+            {"event": r[0], "signatureOk": bool(r[1]),
+             "matchedOrder": bool(r[2]), "at": str(r[3])} for r in rows]
+        tot = c.execute(_t("SELECT count(*) FROM payment_events")).fetchone()
+        bad = c.execute(_t("SELECT count(*) FROM payment_events"
+                           " WHERE signature_ok = :f"), {"f": False}).fetchone()
+        unmatched = c.execute(_t("SELECT count(*) FROM payment_events"
+                                 " WHERE order_id IS NULL")).fetchone()
+        out["events"] = {"total": int(tot[0] or 0),
+                         "badSignature": int(bad[0] or 0),
+                         "unmatched": int(unmatched[0] or 0)}
+        orows = c.execute(_t(
+            "SELECT public_id, status, gateway_order_id, created_at"
+            " FROM orders ORDER BY created_at DESC LIMIT 10")).fetchall()
+        out["recentOrders"] = [
+            {"orderId": r[0], "status": r[1],
+             "hasGatewayOrder": bool(r[2]), "at": str(r[3])} for r in orows]
+        stuck = c.execute(_t(
+            "SELECT count(*) FROM orders WHERE status = 'created'")).fetchone()
+        out["ordersAwaitingPayment"] = int(stuck[0] or 0)
+    return out
+
+
+@app.post("/api/payment/verify")
+def payment_verify(body: CheckoutVerifyIn, user: dict = Depends(current_user)):
+    """Grant access from Razorpay's signed checkout callback.
+
+    The webhook remains the backstop, but it is an asynchronous call that can be
+    delayed or misconfigured, and while it was the only route to "paid" a
+    successful charge could leave the report locked indefinitely. This path
+    carries the same HMAC proof, so it is trusted on the same terms: the
+    signature is checked against our key secret, and the gateway order must
+    resolve to an order this very user owns.
+    """
+    if not billing.verify_checkout_signature(
+            gateway_order_id=body.razorpayOrderId,
+            payment_id=body.razorpayPaymentId,
+            signature=body.razorpaySignature):
+        billing.record_event(None, "checkout.verify.bad_signature",
+                             {"orderId": body.orderId,
+                              "razorpayOrderId": body.razorpayOrderId}, False)
+        raise HTTPException(400, "signature verification failed")
+
+    o = billing.order_by_gateway_order_id(body.razorpayOrderId)
+    if not o and body.orderId:
+        o = billing.order_by_public(body.orderId)
+    if not o:
+        raise HTTPException(404, "no such order")
+    if o["user_id"] != user["id"]:
+        raise HTTPException(403, "not your order")
+
+    billing.record_event(o["id"], "checkout.verify", body.model_dump(), True)
+    result = billing.mark_paid(o["public_id"],
+                               gateway_payment_id=body.razorpayPaymentId)
+    return {**result, "orderId": o["public_id"], "status": "paid"}
 
 
 @app.get("/api/place")
@@ -823,9 +942,11 @@ async def payment_webhook(request: Request):
         pay_id = pay_entity.get("id") or ""
         receipt = (notes.get("receipt") or notes.get("orderId") or notes.get("order_id")
                    or public_id or "")
-        # Button payments often land as payment.captured; some accounts send authorized.
-        if amount and event in ("payment.captured", "payment.authorized",
-                                "order.paid", ""):
+        # Only settled money unlocks a report. `payment.authorized` means the
+        # bank has reserved the funds and nothing more — it can still fail or be
+        # voided — and an event with no name at all was matching this list too,
+        # which let any signed payload with an amount grant access by guesswork.
+        if amount and event in ("payment.captured", "order.paid"):
             matched = billing.mark_paid_from_gateway_payment(
                 email=str(email), amount_paise=int(amount),
                 gateway_payment_id=str(pay_id), receipt=str(receipt or ""))

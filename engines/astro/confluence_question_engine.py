@@ -361,6 +361,7 @@ class QuestionConfluenceReport:
     dasha_timeline: list[str] = field(default_factory=list)
     breakthrough_period: str = ""
     classical_verdict: str = ""
+    root_cause_diagnosis: str = ""
     remedies: list[str] = field(default_factory=list)
     llm_synthesis: str = ""
 
@@ -653,18 +654,27 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
         triple_dasha_parts.append(f"Yogini Dasha: {yog_str}")
     triple_dasha_confluence = " · ".join(triple_dasha_parts)
 
-    # 10. Classical Verdict Synthesis
+    # 10. Classical Verdict & Root Cause Diagnostic
     if is_in_dusthana:
-        verdict = (
+        root_cause_diagnosis = (
             f"The chart indicates genuine classical vulnerability in {cfg['title']} due to primary ruler {prim_lord} occupying "
             f"the {lord_h}th Dusthana ({lord_sign}) and key natural significators facing specific afflictions in foundational divisional charts (D9/D30). "
-            f"This represents an atypical, non-linear timeline rather than permanent obstruction. With targeted planetary remedies, favorable Ashtakavarga support ({prim_b} SAV Bindus in House {prim_h}), "
+            f"This structural placement creates intermittent delays, friction in execution, and a non-linear development curve. "
+            f"While underlying Ashtakavarga strength ({prim_b} SAV Bindus in House {prim_h}) provides a solid floor against permanent loss, "
+            f"active progress requires navigating this karmic restructuring phase until the supportive cycle activates."
+        )
+        verdict = (
+            f"{root_cause_diagnosis} With targeted planetary remedies, favorable Ashtakavarga support, "
             f"and supportive planetary transits, the upcoming {breakthrough_period_str} acts as the primary classical catalyst for decisive breakthroughs."
         )
     else:
-        verdict = (
+        root_cause_diagnosis = (
             f"The chart shows constructive underlying potential for {cfg['title']} anchored by {prim_lord} in the {lord_h}th house ({lord_dig.replace('_', ' ')}). "
-            f"Backed by {prim_b} SAV Bindus in House {prim_h} and supportive multi-clock alignment, the chart carries sufficient static promise to overcome immediate friction."
+            f"Backed by {prim_b} SAV Bindus in House {prim_h}, the chart carries sufficient static promise to overcome immediate friction, "
+            f"though current multi-clock alignments demand steady patience during the ongoing operating sub-period."
+        )
+        verdict = (
+            f"{root_cause_diagnosis} The upcoming {breakthrough_period_str} provides the active window for material realization."
         )
 
     # 11. Targeted Remedial Guidance
@@ -701,6 +711,7 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
         dasha_timeline=timeline_items[:5],
         breakthrough_period=breakthrough_period_str,
         classical_verdict=verdict,
+        root_cause_diagnosis=root_cause_diagnosis,
         remedies=remedies,
     )
 
@@ -878,7 +889,7 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     remedies_html = "".join(f"<li style='margin-bottom:8px;padding-left:4px;'><b>•</b> {r}</li>" for r in confluence.remedies)
 
     qwen_block = ""
-    if qwen_text:
+    if paid and qwen_text:
         formatted_qwen = _format_consultation_markdown(qwen_text)
         qwen_block = (
             f'<article class="card qwen-consultation-card" style="background:#fff;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:20px 22px;margin:18px 0;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
@@ -887,15 +898,55 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
             f'</article>\n'
         )
 
-    confluence_bar = (
-        f'<div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:10px 14px;border-radius:8px;margin:14px 0 16px;font-size:0.86rem;line-height:1.5;color:#2c3140;">\n'
-        f'  <b>Active Multi-Clock Alignment:</b> {confluence.triple_dasha_confluence}<br>\n'
-        f'  <b>Ashtakavarga Strength:</b> {confluence.ashtakavarga_finding}<br>\n'
-        f'  <b>Planetary Transits (Gochar):</b> {confluence.transit_finding}\n'
-        f'</div>\n'
+    if paid:
+        confluence_bar = (
+            f'<div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:10px 14px;border-radius:8px;margin:14px 0 16px;font-size:0.86rem;line-height:1.5;color:#2c3140;">\n'
+            f'  <b>Active Multi-Clock Alignment:</b> {confluence.triple_dasha_confluence}<br>\n'
+            f'  <b>Ashtakavarga Strength:</b> {confluence.ashtakavarga_finding}<br>\n'
+            f'  <b>Planetary Transits (Gochar):</b> {confluence.transit_finding}\n'
+            f'</div>\n'
+        )
+    else:
+        # Scrub exact date ranges like (2026-03-05 to 2027-02-09) from free view
+        cleaned_clock = re.sub(r"\s*\(\d{4}-\d{2}-\d{2}[^)]*\)", "", confluence.triple_dasha_confluence)
+        confluence_bar = (
+            f'<div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:10px 14px;border-radius:8px;margin:14px 0 16px;font-size:0.86rem;line-height:1.5;color:#2c3140;">\n'
+            f'  <b>Active Multi-Clock Alignment:</b> {cleaned_clock}<br>\n'
+            f'  <b>Ashtakavarga Strength:</b> {confluence.ashtakavarga_finding}<br>\n'
+            f'  <b>Planetary Transits (Gochar):</b> {confluence.transit_finding}\n'
+            f'</div>\n'
+        )
+
+    proof_collapsible = (
+        f'<details class="astro-proof-details" style="background:#fcfbf8;border:1px solid #e8e4dc;border-radius:10px;padding:12px 16px;margin:16px 0;">\n'
+        f'  <summary style="cursor:pointer;font-size:0.82rem;font-weight:700;color:#7a4b18;outline:none;">\n'
+        f'    🔍 View Astrological Technical Proof &amp; Divisional Chart Working\n'
+        f'  </summary>\n'
+        f'  <div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee8dc;font-size:0.86rem;line-height:1.55;color:#333;">\n'
+        f'    <ul style="margin:0;padding-left:18px;">\n'
+        f'      <li style="margin-bottom:4px;"><b>Primary Governing House ({confluence.primary_house}th):</b> {html.escape(confluence.dusthana_finding)}</li>\n'
+        f'      <li style="margin-bottom:4px;"><b>Ashtakavarga Strength:</b> {html.escape(confluence.ashtakavarga_finding)}</li>\n'
+        f'      <li style="margin-bottom:4px;"><b>Planetary Transits (Gochar):</b> {html.escape(confluence.transit_finding)}</li>\n'
+        f'      {karakas_html}\n'
+        f'      {vargas_html}\n'
+        f'    </ul>\n'
+        f'  </div>\n'
+        f'</details>\n'
     )
 
     if paid:
+        timing_section = (
+            f'<article class="card timing-card" style="background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
+            f'  <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:8px;">Dasha Timeline &amp; Key Turning Points</div>\n'
+            f'  <div style="background:#fcfbf8;border-left:3px solid #b57c38;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:0.86rem;color:#2c3140;">\n'
+            f'    <b>Active Running Period:</b> {html.escape(confluence.current_dasha)}<br>\n'
+            f'    <b>Major Breakthrough Window:</b> <span style="color:#b57c38;font-weight:700;">{html.escape(confluence.breakthrough_period)}</span>\n'
+            f'  </div>\n'
+            f'  <ul style="margin:0 0 0 18px;padding:0;font-size:0.84rem;line-height:1.5;color:#555;">\n'
+            f'    {timeline_html}\n'
+            f'  </ul>\n'
+            f'</article>\n'
+        )
         remedy_section = (
             f'<article class="card remedy-card" style="background:#f9fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:18px 20px;margin-top:18px;">\n'
             f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#1c6b45;margin-bottom:8px;">Targeted Vedic Upaya (Actionable Remedies)</div>\n'
@@ -906,17 +957,28 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
             f'</article>\n'
         )
     else:
-        remedy_section = (
-            f'<div class="lock-wrap" style="margin-top:18px;border-radius:12px;">\n'
+        timing_section = (
+            f'<div class="lock-wrap" style="margin:16px 0;border-radius:12px;">\n'
             f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
-            f'    <b>Targeted Vedic Upaya:</b> {html.escape(confluence.remedies[0] if confluence.remedies else "")}\n'
-            f'    <br><b>Mantra &amp; Ritual:</b> Specific day donations and planetary mantras to harmonize governing periods.\n'
+            f'    <b>Active Turning Point &amp; Timing Windows:</b> Specific month and year when this situation shifts, breakthrough windows, and Dasha milestone dates.\n'
+            f'  </div>\n'
+            f'  <div class="lock-over">\n'
+            f'    <span class="lock-chip" style="font-size:0.7rem;padding:6px 16px;">🔒 Unlock Breakthrough Dates &amp; Milestone Timeline</span>\n'
+            f'  </div>\n'
+            f'</div>\n'
+        )
+        remedy_section = (
+            f'<div class="lock-wrap" style="margin:16px 0;border-radius:12px;">\n'
+            f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
+            f'    <b>Targeted Vedic Upaya:</b> Specific planetary mantras, gemstone calibrations, and daily charitable rituals to resolve this challenge.\n'
             f'  </div>\n'
             f'  <div class="lock-over">\n'
             f'    <span class="lock-chip" style="font-size:0.7rem;padding:6px 16px;">🔒 Complete Upaya &amp; Remedies in Full Reading</span>\n'
             f'  </div>\n'
             f'</div>\n'
         )
+
+    verdict_text = confluence.classical_verdict if paid else (confluence.root_cause_diagnosis or confluence.classical_verdict)
 
     return (
         f'<div class="confluence-consultation-wrap" style="margin:10px 0 24px;">\n'
@@ -929,32 +991,18 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         f'    <p style="font-size:0.84rem;color:#6a7080;margin:0 0 12px;">\n'
         f'      <b>Janma Lagna:</b> {html.escape(confluence.lagna)} (Lord: {html.escape(confluence.lagna_lord)}) &nbsp;|&nbsp; <b>Moon Sign:</b> {html.escape(confluence.moon_sign)} ({html.escape(confluence.moon_nakshatra)})\n'
         f'    </p>\n'
-        f'    <p style="font-size:0.92rem;line-height:1.6;color:#2c3140;margin:0;">\n'
-        f'      <b>Classical Verdict:</b> {html.escape(confluence.classical_verdict)}\n'
-        f'    </p>\n'
+        f'    <div style="background:#fffcfb;border-left:4px solid {pill_color};padding:12px 14px;border-radius:8px;margin-top:10px;">\n'
+        f'      <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#9e2a1b;">Astrological Root Cause &amp; Situation Diagnostic:</b>\n'
+        f'      <p style="font-size:0.91rem;line-height:1.6;color:#2c3140;margin:6px 0 0;">\n'
+        f'        {html.escape(verdict_text)}\n'
+        f'      </p>\n'
+        f'    </div>\n'
         f'  </article>\n'
         f'  {confluence_bar}\n'
         f'  {qwen_block}\n'
-        f'  <article class="card mechanics-card" style="background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
-        f'    <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:8px;">Planetary Mechanics &amp; Divisional Proof</div>\n'
-        f'    <ul style="margin:0 0 10px 18px;padding:0;font-size:0.86rem;line-height:1.55;color:#333;">\n'
-        f'      <li><b>Primary House ({confluence.primary_house}th):</b> {html.escape(confluence.dusthana_finding)}</li>\n'
-        f'      <li><b>Ashtakavarga Strength:</b> {html.escape(confluence.ashtakavarga_finding)}</li>\n'
-        f'      {karakas_html}\n'
-        f'      {vargas_html}\n'
-        f'    </ul>\n'
-        f'  </article>\n'
-        f'  <article class="card timing-card" style="background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
-        f'    <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:8px;">Dasha Timeline &amp; Key Turning Points</div>\n'
-        f'    <div style="background:#fcfbf8;border-left:3px solid #b57c38;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:0.86rem;color:#2c3140;">\n'
-        f'      <b>Active Running Period:</b> {html.escape(confluence.current_dasha)}<br>\n'
-        f'      <b>Major Breakthrough Window:</b> <span style="color:#b57c38;font-weight:700;">{html.escape(confluence.breakthrough_period)}</span>\n'
-        f'    </div>\n'
-        f'    <ul style="margin:0 0 0 18px;padding:0;font-size:0.84rem;line-height:1.5;color:#555;">\n'
-        f'      {timeline_html}\n'
-        f'    </ul>\n'
-        f'  </article>\n'
+        f'  {timing_section}\n'
         f'  {remedy_section}\n'
+        f'  {proof_collapsible}\n'
         f'</div>\n'
     )
 

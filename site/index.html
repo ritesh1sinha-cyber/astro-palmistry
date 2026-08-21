@@ -2417,6 +2417,22 @@ async function loadAdminAnalysis(){
         <tbody>${viewRows}</tbody></table>
       </div>
       <div class="card" style="margin-top:16px">
+        <div class="eyebrow">Payment health</div>
+        <h3 style="font-size:18px;margin:6px 0 8px">Is the webhook reaching us?</h3>
+        <p class="hint" style="margin:0 0 12px">Every Razorpay callback is recorded with its signature result, so this answers whether payments are arriving, whether our secret matches theirs, and whether orders are being matched.</p>
+        <div id="payHealthOut"><button class="btn btn-ghost btn-sm" type="button" onclick="loadPaymentHealth()">Run check</button></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="eyebrow">Support &middot; unlock a paid order</div>
+        <h3 style="font-size:18px;margin:6px 0 8px">Order unlock</h3>
+        <p class="hint" style="margin:0 0 12px">For a customer whose money was debited but whose report is still locked. Look the order up first, confirm it is the right account, then unlock — the report appears in that customer's account immediately.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+          <input class="inp" id="admOrderId" type="text" placeholder="OD-77D2CC9B" style="max-width:240px;text-transform:uppercase">
+          <button class="btn btn-ghost btn-sm" type="button" onclick="adminLookupOrder()">Look up</button>
+        </div>
+        <div id="admOrderOut" style="margin-top:12px"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
         <div class="eyebrow">Practitioner & Astrologer Tools</div>
         <h3 style="font-size:18px;margin:6px 0 8px">Classical Vedic Report (Consultation Brief)</h3>
         <p class="hint" style="margin:0 0 12px">Access the 9-engine classical consultation brief with unfiltered medical, longevity and multi-method confluence readings.</p>
@@ -2427,6 +2443,101 @@ async function loadAdminAnalysis(){
     el.innerHTML = '<div class="card hint">Could not load analysis. Try again.</div>';
   }
 }
+/* Turn "payments are stuck" into a specific answer. Each line below fails for a
+   different reason and needs a different fix, so they are reported separately
+   rather than as one health flag. */
+async function loadPaymentHealth(){
+  const out = $('#payHealthOut');
+  if(!out) return;
+  out.innerHTML = '<p class="hint"><span class="spin"></span> Checking…</p>';
+  try{
+    const d = await api('/api/admin/payment-health');
+    const c = d.config || {}, ev = d.events || {};
+    const yes = v => v ? 'set' : '<b style="color:#b3261e">MISSING</b>';
+    const verdicts = [];
+    if(!c.keyId || !c.keySecret){
+      verdicts.push('Razorpay API keys are missing, so no gateway order can be created and every customer falls through to the shared payment button, which cannot be matched automatically.');
+    }
+    if(!c.webhookSecret){
+      verdicts.push('The webhook secret is missing. Signature checks cannot pass, so every webhook is rejected with a 401 and no order can ever be marked paid by Razorpay.');
+    }
+    if(ev.total === 0){
+      verdicts.push('No webhook has ever reached this server. Check the webhook URL registered in the Razorpay dashboard.');
+    } else if(ev.badSignature > 0){
+      verdicts.push(`${ev.badSignature} of ${ev.total} webhooks failed the signature check — the secret here does not match the one in the Razorpay dashboard.`);
+    }
+    if(ev.unmatched > 0){
+      verdicts.push(`${ev.unmatched} webhook(s) could not be tied to an order. That is the shared payment button: the payment carries nothing identifying which order to credit.`);
+    }
+    const noGw = (d.recentOrders||[]).filter(o=> !o.hasGatewayOrder).length;
+    if(noGw){
+      verdicts.push(`${noGw} of the last ${(d.recentOrders||[]).length} orders have no Razorpay order id, so those customers saw the unmatched fallback button.`);
+    }
+    const evRows = (d.recentEvents||[]).map(e=>
+      `<tr><td>${esc(e.at)}</td><td>${esc(e.event)}</td><td>${e.signatureOk?'ok':'<b style="color:#b3261e">bad sig</b>'}</td><td>${e.matchedOrder?'matched':'<b style="color:#b3261e">no order</b>'}</td></tr>`).join('')
+      || '<tr><td colspan="4" class="hint">No webhooks recorded at all.</td></tr>';
+    const orRows = (d.recentOrders||[]).map(o=>
+      `<tr><td>${esc(o.orderId)}</td><td>${esc(o.status)}</td><td>${o.hasGatewayOrder?'yes':'<b style="color:#b3261e">no</b>'}</td><td>${esc(o.at)}</td></tr>`).join('')
+      || '<tr><td colspan="4" class="hint">No orders yet.</td></tr>';
+    out.innerHTML =
+      `<p class="hint">Gateway <b>${esc(c.gateway)}</b> · env <b>${esc(c.env)}</b> · key id ${yes(c.keyId)} · key secret ${yes(c.keySecret)} · webhook secret ${yes(c.webhookSecret)}</p>`
+      + (verdicts.length
+        ? '<ul class="bullets" style="text-align:left;margin:12px 0">' + verdicts.map(v=>`<li>${v}</li>`).join('') + '</ul>'
+        : '<p class="hint" style="margin:12px 0"><b>Payment path looks healthy.</b> Webhooks are arriving, signatures verify, and orders are being matched.</p>')
+      + `<p class="hint" style="margin-top:10px">${esc(d.ordersAwaitingPayment)} order(s) still awaiting payment.</p>`
+      + '<div class="eyebrow" style="margin-top:14px">Last 10 webhooks</div>'
+      + `<table class="analysis-table"><thead><tr><th>When</th><th>Event</th><th>Signature</th><th>Order</th></tr></thead><tbody>${evRows}</tbody></table>`
+      + '<div class="eyebrow" style="margin-top:14px">Last 10 orders</div>'
+      + `<table class="analysis-table"><thead><tr><th>Order</th><th>Status</th><th>Razorpay order</th><th>When</th></tr></thead><tbody>${orRows}</tbody></table>`
+      + '<div style="margin-top:12px"><button class="btn btn-ghost btn-sm" type="button" onclick="loadPaymentHealth()">Re-check</button></div>';
+  }catch(e){
+    out.innerHTML = `<p class="hint">${esc(e.message||'Could not run the check.')}</p>`;
+  }
+}
+
+/* Support tool: confirm who an order belongs to, then grant it. Deliberately a
+   two-step — look up, then unlock — because the only thing standing between a
+   typo and unlocking a stranger's order is the operator reading the email. */
+async function adminLookupOrder(){
+  const out = $('#admOrderOut');
+  const id = ($('#admOrderId')?.value || '').trim().toUpperCase();
+  if(!out) return;
+  if(!id){ out.innerHTML = '<p class="hint">Enter an order id.</p>'; return; }
+  out.innerHTML = '<p class="hint"><span class="spin"></span> Looking up…</p>';
+  try{
+    const o = await api('/api/admin/order/'+encodeURIComponent(id));
+    const paid = o.status === 'paid';
+    const rows = [
+      ['Account', o.email || '—'],
+      ['Item', String(o.item||'').replace(/_/g,' ')],
+      ['Amount', money(o.amount)],
+      ['Status', o.status],
+      ['Placed', o.createdAt || '—'],
+      ['Razorpay payment', o.gatewayPaymentId || '—']
+    ].map(([k,v])=> `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+    out.innerHTML = `<table class="analysis-table"><tbody>${rows}</tbody></table>`
+      + (paid
+        ? '<p class="hint" style="margin-top:10px">Already unlocked. If the customer still cannot see it, ask them to reload their reports list.</p>'
+        : `<button class="btn btn-gold btn-sm" style="margin-top:12px" type="button" onclick="adminUnlockOrder('${esc(o.orderId)}')">Unlock ${esc(o.orderId)} for ${esc(o.email||'this account')}</button>`);
+  }catch(e){
+    out.innerHTML = `<p class="hint">${esc(e.status === 404 ? 'No order with that id.' : (e.message||'Lookup failed.'))}</p>`;
+  }
+}
+async function adminUnlockOrder(orderId){
+  const out = $('#admOrderOut');
+  if(!out) return;
+  out.innerHTML = '<p class="hint"><span class="spin"></span> Unlocking…</p>';
+  try{
+    const r = await api('/api/order/'+encodeURIComponent(orderId)+'/mark-paid', {method:'POST'});
+    out.innerHTML = `<p class="hint">Unlocked <b>${esc(orderId)}</b>`
+      + (r.already ? ' (it was already paid).' : '.')
+      + ' The customer can see it in their account now.</p>';
+    toast('Order unlocked');
+  }catch(e){
+    out.innerHTML = `<p class="hint">${esc(e.message||'Could not unlock that order.')}</p>`;
+  }
+}
+
 /* The API title falls back to the bare kind when meta carries no name or
    question, which is how twenty-five rows all end up reading "Palm reading".
    Pull whatever else identifies the report out of meta. */
@@ -3692,9 +3803,18 @@ function loadPayScript(src){
     document.head.appendChild(s);
   });
 }
+/* Last-resort payment path: a single hosted button shared by every customer.
+   Nothing in the resulting capture names the order it belongs to, so the server
+   has to guess which pending order to credit — and since every item costs the
+   same, that guess is refused whenever two orders are outstanding. Reaching
+   here means the gateway order could not be created, which is a server
+   misconfiguration worth shouting about rather than papering over. */
 function mountRazorpayButton(container){
   const btnId = CONFIG.razorpayPaymentButtonId || 'pl_TMzAWfueT93HPY';
   if(!container || !btnId) return false;
+  console.error('[pay] No Razorpay order id — falling back to the shared payment '
+    + 'button. Payments made this way cannot be matched to an order '
+    + 'automatically. Check RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET on the server.');
   container.innerHTML =
     '<p class="hint" style="margin:0 0 10px;font-weight:600;color:var(--ink)">'
     + '&#128071; Tap the button below to pay securely</p>'
@@ -3726,7 +3846,10 @@ async function openRazorpayCheckout(order, mountEl){
       theme: { color: '#c9a227' },
       order_id: order.gatewayOrderId,
       prefill: { email: (S.user && S.user.email) || '', name: (S.user && S.user.name) || '' },
-      handler: ()=> resolve(),
+      // Razorpay signs order_id|payment_id here. Discarding it was what made
+      // the webhook the only route to "paid" — and a delayed or misconfigured
+      // webhook then left a charged customer on a locked report forever.
+      handler: (resp)=> resolve(resp || {}),
       modal: { ondismiss: ()=> reject(new Error('Payment cancelled')) }
     });
     rzp.on('payment.failed', ()=> reject(new Error('Payment failed')));
@@ -3748,17 +3871,30 @@ async function openRazorpayCheckout(order, mountEl){
 }
 function pollOrderPaid(orderId, onPaid, statusEl, fetchFn){
   stopPayPoll();
-  let tries = 0;
+  let tries = 0, notFound = 0;
   payPoll = setInterval(async()=>{
     tries++;
     try{
       const r = await fetchFn(orderId);
+      notFound = 0;
       if(r.status === 'paid'){ stopPayPoll(); onPaid(); return; }
       if(r.status === 'failed'){
         stopPayPoll();
         if(statusEl) statusEl.textContent = 'Payment failed. Please try again.';
       }
-    }catch(e){}
+    }catch(e){
+      // A 404 here is not "not yet" — the server is saying this order does not
+      // belong to the current session, which happens if the sign-in changed
+      // mid-checkout. Swallowing it silently left the customer watching a
+      // spinner that could never resolve.
+      if(e && e.status === 404 && ++notFound >= 3){
+        stopPayPoll();
+        if(statusEl) statusEl.textContent =
+          'We cannot see this order on your account — please make sure you are '
+          + 'signed in with the same account you paid from, then tap “I already paid”.';
+        return;
+      }
+    }
     if(tries > 90 && statusEl){
       statusEl.textContent = 'Still waiting — if money was debited, contact us and we will unlock it manually.';
       stopPayPoll();
@@ -3781,7 +3917,8 @@ async function showPayModal(order, opts){
       <button class="btn btn-ghost btn-sm" type="button" id="payRefreshBtn">I already paid — check again</button>
       <button class="btn btn-ghost btn-sm" type="button" id="payCancelBtn">Cancel</button>
     </div>
-    <p class="hint" style="margin-top:12px">Use the same email as your GrahaRekha account when paying. If money was debited but this stays open, email admin@graharekha.co.in with order ${esc(order.orderId)}.</p>
+    <p class="hint" id="payFallbackNote" hidden style="margin-top:12px">Please pay using <b>${esc((S.user&&S.user.email)||'your account email')}</b> so we can match the payment to your account automatically.</p>
+    <p class="hint" style="margin-top:12px">If money was debited but this stays open, email admin@graharekha.co.in with order ${esc(order.orderId)} and we will unlock it.</p>
   </div>`;
   document.body.appendChild(m);
   m.addEventListener('click', e=>{ if(e.target===m) closePayModal(m); });
@@ -3803,13 +3940,47 @@ async function showPayModal(order, opts){
   if(order.keyId && order.gatewayOrderId){
     mount.innerHTML = '<span class="hint"><span class="spin"></span> Loading secure payment window…</span>';
     try{
-      await openRazorpayCheckout(order, mount);
+      const resp = await openRazorpayCheckout(order, mount);
+      if(statusEl) statusEl.innerHTML = '<span class="spin"></span> Payment received — unlocking your report…';
+      // Redeem Razorpay's signed receipt directly. The webhook stays the
+      // backstop, but waiting on it alone is what produced "paid but locked".
+      if(await verifyCheckout(order, resp)){ stopPayPoll(); finish(); return; }
       await checkOnce();
     }
     catch(e){ if(e.message !== 'Payment cancelled') toast(e.message || 'Payment failed'); }
-  } else if(!mountRazorpayButton(mount)){
+  } else if(mountRazorpayButton(mount)){
+    // This path cannot self-reconcile, so say what to do rather than implying
+    // the page will sort itself out.
+    const help = m.querySelector('#payFallbackNote');
+    if(help) help.hidden = false;
+  } else {
     if(statusEl) statusEl.textContent = 'Payment is not configured on this server.';
   }
+}
+/* Hand Razorpay's signed success payload to the server, which re-checks the
+   HMAC before granting anything. Returns true only once the order is paid. */
+async function verifyCheckout(order, resp){
+  const sig = resp && resp.razorpay_signature;
+  const payId = resp && resp.razorpay_payment_id;
+  if(!sig || !payId) return false;
+  const body = {
+    orderId: order.orderId,
+    razorpayOrderId: resp.razorpay_order_id || order.gatewayOrderId || '',
+    razorpayPaymentId: payId,
+    razorpaySignature: sig
+  };
+  for(let attempt = 0; attempt < 3; attempt++){
+    try{
+      const r = await api('/api/payment/verify', {method:'POST', body: JSON.stringify(body)});
+      if(r && r.status === 'paid') return true;
+    }catch(e){
+      // A rejected signature or a foreign order will not become valid on a
+      // retry. Only transport faults and server errors are worth repeating.
+      if(e && e.status && e.status < 500) return false;
+    }
+    await new Promise(r=> setTimeout(r, 1200));
+  }
+  return false;
 }
 function closePayModal(m){ stopPayPoll(); (m || document.getElementById('payModal') || document.getElementById('aPayModal'))?.remove(); }
 async function startPay(){
