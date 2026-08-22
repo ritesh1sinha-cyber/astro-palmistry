@@ -2787,7 +2787,10 @@ async function reloadAdminEnquiries(){
     const enq = await api('/api/admin/enquiries?limit=100');
     out.innerHTML = renderAdminEnquiries(enq);
   }catch(e){
-    out.innerHTML = `<p class="hint">${esc(e.message||'Could not load enquiries.')}</p>`;
+    const msg = e.status === 404
+      ? 'Enquiries API not deployed yet — on the VM run: sudo bash deploy/gcp-update.sh'
+      : (e.message || 'Could not load enquiries.');
+    out.innerHTML = `<p class="hint">${esc(msg)}</p>`;
   }
 }
 async function adminSetEnquiryStatus(id, status){

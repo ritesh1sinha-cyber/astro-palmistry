@@ -103,6 +103,14 @@ services:
       GUEST_PASSCODE: ${GUEST_PASSCODE:-}
       # Flip to 0 when Google Sign-In alone is enough
       DEV_LOGIN: ${DEV_LOGIN:-1}
+      # Contact-form email (GoDaddy Titan / smtp.titan.email)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-1}
+      ENQUIRY_NOTIFY_TO: ${ENQUIRY_NOTIFY_TO:-admin@graharekha.com}
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
