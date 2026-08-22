@@ -8,8 +8,11 @@ COMPOSE="docker compose -f deploy/docker-compose.gcp.yml --env-file $ENV_FILE"
 echo "==> git pull"
 git pull
 
-echo "==> rebuild + restart API (picks up new api.py from GitHub)"
-$COMPOSE up -d --build api
+SHA="$(git rev-parse HEAD)"
+export RAILWAY_GIT_COMMIT_SHA="$SHA"
+echo "==> rebuild API from commit $SHA (invalidates Docker cache for git clone)"
+$COMPOSE build --build-arg "RAILWAY_GIT_COMMIT_SHA=$SHA" api
+$COMPOSE up -d api
 
 echo "==> refresh Caddy static site"
 $COMPOSE up -d --force-recreate caddy
@@ -24,9 +27,21 @@ for i in $(seq 1 30); do
   sleep 10
 done
 
+echo "==> verify enquiries route inside container"
+if $COMPOSE exec -T api python -c "import pathlib; p=pathlib.Path('api.py').read_text(); assert '/api/admin/enquiries' in p" 2>/dev/null; then
+  echo "api.py contains /api/admin/enquiries"
+else
+  echo "ERROR: api.py in container is still old — try: $COMPOSE build --no-cache api && $COMPOSE up -d api"
+  exit 1
+fi
+
 echo "==> enquiries endpoint"
-curl -sS -o /dev/null -w "GET /api/admin/enquiries -> HTTP %{http_code}\n" \
-  https://gcp.graharekha.com/api/admin/enquiries || true
+CODE="$(curl -sS -o /dev/null -w '%{http_code}' https://gcp.graharekha.com/api/admin/enquiries || true)"
+echo "GET /api/admin/enquiries -> HTTP $CODE"
+if [ "$CODE" = "404" ]; then
+  echo "ERROR: still 404 — Caddy may be pointing at an old container; check: $COMPOSE ps"
+  exit 1
+fi
 
 if grep -q '^SMTP_HOST=$' "$ENV_FILE" 2>/dev/null || ! grep -q '^SMTP_HOST=' "$ENV_FILE" 2>/dev/null; then
   echo ""

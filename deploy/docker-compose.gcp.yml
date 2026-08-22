@@ -67,6 +67,8 @@ services:
         WITH_CONFLUENCE: "1"
         GIT_REPO: ${GIT_REPO:-https://github.com/ritesh1sinha-cyber/astro-palmistry.git}
         GIT_REF: ${GIT_REF:-main}
+        # Bust Docker layer cache when main moves — otherwise `git clone` never re-runs.
+        RAILWAY_GIT_COMMIT_SHA: ${RAILWAY_GIT_COMMIT_SHA:-unknown}
     <<: *app-env
     restart: unless-stopped
     # NOTE: a nested `environment:` replaces the merged *app-env map — repeat DB/Redis here.
