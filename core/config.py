@@ -192,6 +192,16 @@ class Settings:
     upi_id: str = os.getenv("UPI_ID", "")
     payee_name: str = os.getenv("PAYEE_NAME", "GrahaRekha")
 
+    # --- outbound mail (contact-form notifications) ------------------------
+    smtp_host: str = os.getenv("SMTP_HOST", "")
+    smtp_port: int = _int("SMTP_PORT", 587)
+    smtp_user: str = os.getenv("SMTP_USER", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    smtp_from: str = os.getenv("SMTP_FROM", "")
+    smtp_use_tls: bool = _bool("SMTP_USE_TLS", True)
+    enquiry_notify_to: str = field(default_factory=lambda: _cfg(
+        "enquiry_notify_to", "ENQUIRY_NOTIFY_TO", "admin@graharekha.com"))
+
     # --- retention ---------------------------------------------------------
     report_retention_days: int = _int("REPORT_RETENTION_DAYS", 365)
     job_retention_days: int = _int("JOB_RETENTION_DAYS", 90)

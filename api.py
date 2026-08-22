@@ -219,6 +219,38 @@ def admin_analysis(user: dict = Depends(current_user)):
     return admin_analysis_summary()
 
 
+@app.get("/api/admin/enquiries")
+def admin_enquiries_list(status: str = "", limit: int = 50,
+                         user: dict = Depends(current_user)):
+    """Contact-form submissions — admin only."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    from core.enquiries import list_enquiries
+    try:
+        return list_enquiries(status=status, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+class EnquiryStatusIn(BaseModel):
+    status: str
+
+
+@app.patch("/api/admin/enquiries/{enquiry_id}")
+def admin_enquiry_status(enquiry_id: str, body: EnquiryStatusIn,
+                         user: dict = Depends(current_user)):
+    """Mark an enquiry new / replied / closed — admin only."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    from core.enquiries import set_enquiry_status
+    try:
+        return set_enquiry_status(enquiry_id, body.status)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
 class PageViewIn(BaseModel):
     path: str = ""
 
@@ -992,12 +1024,19 @@ def enquiry(body: Enquiry, request: Request):
     if (body.website or "").strip():
         return {"ok": True}  # silently accept spam
     TS.require_human(request, token=body.turnstileToken)
+    from core.mail import notify_new_enquiry
     from sqlalchemy import text as _t
+    eid = new_id()
+    ts = now()
     with tx() as c:
         c.execute(_t("INSERT INTO enquiries (id,user_id,name,phone,email,message,"
                      "status,created_at) VALUES (:i,:u,:n,:p,:e,:m,'new',:t)"),
-                  {"i": new_id(), "u": None, "n": body.name,
-                   "p": body.phone, "e": body.email, "m": body.message, "t": now()})
+                  {"i": eid, "u": None, "n": body.name.strip(),
+                   "p": body.phone.strip(), "e": body.email.strip(),
+                   "m": body.message.strip(), "t": ts})
+    notify_new_enquiry(enquiry_id=eid, name=body.name.strip(),
+                       phone=body.phone.strip(), email=body.email.strip(),
+                       message=body.message.strip(), created_at=ts)
     return {"ok": True}
 
 

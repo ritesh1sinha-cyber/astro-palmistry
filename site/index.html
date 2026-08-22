@@ -484,6 +484,12 @@ input[type=file]{display:none}
 .analysis-table th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);border-top:0}
 .analysis-table td.num,.analysis-table th.num{text-align:right;font-variant-numeric:tabular-nums}
 .analysis-table tr:first-child td{border-top:0}
+.enquiry-status{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);display:inline-block}
+.enquiry-status.new{background:#fff8e6;border-color:#e8d48a;color:#7a5a10}
+.enquiry-status.replied{background:#eef6ee;border-color:#b8d4b8;color:#2d5a2d}
+.enquiry-status.closed{background:#f3f3f3;border-color:#ddd;color:#666}
+.enquiry-msg{max-width:340px;white-space:pre-wrap;line-height:1.45;font-size:13px}
+.enquiry-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .report-row{
   display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
   padding:16px 18px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper)
@@ -1830,10 +1836,10 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
    <!-- 1 Clean Annotated Palm Image (USP) -->
    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;margin-bottom:16px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-     <b style="font-size:13px;color:var(--gold-soft)">Left Palm · Neural Line &amp; Mount Detection</b>
-     <span class="pill" style="font-size:10.5px;background:rgba(201,162,39,.12);color:var(--gold-soft);font-weight:700">Left Hand (samplepalm1.jpg)</span>
+     <b style="font-size:13px;color:var(--gold-soft)">Right Palm · Neural Line &amp; Mount Detection</b>
+     <span class="pill" style="font-size:10.5px;background:rgba(201,162,39,.12);color:var(--gold-soft);font-weight:700">Right Hand (samplepalm1.jpg)</span>
     </div>
-    <img src="img/sample_left_overlay.jpg" alt="Computer Vision Detected Palm Lines and Mounts - Left Hand" style="width:100%;max-width:340px;margin:0 auto;border-radius:10px;aspect-ratio:3/4;object-fit:cover;background:#111;box-shadow:0 4px 14px rgba(0,0,0,.08)">
+    <img src="img/sample_right_overlay_cv.jpg" alt="Computer Vision Detected Palm Lines and Mounts - Right Hand" style="width:100%;max-width:340px;margin:0 auto;border-radius:10px;aspect-ratio:3/4;object-fit:cover;background:#111;box-shadow:0 4px 14px rgba(0,0,0,.08)">
     <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)">
      <span><b style="color:#dc1e1e">●</b> Heart Line</span>
      <span><b style="color:#19a02d">●</b> Head Line</span>
@@ -2675,7 +2681,10 @@ async function loadAdminAnalysis(){
   }
   el.innerHTML = '<div class="card hint"><span class="spin"></span> Loading analysis…</div>';
   try{
-    const d = await api('/api/admin/analysis');
+    const [d, enq] = await Promise.all([
+      api('/api/admin/analysis'),
+      api('/api/admin/enquiries?limit=100').catch(()=>({enquiries:[], counts:{}}))
+    ]);
     const free = d.freeReports || {};
     const paid = d.paidOrders || {};
     const views = d.pageViews || {};
@@ -2688,6 +2697,8 @@ async function loadAdminAnalysis(){
     const viewRows = (views.byPath||[]).map(r=>
       `<tr><td>${esc(r.label)}</td><td class="num">${esc(r.count)}</td></tr>`).join('')
       || '<tr><td colspan="2" class="hint">No page views yet</td></tr>';
+    const enqCounts = enq.counts || {};
+    const enqNew = enqCounts.new || 0;
     el.innerHTML = `
       <div class="analysis-kpis">
         <div class="analysis-kpi"><span>Free reports</span><b>${esc(free.total||0)}</b><small>Generations till date</small></div>
@@ -2711,6 +2722,12 @@ async function loadAdminAnalysis(){
         <p class="hint" style="margin:8px 0 12px">Approximate SPA traffic — useful for scaling, not unique visitors.</p>
         <table class="analysis-table"><thead><tr><th>Page</th><th class="num">Views</th></tr></thead>
         <tbody>${viewRows}</tbody></table>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="eyebrow">Contact form</div>
+        <h3 style="font-size:18px;margin:6px 0 8px">Consultation requests</h3>
+        <p class="hint" style="margin:0 0 12px">Submissions from the Contact page. ${enqNew ? `<b>${esc(enqNew)} new</b> waiting for reply.` : 'No new requests right now.'} Email alerts require SMTP on the server.</p>
+        <div id="admEnqOut">${renderAdminEnquiries(enq)}</div>
       </div>
       <div class="card" style="margin-top:16px">
         <div class="eyebrow">Payment health</div>
@@ -2737,6 +2754,53 @@ async function loadAdminAnalysis(){
       <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" type="button" onclick="loadAdminAnalysis()">Refresh</button></div>`;
   }catch(e){
     el.innerHTML = '<div class="card hint">Could not load analysis. Try again.</div>';
+  }
+}
+function renderAdminEnquiries(data){
+  const rows = (data.enquiries||[]).map(e=>{
+    const st = esc(e.status||'new');
+    const mail = esc(e.email||'');
+    return `<tr>
+      <td>${esc(e.createdAt||'—')}</td>
+      <td>${esc(e.name||'—')}<br><a href="tel:${esc((e.phone||'').replace(/\s/g,''))}">${esc(e.phone||'—')}</a></td>
+      <td>${mail ? `<a href="mailto:${mail}">${mail}</a>` : '—'}</td>
+      <td><div class="enquiry-msg">${esc(e.message||'')}</div>
+        <div class="enquiry-actions">
+          <button class="btn btn-ghost btn-sm" type="button" onclick="adminSetEnquiryStatus('${esc(e.id)}','replied')">Mark replied</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="adminSetEnquiryStatus('${esc(e.id)}','closed')">Close</button>
+          ${st !== 'new' ? `<button class="btn btn-ghost btn-sm" type="button" onclick="adminSetEnquiryStatus('${esc(e.id)}','new')">Reopen</button>` : ''}
+        </div>
+      </td>
+      <td><span class="enquiry-status ${st}">${st}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="hint">No consultation requests yet.</td></tr>';
+  const c = data.counts || {};
+  return `<p class="hint" style="margin:0 0 10px">New ${esc(c.new||0)} · Replied ${esc(c.replied||0)} · Closed ${esc(c.closed||0)}</p>`
+    + `<table class="analysis-table"><thead><tr><th>When</th><th>Name / phone</th><th>Email</th><th>Message</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`
+    + `<div style="margin-top:10px"><button class="btn btn-ghost btn-sm" type="button" onclick="reloadAdminEnquiries()">Refresh enquiries</button></div>`;
+}
+async function reloadAdminEnquiries(){
+  const out = $('#admEnqOut');
+  if(!out) return;
+  out.innerHTML = '<p class="hint"><span class="spin"></span> Loading…</p>';
+  try{
+    const enq = await api('/api/admin/enquiries?limit=100');
+    out.innerHTML = renderAdminEnquiries(enq);
+  }catch(e){
+    out.innerHTML = `<p class="hint">${esc(e.message||'Could not load enquiries.')}</p>`;
+  }
+}
+async function adminSetEnquiryStatus(id, status){
+  if(!id) return;
+  try{
+    await api('/api/admin/enquiries/'+encodeURIComponent(id), {
+      method:'PATCH',
+      body:JSON.stringify({status})
+    });
+    toast('Enquiry updated');
+    reloadAdminEnquiries();
+  }catch(e){
+    toast(e.message||'Could not update enquiry');
   }
 }
 /* Turn "payments are stuck" into a specific answer. Each line below fails for a
