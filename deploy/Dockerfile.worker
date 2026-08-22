@@ -19,14 +19,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Clone the repo INCLUDING Git LFS MiniLM weights (no Hugging Face download).
+ARG USE_LOCAL_SOURCE=0
 ARG GIT_REPO=https://github.com/ritesh1sinha-cyber/astro-palmistry.git
 ARG GIT_REF=main
 ARG RAILWAY_GIT_COMMIT_SHA=unknown
 ENV GIT_LFS_SKIP_SMUDGE=0
-RUN echo "cloning commit $RAILWAY_GIT_COMMIT_SHA (with LFS models)" \
- && git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" . \
- && git lfs pull \
- && rm -rf .git
+# GCP compose sets USE_LOCAL_SOURCE=1 — copy the VM checkout (after git pull) so
+# Docker cache on `git clone` cannot serve stale api.py.
+COPY . /tmp/src
+RUN set -eux; \
+  if [ "$USE_LOCAL_SOURCE" = "1" ]; then \
+    echo "using local checkout $RAILWAY_GIT_COMMIT_SHA"; \
+    cp -a /tmp/src/. .; \
+  else \
+    echo "cloning commit $RAILWAY_GIT_COMMIT_SHA from $GIT_REPO"; \
+    rm -rf /tmp/src; \
+    git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" .; \
+  fi; \
+  git lfs pull; \
+  rm -rf .git /tmp/src
 
 # Show what the clone delivered, then fail loudly and specifically if anything
 # the runtime needs did not arrive.

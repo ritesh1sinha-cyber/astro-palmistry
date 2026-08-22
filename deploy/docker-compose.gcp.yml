@@ -65,9 +65,10 @@ services:
       dockerfile: deploy/Dockerfile.worker
       args:
         WITH_CONFLUENCE: "1"
+        USE_LOCAL_SOURCE: "1"
         GIT_REPO: ${GIT_REPO:-https://github.com/ritesh1sinha-cyber/astro-palmistry.git}
         GIT_REF: ${GIT_REF:-main}
-        # Bust Docker layer cache when main moves — otherwise `git clone` never re-runs.
+        # Changes every deploy — shown in build logs; local source is what matters.
         RAILWAY_GIT_COMMIT_SHA: ${RAILWAY_GIT_COMMIT_SHA:-unknown}
     <<: *app-env
     restart: unless-stopped
