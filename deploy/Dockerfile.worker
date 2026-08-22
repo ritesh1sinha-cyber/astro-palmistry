@@ -31,13 +31,14 @@ RUN set -eux; \
   if [ "$USE_LOCAL_SOURCE" = "1" ]; then \
     echo "using local checkout $RAILWAY_GIT_COMMIT_SHA"; \
     cp -a /tmp/src/. .; \
+    rm -rf /tmp/src; \
   else \
     echo "cloning commit $RAILWAY_GIT_COMMIT_SHA from $GIT_REPO"; \
     rm -rf /tmp/src; \
     git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" .; \
-  fi; \
-  git lfs pull; \
-  rm -rf .git /tmp/src
+    git lfs pull; \
+    rm -rf .git; \
+  fi
 
 # Show what the clone delivered, then fail loudly and specifically if anything
 # the runtime needs did not arrive.

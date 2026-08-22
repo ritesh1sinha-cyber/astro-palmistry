@@ -23,6 +23,8 @@ fi
 
 SHA="$(git rev-parse HEAD)"
 export RAILWAY_GIT_COMMIT_SHA="$SHA"
+echo "==> git lfs pull (MiniLM weights must exist in checkout — .git is not in Docker context)"
+git lfs pull
 echo "==> rebuild API from local checkout $SHA (USE_LOCAL_SOURCE=1)"
 $COMPOSE build \
   --build-arg "USE_LOCAL_SOURCE=1" \
