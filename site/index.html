@@ -927,9 +927,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
    <h3 style="font-size:24px">Sign in to begin</h3>
    <p style="color:var(--muted);font-size:14.5px;margin:8px 0 20px">Your palm images and reading are tied to your account so you can come back to them any time.</p>
    <div id="gbtn" style="margin-bottom:12px"></div>
-   <button class="btn btn-gold" id="demoAuth" onclick="openGuestModal()">Login via promocode</button>
-   <button class="btn btn-ghost btn-sm" id="adminAuth" onclick="openAdminModal()" style="margin-top:10px">Admin login</button>
-   <p class="hint" id="authNote">Google for a normal account · promocode for full readings · admin for Analysis</p>
+   <p class="hint" id="authNote">Sign in with Google to save your readings.</p>
   </div>
 
   <!-- step 2: details -->
@@ -1012,9 +1010,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
    <h3 style="font-size:24px">Sign in to continue</h3>
    <p style="color:var(--muted);font-size:14.5px;margin:8px 0 20px">Chart readings are tied to your account so you can come back to them any time.</p>
    <div id="gbtnAstro" style="margin-bottom:12px"></div>
-   <button class="btn btn-gold" onclick="openGuestModal()">Login via promocode</button>
-   <button class="btn btn-ghost btn-sm" onclick="openAdminModal()" style="margin-top:10px">Admin login</button>
-   <p class="hint" style="margin-top:12px">Free half of every reading · no payment needed to try</p>
+   <p class="hint" style="margin-top:12px">Sign in with Google · free half of every reading</p>
   </div>
 
   <div id="astroMain" style="display:none">
@@ -1813,6 +1809,30 @@ const READING = { open:false, origin:{view:'astro', pane:null}, kind:null,
 let CURRENT_VIEW = 'home';
 let _hashLock = false;
 
+const AUTH_PATHS = { admin:'/admin', promo:'/promo' };
+function authPathKind(){
+  const p = (location.pathname||'/').replace(/\/$/,'') || '/';
+  if(p === AUTH_PATHS.admin) return 'admin';
+  if(p === AUTH_PATHS.promo) return 'promo';
+  return null;
+}
+function dismissAuthModal(kind){
+  const id = kind === 'admin' ? 'adminModal' : 'guestModal';
+  const m = $('#'+id); if(m) m.classList.remove('on');
+}
+function clearAuthPath(nextHash){
+  if(!authPathKind()) return;
+  dismissAuthModal(authPathKind());
+  const url = nextHash || '/#/home';
+  history.replaceState(history.state || {gr:1}, '', url.startsWith('/') ? url : '/'+url);
+}
+function applyAuthPath(){
+  const kind = authPathKind();
+  if(kind === 'admin'){ go('home', {silent:true, replace:true, instant:true}); openAdminModal(); return true; }
+  if(kind === 'promo'){ go('home', {silent:true, replace:true, instant:true}); openGuestModal(); return true; }
+  return false;
+}
+
 function go(v, opts){
   const o = opts || {};
   if(v === 'analysis' && !isAdmin()){
@@ -1823,6 +1843,7 @@ function go(v, opts){
     v = 'home';
   }
   if(!VIEWS.includes(v)) v = 'home';
+  if(!o.silent && authPathKind()) clearAuthPath('/'+('#/'+v));
   // Leaving the reading view by any route — Back, a hash change, a tab —
   // retires the contents rail with it, so nothing keeps measuring a report
   // nobody is looking at.
@@ -1854,15 +1875,18 @@ function writeHash(replace){
   }else if(CURRENT_VIEW === 'astro' && typeof ASTRO !== 'undefined' && ASTRO.pane){
     h += '/' + ASTRO.pane;
   }
-  if(location.hash === h) return;
+  if(authPathKind()) return;
+  const url = '/' + h;
+  if(location.pathname + location.hash === url) return;
   _hashLock = true;
   try{
-    if(replace) history.replaceState(history.state || {gr:1}, '', h);
-    else history.pushState({gr:1}, '', h);
+    if(replace) history.replaceState(history.state || {gr:1}, '', url);
+    else history.pushState({gr:1}, '', url);
   }catch(e){ location.hash = h; }
   setTimeout(()=>{ _hashLock = false; }, 0);
 }
 function applyHash(){
+  if(authPathKind()){ applyAuthPath(); return; }
   const parts = (location.hash||'').replace(/^#\/?/, '').split('/').filter(Boolean);
   const v = parts[0] || 'home';
   if(v === 'reading'){
@@ -1881,6 +1905,17 @@ function applyHash(){
   if(view === 'astro') setAstroPane(parts[1] || null, {clear:true, silent:true});
 }
 addEventListener('popstate', ()=>{ if(!_hashLock) applyHash(); });
+
+function finishAuthPathLogin(u){
+  if(!authPathKind()) return;
+  if(u && u.admin){
+    clearAuthPath('/#/analysis');
+    go('analysis', {replace:true, instant:true});
+  }else{
+    clearAuthPath('/#/home');
+    go('home', {replace:true, instant:true});
+  }
+}
 
 /* ---------- sheet (tool switcher / more menu) ---------- */
 function openSheet(title, html){
@@ -2947,7 +2982,10 @@ function openGuestModal(){
   const p=$('#guestPass'); if(p) p.value='';
   setTimeout(()=>{ const el=$('#guestPass'); if(el) el.focus(); }, 50);
 }
-function closeGuestModal(){ const m=$('#guestModal'); if(m) m.classList.remove('on'); }
+function closeGuestModal(){
+  dismissAuthModal('promo');
+  if(authPathKind() === 'promo') clearAuthPath('/#/home');
+}
 async function submitGuestLogin(){
   const passcode = ($('#guestPass')?.value||'').trim();
   const err = $('#guestErr');
@@ -2968,8 +3006,9 @@ async function submitGuestLogin(){
     if(!r.ok) throw new Error(detail || ('Promocode login failed (HTTP '+r.status+').'));
     setSessionToken(data.token);
     S._guestPasscode = passcode;
-    closeGuestModal();
+    dismissAuthModal('promo');
     setUser(Object.assign({ picture:GUEST_PIC }, data.user));
+    finishAuthPathLogin(data.user);
   }catch(e){
     if(err){ err.style.display=''; err.textContent=e.message || 'Promocode login failed'; }
     else toast(e.message || 'Promocode login failed');
@@ -2987,7 +3026,10 @@ function openAdminModal(){
   const p=$('#adminPass'); if(p) p.value='';
   setTimeout(()=>{ const el=$('#adminUser')||$('#adminPass'); if(el) el.focus(); }, 50);
 }
-function closeAdminModal(){ const m=$('#adminModal'); if(m) m.classList.remove('on'); }
+function closeAdminModal(){
+  dismissAuthModal('admin');
+  if(authPathKind() === 'admin') clearAuthPath('/#/home');
+}
 async function submitAdminLogin(){
   const username = ($('#adminUser')?.value||'').trim();
   const password = ($('#adminPass')?.value||'');
@@ -3012,6 +3054,7 @@ async function submitAdminLogin(){
     ASTRO.user = data.user;
     closeAdminModal();
     setUser(Object.assign({ picture:ADMIN_PIC }, data.user));
+    finishAuthPathLogin(data.user);
   }catch(e){
     if(err){ err.style.display=''; err.textContent=e.message || 'Admin login failed'; }
     else toast(e.message || 'Admin login failed');
@@ -3054,14 +3097,12 @@ function logout(){
 /* Real Google Identity Services — activates when a Client ID is set
    (from `.config` / GOOGLE_CLIENT_ID via /api/public-config). */
 function initGoogle(){
-  const adminBtn = $('#adminAuth');
-  if(adminBtn) adminBtn.style.display = '';
   if(!CONFIG.googleClientId){
     const note=$('#authNote');
     if(note){
       note.textContent = CONFIG.liveApi
-        ? 'Sign in with promocode or admin while Google Sign-In is being enabled.'
-        : 'Promocode or admin login. Add google_client_id in `.config` to enable Google Sign-In.';
+        ? 'Sign in with Google. Google Sign-In is being enabled on this server.'
+        : 'Add google_client_id in `.config` to enable Google Sign-In.';
     }
     return;
   }
@@ -3072,7 +3113,7 @@ function initGoogle(){
       if($('#gbtn')) google.accounts.id.renderButton($('#gbtn'), opt);
       if($('#gbtnAstro')) google.accounts.id.renderButton($('#gbtnAstro'), opt);
       const note=$('#authNote');
-      if(note) note.textContent='Sign in with Google for a normal account · promocode for full readings · admin for Analysis.';
+      if(note) note.textContent='Sign in with Google to save your readings.';
     }catch(e){ console.warn('GIS failed',e); } };
   document.head.appendChild(s);
 }
@@ -3117,8 +3158,6 @@ async function loadPublicConfig(){
     CONFIG.turnstileRequired = !!j.turnstileRequired;
     CONFIG.llmEnabled = !!j.llmEnabled;
     CONFIG.chatEnabled = !!j.chatEnabled;
-    const adminBtn = $('#adminAuth');
-    if(adminBtn) adminBtn.style.display = j.adminLogin === false ? 'none' : '';
     preloadTurnstile();
   }catch(e){}
 }
@@ -5165,10 +5204,11 @@ function renderAstroResult(kind, r, originArg){
   $$('.logo')[0].addEventListener('keypress',e=>{ if(e.key==='Enter') go('home'); });
   renderAstroChooser();
   setAstroPane(null, {clear:true, silent:true});
-  // Deep links and refreshes: honour the hash, otherwise seed one so the very
-  // first Back press stays inside the app.
-  if((location.hash||'').replace(/^#\/?/,'')) applyHash();
-  else writeHash(true);
+  // Deep links and refreshes: honour /admin, /promo, then the hash.
+  if(!applyAuthPath()){
+    if((location.hash||'').replace(/^#\/?/,'')) applyHash();
+    else writeHash(true);
+  }
 })();
 </script>
 </body>
