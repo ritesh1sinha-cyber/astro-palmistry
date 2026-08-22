@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.graharekha.com/</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <!-- SPA sections (hash routes); crawlers that execute JS will discover in-page links too. -->
+  <url><loc>https://www.graharekha.com/#/read</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.graharekha.com/#/astro</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.graharekha.com/#/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.graharekha.com/#/privacy</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://www.graharekha.com/#/terms</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://www.graharekha.com/#/refunds</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+</urlset>

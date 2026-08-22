@@ -1,0 +1,6 @@
+﻿User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /promo
+
+Sitemap: https://www.graharekha.com/sitemap.xml
