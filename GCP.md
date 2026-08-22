@@ -176,6 +176,43 @@ docker compose -f deploy/docker-compose.gcp.yml --env-file deploy/.env logs -f a
 Admin login on `https://gcp.graharekha.com` → Analysis → Payment health:
 key id, key secret, and webhook secret should all read as set.
 
+### After every `git push` to `main`
+
+The **static site** (`site/`) is mounted live into Caddy — `git pull` is enough for HTML/JS changes.
+
+The **API** is cloned **inside the Docker image at build time**. `git pull` on the VM does **not** update `/api/*` until you rebuild:
+
+```bash
+cd ~/astro-palmistry
+sudo bash deploy/gcp-update.sh
+```
+
+Verify the enquiries API exists (should **not** be 404):
+
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" https://gcp.graharekha.com/api/admin/enquiries
+# 401 or 403 without admin token is OK — 404 means API image is still old
+```
+
+### Contact-form email (GoDaddy Titan)
+
+Add to `deploy/.env`, then recreate API:
+
+```env
+SMTP_HOST=smtpout.secureserver.net
+SMTP_PORT=465
+SMTP_USER=admin@graharekha.com
+SMTP_PASSWORD=your-titan-mailbox-password
+SMTP_FROM=admin@graharekha.com
+ENQUIRY_NOTIFY_TO=admin@graharekha.com
+```
+
+```bash
+sudo docker compose -f deploy/docker-compose.gcp.yml --env-file deploy/.env up -d --force-recreate api
+```
+
+Watch for send errors: `docker compose … logs api --tail=50 | grep '[mail]'`
+
 ## 7. Copy Railway data (once GCP is healthy)
 
 Two stores matter. Redis is a job queue — do **not** copy it.
