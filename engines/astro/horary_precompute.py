@@ -1052,52 +1052,110 @@ def compute_gender_check(
 # ══════════════════════════════════════════════════════════════════
 
 TOPIC_KEYWORDS = {
-    "children": ["child","speak","baby","son","daughter","pregnant","birth","born","kids","kid","progeny"],
-    "marriage":  ["marriage","marry","wedding","husband","wife","partner","spouse","relationship","love","alliance","coalition"],
-    "career":    ["job","career","promotion","salary","hike","transfer","business","work","employment",
-                  "interview","selected","selection","recruit","hire","hired","appointment","joining","offer letter"],
-    "disease_cure": ["cured","cure","recover","recovery","get well","healed"],
-    "disease":   ["disease","illness","sick","hospital","treatment","ailment"],
-    "health":    ["health","surgery"],
-    "finance":   ["money","finance","loan","wealth","investment","property","house","land"],
-    "travel":    ["travel","trip","foreign","abroad","visa","move","relocation","journey"],
-    "education": ["exam","study","education","college","university","course","result","degree"],
+    "children": ["child", "speak", "baby", "son", "daughter", "pregnant", "pregnancy", "birth", "born", "kids", "kid", "progeny", "conceive"],
+    "marriage":  ["marriage", "marry", "married", "wedding", "husband", "wife", "partner", "spouse", "relationship", "love", "alliance", "coalition", "divorce"],
+    "career":    ["job", "career", "promotion", "salary", "hike", "transfer", "business", "work", "employment",
+                  "interview", "selected", "selection", "recruit", "hire", "hired", "appointment", "joining", "offer letter", "office", "boss"],
+    "disease_cure": ["cured", "cure", "recover", "recovery", "get well", "healed", "healing"],
+    "disease":   ["disease", "illness", "sick", "hospital", "treatment", "ailment", "infection", "pain"],
+    "health":    ["health", "surgery", "operation", "vitality"],
+    "finance":   ["money", "finance", "loan", "wealth", "investment", "shares", "stocks", "debt", "profit", "loss"],
+    "property":  ["property", "house", "flat", "apartment", "land", "plot", "real estate", "buy house", "build house", "villa", "residence", "purchase", "vehicle", "car", "home"],
+    "travel":    ["travel", "trip", "foreign", "abroad", "visa", "move abroad", "move", "relocation", "relocate", "journey", "overseas", "settle abroad", "pr", "citizenship", "passport", "flight", "onsite"],
+    "litigation": ["case", "court", "legal", "lawsuit", "lawyer", "police", "jail", "enemy", "dispute", "conflict", "hearing", "verdict"],
+    "education": ["exam", "study", "education", "college", "university", "course", "result", "degree", "marks", "admission", "upsc"],
+}
+
+HORARY_INTENT_PHRASES: dict[str, list[str]] = {
+    "travel": [
+        "move abroad", "moving abroad", "settle abroad", "settling abroad", "settle overseas",
+        "go abroad", "going abroad", "relocate abroad", "relocating abroad", "shift abroad",
+        "live abroad", "living abroad", "work abroad", "travel abroad", "abroad with family",
+        "abroad for job", "abroad for partner", "move to another country", "permanent residency",
+        "green card", "greencard", "pr visa", "work visa", "student visa", "foreign settlement"
+    ],
+    "property": [
+        "buy property", "buy house", "buy flat", "buy land", "buy apartment", "buy plot",
+        "purchase property", "purchase house", "purchase flat", "purchase home", "purchase land",
+        "purchase apartment", "purchase the apartment", "purchase an apartment", "purchase a flat", "purchase a house",
+        "build house", "construct house", "property dispute", "real estate investment", "apartment in",
+        "sell property", "sell house", "sell flat", "sell land"
+    ],
+    "career": [
+        "get promoted", "get promotion", "promotion and hike", "salary hike", "new job",
+        "change job", "job switch", "switch job", "career growth", "career transition",
+        "leadership role", "business expansion", "startup funding", "lose job", "layoff"
+    ],
+    "marriage": [
+        "get married", "getting married", "love marriage", "arranged marriage", "will i marry",
+        "when will i marry", "marital harmony", "relationship issues", "divorce case"
+    ],
+    "children": [
+        "have a baby", "have children", "have kids", "conceive baby", "get pregnant",
+        "pregnancy complications", "child birth", "childbirth"
+    ],
+    "disease_cure": [
+        "recover from illness", "recover from disease", "cure disease", "medical recovery", "will i recover"
+    ],
+    "litigation": [
+        "win court case", "legal dispute", "win lawsuit", "court hearing", "police case"
+    ],
+    "education": [
+        "clear exam", "pass exam", "upsc exam", "university admission", "college admission", "exam result"
+    ],
 }
 
 
 def detect_topic(question: str, area: str = "") -> str:
     """Map free-text (+ optional life-area dropdown) → horary topic."""
     q = (question or "").strip()
+    if not q:
+        return "general"
+
+    # 1. If explicit area provided from dropdown, respect it
+    if area:
+        try:
+            import semantic_question as SQ
+            norm_area = SQ.normalize_area(area)
+            if norm_area:
+                forced = SQ.AREA_TO_HORARY_TOPIC.get(norm_area)
+                if forced:
+                    if forced == "health" and q:
+                        ql = q.lower()
+                        if any(kw in ql for kw in TOPIC_KEYWORDS.get("disease_cure", [])):
+                            return "disease_cure"
+                        if any(kw in ql for kw in TOPIC_KEYWORDS.get("disease", [])):
+                            return "disease"
+                    return forced
+        except Exception:
+            pass
+
+    ql = q.lower()
+
+    # 2. High-priority multi-word intent phrases
+    for topic, phrases in HORARY_INTENT_PHRASES.items():
+        if any(phrase in ql for phrase in phrases):
+            return topic
+
+    # 3. Semantic router
     try:
         import semantic_question as SQ
-        area = SQ.normalize_area(area)
-        if area:
-            forced = SQ.AREA_TO_HORARY_TOPIC.get(area)
-            if forced:
-                # Still allow a more specific health sub-topic from the wording.
-                if forced == "health" and q:
-                    ql = q.lower()
-                    if any(kw in ql for kw in TOPIC_KEYWORDS.get("disease_cure", [])):
-                        return "disease_cure"
-                    if any(kw in ql for kw in TOPIC_KEYWORDS.get("disease", [])):
-                        return "disease"
-                return forced
-        if q:
-            routed = SQ.route(q, area=area)
+        routed = SQ.route(q, area="")
+        if routed:
             if routed.topic and routed.topic != "general":
                 if routed.method == "minilm" or routed.topic_score >= 0.28:
                     return routed.topic
+            if routed.domain and routed.domain in TOPIC_BHAVAS:
+                return routed.domain
     except Exception:
         pass
-    if not q:
-        return "general"
-    ql = q.lower()
-    # Order matters: more specific topics first
-    priority = ["disease_cure", "disease", "children", "marriage", "career", "health",
-                "finance", "travel", "education"]
+
+    # 4. Ordered keywords
+    priority = ["travel", "property", "disease_cure", "disease", "litigation", "children", "marriage", "career", "health",
+                "finance", "education"]
     for topic in priority:
         keywords = TOPIC_KEYWORDS.get(topic, [])
-        if any(kw in ql for kw in keywords):
+        if any(re.search(r"\b" + re.escape(kw) + r"\b", ql) for kw in keywords):
             return topic
     return "general"
 

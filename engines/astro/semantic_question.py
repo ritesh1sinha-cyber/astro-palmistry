@@ -196,12 +196,11 @@ AREA_TO_QA_TOPIC: dict[str, str] = {
     "travel": "foreign", "legal": "legal",
 }
 
-# area -> horary_precompute.py TOPIC_KEYWORDS key
 AREA_TO_HORARY_TOPIC: dict[str, str] = {
     "career": "career", "promotion": "career", "business": "career",
-    "finance": "finance", "property": "finance", "marriage": "marriage",
+    "finance": "finance", "property": "property", "marriage": "marriage",
     "children": "children", "education": "education", "health": "health",
-    "travel": "travel", "legal": "general",
+    "travel": "travel", "legal": "litigation",
 }
 
 # area -> classical house, for western_horary_rules.py's scoring bias

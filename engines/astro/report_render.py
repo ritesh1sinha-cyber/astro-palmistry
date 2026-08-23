@@ -708,7 +708,7 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
         synthesize_with_qwen,
     )
 
-    conf = analyze_question_confluence(pc, question, domain_override=area)
+    conf = analyze_question_confluence(pc, question, domain_override=area, route=route)
     qwen_consultation = synthesize_with_qwen(conf)
 
     free_body = _voice_polish(render_confluence_card_html(conf, paid=False, qwen_text=""))

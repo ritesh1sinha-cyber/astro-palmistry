@@ -208,8 +208,8 @@ DOMAINS_CONFIG = {
         "karakas": ["Mars", "Venus", "Saturn"],
         "vargas": ["D4", "D9"],
         "keywords": [
-            "property", "house", "flat", "land", "plot", "real estate", "buy house", "build house",
-            "vehicle", "car", "home purchase", "property dispute", "registry"
+            "property", "house", "flat", "apartment", "land", "plot", "real estate", "buy house", "build house",
+            "villa", "residence", "vehicle", "car", "home purchase", "purchase", "property dispute", "registry"
         ],
         "dusthana_implications": {
             4: "4th Lord in Dusthana (6/8/12) causes construction delays, registry hurdles, or property disputes.",
@@ -366,23 +366,178 @@ class QuestionConfluenceReport:
     llm_synthesis: str = ""
 
 
-def detect_domain(question: str) -> str:
+AREA_TO_CONFLUENCE_DOMAIN: dict[str, str] = {
+    # Direct keys
+    "foreign_relocation": "foreign_relocation",
+    "career_profession": "career_profession",
+    "wealth_finances": "wealth_finances",
+    "property_assets": "property_assets",
+    "marriage_relationship": "marriage_relationship",
+    "children_progeny": "children_progeny",
+    "education_learning": "education_learning",
+    "health_vitality": "health_vitality",
+    "litigation_disputes": "litigation_disputes",
+    "speech_neurology": "speech_neurology",
+    # Frontend dropdown & semantic_question area keys
+    "travel": "foreign_relocation",
+    "foreign": "foreign_relocation",
+    "relocation": "foreign_relocation",
+    "career": "career_profession",
+    "job": "career_profession",
+    "promotion": "career_profession",
+    "business": "career_profession",
+    "finance": "wealth_finances",
+    "wealth": "wealth_finances",
+    "money": "wealth_finances",
+    "property": "property_assets",
+    "real_estate": "property_assets",
+    "home": "property_assets",
+    "marriage": "marriage_relationship",
+    "relationship": "marriage_relationship",
+    "spouse": "marriage_relationship",
+    "partner": "marriage_relationship",
+    "children": "children_progeny",
+    "progeny": "children_progeny",
+    "education": "education_learning",
+    "study": "education_learning",
+    "health": "health_vitality",
+    "medical": "health_vitality",
+    "disease": "health_vitality",
+    "recovery": "health_vitality",
+    "legal": "litigation_disputes",
+    "litigation": "litigation_disputes",
+    "court": "litigation_disputes",
+    "dispute": "litigation_disputes",
+    "speech": "speech_neurology",
+    "neurology": "speech_neurology",
+    "neuro": "speech_neurology",
+}
+
+# High-intent multi-word keyphrases with high weight for deterministic classification
+INTENT_KEYPHRASES: dict[str, list[str]] = {
+    "foreign_relocation": [
+        "move abroad", "moving abroad", "settle abroad", "settling abroad", "settle overseas",
+        "go abroad", "going abroad", "relocate abroad", "relocating abroad", "shift abroad",
+        "live abroad", "living abroad", "work abroad", "working abroad", "travel abroad",
+        "abroad with family", "abroad for job", "abroad for partner", "move to another country",
+        "moving to another country", "permanent residency", "green card", "greencard",
+        "pr visa", "work visa", "student visa", "citizenship test", "onsite opportunity",
+        "emigrate", "immigrate", "foreign settlement", "foreign travel"
+    ],
+    "property_assets": [
+        "buy property", "buy house", "buy flat", "buy land", "buy apartment", "buy plot",
+        "purchase property", "purchase house", "purchase flat", "purchase home", "purchase land",
+        "purchase apartment", "purchase the apartment", "purchase an apartment", "purchase a flat", "purchase a house",
+        "build house", "construct house", "property dispute", "real estate investment", "apartment in",
+        "sell property", "sell house", "sell flat", "sell land", "registry hurdle"
+    ],
+    "career_profession": [
+        "get promoted", "get promotion", "promotion and hike", "salary hike", "new job",
+        "change job", "job switch", "switch job", "career growth", "career transition",
+        "leadership role", "business expansion", "startup funding", "lose job", "layoff"
+    ],
+    "marriage_relationship": [
+        "get married", "getting married", "love marriage", "arranged marriage", "will i marry",
+        "when will i marry", "marital harmony", "relationship issues", "divorce case", "spouse fidelity"
+    ],
+    "children_progeny": [
+        "have a baby", "have children", "have kids", "conceive baby", "get pregnant",
+        "pregnancy complications", "child birth", "childbirth", "child welfare"
+    ],
+    "health_vitality": [
+        "recover from illness", "recover from disease", "cure disease", "undergo surgery",
+        "medical recovery", "chronic pain", "physical health", "vitality recovery"
+    ],
+    "litigation_disputes": [
+        "win court case", "legal dispute", "win lawsuit", "court hearing", "police case",
+        "property court case", "tenant dispute"
+    ],
+    "education_learning": [
+        "clear exam", "pass exam", "upsc exam", "university admission", "college admission",
+        "academic degree", "exam result"
+    ],
+    "speech_neurology": [
+        "child speech delay", "speech delay", "start speaking", "stuttering issue", "autism diagnosis"
+    ],
+    "wealth_finances": [
+        "get rich", "financial freedom", "stock market gains", "clear debts", "pay off loan", "wealth accumulation"
+    ],
+}
+
+
+def detect_domain(question: str, route: Any = None, area: str = "") -> str:
     """Classifies user question into the most accurate astrological domain."""
-    q_lower = question.lower()
-    scores = {}
+    # 1. If explicit area provided by user dropdown, use direct mapping
+    if area:
+        mapped = AREA_TO_CONFLUENCE_DOMAIN.get(area.lower().strip())
+        if mapped:
+            return mapped
+
+    q_lower = (question or "").lower().strip()
+
+    # 2. Phrase-level high intent scoring (e.g. "move abroad", "win court case", "buy house")
+    phrase_scores: dict[str, int] = {}
+    for d_key, phrases in INTENT_KEYPHRASES.items():
+        for phrase in phrases:
+            if phrase in q_lower:
+                phrase_scores[d_key] = phrase_scores.get(d_key, 0) + 5
+    if phrase_scores:
+        return max(phrase_scores, key=phrase_scores.get)
+
+    # 3. If semantic route provided, check its topic first (more specific), then domain
+    if route is not None:
+        r_topic = getattr(route, "topic", "")
+        if r_topic and r_topic != "general":
+            mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r_topic.lower().strip())
+            if mapped:
+                return mapped
+        r_domain = getattr(route, "domain", "")
+        if r_domain:
+            mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r_domain.lower().strip())
+            if mapped:
+                return mapped
+
+    # 4. Try running semantic_question directly if question is non-empty
+    if q_lower:
+        try:
+            import semantic_question as SQ
+            r = SQ.route(question, area="")
+            if r:
+                if r.topic and r.topic != "general":
+                    mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r.topic.lower().strip())
+                    if mapped:
+                        return mapped
+                if r.domain:
+                    mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r.domain.lower().strip())
+                    if mapped and (r.method == "minilm" or r.domain_score >= 0.25):
+                        return mapped
+        except Exception:
+            pass
+
+    # 5. Keyword scoring
+    scores: dict[str, int] = {}
     for d_key, d_cfg in DOMAINS_CONFIG.items():
-        score = sum(1 for kw in d_cfg["keywords"] if re.search(r"\b" + re.escape(kw) + r"\b", q_lower))
-        if score > 0:
-            scores[d_key] = score
+        for kw in d_cfg["keywords"]:
+            if re.search(r"\b" + re.escape(kw) + r"\b", q_lower):
+                scores[d_key] = scores.get(d_key, 0) + 1
+
     if not scores:
-        return "health_vitality" if "health" in q_lower else "career_profession"
+        return "career_profession"
+
     return max(scores, key=scores.get)
 
 
-def analyze_question_confluence(pc: dict, question: str, domain_override: str = "") -> QuestionConfluenceReport:
+def analyze_question_confluence(pc: dict, question: str, domain_override: str = "", route: Any = None) -> QuestionConfluenceReport:
     """Rigorous classical Vedic confluence analyzer for ANY life question."""
-    domain_key = domain_override or detect_domain(question)
-    cfg = DOMAINS_CONFIG.get(domain_key, DOMAINS_CONFIG["health_vitality"])
+    if domain_override:
+        domain_key = AREA_TO_CONFLUENCE_DOMAIN.get(domain_override.lower().strip(), "")
+    else:
+        domain_key = ""
+
+    if not domain_key:
+        domain_key = detect_domain(question, route=route)
+
+    cfg = DOMAINS_CONFIG.get(domain_key, DOMAINS_CONFIG["career_profession"])
 
     # 1. Base Natal Data
     lagna_raw = pc.get("lagna", {})
