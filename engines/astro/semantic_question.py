@@ -218,12 +218,40 @@ AREA_TO_DOMAIN: dict[str, str] = {
     "travel": "travel", "legal": "legal", "general": "general",
 }
 
-# Valid area keys the frontend may send (empty string = auto)
-VALID_AREAS = frozenset(k for k, _ in LIFE_AREAS if k)
+AREA_SYNONYMS: dict[str, str] = {
+    # travel / foreign
+    "travel": "travel", "foreign": "travel", "relocation": "travel", "relocate": "travel",
+    "foreign travel": "travel", "foreign travel / relocation": "travel", "foreign relocation": "travel",
+    "foreign settlement": "travel", "abroad": "travel",
+    # career
+    "career": "career", "job": "career", "job / career": "career",
+    "promotion": "promotion", "promotion or raise": "promotion",
+    "business": "business", "business / self-employment": "business",
+    # finance
+    "finance": "finance", "money": "finance", "wealth": "finance", "money / wealth": "finance",
+    # property
+    "property": "property", "property / home": "property", "home": "property",
+    "real estate": "property", "real_estate": "property",
+    # marriage
+    "marriage": "marriage", "marriage / relationship": "marriage", "relationship": "marriage",
+    "spouse": "marriage", "partner": "marriage",
+    # children
+    "children": "children", "child": "children", "progeny": "children",
+    # education
+    "education": "education", "education / study": "education", "study": "education",
+    # health
+    "health": "health", "medical": "health", "disease": "health", "recovery": "health",
+    # legal
+    "legal": "legal", "legal / court matter": "legal", "litigation": "legal", "court": "legal", "dispute": "legal",
+    # general
+    "general": "general", "something else": "general",
+}
 
 
 def normalize_area(area: str) -> str:
     a = (area or "").strip().lower()
+    if a in AREA_SYNONYMS:
+        return AREA_SYNONYMS[a]
     return a if a in VALID_AREAS else ""
 
 

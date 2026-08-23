@@ -378,28 +378,41 @@ AREA_TO_CONFLUENCE_DOMAIN: dict[str, str] = {
     "health_vitality": "health_vitality",
     "litigation_disputes": "litigation_disputes",
     "speech_neurology": "speech_neurology",
-    # Frontend dropdown & semantic_question area keys
+    # Frontend dropdown & semantic_question area keys & full option text
     "travel": "foreign_relocation",
     "foreign": "foreign_relocation",
     "relocation": "foreign_relocation",
+    "relocate": "foreign_relocation",
+    "foreign travel / relocation": "foreign_relocation",
+    "foreign travel": "foreign_relocation",
+    "foreign_travel": "foreign_relocation",
+    "foreign relocation": "foreign_relocation",
+    "abroad": "foreign_relocation",
     "career": "career_profession",
     "job": "career_profession",
+    "job / career": "career_profession",
     "promotion": "career_profession",
+    "promotion or raise": "career_profession",
     "business": "career_profession",
+    "business / self-employment": "career_profession",
     "finance": "wealth_finances",
     "wealth": "wealth_finances",
     "money": "wealth_finances",
+    "money / wealth": "wealth_finances",
     "property": "property_assets",
     "real_estate": "property_assets",
     "home": "property_assets",
+    "property / home": "property_assets",
     "marriage": "marriage_relationship",
     "relationship": "marriage_relationship",
+    "marriage / relationship": "marriage_relationship",
     "spouse": "marriage_relationship",
     "partner": "marriage_relationship",
     "children": "children_progeny",
     "progeny": "children_progeny",
     "education": "education_learning",
     "study": "education_learning",
+    "education / study": "education_learning",
     "health": "health_vitality",
     "medical": "health_vitality",
     "disease": "health_vitality",
@@ -408,6 +421,7 @@ AREA_TO_CONFLUENCE_DOMAIN: dict[str, str] = {
     "litigation": "litigation_disputes",
     "court": "litigation_disputes",
     "dispute": "litigation_disputes",
+    "legal / court matter": "litigation_disputes",
     "speech": "speech_neurology",
     "neurology": "speech_neurology",
     "neuro": "speech_neurology",
@@ -535,7 +549,7 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
         domain_key = ""
 
     if not domain_key:
-        domain_key = detect_domain(question, route=route)
+        domain_key = detect_domain(question, route=route, area=domain_override)
 
     cfg = DOMAINS_CONFIG.get(domain_key, DOMAINS_CONFIG["career_profession"])
 

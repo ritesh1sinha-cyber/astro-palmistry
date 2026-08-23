@@ -189,6 +189,8 @@ def _domain_from_topic_and_houses(topic: str, houses: list[int], q: str) -> str:
         dom = TOPIC_TO_DOMAIN[topic]
         if dom != "general":
             return dom
+    if topic in ("travel", "foreign", "relocation"):
+        return "travel"
     if topic == "litigation":
         return "legal"
     if topic == "marriage":
@@ -202,7 +204,8 @@ def _domain_from_topic_and_houses(topic: str, houses: list[int], q: str) -> str:
             return "legal"
     house_domain = {
         2: "finance", 4: "property", 5: "children", 7: "marriage",
-        9: "education", 10: "career", 11: "finance",
+        6: "health", 8: "health", 9: "travel", 12: "travel",
+        10: "career", 11: "finance",
     }
     for h in houses:
         if h in house_domain:
@@ -210,7 +213,7 @@ def _domain_from_topic_and_houses(topic: str, houses: list[int], q: str) -> str:
     return "general"
 
 
-def route_client_question(question: str) -> QuestionContext:
+def route_client_question(question: str, area: str = "") -> QuestionContext:
     """Semantic map: question -> domain, houses, intent, event hooks.
 
     Phase 1: MiniLM (paraphrase-multilingual) routes by meaning first; keyword
@@ -222,7 +225,8 @@ def route_client_question(question: str) -> QuestionContext:
     sem = None
     try:
         import semantic_question as SQ
-        sem = SQ.route(q) if q else None
+        area = SQ.normalize_area(area)
+        sem = SQ.route(q, area=area) if q else None
     except Exception as exc:  # noqa: BLE001
         print(f"[client_question] semantic route skipped: {exc}", flush=True)
 
