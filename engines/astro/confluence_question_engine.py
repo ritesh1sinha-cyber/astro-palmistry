@@ -189,7 +189,8 @@ DOMAINS_CONFIG = {
         "vargas": ["D9", "D12", "D1"],
         "keywords": [
             "foreign", "abroad", "travel", "visa", "pr", "citizenship", "relocate", "relocation",
-            "overseas", "settle abroad", "onsite", "migration", "passport", "foreign settlement"
+            "overseas", "settle abroad", "onsite", "migration", "passport", "foreign settlement",
+            "shift", "country", "foreign country", "settle", "immigrate", "emigrate", "international"
         ],
         "dusthana_implications": {
             12: "12th Lord in Kendra/Trikona or 4th Lord in 12th strongly triggers permanent distant relocation.",
@@ -434,7 +435,9 @@ INTENT_KEYPHRASES: dict[str, list[str]] = {
         "go abroad", "going abroad", "relocate abroad", "relocating abroad", "shift abroad",
         "live abroad", "living abroad", "work abroad", "working abroad", "travel abroad",
         "abroad with family", "abroad for job", "abroad for partner", "move to another country",
-        "moving to another country", "permanent residency", "green card", "greencard",
+        "moving to another country", "shift to foreign country", "shift to foreign", "shift foreign country",
+        "move to foreign country", "settle in foreign country", "go to foreign country", "foreign country",
+        "shift to another country", "permanent residency", "green card", "greencard",
         "pr visa", "work visa", "student visa", "citizenship test", "onsite opportunity",
         "emigrate", "immigrate", "foreign settlement", "foreign travel"
     ],

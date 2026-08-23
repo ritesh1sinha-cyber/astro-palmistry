@@ -655,7 +655,7 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 .tocsheet a.here{background:#fff;border-color:var(--line);font-weight:600}
 .tocsheet li.lvl2 a{padding-left:28px;font-size:14px;color:var(--muted)}
 .tocsheet li.lvl2 a.here{color:var(--ink)}
-.reportframe.rf-auto{height:auto;min-height:70vh;border-radius:0;background:transparent;margin-top:0}
+.reportframe.rf-auto{height:auto;min-height:120px;border-radius:0;background:transparent;margin-top:0}
 .reportframe.rf-fill{height:calc(100dvh - var(--header-h) - var(--readbar-h));border-radius:0;margin-top:0}
 body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
 
@@ -2406,17 +2406,16 @@ function autosizeReportFrame(f){
   // Cross-origin, or a document we cannot measure: let the frame fill the
   // viewport instead, so there is still only one scrollbar in play.
   const giveUp = ()=>{ f.classList.remove('rf-auto'); f.classList.add('rf-fill'); };
-  const measure = ()=>{
+    const measure = ()=>{
     pending = 0;
     let d;
     try{ d = f.contentDocument; }catch(e){ giveUp(); return; }
     if(!d || !d.body || !d.documentElement) return;
     const de = d.documentElement;
-    // A report wide enough to overflow sideways gets a horizontal scrollbar,
-    // and that scrollbar steals the last ~15px — enough to leave the frame
-    // scrolling vertically. Give the height back.
+    const wrap = d.querySelector('.wrap') || d.querySelector('.confluence-consultation-wrap') || d.body.firstElementChild || d.body;
     const scrollbar = Math.max(0, de.offsetHeight - de.clientHeight);
-    const h = Math.max(de.scrollHeight, d.body.scrollHeight) + scrollbar;
+    const wrapH = wrap && wrap.getBoundingClientRect ? Math.ceil(wrap.getBoundingClientRect().height) : (wrap ? wrap.offsetHeight : 0);
+    const h = Math.max(wrapH, d.body.offsetHeight, d.body.scrollHeight) + scrollbar + 16;
     if(h > 0 && Math.abs(h - last) > 4){ last = h; f.style.height = h + 'px'; }
   };
   // A backgrounded tab never runs its animation frames, and a report left to

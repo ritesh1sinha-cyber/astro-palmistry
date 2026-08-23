@@ -218,11 +218,14 @@ AREA_TO_DOMAIN: dict[str, str] = {
     "travel": "travel", "legal": "legal", "general": "general",
 }
 
+# valid areas defined in LIFE_AREAS
+VALID_AREAS: frozenset[str] = frozenset(k for k, _ in LIFE_AREAS if k)
+
 AREA_SYNONYMS: dict[str, str] = {
     # travel / foreign
     "travel": "travel", "foreign": "travel", "relocation": "travel", "relocate": "travel",
     "foreign travel": "travel", "foreign travel / relocation": "travel", "foreign relocation": "travel",
-    "foreign settlement": "travel", "abroad": "travel",
+    "foreign settlement": "travel", "abroad": "travel", "shift": "travel", "foreign country": "travel",
     # career
     "career": "career", "job": "career", "job / career": "career",
     "promotion": "promotion", "promotion or raise": "promotion",
