@@ -102,15 +102,16 @@ font-weight:600;color:var(--mixed)}
 .locked-inline .lockicon{color:var(--mixed);font-weight:700}
 .when.locked-inline{color:var(--mixed);font-weight:600}
 .lock-wrap{position:relative;border:1px solid var(--line);border-radius:14px;
-overflow:hidden;background:var(--card);margin-bottom:26px}
+overflow:hidden;background:var(--card);margin-bottom:26px;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease}
+.lock-wrap:hover{border-color:var(--gold,#c9a227);box-shadow:0 4px 14px rgba(201,162,39,.12)}
 .lock-blur{padding:18px 20px;filter:blur(5px);opacity:.55;user-select:none;
 pointer-events:none;color:#3d4250;font-size:.86rem;line-height:1.7}
 .lock-over{position:absolute;inset:0;display:grid;place-items:center;
 background:rgba(251,250,248,.18);pointer-events:none;padding:12px}
-.lock-chip{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
-font-weight:600;color:var(--mixed);background:#fff;border:1px solid var(--line);
-border-radius:999px;padding:7px 14px;box-shadow:0 2px 10px rgba(22,24,29,.08);
-white-space:nowrap}
+.lock-chip{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+font-weight:700;color:var(--mixed,#7a4b18);background:#fff;border:1px solid var(--line);
+border-radius:999px;padding:7px 16px;box-shadow:0 2px 10px rgba(22,24,29,.08);
+white-space:nowrap;cursor:pointer}
 .locked-section{margin-top:28px}
 .evidence{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
 .ev-label{font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;
@@ -602,11 +603,11 @@ INTERACT = """
     hideMismatch();
   }
   document.addEventListener('click', function(e){
-    var btn = e.target.closest('[data-mm],[data-v],[data-close],[data-nav],[data-unlock],a[href="#unlock"]');
+    var btn = e.target.closest('[data-mm],[data-v],[data-close],[data-nav],[data-unlock],a[href="#unlock"],.lock-wrap,.qa-window.locked,.lock-over');
     if(!btn) return;
     e.preventDefault();
     if(btn.hasAttribute('data-close')){ hideMismatch(); return; }
-    if(btn.hasAttribute('data-unlock') || btn.getAttribute('href') === '#unlock'){
+    if(btn.hasAttribute('data-unlock') || btn.getAttribute('href') === '#unlock' || btn.classList.contains('lock-wrap') || btn.classList.contains('locked') || btn.classList.contains('lock-over') || btn.classList.contains('lock-chip')){
       try{ parent.postMessage({source:'graharekha', action:'unlock'}, '*'); }catch(err){}
       return;
     }
@@ -636,9 +637,7 @@ def lock_sections(rows: list[tuple[str, str]]) -> str:
     ``rows`` is a list of ``(title, body)``. The title is the exact heading the
     paid report uses, so the free half reads as a blurred full document; the
     body is a generic, non-personal placeholder — never the real paid content,
-    which the free render path never has in memory. The chip carries no
-    ``data-unlock`` attribute; each report adds exactly one unlock CTA via
-    :func:`buy_block`.
+    which the free render path never has in memory.
     """
     parts = []
     for title, body in rows:

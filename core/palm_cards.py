@@ -818,31 +818,31 @@ def render(raw: dict, *, name: str = "Seeker", age: int = 30,
 
         tail = (_marks(dom, conf, paid=False)
                 + f"""
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">Chronological Milestones & Age Windows Ahead</div>
   <p class="blurred">{_e(ahead_teaser)}</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Future timeline is locked.</b> Unlock to see age milestones mapped across your lines.</p>
 </div>
 
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">Mount by Mount Planetary Energy Profile</div>
   <p class="blurred">{_e(mounts_teaser)}</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Mount analysis is locked.</b> Unlock for deep planetary energy and drive breakdown.</p>
 </div>
 
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">Special Marks & Auspicious Signs</div>
   <p class="blurred">{_e(marks_teaser)}</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Special marks analysis is locked.</b> Unlock to view all detected palm signs.</p>
 </div>
 
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">Actionable Hand Remedies (Mudras & Daily Habits)</div>
   <p class="blurred">{_e(remedies_teaser)}</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Hand remedies are locked.</b> Unlock for practical supportive habits tailored to your lines.</p>
 </div>
 
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">Detailed Line-by-Line Mathematical Working</div>
   <p class="blurred">{_e(workings_teaser)}</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Detailed working is locked.</b> Unlock for the complete line-by-line derivation.</p>

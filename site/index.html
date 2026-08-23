@@ -5108,11 +5108,11 @@ function wireReportFrame(f){
     var m = document.getElementById('mismatch'); if(m) m.hidden = true;
   }
   document.addEventListener('click', function(e){
-    var btn = e.target.closest('[data-mm],[data-v],[data-close],[data-nav],[data-unlock],a[href="#unlock"]');
+    var btn = e.target.closest('[data-mm],[data-v],[data-close],[data-nav],[data-unlock],a[href="#unlock"],.lock-wrap,.qa-window.locked,.lock-over');
     if(!btn) return;
     e.preventDefault();
     if(btn.hasAttribute('data-close')){ var m=document.getElementById('mismatch'); if(m) m.hidden=true; return; }
-    if(btn.hasAttribute('data-unlock') || btn.getAttribute('href')==='#unlock'){
+    if(btn.hasAttribute('data-unlock') || btn.getAttribute('href')==='#unlock' || btn.classList.contains('lock-wrap') || btn.classList.contains('locked') || btn.classList.contains('lock-over') || btn.classList.contains('lock-chip')){
       try{ parent.postMessage({source:'graharekha', action:'unlock'}, '*'); }catch(err){}
       return;
     }

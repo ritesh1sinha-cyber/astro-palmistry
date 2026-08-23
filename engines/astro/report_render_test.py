@@ -156,9 +156,10 @@ if pc:
           f"free={body_of(ff).count('locked-inline')} "
           f"paid={body_of(fp).count('locked-inline')}")
     # Free-view redesign: the paid depth is titled and blurred, never leaked.
+    lock_cnt = ff.count('class="locked-section"')
     check("free shows six titled-but-locked sections",
-          ff.count('class="locked-section"') == 6,
-          f"{ff.count('class=\"locked-section\"')} lock sections")
+          lock_cnt == 6,
+          f"{lock_cnt} lock sections")
     check("free blurs the placeholder bodies", "lock-blur" in ff)
     check("free names the sections as locked", "in the full reading" in ff)
     check("old locked-preview block is gone", "locked-preview" not in ff)

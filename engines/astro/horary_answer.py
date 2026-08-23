@@ -672,25 +672,25 @@ def _locked_block(*, price: int, n_windows: int, has_remedy: bool) -> str:
         "Exact turning-point timeline and culmination periods across the requested horizon.")
 
     return f"""
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">The Verdict — Prashna outcome & confidence</div>
   <p class="blurred">The unified confluence of classical planetary indicators delivers a direct verdict on whether this matter reaches completion, the strength of the opening, and the key obstacles to expect.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>The Prashna verdict is locked.</b> Unlock to read the direct answer, confidence assessment, and astrological reasoning.</p>
 </div>
 
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">Planetary dynamics & supporting influences</div>
   <p class="blurred">Complete analysis of planets supporting your position versus planets creating friction or delay in the moment chart.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Planetary currents breakdown is locked.</b> Unlock to see the active forces driving or hindering this question.</p>
 </div>
 
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">Key timing & dated windows</div>
   <p class="blurred">Exact calendar dates when the applying planetary aspects culminate and when secondary developments unfold.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;">{timing_teaser} Unlock for the exact dates and milestone guidance.</p>
 </div>
 
-<div class="qa-window locked" style="margin:14px 0;">
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">Targeted remedies & immediate relief</div>
   <p class="blurred">Practical first steps to shift momentum, classical mantra jaap for the pressure planet, and traditional remedial actions.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Targeted remedies are locked.</b> Unlock to view the exact mantra rituals and practical steps to tip the timing your way.</p>

@@ -1125,25 +1125,35 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
             f'  </ul>\n'
             f'</article>\n'
         )
+        unlock_cta_box = ""
     else:
         timing_section = (
-            f'<div class="lock-wrap" style="margin:16px 0;border-radius:12px;">\n'
+            f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
             f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
             f'    <b>Active Turning Point &amp; Timing Windows:</b> Specific month and year when this situation shifts, breakthrough windows, and Dasha milestone dates.\n'
             f'  </div>\n'
-            f'  <div class="lock-over">\n'
-            f'    <span class="lock-chip" style="font-size:0.7rem;padding:6px 16px;">🔒 Unlock Breakthrough Dates &amp; Milestone Timeline</span>\n'
+            f'  <div class="lock-over" data-unlock="1">\n'
+            f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Unlock Breakthrough Dates &amp; Milestone Timeline</span>\n'
             f'  </div>\n'
             f'</div>\n'
         )
         remedy_section = (
-            f'<div class="lock-wrap" style="margin:16px 0;border-radius:12px;">\n'
+            f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
             f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
             f'    <b>Targeted Vedic Upaya:</b> Specific planetary mantras, gemstone calibrations, and daily charitable rituals to resolve this challenge.\n'
             f'  </div>\n'
-            f'  <div class="lock-over">\n'
-            f'    <span class="lock-chip" style="font-size:0.7rem;padding:6px 16px;">🔒 Complete Upaya &amp; Remedies in Full Reading</span>\n'
+            f'  <div class="lock-over" data-unlock="1">\n'
+            f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Complete Upaya &amp; Remedies in Full Reading</span>\n'
             f'  </div>\n'
+            f'</div>\n'
+        )
+        unlock_cta_box = (
+            f'<div class="buy" style="margin:20px 0;background:linear-gradient(135deg,#1f2430 0%,#141720 100%);border:1px solid #c9a227;border-radius:14px;padding:22px 20px;text-align:center;color:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.12);">\n'
+            f'  <div style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#d9a544;font-weight:700;margin-bottom:6px;">Complete Astrological Reading Available</div>\n'
+            f'  <h3 style="font-family:Georgia,serif;font-size:1.2rem;color:#fbf6e4;margin:0 0 8px;font-weight:600;">Unlock Breakthrough Dates, Full Timeline &amp; Upaya Remedies</h3>\n'
+            f'  <p style="font-size:0.85rem;color:#b8bdcc;margin:0 auto 16px;max-width:540px;line-height:1.5;">Get the complete multi-technique synthesis: exact milestone dates, active Dasha turning points, custom planetary mantras, and actionable remedies.</p>\n'
+            f'  <a class="cta" href="#unlock" data-unlock="1" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#e8b75b 0%,#c9a227 100%);color:#16181d;font-weight:700;font-size:0.95rem;padding:13px 28px;border-radius:99px;text-decoration:none;box-shadow:0 4px 14px rgba(201,162,39,0.35);width:100%;max-width:320px;margin:0 auto;">🔒 Unlock Full Consultation — ₹298</a>\n'
+            f'  <div style="font-size:0.74rem;color:#8c93a6;margin-top:10px;">Instant Access · 100% Secure Checkout</div>\n'
             f'</div>\n'
         )
 
@@ -1171,6 +1181,7 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         f'  {qwen_block}\n'
         f'  {timing_section}\n'
         f'  {remedy_section}\n'
+        f'  {unlock_cta_box if not paid else ""}\n'
         f'  {proof_collapsible}\n'
         f'</div>\n'
     )
