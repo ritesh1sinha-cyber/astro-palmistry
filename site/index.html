@@ -162,23 +162,44 @@ main{position:relative;z-index:1;padding-bottom:120px}
 .faq-list p{margin:0;padding:4px 20px 20px;font-size:14.5px;color:var(--muted);line-height:1.6}
 
 /* ---------- hero ---------- */
-.hero{padding:clamp(16px,2.5vw,32px) 0 clamp(24px,4vw,48px);position:relative}
-.hero-grid{display:grid;gap:32px;align-items:start}
-@media(min-width:900px){.hero-grid{grid-template-columns:1.15fr .85fr;gap:40px;align-items:start}}
+.hero{padding:clamp(12px,2vw,28px) 0 clamp(20px,3vw,40px);position:relative}
+.hero-grid{display:grid;gap:clamp(20px,4vw,36px);align-items:center}
+@media(min-width:900px){.hero-grid{grid-template-columns:1.08fr .92fr;gap:48px;align-items:center}}
+.hero-copy{display:flex;flex-direction:column;gap:0}
 .hero .brand-hero{
-  font-family:var(--serif);font-size:clamp(44px,7.5vw,76px);font-weight:700;
-  letter-spacing:-.03em;line-height:1;margin:6px 0 8px;color:var(--ink)
+  font-family:var(--serif);font-size:clamp(38px,8vw,68px);font-weight:700;
+  letter-spacing:-.03em;line-height:1.02;margin:8px 0 14px;color:var(--ink)
 }
-.hero .brand-sub{
-  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--gold-soft);font-weight:600;margin:0 0 14px
+.hero-lede{
+  font-size:clamp(16px,2.1vw,18px);color:var(--ink-2);max-width:36ch;
+  margin:0 0 18px;line-height:1.55;font-weight:400
 }
-.hero .hero-line{
-  font-family:var(--serif);font-size:clamp(20px,3vw,28px);font-weight:600;
-  letter-spacing:-.02em;line-height:1.2;margin:0 0 10px;color:var(--ink-2);max-width:22ch
+.hero-points{
+  list-style:none;margin:0 0 22px;padding:0;display:grid;gap:10px;max-width:42ch
 }
-.hero p.lede{font-size:clamp(15px,1.8vw,17px);color:var(--muted);max-width:44ch;margin:0 0 20px;line-height:1.55}
-.hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.hero-points li{
+  display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.45;color:var(--muted);
+  padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.72);
+  border:1px solid var(--line-2)
+}
+.hero-points li::before{
+  content:'';flex:0 0 7px;width:7px;height:7px;border-radius:50%;
+  background:var(--gold);margin-top:7px
+}
+.hero-cta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.hero-sample{align-self:flex-start;border-color:var(--gold-dim)!important;background:rgba(201,162,39,.06)!important;font-weight:600}
+.btn-label-short{display:none}
+.hero-value-strip{
+  display:grid;gap:10px;margin:0 auto clamp(28px,5vw,48px);
+  grid-template-columns:repeat(3,minmax(0,1fr))
+}
+.value-pill{
+  text-align:center;padding:14px 12px;border-radius:var(--r);
+  background:var(--paper);border:1px solid var(--line);
+  box-shadow:0 4px 16px rgba(22,24,29,.04)
+}
+.value-pill b{display:block;font-family:var(--serif);font-size:15px;color:var(--ink);margin-bottom:4px;line-height:1.2}
+.value-pill span{font-size:12px;color:var(--muted);line-height:1.4;display:block}
 .tagline{
   font-family:var(--serif);font-weight:600;letter-spacing:-.01em;
   font-size:clamp(18px,2.2vw,23px);line-height:1.35;margin:0 0 8px;
@@ -222,18 +243,49 @@ main{position:relative;z-index:1;padding-bottom:120px}
 .coords-adv{display:none;margin-top:8px}
 .coords-adv.open{display:block}
 .admin-modal .modal-box{max-width:400px}
-.trust{display:flex;flex-wrap:wrap;gap:18px;font-size:12.5px;color:var(--muted-2)}
+.trust{display:flex;flex-wrap:wrap;gap:14px 18px;font-size:12.5px;color:var(--muted-2)}
+.trust-compact{margin-top:4px}
 .trust span{display:flex;align-items:center;gap:7px}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--gold)}
 .palm-art{
-  position:relative;border-radius:24px;padding:22px;
+  position:relative;border-radius:24px;padding:clamp(16px,3vw,22px);
   background:linear-gradient(145deg,#0d1220 0%,#171d30 100%);
-  border:1px solid var(--line);box-shadow:var(--shadow);
+  border:1px solid rgba(201,162,39,.18);box-shadow:var(--shadow);
   display:flex;align-items:center;justify-content:center;
-  margin-top:6px;max-width:440px;width:100%;justify-self:center
+  max-width:400px;width:100%;justify-self:center
 }
-.palm-art img{width:100%;height:auto;max-width:380px;display:block;margin:0 auto}
+.palm-art img{width:100%;height:auto;max-width:320px;display:block;margin:0 auto}
 .float-chip{display:none}
+.home-sec-tight{padding-top:clamp(24px,4vw,40px)!important}
+.path .path-kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin:0 0 6px}
+.path ul.path-bullets{margin:0 0 16px;padding-left:1.1em;font-size:14px;color:var(--muted);line-height:1.55}
+.path ul.path-bullets li{margin:6px 0}
+.home-fold{margin-bottom:12px}
+.home-fold summary{
+  cursor:pointer;font-family:var(--serif);font-size:17px;font-weight:600;
+  padding:16px 18px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--paper);list-style:none
+}
+.home-fold summary::-webkit-details-marker{display:none}
+.home-fold[open] summary{border-radius:var(--r) var(--r) 0 0;border-bottom:0}
+.home-fold .fold-body{
+  border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);
+  padding:0 18px 18px;background:var(--paper)
+}
+@media(min-width:761px){
+  .home-fold{margin-bottom:0}
+  .home-method-wrap{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
+  .home-fold summary{display:none}
+  .home-fold .fold-body{
+    display:block;border:1px solid var(--line);border-radius:var(--r-lg);
+    padding:24px;background:var(--paper);box-shadow:0 4px 18px rgba(22,24,29,.04)
+  }
+  .home-fold .fold-body::before{
+    content:attr(data-title);display:block;font-family:var(--serif);
+    font-size:20px;font-weight:600;margin:0 0 12px;color:var(--ink)
+  }
+  .hero-value-strip{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 
 /* ---------- steps ---------- */
 .steps{display:grid;gap:14px;counter-reset:s}
@@ -797,6 +849,27 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
   .readacts .act-full{display:none}
   .tocbtn{padding:9px 12px}
   body.reading-on main{padding-bottom:40px}
+  .hero-grid{display:flex;flex-direction:column}
+  .palm-art{order:-1;max-width:min(260px,72vw);padding:14px;margin:0 auto 4px}
+  .hero-copy{text-align:center;align-items:center}
+  .hero-lede,.hero-points{max-width:100%}
+  .hero-points li{text-align:left}
+  .hero-cta{width:100%;flex-direction:column}
+  .hero-cta .btn{width:100%}
+  .hero-sample{align-self:stretch;width:100%}
+  .trust{justify-content:center;gap:10px 14px}
+  .trust span{font-size:11.5px}
+  .btn-label-full{display:none}
+  .btn-label-short{display:inline}
+  .hero-value-strip{grid-template-columns:1fr;gap:8px}
+  .value-pill{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px}
+  .value-pill b{margin:0;flex:1;font-size:14px}
+  .value-pill span{flex:2;font-size:11.5px}
+  .sec{padding:clamp(32px,6vw,56px) 0}
+  .sec-head h2{font-size:clamp(24px,6vw,32px)}
+}
+@media(max-width:899px) and (min-width:761px){
+  .hero-value-strip{grid-template-columns:1fr}
 }
 @media print{
   header,.mobnav,.toast,footer,.btn{display:none!important}
@@ -861,26 +934,23 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
 <section class="view on" id="v-home">
  <div class="wrap hero">
   <div class="hero-grid">
-   <div>
-    <div class="eyebrow">Twelve methods · one verdict</div>
-    <h1 class="brand-hero">GrahaRekha <span style="display:block;font-size:0.52em;font-weight:500;color:var(--ink-2);margin-top:6px;line-height:1.2">AI-assisted palmistry reading — palm reading &amp; astrology reports</span></h1>
-    <p class="brand-sub">Twelve methods, one verdict · GrahaRekha: palm lines and planetary readings, all in one place.</p>
-    <p class="tagline">GrahaRekha helps you uncover your destiny through AI-assisted palmistry and astrology readings—clear insights you can act on today.</p>
-    <p class="tagline-sub">Clear today. Confident tomorrow. Always in control.</p>
-    <p class="hero-line">Your chart, checked against multiple methods for accuracy.</p>
-    <p class="lede">Get an AI-assisted palmistry reading paired with astrology insights. We run classical methods on your birth chart and show where they agree. If you don't know your birth time, your hands still reveal your reading.</p>
+   <div class="hero-copy">
+    <p class="eyebrow">Twelve methods · one verdict</p>
+    <h1 class="brand-hero">GrahaRekha</h1>
+    <p class="hero-lede">Palmistry and Vedic astrology cross-checked into one reading. See the free half first — pay only if it matches your life.</p>
+    <ul class="hero-points">
+     <li>Full chart confluence, palm lines, or a single question — your choice</li>
+     <li>No birth time? Horary and palm readings still work today</li>
+     <li>Classical rule engines — not generic AI horoscope text</li>
+    </ul>
     <div class="hero-cta">
-     <button class="btn btn-gold" onclick="go('astro')"><svg width="18" height="18"><use href="#i-moon"/></svg> Read my chart now — free half reading and instant access</button>
-     <button class="btn btn-ghost" onclick="go('read')"><svg width="18" height="18"><use href="#i-hand"/></svg> Not sure about birth time? Start with a palm reading — free today</button>
+     <button class="btn btn-gold" onclick="go('astro')"><svg width="18" height="18"><use href="#i-moon"/></svg><span class="btn-label-full">Read my chart — free half</span><span class="btn-label-short">Free chart reading</span></button>
+     <button class="btn btn-ghost" onclick="go('read')"><svg width="18" height="18"><use href="#i-hand"/></svg><span class="btn-label-full">Start with my palms</span><span class="btn-label-short">Palm reading</span></button>
     </div>
-    <div style="margin-top:12px">
-     <button class="btn btn-ghost btn-sm" onclick="openSampleModal()" style="border-color:var(--gold-soft);background:rgba(201,162,39,.06);font-weight:600">
-      <svg width="15" height="15" style="margin-right:4px"><use href="#i-star"/></svg> View Interactive Sample Report (Dummy Chart &amp; Palm Demo)
-     </button>
-    </div>
-    <div class="trust" style="margin-top:14px">
-     <span><i class="dot"></i> Free half of every reading</span>
-     <span><i class="dot"></i> Instant free preview</span>
+    <button class="btn btn-ghost btn-sm hero-sample" onclick="openSampleModal()"><svg width="15" height="15"><use href="#i-star"/></svg> View sample report</button>
+    <div class="trust trust-compact">
+     <span><i class="dot"></i> Free half preview</span>
+     <span><i class="dot"></i> Instant results</span>
      <span><i class="dot"></i> Photos never shared</span>
      <span><i class="dot"></i> Works on any phone</span>
     </div>
@@ -891,60 +961,70 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
   </div>
  </div>
 
- <div class="wrap sec" style="padding-top:0">
-  <div class="sec-head"><div class="eyebrow">AI-assisted palm reading</div><h2>AI-assisted palmistry reading or chart-based astrology — choose your path</h2>
-   <p>Same product — pick the path you have the data for.</p></div>
+ <div class="wrap hero-value-strip" aria-label="Why GrahaRekha">
+  <div class="value-pill"><b>Free half first</b><span>Read the verdict before you pay</span></div>
+  <div class="value-pill"><b>12 methods cross-checked</b><span>Dasha, KP, Jaimini, palm &amp; more</span></div>
+  <div class="value-pill"><b>Built for mobile</b><span>Capture palms or ask from your phone</span></div>
+ </div>
+
+ <div class="wrap sec home-sec-tight">
+  <div class="sec-head"><div class="eyebrow">Choose your path</div><h2>Chart, palm, or both</h2>
+   <p>Same product — start with whatever you have today.</p></div>
   <div class="paths">
    <div class="path">
     <span class="n">01</span>
     <h3>Birth chart</h3>
-    <p><b>Workflow:</b> Enter name, date, time and place. Our engines compute Swiss Ephemeris coordinates and cross-check Vimshottari Dasha, Ashtakavarga, and Gochar transits.</p>
-    <p><b>Free Report:</b> Full planetary chart, house dignities, active dasha phase, and karmic root cause diagnosis.</p>
-    <p><b>Unlock Full Consultation:</b> Precise timeline milestones, upcoming breakthrough windows, and targeted Vedic Upaya remedies.</p>
-    <button class="btn btn-gold btn-sm" onclick="go('astro')">Read my chart — free half confluence report</button>
+    <p class="path-kicker">Name, date, time &amp; place</p>
+    <ul class="path-bullets">
+     <li><b>Free:</b> Full chart, active dasha, house dignities</li>
+     <li><b>Paid:</b> Dated windows, breakthrough periods, remedies</li>
+    </ul>
+    <button class="btn btn-gold btn-sm" onclick="go('astro')">Read my chart</button>
    </div>
    <div class="path">
     <span class="n">02</span>
     <h3>Palm reading</h3>
-    <p><b>Workflow:</b> No birth time required. Sign in, capture both palms following our lighting guide, and submit for automated line detection.</p>
-    <p><b>Free Report:</b> Computer-vision line analysis (Life, Head, Heart, Fate) and lived-experience validation up to today.</p>
-    <p><b>Unlock Full Consultation:</b> Forward trajectory, upcoming milestones, and personalized planetary remedies.</p>
-    <button class="btn btn-ghost btn-sm" onclick="go('read')">Start palm reading — free line analysis today</button>
+    <p class="path-kicker">No birth time needed</p>
+    <ul class="path-bullets">
+     <li><b>Free:</b> Life, head, heart &amp; fate lines from your photos</li>
+     <li><b>Paid:</b> Forward trajectory, milestones &amp; remedies</li>
+    </ul>
+    <button class="btn btn-ghost btn-sm" onclick="go('read')">Start palm reading</button>
    </div>
   </div>
-  <p class="hint" style="margin-top:28px;max-width:68ch">Palm images and birth data power your AI-assisted palmistry reading and astrology reports. Under the hood we cross-check Vedic, KP, Jaimini, Dashas, Ashtakavarga, and palm lines — you see the verdict first, not the machinery.</p>
  </div>
 
  <!-- Palm Reading Methodology & Vedic Methods Explainer -->
- <div class="wrap sec" style="padding-top:0">
-  <div class="sec-head"><div class="eyebrow">Methodology &amp; Science</div><h2>How GrahaRekha decodes your hands and chart</h2>
-   <p>A transparent breakdown of how classical Indian palmistry and multi-system Vedic astrology are computed.</p></div>
-  <div class="grid g2" style="gap:20px;margin-bottom:24px">
-   <div class="card" style="background:#ffffff;border:1px solid var(--line);border-radius:var(--r);padding:24px">
-    <div class="eyebrow" style="margin-bottom:8px">Palmistry Methodology</div>
-    <h3 style="font-size:20px;margin-bottom:12px">Major Lines, Mounts, Special Marks &amp; AI Vision</h3>
-    <p style="font-size:14.5px;color:var(--ink-2);margin-bottom:12px">Our computer-vision neural pipeline isolates palm contours and measures line vectors, mount heights, and markings:</p>
+ <div class="wrap sec home-sec-tight">
+  <div class="sec-head"><div class="eyebrow">Methodology</div><h2>How your reading is built</h2>
+   <p>Classical palmistry and multi-system Jyotish — transparent, not black-box.</p></div>
+  <div class="home-method-wrap">
+  <details class="home-fold">
+   <summary>Palmistry — lines, mounts &amp; computer vision</summary>
+   <div class="fold-body" data-title="Palmistry — lines, mounts &amp; vision">
+    <p style="font-size:14.5px;color:var(--ink-2);margin:0 0 12px">Our pipeline isolates palm contours and measures line vectors, mount heights, and markings:</p>
     <ul style="padding-left:18px;font-size:14px;color:var(--ink-3);margin:0 0 14px;line-height:1.6">
-     <li><b>4 Major Lines:</b> Life Line (vitality &amp; endurance), Head Line (intellect &amp; strategy), Heart Line (emotional equilibrium), and Fate Line (career karma &amp; milestones).</li>
-     <li><b>Planetary Mounts:</b> Elevation and firmness across Jupiter (leadership), Saturn (discipline), Sun (recognition), Mercury (acumen), Venus (vitality), Mars, and Moon (intuition).</li>
-     <li><b>Special Marks &amp; Formations:</b> Automated detection of protective Triangles, Squares, Fish symbols, Tridents, Stars, and Islands on mounts and line intersections.</li>
-     <li><b>Dual-Hand Synthesis:</b> Non-dominant palm reveals baseline potential; dominant palm reveals active lived reality.</li>
+     <li><b>4 major lines</b> — Life, Head, Heart, Fate</li>
+     <li><b>Planetary mounts</b> — Jupiter through Moon</li>
+     <li><b>Special marks</b> — Triangles, squares, fish, tridents, stars</li>
+     <li><b>Dual-hand synthesis</b> — potential vs lived reality</li>
     </ul>
-    <p class="hint" style="margin:0"><b>Privacy &amp; Data Safety:</b> Palm photographs are processed in-memory solely to generate your reading. Images are never sold, published, or retained.</p>
+    <p class="hint" style="margin:0">Palm photos are processed in-memory only. Never sold or retained.</p>
    </div>
-   <div class="card" style="background:#ffffff;border:1px solid var(--line);border-radius:var(--r);padding:24px">
-    <div class="eyebrow" style="margin-bottom:8px">Vedic Astrology Methods</div>
-    <h3 style="font-size:20px;margin-bottom:12px">Multi-System Classical Jyotish Confluence</h3>
-    <p style="font-size:14.5px;color:var(--ink-2);margin-bottom:12px">We cross-verify every prediction across six classical pillars so you get verified certainty, not single-system guesswork:</p>
+  </details>
+  <details class="home-fold">
+   <summary>Vedic astrology — six classical pillars</summary>
+   <div class="fold-body" data-title="Vedic astrology — six pillars">
     <ul style="padding-left:18px;font-size:14px;color:var(--ink-3);margin:0 0 14px;line-height:1.6">
-     <li><b>Multi-Clock Dashas:</b> Triple-synchronized timing across Vimshottari (120-yr cycle), Yogini Dasha (8-shakti periods), and Jaimini Chara Dasha (sign-based karmic timing).</li>
-     <li><b>Jaimini &amp; BNN Synthesis:</b> Karaka analysis (Atmakaraka, Amatyakaraka) combined with Bhrigu Nandi Nadi (BNN) directional trinal combinations.</li>
-     <li><b>KP Astrology (Krishnamurti):</b> Placidus house cusps, Nakshatra lords, and Sub-Lord cuspal interlinks for precise event verification.</li>
-     <li><b>All 16 Divisional Charts (Shodashvarga):</b> Deep cross-checks across D1 to D60 (D9 Navamsha, D10 Dashamsha, D30 Trimsamsha, D7, D24).</li>
-     <li><b>Sarvāṣṭakavarga &amp; Gochar:</b> Mathematical 337-bindu SAV grid (28 baseline) overlaid with live planetary transits (Saturn, Jupiter, Rahu-Ketu).</li>
+     <li><b>Multi-clock Dashas</b> — Vimshottari, Yogini, Jaimini Chara</li>
+     <li><b>Jaimini &amp; BNN</b> — Karakas and Nadi combinations</li>
+     <li><b>KP astrology</b> — Cusps, nakshatra &amp; sub-lords</li>
+     <li><b>16 divisional charts</b> — D9 through D60</li>
+     <li><b>SAV &amp; Gochar</b> — 337-bindu grid + live transits</li>
     </ul>
-    <p class="hint" style="margin:0"><b>Objective Verdict:</b> High confluence is flagged only when classical Parashari, Jaimini, BNN, KP, and Dasha systems independently agree.</p>
+    <p class="hint" style="margin:0">High confluence only when Parashari, Jaimini, BNN, KP and Dasha agree.</p>
    </div>
+  </details>
   </div>
  </div>
 
@@ -5472,9 +5552,15 @@ function renderAstroResult(kind, r, originArg){
 }
 
 /* ---------- boot ---------- */
+function syncHomeFolds(){
+  const wide = window.matchMedia('(min-width:761px)').matches;
+  document.querySelectorAll('#v-home .home-fold').forEach(d => { d.open = wide; });
+}
 (function init(){
   $('#yr').textContent=new Date().getFullYear();
   document.title=CONFIG.brand+' — Read your palm, decode your path';
+  syncHomeFolds();
+  window.addEventListener('resize', syncHomeFolds, {passive:true});
   $('#cEmail').textContent=CONFIG.contactEmail; $('#cEmail').href='mailto:'+CONFIG.contactEmail;
   $('#cPhone').textContent=CONFIG.contactPhone; $('#cPhone').href='tel:'+CONFIG.contactPhone.replace(/\s/g,'');
   $('#cWa').href='https://wa.me/'+CONFIG.whatsapp;

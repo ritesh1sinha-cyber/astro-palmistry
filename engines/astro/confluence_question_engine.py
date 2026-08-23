@@ -544,15 +544,40 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
     return max(scores, key=scores.get)
 
 
+def _normalize_dropdown_area(area: str) -> str:
+    """Map frontend dropdown value to a canonical life-area key."""
+    raw = (area or "").strip()
+    if not raw:
+        return ""
+    try:
+        import semantic_question as SQ
+        return SQ.normalize_area(raw) or raw.lower()
+    except Exception:
+        return raw.lower()
+
+
+def _resolve_confluence_domain(
+    question: str,
+    *,
+    domain_override: str = "",
+    route: Any = None,
+) -> str:
+    """Resolve DOMAINS_CONFIG key from dropdown + question.
+
+    Dropdown values are short keys like ``travel`` — never pass them straight
+    into ``DOMAINS_CONFIG`` (that used to fall back to health_vitality).
+    """
+    area = _normalize_dropdown_area(domain_override)
+    if area:
+        mapped = AREA_TO_CONFLUENCE_DOMAIN.get(area)
+        if mapped:
+            return mapped
+    return detect_domain(question, route=route, area=area or domain_override)
+
+
 def analyze_question_confluence(pc: dict, question: str, domain_override: str = "", route: Any = None) -> QuestionConfluenceReport:
     """Rigorous classical Vedic confluence analyzer for ANY life question."""
-    if domain_override:
-        domain_key = AREA_TO_CONFLUENCE_DOMAIN.get(domain_override.lower().strip(), "")
-    else:
-        domain_key = ""
-
-    if not domain_key:
-        domain_key = detect_domain(question, route=route, area=domain_override)
+    domain_key = _resolve_confluence_domain(question, domain_override=domain_override, route=route)
 
     cfg = DOMAINS_CONFIG.get(domain_key, DOMAINS_CONFIG["career_profession"])
 
