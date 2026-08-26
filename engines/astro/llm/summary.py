@@ -125,6 +125,34 @@ def _kind_label(kind: str) -> str:
     }.get(kind or "", "astrology reading")
 
 
+def _fallback_from_report_text(text: str, *, max_sections: int = 5) -> list[dict]:
+    """Multi-section fallback when the LLM is off — split visible report prose."""
+    text = re.sub(r"\s{2,}", " ", (text or "").strip())
+    if len(text) < 280:
+        return []
+    sentences = [
+        s.strip() for s in re.split(r"(?<=[.!?])\s+", text)
+        if len(s.strip()) > 24
+    ]
+    if len(sentences) < 2:
+        return []
+    titles = (
+        "The direct answer", "The current phase", "What opens next",
+        "Health and energy", "Gemstones and actions", "What to do today",
+    )
+    per = max(2, min(4, (len(sentences) + max_sections - 1) // max_sections))
+    sections: list[dict] = []
+    idx = 0
+    for title in titles:
+        if idx >= len(sentences) or len(sections) >= max_sections:
+            break
+        chunk = sentences[idx:idx + per]
+        idx += per
+        if chunk:
+            sections.append({"title": title, "body": " ".join(chunk)[:900]})
+    return sections
+
+
 def _fallback_sections(kind: str, meta: dict, facts: Any, text: str) -> list[dict]:
     meta = meta or {}
     sections: list[dict] = []
@@ -141,22 +169,34 @@ def _fallback_sections(kind: str, meta: dict, facts: Any, text: str) -> list[dic
             sections.append({"title": "What matters now", "body": teaser[:900]})
 
     elif kind == "horary":
-        ans = meta.get("answer") or {}
-        q = str(meta.get("question") or "").strip()
-        label = str(ans.get("label") or "Open").strip()
-        conf = str(ans.get("confidence") or "moderate").strip()
-        body = f"On your question{(' — ' + q) if q else ''}, the chart reads as {label} ({conf} confidence)."
-        sections.append({"title": "The answer", "body": body[:900]})
+        text_sections = _fallback_from_report_text(text)
+        if text_sections:
+            sections.extend(text_sections)
+        if not sections:
+            ans = meta.get("answer") or {}
+            q = str(meta.get("question") or "").strip()
+            label = str(ans.get("label") or "Open").strip()
+            conf = str(ans.get("confidence") or "moderate").strip()
+            body = f"On your question{(' — ' + q) if q else ''}, the chart reads as {label} ({conf} confidence)."
+            sections.append({"title": "The answer", "body": body[:900]})
 
     elif kind == "user_question":
-        ans = meta.get("answer") or {}
         q = str(meta.get("question") or meta.get("area") or "").strip()
-        label = str(ans.get("label") or ans.get("direction") or "mixed").strip()
-        bt = str(ans.get("breakthrough") or "").strip()
-        body = f"Regarding {q or 'your question'}, the chart leans {label}."
-        if bt:
-            body += f" The strongest opening sits around {bt}."
-        sections.append({"title": "Direct answer", "body": body[:900]})
+        sections = _fallback_from_report_text(text)
+        if not sections:
+            ans = meta.get("answer") or {}
+            label = str(ans.get("label") or ans.get("direction") or "mixed").strip()
+            bt = str(ans.get("breakthrough") or "").strip()
+            low = label.lower()
+            if low.startswith(("the chart", "your chart", "regarding", "on your question")):
+                body = label
+            elif q:
+                body = f"On your question about {q}, the chart leans {label}."
+            else:
+                body = f"Regarding your question, the chart leans {label}."
+            if bt:
+                body += f" The strongest opening sits around {bt}."
+            sections.append({"title": "Direct answer", "body": body[:900]})
 
     elif kind == "daily":
         teaser = str(meta.get("teaser") or "").strip()
@@ -164,14 +204,22 @@ def _fallback_sections(kind: str, meta: dict, facts: Any, text: str) -> list[dic
             sections.append({"title": "Today in plain terms", "body": teaser[:900]})
 
     elif kind == "palm":
-        summary = str(meta.get("summary") or meta.get("teaser") or "").strip()
-        if summary:
-            sections.append({"title": "Both hands together", "body": summary[:900]})
+        text_sections = _fallback_from_report_text(text)
+        if text_sections:
+            sections.extend(text_sections)
+        if not sections:
+            summary = str(meta.get("summary") or meta.get("teaser") or "").strip()
+            if summary:
+                sections.append({"title": "Both hands together", "body": summary[:900]})
 
     elif kind == "numerology":
-        teaser = str(meta.get("teaser") or "").strip()
-        if teaser:
-            sections.append({"title": "Your numbers today", "body": teaser[:900]})
+        text_sections = _fallback_from_report_text(text)
+        if text_sections:
+            sections.extend(text_sections)
+        if not sections:
+            teaser = str(meta.get("teaser") or "").strip()
+            if teaser:
+                sections.append({"title": "Your numbers today", "body": teaser[:900]})
 
     elif kind == "kundali_match":
         headline = str(meta.get("headline") or meta.get("verdict") or "").strip()
@@ -185,6 +233,11 @@ def _fallback_sections(kind: str, meta: dict, facts: Any, text: str) -> list[dic
         verdict = str(meta.get("verdict") or "").strip()
         if verdict:
             sections.append({"title": "Day verdict", "body": verdict[:900]})
+
+    if kind in ("full_report", "classical_report") and not sections:
+        text_sections = _fallback_from_report_text(text)
+        if text_sections:
+            sections.extend(text_sections)
 
     if not sections and text:
         snippet = re.sub(r"\s{2,}", " ", text)[:1200].strip()

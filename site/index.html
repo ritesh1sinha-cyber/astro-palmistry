@@ -5570,13 +5570,12 @@ function renderAstroResult(kind, r, originArg){
   }
   if(kind === 'daily'){
     if(r.links && r.links.free){
-      const open = reportIsUnlocked(r);
       return open({
-        forceOpen: open,
+        forceOpen: unlocked,
         title: 'Today from your chart',
         subtitle: 'Daily reading · ' + (r.date || m.date || '')
-          + (open ? (r.subscribed ? ' · subscription active' : ' · free trial day') : ' · subscribe for full access'),
-        payHtml: open ? '' : astroPayCard('subscription', r.price ?? m.price ?? 298, '',
+          + (unlocked ? (r.subscribed ? ' · subscription active' : ' · free trial day') : ' · subscribe for full access'),
+        payHtml: unlocked ? '' : astroPayCard('subscription', r.price ?? m.price ?? 298, '',
           m.paidSections || ['Your personal Moon transit',
            'The dasha you are running, with dates',
            'Ashtakavarga on your dasha lords',
