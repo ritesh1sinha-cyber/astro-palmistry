@@ -1428,10 +1428,10 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
     <h3 style="font-size:24px;margin:8px 0 6px">A reading built from your own chart, every morning.</h3>
     <p style="color:var(--muted);font-size:14.5px">Not sun-sign filler. Written from your running dasha and antardasha, today's transits against your natal
        Moon, your Tarabala, Ashtakavarga on the signs your dasha lords are crossing, and the day's panchang — Rahu Kaal, choghadiya,
-       Abhijit. Your verdict, your Moon and your lucky number are free every morning; the working behind them is the subscription.</p>
+       Abhijit. Your first <b>3 daily readings are fully unlocked</b>; after that, subscribe at ₹298/month for the full working every morning.</p>
     <p id="dailySubBanner" class="daily-sub-banner" style="display:none"></p>
-    <button class="btn btn-gold btn-block" style="margin-top:14px" onclick="astroJob('daily')">Show today's reading — free daily summary | Subscribe for full access</button>
-    <p class="hint" style="text-align:center">⭐ <b>Subscriber Perks:</b> Daily full multi-clock working, 3 horary questions every month, and unlimited muhurat checks.</p>
+    <button class="btn btn-gold btn-block" style="margin-top:14px" onclick="astroJob('daily')">Show today's reading</button>
+    <p class="hint" style="text-align:center">3 full days free on any account, then ₹298/month for daily access.</p>
    </div>
   </div>
 
@@ -3351,7 +3351,7 @@ function paintDailySub(){
   const el = $('#dailySubBanner');
   if(!el) return;
   const u = S.user;
-  if(!u || !u.subscribed){
+  if(!u){
     el.style.display = 'none';
     el.innerHTML = '';
     return;
@@ -3361,11 +3361,22 @@ function paintDailySub(){
     el.innerHTML = '<span class="sub-badge sub-on">Admin — full daily access</span>';
     return;
   }
-  const until = fmtSubUntil(u.subUntil);
+  if(u.subscribed || hasFullAccess()){
+    const until = fmtSubUntil(u.subUntil);
+    el.style.display = '';
+    el.innerHTML = until
+      ? `<span class="sub-badge sub-on">Subscription active until ${esc(until)}</span>`
+      : '<span class="sub-badge sub-on">Subscription active</span>';
+    return;
+  }
+  const left = u.dailyTrialLeft;
+  if(typeof left === 'number' && left > 0){
+    el.style.display = '';
+    el.innerHTML = `<span class="sub-badge sub-on">Full daily access free — ${left} day${left === 1 ? '' : 's'} left</span>`;
+    return;
+  }
   el.style.display = '';
-  el.innerHTML = until
-    ? `<span class="sub-badge sub-on">Subscription active until ${esc(until)}</span>`
-    : '<span class="sub-badge sub-on">Subscription active</span>';
+  el.innerHTML = '<span class="sub-badge">Free trial used — subscribe at ₹298/month for full daily access</span>';
 }
 async function refreshUserProfile(){
   if(!S.user || !apSessionToken) return;
@@ -4659,7 +4670,7 @@ const ASTRO_TOOLS = [
   { pane:'daily', icon:'sun', group:'birth', needsBirth:true,
     title:'Daily reading',
     when:'A reading built each morning from your running dasha and today\'s transits. Not sun-sign filler.',
-    needs:'Needs birth details', price:'Free daily · ₹298/mo' },
+    needs:'Needs birth details', price:'3 days free · ₹298/mo' },
   { pane:'numero', icon:'num', group:'birth', needsBirth:true,
     title:'Numerology',
     when:'Every number you carry, worked from your name and date of birth, with the Lo Shu grid and your empty cells named.',
@@ -5124,6 +5135,7 @@ async function astroJob(kind){
     rememberLastAstro(kind, ASTRO.lastReportId);
     renderAstroResult(kind, j.result);
     refreshAdminReportStats();
+    if(kind === 'daily') refreshUserProfile();
   }catch(e){
     clearAstroQueue();
     out.innerHTML = jobFailCard(
@@ -5558,15 +5570,13 @@ function renderAstroResult(kind, r, originArg){
   }
   if(kind === 'daily'){
     if(r.links && r.links.free){
-      // Free every morning, forever — the verdict, the Moon proof and the
-      // lucky number/colour. The subscription opens the working behind them.
-      const sub = !!(r.subscribed && r.links.paid);
+      const open = reportIsUnlocked(r);
       return open({
-        forceOpen: sub,
+        forceOpen: open,
         title: 'Today from your chart',
         subtitle: 'Daily reading · ' + (r.date || m.date || '')
-          + (sub ? ' · subscription active' : ''),
-        payHtml: astroPayCard('subscription', r.price ?? m.price ?? 298, '',
+          + (open ? (r.subscribed ? ' · subscription active' : ' · free trial day') : ' · subscribe for full access'),
+        payHtml: open ? '' : astroPayCard('subscription', r.price ?? m.price ?? 298, '',
           m.paidSections || ['Your personal Moon transit',
            'The dasha you are running, with dates',
            'Ashtakavarga on your dasha lords',

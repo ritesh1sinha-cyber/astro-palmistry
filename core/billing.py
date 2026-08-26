@@ -212,6 +212,148 @@ def month_period() -> str:
 
 
 # ---------------------------------------------------------------------------
+# IST daily report-generation cap (protects workers + LLM from abuse)
+# ---------------------------------------------------------------------------
+REPORT_GEN_COUNTER = "report_gen_ist"
+
+# Job kinds that run the full engine stack — counted against the daily cap.
+GENERATION_LIMIT_KINDS: frozenset[str] = frozenset({
+    "palm", "full_report", "classical_report", "horary", "user_question",
+    "numerology", "daily", "kundali_match", "muhurat", "btr", "future_event",
+})
+
+
+def _ist_tz():
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo("Asia/Kolkata")
+    except Exception:  # noqa: BLE001
+        return timezone(timedelta(hours=5, minutes=30))
+
+
+def ist_day_period() -> str:
+    """IST calendar date string — resets at 12:00 AM IST."""
+    return datetime.now(_ist_tz()).date().isoformat()
+
+
+def ist_day_utc_range() -> tuple[datetime, datetime]:
+    """UTC bounds [start, end) for the current IST calendar day."""
+    tz = _ist_tz()
+    now_ist = datetime.now(tz)
+    start_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_ist = start_ist + timedelta(days=1)
+    return start_ist.astimezone(timezone.utc), end_ist.astimezone(timezone.utc)
+
+
+def paid_report_bonus_today(user_id: str) -> int:
+    """Extra generation slots from single-report purchases today (IST)."""
+    start, end = ist_day_utc_range()
+    with engine().connect() as c:
+        row = c.execute(text(
+            "SELECT COUNT(*) AS n FROM orders WHERE user_id=:u AND status='paid'"
+            " AND item NOT IN ('subscription')"
+            " AND paid_at >= :s AND paid_at < :e"),
+                        {"u": user_id, "s": start, "e": end}).fetchone()
+    return int((row._mapping["n"] if row else 0) or 0)
+
+
+def report_gen_allowance(user_id: str) -> int:
+    """Today's generation budget: base cap + one per paid report bought today."""
+    from .auth import has_full_access_id
+    if has_full_access_id(user_id):
+        return 999_999
+    return max(0, int(S.sub_daily_gen_limit or 0)) + paid_report_bonus_today(user_id)
+
+
+def report_gen_used(user_id: str) -> int:
+    period = ist_day_period()
+    with engine().connect() as c:
+        row = c.execute(text("SELECT used FROM usage_counters"
+                             " WHERE user_id=:u AND kind=:k AND period=:p"),
+                        {"u": user_id, "k": REPORT_GEN_COUNTER,
+                         "p": period}).fetchone()
+    return int((row._mapping["used"] if row else 0) or 0)
+
+
+def report_gen_remaining(user_id: str) -> int:
+    if not is_subscribed(user_id):
+        return 999_999
+    return max(0, report_gen_allowance(user_id) - report_gen_used(user_id))
+
+
+def consume_report_generation(user_id: str) -> tuple[bool, int]:
+    """Consume one IST-day generation slot. Returns (allowed, remaining_after)."""
+    from .auth import has_full_access_id
+    if has_full_access_id(user_id) or not is_subscribed(user_id):
+        return True, 999_999
+    allowance = report_gen_allowance(user_id)
+    period = ist_day_period()
+    with tx() as c:
+        row = c.execute(text("SELECT used FROM usage_counters"
+                             " WHERE user_id=:u AND kind=:k AND period=:p"),
+                        {"u": user_id, "k": REPORT_GEN_COUNTER,
+                         "p": period}).fetchone()
+        used = int((row._mapping["used"] if row else 0) or 0)
+        if used >= allowance:
+            return False, 0
+        if row:
+            c.execute(text("UPDATE usage_counters SET used = used + 1, updated_at = :t"
+                           " WHERE user_id=:u AND kind=:k AND period=:p"),
+                      {"t": now(), "u": user_id, "k": REPORT_GEN_COUNTER,
+                       "p": period})
+        else:
+            c.execute(text("INSERT INTO usage_counters (user_id,kind,period,used,updated_at)"
+                           " VALUES (:u,:k,:p,1,:t)"),
+                      {"u": user_id, "k": REPORT_GEN_COUNTER, "p": period,
+                       "t": now()})
+        return True, max(0, allowance - used - 1)
+
+
+def check_report_generation(user_id: str, kind: str) -> tuple[bool, int, int]:
+    """Returns (allowed, remaining_after_if_consumed, allowance_today)."""
+    from .auth import has_full_access_id
+    if (has_full_access_id(user_id) or kind not in GENERATION_LIMIT_KINDS
+            or not is_subscribed(user_id)):
+        return True, 999_999, 999_999
+    allowance = report_gen_allowance(user_id)
+    used = report_gen_used(user_id)
+    remaining = max(0, allowance - used)
+    return used < allowance, remaining, allowance
+
+
+def _account_age_days(user_id: str) -> int:
+    """Whole days since the account was created (UTC)."""
+    with engine().connect() as c:
+        row = c.execute(text("SELECT created_at FROM users WHERE id=:u"),
+                        {"u": user_id}).fetchone()
+    if not row or not row._mapping.get("created_at"):
+        return 999
+    raw = str(row._mapping["created_at"]).replace("Z", "+00:00")
+    try:
+        created = datetime.fromisoformat(raw)
+    except ValueError:
+        return 999
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc).date() - created.date()).days
+
+
+def daily_trial_remaining(user_id: str) -> int:
+    """Calendar days of full daily access left (including today)."""
+    from .auth import has_full_access_id
+    if has_full_access_id(user_id) or is_subscribed(user_id):
+        return 0
+    age = _account_age_days(user_id)
+    if age >= S.free_daily:
+        return 0
+    return S.free_daily - age
+
+
+def daily_trial_grants_full(user_id: str) -> bool:
+    return daily_trial_remaining(user_id) > 0
+
+
+# ---------------------------------------------------------------------------
 # credits (append-only ledger; users.credits is a cache of it)
 # ---------------------------------------------------------------------------
 def credit(user_id: str, delta: int, reason: str, ref_id: Optional[str] = None) -> int:

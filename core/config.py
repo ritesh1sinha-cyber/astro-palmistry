@@ -172,6 +172,10 @@ class Settings:
         "bundle_all":     _int("PRICE_BUNDLE", 29800),
     })
     sub_horary_per_month: int = _int("SUB_HORARY", 3)
+    free_daily: int = _int("FREE_DAILY", 3)
+    # Max report generations per IST calendar day (subscribers + others).
+    # Each paid single-report order that day adds one extra slot.
+    sub_daily_gen_limit: int = _int("SUB_DAILY_GEN", 3)
 
     # --- launch offer ------------------------------------------------------
     # A public promise with a hard number in it. Set PROMO_CODE="" to withdraw

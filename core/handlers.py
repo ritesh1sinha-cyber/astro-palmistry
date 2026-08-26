@@ -20,7 +20,9 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from .billing import entitled, is_subscribed, month_period, use_quota, pin_subscribed_daily_reports
+from .billing import (entitled, is_subscribed, month_period, use_quota,
+                      pin_subscribed_daily_reports, daily_trial_grants_full,
+                      daily_trial_remaining)
 from .config import S
 from .db import (get_or_create_chart, precompute_get, precompute_put,
                  report_insert)
@@ -567,11 +569,11 @@ def h_daily(user: dict, p: dict) -> dict:
     pc = precompute_for(chart)
     target = _as_date(p.get("date") or date.today().isoformat())
 
-    # Taster forever: the verdict, the Moon proof and the lucky number/colour
-    # are free every morning, and the working behind them is the subscription.
-    # A hard quota wall stopped the habit forming on exactly the day the reader
-    # had started coming back, and it sold nothing on the days it did not fire.
+    # First `FREE_DAILY` full readings per account, then the working locks until
+    # the ₹298/month subscription. Verdict + Moon proof stay in the free half.
     subscribed = entitled(user["id"], "daily")
+    trial_left = daily_trial_remaining(user["id"]) if not subscribed else 0
+    paid = subscribed or trial_left > 0
 
     data = compute_daily_moon_guide(pc, target, latitude=float(chart["lat"]),
                                     longitude=float(chart["lon"]),
@@ -595,6 +597,7 @@ def h_daily(user: dict, p: dict) -> dict:
         "locked": False,
         "date": target.isoformat(),
         "subscribed": subscribed,
+        "dailyTrialLeft": trial_left,
         "price": meta["price"],
         "chartId": chart["id"],
     })

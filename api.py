@@ -193,7 +193,13 @@ def _me(user: dict) -> dict:
                            (billing.quota_left(user["id"], "horary",
                                                S.sub_horary_per_month,
                                                billing.month_period())
-                            if subscribed else 0))}
+                            if subscribed else 0)),
+            "dailyTrialLeft": (billing.daily_trial_remaining(user["id"])
+                               if not (subscribed or full) else 0),
+            "generationsLeftToday": (billing.report_gen_remaining(user["id"])
+                                     if subscribed and not full else None),
+            "generationsAllowanceToday": (billing.report_gen_allowance(user["id"])
+                                          if subscribed and not full else None)}
 
 
 @app.get("/api/me")
@@ -280,6 +286,22 @@ def submit_job(body: JobIn, request: Request, user: dict = Depends(current_user)
     TS.require_human(request, token=body.turnstileToken)
     if body.kind not in HANDLERS:
         raise HTTPException(400, f"unknown kind; try {sorted(HANDLERS)}")
+    allowed, _remaining, allowance = billing.check_report_generation(
+        user["id"], body.kind)
+    if not allowed:
+        raise HTTPException(
+            429,
+            f"Daily report limit reached ({allowance} per IST day, "
+            f"resets at midnight IST). Purchase a report today for one extra slot, "
+            f"or try again tomorrow.",
+        )
+    if body.kind in billing.GENERATION_LIMIT_KINDS:
+        ok, _left = billing.consume_report_generation(user["id"])
+        if not ok:
+            raise HTTPException(
+                429,
+                "Daily report limit reached — resets at midnight IST.",
+            )
     if not Q.rate_ok(user["id"]):
         raise HTTPException(429, "too many requests — slow down a moment")
     if Q.total_depth() > S.max_queue_depth:
