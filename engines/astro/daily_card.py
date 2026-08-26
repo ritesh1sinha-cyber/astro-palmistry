@@ -689,6 +689,30 @@ def _clock(value: Any) -> str:
     return s[:5] if len(s) >= 5 and s[2:3] == ":" else s
 
 
+def _windows_why(reading: dict) -> str:
+    """Explain why today's windows were chosen — must survive customer sanitizers."""
+    muh = reading.get("muhurat") or {}
+    why = str(muh.get("day_summary") or muh.get("explanation") or "").strip()
+    if not why:
+        bits: list[str] = []
+        weekday = reading.get("weekday") or "today"
+        lord = reading.get("weekday_lord") or ""
+        if lord:
+            bits.append(f"{lord} is the weekday lord for {weekday}")
+        tara = (reading.get("tarabala") or {}).get("name") or ""
+        if tara:
+            bits.append(f"{tara} Tarabala sets the day's caution level")
+        chandra = (reading.get("chandrabal") or {}).get("name") or ""
+        if chandra:
+            bits.append(f"{chandra} Chandrabala shapes emotional rhythm")
+        bits.append(
+            "Labh and Amrit choghadiya are the classical gain and all-purpose "
+            "windows; Rahu Kaal is the weekday-fixed slot to avoid new starts"
+        )
+        why = ". ".join(bits) + "."
+    return f'<p class="pred-why"><b>Why:</b> {_e(why)}</p>'
+
+
 def _windows(reading: dict, day: date, lat: float, lon: float, tz: float) -> str:
     """Only the few time windows a person can realistically use today."""
     muh = reading.get("muhurat") or {}
@@ -724,6 +748,7 @@ def _windows(reading: dict, day: date, lat: float, lon: float, tz: float) -> str
 <h3 class="sec">Best and avoid times</h3>
 <div class="card">
   <ul class="windows">{rows}</ul>
+  {_windows_why(reading)}
 </div>"""
 
 
@@ -860,13 +885,11 @@ def render(reading: dict, *, name: str = "", day: Optional[date] = None,
         # deterministic engine; this renderer does not recalculate them.
         body += (
             _personal_moon_focus(reading)
-            + _lanes(lanes)
             + _dasha(reading)
             + _ashtakavarga(reading)
             + _houses(reading)
             + _windows(reading, day, lat, lon, tz)
             + _extras(reading)
-            + _technical_snapshot(reading, len(lanes))
         )
     else:
         body += _locked_preview(price=price, n_lanes=len(lanes),
@@ -880,8 +903,6 @@ def render(reading: dict, *, name: str = "", day: Optional[date] = None,
                 f"read against your birth Moon in {natal['sign']}"
                 if natal.get("sign") else ""]
     sub = " · ".join(b for b in sub_bits if b)
-    if paid and lanes:
-        sub += f" · {len(lanes)} lanes"
 
     return RS.page(
         f"{first} — today" if first != "friend" else "Today",

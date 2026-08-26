@@ -97,7 +97,9 @@ BANNED = [
     # left "Confluence estimate: (range 45-59)." standing, because the digit
     # check only looked for a number next to the word "years".
     r"\(?\s*range\s*:?\s*\d{2,3}\s*(?:-|–|to)\s*\d{2,3}\s*\)?",
-    r"\b\d{2,3}\s*(?:-|–)\s*\d{2,3}\b(?=\s*(?:\)|\.|,|$))",
+    # Skip YYYY-MM-DD tails (e.g. 2027-02-09): without the lookbehind,
+    # "02-09)" matched as a faux lifespan range and dates showed as "2027-".
+    r"(?<!\d{4}-)\b\d{2,3}\s*(?:-|–)\s*\d{2,3}\b(?=\s*(?:\)|\.|,|$))",
     r"\b(?:confluence\s+)?estimate\b\s*:?\s*(?=[.,)]|$)",
     r"\b-?\s*\d{1,3}\s*yr\b",
     r"\b\d{2,3}\s*-?\s*year\s+(?:scale|span|life)\b",
@@ -220,7 +222,14 @@ def selftest() -> int:
     else:
         print("  pass  health-concern wording survives untouched")
 
-    print(f"\n{len(cases) + 1 - bad} passed, {bad} failed")
+    dasha_dates = "Ketu Sub-Period (2026-03-05 to 2027-02-09)"
+    if scrub(dasha_dates) != dasha_dates:
+        print(f"  FAIL  dasha date range was trimmed: {scrub(dasha_dates)!r}")
+        bad += 1
+    else:
+        print("  pass  dasha ISO date ranges survive untouched")
+
+    print(f"\n{len(cases) + 2 - bad} passed, {bad} failed")
     return 1 if bad else 0
 
 

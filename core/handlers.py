@@ -83,6 +83,20 @@ def _save_report(user_id: str, chart_id: Optional[str], kind: str,
         except Exception as exc:  # noqa: BLE001
             print(f"[handlers] facts.json skipped: {exc}", flush=True)
 
+    try:
+        import sys
+        from pathlib import Path
+        eng = Path(__file__).resolve().parents[1] / "engines" / "astro"
+        if str(eng) not in sys.path:
+            sys.path.insert(0, str(eng))
+        from llm.summary import attach_plain_summary
+        meta = attach_plain_summary(
+            meta, kind=kind, free_html=free_html or "",
+            paid_html=paid_html or "", paid=bool(paid), facts=facts,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[handlers] plain summary skipped: {exc}", flush=True)
+
     # keep the id we generated so the storage keys match the row
     from sqlalchemy import text as _text
 
@@ -448,34 +462,7 @@ def h_horary(user: dict, p: dict) -> dict:
     htmls, verdicts = {}, {}
     western_judgment: dict = {}
     vedic_customer: dict = {}
-    vgen = None
-    if os.getenv("ASTRO_HOTFIX", "1") == "1":
-        try:
-            import astro_hotfix
-            vgen = astro_hotfix.horary_glyph_fix().generate_vedic_horary_html
-        except Exception as exc:                                      # noqa: BLE001
-            # never silent: if the upstream glyph bug is unpatched, Vedic horary
-            # dies and the customer silently gets half a product
-            print(f"[handlers] horary hotfix unavailable: {type(exc).__name__}: {exc}",
-                  flush=True)
-            vgen = None
-    if vgen is None:
-        from vedic_horary_report import generate_vedic_horary_html as vgen
-    try:
-        try:
-            h, j = vgen(p["question"], p["qDate"], p["qTime"],
-                        p.get("location", "New Delhi"),
-                        str(p.get("kpNumber") or ""), area=area)
-        except TypeError:
-            # Older hotfix wrappers may not accept area= yet.
-            h, j = vgen(p["question"], p["qDate"], p["qTime"],
-                        p.get("location", "New Delhi"),
-                        str(p.get("kpNumber") or ""))
-        htmls["vedic"] = h
-        verdicts["vedic"] = {k: j.get(k) for k in ("verdict", "confidence", "score", "systems")}
-        vedic_customer = j.get("customer") or {}
-    except Exception as exc:                                          # noqa: BLE001
-        verdicts["vedic"] = {"error": f"{type(exc).__name__}: {exc}"}
+    # Vedic Prashna / KP / Jamakkol parked — Western horary only for now.
     try:
         from western_horary_report import generate_western_horary_html as wgen
         qh = None
@@ -488,12 +475,12 @@ def h_horary(user: dict, p: dict) -> dict:
         h, j = wgen(p["question"], p["qDate"], p["qTime"],
                     p.get("location", "New Delhi"), quesited_house=qh)
         htmls["western"] = h
-        verdicts["western"] = {k: j.get(k) for k in ("verdict", "confidence")}
+        verdicts["western"] = {k: j.get(k) for k in ("verdict", "confidence", "score")}
         western_judgment = j
     except Exception as exc:                                          # noqa: BLE001
         verdicts["western"] = {"error": f"{type(exc).__name__}: {exc}"}
     if not htmls:
-        raise RuntimeError("both horary engines failed: " + json.dumps(verdicts))
+        raise RuntimeError("western horary failed: " + json.dumps(verdicts))
 
     ctx = {"name": user.get("name") or "Seeker", "question": p["question"],
            "asked": f"{p['qDate']} {p['qTime']}", "place": p.get("location", "")}

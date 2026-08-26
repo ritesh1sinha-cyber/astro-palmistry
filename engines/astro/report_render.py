@@ -683,7 +683,7 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
             "_facts": facts_payload,
             "freeSections": ["Question & moment chart context",
                              "Preview of locked consultation verdict & timeline"],
-            "paidSections": ["The verdict — unified planetary confluence",
+            "paidSections": ["The verdict — Western horary judgment",
                              "Planetary dynamics & supporting influences",
                              "Key timing & dated windows",
                              "Targeted remedies & immediate relief"],
@@ -852,7 +852,6 @@ DAILY_PAID_SECTIONS = (
     "Your Personal Moon Transit & Ashtakavarga Score (/56)",
     "Full Action Guide — 3 Personalized Dos & 3 Don'ts",
     "Vimshottari Dasha & Pratyantardasha Sub-Clock",
-    "The 9-Lane Confluence Matrix",
     "Moonology Phase Ritual & Journaling Prompt",
 )
 
@@ -862,8 +861,6 @@ def _daily_teaser(reading: dict, n_lanes: int) -> str:
     d = (reading or {}).get("dasha") or {}
     stack = "-".join(x for x in (d.get("md"), d.get("ad"), d.get("pd")) if x)
     parts = []
-    if n_lanes:
-        parts.append(f"all {n_lanes} lanes that voted on today")
     if stack:
         parts.append(f"the {stack} period you are running, with its dates")
     parts.append("the Ashtakavarga bindus under your dasha lords")

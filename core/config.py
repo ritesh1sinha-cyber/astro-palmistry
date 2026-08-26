@@ -230,7 +230,7 @@ class Settings:
     # Comma-separated tab kinds that may call the LLM when enabled.
     llm_tabs: str = field(default_factory=lambda: _cfg(
         "llm_tabs", "LLM_TABS",
-        "full_report,user_question,horary,palm,chat"))
+        "full_report,user_question,horary,palm,chat,summary"))
 
     def llm_tab_enabled(self, kind: str) -> bool:
         """True when the LLM layer is on and ``kind`` is in the allow-list."""

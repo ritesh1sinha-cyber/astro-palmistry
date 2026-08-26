@@ -458,16 +458,17 @@ def _prompt_extra(kind: str) -> str:
             "5. 'action': Practical, constructive astrological and lifestyle guidance in 2-3 complete sentences. When timing is distant or conditions require immediate relief, incorporate the chart-targeted remedies from the facts: provide practical steps, mantra jaap or donation for the obstructing planet (e.g. Ketu, Saturn, Rahu) to clear friction, and recommend daily rituals or strengthening practices for the supportive ruler (e.g. Mercury, Jupiter) to give the seeker immediate, actionable relief."
         ),
         "horary": (
-            "Write a unified, natural-language Prashna (Horary) consultation response to the seeker's specific question. "
-            "Speak directly to the person as 'you' in warm, professional English like an experienced astrologer. "
+            "Write a unified, natural-language Western horary consultation response to the seeker's specific question. "
+            "Speak directly to the person as 'you' in warm, professional English like an experienced horary astrologer. "
             "IMPORTANT RULES: "
-            "- STRICTLY FORBIDDEN WORDS: NEVER write 'Western', 'Vedic', 'KP', or 'Jamakkol'. Do not explain methods or compare systems. Refer ONLY to 'the chart', 'planetary significators', 'the planetary positions', or 'the active indicators'. "
+            "- STRICTLY FORBIDDEN WORDS: NEVER write 'Western', 'Vedic', 'KP', 'Prashna', or 'Jamakkol'. Do not explain methods or compare systems. Refer ONLY to 'the chart', 'the significators', 'the moment chart', or 'the planetary testimony'. "
+            "- The label, confidence, and verdict in the facts are authoritative — your verdict_line and why must align with them. Never contradict a 'No' or 'Leaning no' with optimistic language, and never contradict a 'Yes' with pessimistic language. "
             "- Never make absolute guarantees or write phrases like 'you will' or 'definitely' — use professional consultation framing like 'the chart indicates...', 'conditions support...', 'a favorable window opens...'. "
             "- Facts are authoritative — adhere strictly to verdict, label, confidence, allowed_planets, and allowed_dates. Never invent dates or unlisted planets. "
             "Required fields in HoraryProse: "
             "1. 'lead': A warm, natural 1-2 sentence lede addressing their specific question. "
             "2. 'verdict_line': A direct 1-2 sentence consultation verdict (must reflect the label, e.g., 'The chart indicates favorable momentum for receiving a job offer this month.'). "
-            "3. 'why': The astrological basis in 2-3 sentences explaining the planetary indicators and aspects from the facts in clear English. "
+            "3. 'why': The astrological basis in 2-3 sentences explaining the significators, dignities, and perfection from the facts in clear English. "
             "4. 'action': Practical, constructive guidance in 2-3 complete sentences incorporating the chart-targeted remedies from the facts (mantras, donations, practical first steps)."
         ),
         "palm": (
@@ -507,6 +508,25 @@ def _prompt_extra(kind: str) -> str:
             "windows already in the facts. Never invent a new date. Never "
             "set out_of_scope for a follow-up about that same question. "
             "kind=full_report is a birth-chart reading of life areas."
+        ),
+        "plain_summary": (
+            "You write the plain-English executive summary shown when a customer taps "
+            "'Summary' at the top of their report. They already have the full technical "
+            "reading below — your job is to translate it into clear, warm, non-jargon English "
+            "so they do not lose the thread.\n"
+            "RULES:\n"
+            "1. Use 3–6 short sections with practical titles (e.g. 'The Current Phase', "
+            "'The Big Breakthrough', 'Health & Energy', 'Gemstones & Actions', 'What To Do Today').\n"
+            "2. Write directly to the reader as 'you'. No third-person ('the native').\n"
+            "3. FORBIDDEN jargon: do not use dasha, antardasha, pratyantardasha, confluence, "
+            "ashtakavarga, bindu, nakshatra, varga, significator, lordship, applying aspect, "
+            "MiniLM, KP, Prashna, or house numbers without plain English (say 'career area' not "
+            "'10th house' unless you immediately explain it).\n"
+            "4. Keep dates ONLY if they appear in the source text — never invent a month or year.\n"
+            "5. For gemstones/remedies: state clearly what to avoid and what helps, in plain language.\n"
+            "6. Each section body is 2–4 complete sentences, actionable and reassuring — not fatalistic.\n"
+            "7. Do not mention LLM, engines, methods, scores, or that this is a summary.\n"
+            "8. Match the tone of the source: if the report is cautious, stay realistic; if supportive, stay hopeful."
         ),
     }.get(kind, "")
 

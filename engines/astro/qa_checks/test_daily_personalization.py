@@ -92,11 +92,26 @@ def test_paid_daily_render_contains_personalization_blocks():
         "donts": [{"text": "Do not rush."}],
         "lucky_numbers": {"primary": 7},
         "lucky_colors": [{"name": "White"}],
-        "muhurat": {"available": False, "error": "Unavailable in test"},
+        "muhurat": {
+            "available": True,
+            "day_summary": "Strongest day window: Labh choghadiya (05:31-07:06). Avoid Rahu Kaal 11:51-13:26.",
+            "windows": {
+                "good_choghadiya": [{
+                    "start": "05:31", "end": "07:06",
+                    "label": "Labh", "plain": "Gains and profit flavour.",
+                }],
+                "tri_kaal": [{
+                    "start": "11:51", "end": "13:26",
+                    "label": "Rahu Kaal", "plain": "Classic inauspicious window.",
+                }],
+            },
+        },
     })
     html = render(r, name="Meera", paid=True, day=date(2026, 8, 12))
     assert "Your most personal Moon transit today" in html
     assert "SAV 23/56" in html
     assert "Moon BAV 3/8" in html
-    assert "Every lane that voted on today" in html
+    assert "Every lane that voted on today" not in html
+    assert "Best and avoid times" in html
+    assert "<b>Why:</b>" in html
     assert "The clock you are actually running on" in html

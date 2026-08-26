@@ -2779,19 +2779,14 @@ def build_horary_facts(
     wj = western_judgment or {}
     vc = vedic_customer or {}
     lanes: list[HoraryLaneFact] = []
-    for lane in ("vedic", "western"):
-        block = (verdicts or {}).get(lane) or {}
-        if not isinstance(block, dict):
-            continue
-        systems = block.get("systems") or []
-        if isinstance(systems, dict):
-            systems = list(systems.keys())
+    block = (verdicts or {}).get("western") or {}
+    if isinstance(block, dict) and block.get("verdict"):
         lanes.append(HoraryLaneFact(
-            lane=lane,  # type: ignore[arg-type]
+            lane="western",  # type: ignore[arg-type]
             verdict=str(block.get("verdict") or block.get("label") or "")[:40],
             confidence=_conf(block.get("confidence") or "low"),  # type: ignore[arg-type]
             score=float(block.get("score") or 0.0),
-            systems=[str(s)[:40] for s in list(systems)[:8]],
+            systems=[],
         ))
 
     # Planets extraction
@@ -2811,8 +2806,6 @@ def build_horary_facts(
                     if d_fmt not in allowed_dates:
                         allowed_dates.append(d_fmt)
                 timing_windows.append(f"{d_full}: {lbl}")
-    for tl in (vc.get("timing_lines") or []):
-        timing_windows.append(str(tl)[:120])
 
     # Remedies extraction
     remedy_text = ""
@@ -2822,7 +2815,7 @@ def build_horary_facts(
     supportive_remedy = ""
     try:
         from horary_answer import _blocking_planet, REMEDIES, GENERAL_REMEDY
-        blk = _blocking_planet(wj, summary.get("vedic") or {})
+        blk = _blocking_planet(wj)
         if blk:
             hindering_planet = blk
             rem = REMEDIES.get(blk, GENERAL_REMEDY)

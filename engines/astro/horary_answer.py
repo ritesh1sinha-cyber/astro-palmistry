@@ -1,22 +1,12 @@
-"""One answer to the question — not two engines arguing in front of the customer.
+"""One answer to the question — Western horary only.
 
-Before this, someone who asked "Will I change my job?" was handed both
-judgments side by side:
+Vedic Prashna, KP, and Jamakkol are parked for now. The customer sees a
+single Lilly/Louis-style Western horary judgment: one verdict, one confidence,
+one explanation. Mixing traditions produced contradictory headlines ("No — low
+confidence" at the top, a leaning-yes explanation below).
 
-    Vedic:    LIKELY    (confidence LOW)
-    Western:  Unlikely  (confidence moderate)
-
-Two contradictory answers, no reconciliation, ₹99 paid. Nobody asks a question
-in order to receive a disagreement.
-
-The policy here is the operator's, and it is deliberate:
-
-* **Western carries 60%, Vedic 40%.** Not because Western is "more true" —
-  because horary is a Western technique at its core, its judgment rules are
-  tighter, and its confidence scoring is better calibrated in our own testing.
-* **When they contradict, Western's direction wins and the confidence drops to
-  low.** Following the heavier weight while admitting the disagreement is
-  honest. Averaging two opposite answers into a shrug is not.
+* **Western horary is the only active engine.** Significators, perfection,
+  Moon condition, and the testimony tally drive the answer.
 * **An unfavourable answer always carries a remedy.** Someone asking a horary
   question is usually anxious about something specific. Telling them "no" and
   stopping there is a bad product and worse psychology.
@@ -42,7 +32,7 @@ from typing import Any
 
 # --- policy ----------------------------------------------------------------
 
-WEIGHTS = {"western": 0.60, "vedic": 0.40}
+WEIGHTS = {"western": 1.0}
 
 #: verdict text → direction in [-1, +1]
 DIRECTION: dict[str, float] = {
@@ -227,59 +217,57 @@ def _named(planet: str) -> str:
 
 # --- the reconciliation ------------------------------------------------------
 
-def reconcile(verdicts: dict) -> dict:
-    """Combine the two judgments under the 60/40 policy."""
-    west = verdicts.get("western") or {}
-    ved = verdicts.get("vedic") or {}
-    west_ok = "error" not in west and west.get("verdict")
-    ved_ok = "error" not in ved and ved.get("verdict")
+def _label_from_western(west: dict) -> tuple[str, bool | None, float]:
+    """Map the Western engine verdict to the customer-facing label."""
+    verdict = str(west.get("verdict") or "").strip().lower()
+    wd = _dir(verdict)
+    try:
+        tally = float(west.get("score", wd))
+    except (TypeError, ValueError):
+        tally = wd
 
-    wd, vd = _dir(west.get("verdict")), _dir(ved.get("verdict"))
-    parts, total = 0.0, 0.0
-    if west_ok:
-        parts += WEIGHTS["western"] * wd * _conf(west.get("confidence"))
-        total += WEIGHTS["western"]
-    if ved_ok:
-        parts += WEIGHTS["vedic"] * vd * _conf(ved.get("confidence"))
-        total += WEIGHTS["vedic"]
-    score = parts / total if total else 0.0
+    if verdict == "yes":
+        return "Yes", True, max(wd, tally)
+    if verdict in ("likely yes", "likely"):
+        return "Leaning yes", True, max(wd, tally)
+    if verdict in ("uncertain / qualified", "uncertain", "neutral"):
+        return "Genuinely open", None, tally
+    if verdict == "unlikely":
+        return "Leaning no", False, min(wd, tally)
+    if verdict == "no":
+        return "No", False, min(wd, tally)
 
-    # Do the two engines point opposite ways? A neutral reading is not a
-    # contradiction — only a genuine sign flip is.
-    contradicted = bool(west_ok and ved_ok and wd * vd < 0)
-
-    if contradicted:
-        # Policy: follow the heavier weight, and say plainly that it was close.
-        # The 0.4 factor is a cap, not a fudge: it keeps a contradicted chart
-        # inside the "leaning" bands so the copy can never print a flat "Yes"
-        # or "No" over two methods that disagreed. Direction is Western's;
-        # certainty is nobody's.
-        score = wd * _conf(west.get("confidence")) * 0.4
-        confidence = "low"
-    else:
-        base = max((c for c in (
-            CONF_RANK.get(str(west.get("confidence", "")).lower(), 0) if west_ok else None,
-            CONF_RANK.get(str(ved.get("confidence", "")).lower(), 0) if ved_ok else None,
-        ) if c is not None), default=0)
-        strength = abs(score)
-        rank = min(base, 2 if strength >= 0.55 else 1 if strength >= 0.25 else 0)
-        confidence = {0: "low", 1: "moderate", 2: "good"}[rank]
-
+    score = wd * _conf(west.get("confidence"))
     if score >= 0.45:
-        label, favourable = "Yes", True
-    elif score >= 0.15:
-        label, favourable = "Leaning yes", True
-    elif score > -0.15:
-        label, favourable = "Genuinely open", None
-    elif score > -0.45:
-        label, favourable = "Leaning no", False
-    else:
-        label, favourable = "No", False
+        return "Yes", True, score
+    if score >= 0.15:
+        return "Leaning yes", True, score
+    if score > -0.15:
+        return "Genuinely open", None, score
+    if score > -0.45:
+        return "Leaning no", False, score
+    return "No", False, score
 
-    return {"label": label, "score": round(score, 3), "confidence": confidence,
-            "favourable": favourable, "contradicted": contradicted,
-            "western": west, "vedic": ved,
-            "weights": dict(WEIGHTS), "usable": bool(west_ok or ved_ok)}
+
+def reconcile(verdicts: dict) -> dict:
+    """Return the Western horary verdict as the single customer answer."""
+    west = verdicts.get("western") or {}
+    west_ok = "error" not in west and west.get("verdict")
+
+    if not west_ok:
+        return {"label": "Genuinely open", "score": 0.0, "confidence": "low",
+                "favourable": None, "contradicted": False,
+                "western": west, "vedic": {},
+                "weights": dict(WEIGHTS), "usable": False}
+
+    label, favourable, score = _label_from_western(west)
+    conf_raw = str(west.get("confidence") or "moderate").strip().lower()
+    confidence = conf_raw if conf_raw in ("good", "moderate", "low") else "moderate"
+
+    return {"label": label, "score": round(float(score), 3), "confidence": confidence,
+            "favourable": favourable, "contradicted": False,
+            "western": west, "vedic": {},
+            "weights": dict(WEIGHTS), "usable": True}
 
 
 # --- the writing -------------------------------------------------------------
@@ -514,12 +502,9 @@ def _score_of(ed: Any) -> float:
     return 0.0
 
 
-def _blocking_planet(j: dict, vedic: dict) -> str:
-    """The planet the remedy should address — the weakest significator.
-
-    The engine gives a numeric dignity score, so use it rather than hunting
-    for the word "fall" in a stringified dict.
-    """
+def _blocking_planet(j: dict, vedic: dict | None = None) -> str:
+    """The planet the remedy should address — the weakest significator."""
+    del vedic  # Vedic/KP parked; Western significators only.
     candidates = [(j.get("asc_lord"), _score_of(j.get("asc_ed"))),
                   (j.get("q_lord"), _score_of(j.get("q_ed")))]
     candidates = [(n, sc) for n, sc in candidates if n]
@@ -533,10 +518,6 @@ def _blocking_planet(j: dict, vedic: dict) -> str:
         return "Moon"
     if j.get("sat_house"):
         return "Saturn"
-    systems = (vedic or {}).get("systems") or {}
-    for planet in ("Saturn", "Rahu", "Ketu", "Mars"):
-        if planet.lower() in str(systems).lower():
-            return planet
     return j.get("q_lord") or j.get("asc_lord") or ""
 
 
@@ -572,31 +553,22 @@ def _western_favour_against(j: dict) -> tuple[list[str], list[str]]:
     return favour, against
 
 
-def _planetary_dynamics_block(r: dict, j: dict, vc: dict) -> str:
-    """Planetary dynamics and supporting vs friction factors."""
+def _planetary_dynamics_block(r: dict, j: dict, vc: dict | None = None) -> str:
+    """Planetary dynamics and supporting vs friction factors (Western horary)."""
+    del vc  # Vedic timing/planet lists parked.
     from western_horary_report import plain_western_parts
     asc_lord, q_lord = j.get("asc_lord", ""), j.get("q_lord", "")
     p_parts = plain_western_parts(j, asc_lord, q_lord) if asc_lord else {}
 
     w_fav, w_against = _western_favour_against(j)
-    net: dict[str, int] = {}
-    for p in w_fav:
-        net[p] = net.get(p, 0) + 1
-    for p in vc.get("favour_planets") or []:
-        net[p] = net.get(p, 0) + 1
-    for p in w_against:
-        net[p] = net.get(p, 0) - 1
-    for p in vc.get("against_planets") or []:
-        net[p] = net.get(p, 0) - 1
-
-    favour = [p for p, v in net.items() if v > 0][:5]
-    against = [p for p, v in net.items() if v < 0][:5]
+    favour = w_fav[:5]
+    against = w_against[:5]
 
     agree_line = (
-        "Multiple classical planetary indicators were weighed together for this reading — "
-        + ("the indicators show mixed currents requiring active navigation and careful timing."
-           if r["contradicted"] else
-           "the chart indicators show consistent alignment on this direction.")
+        "The moment chart weighs the querent and quesited significators, "
+        + ("their essential dignities, and whether a perfection is forming."
+           if r["label"] != "Genuinely open" else
+           "their essential dignities — the testimony is genuinely mixed rather than one-sided.")
     )
 
     planets_html = ""
@@ -626,20 +598,16 @@ def _planetary_dynamics_block(r: dict, j: dict, vc: dict) -> str:
 </section>"""
 
 
-def _timing_block(j: dict, vc: dict, *, paid: bool = True) -> str:
-    """Consolidated dated windows and trigger periods."""
+def _timing_block(j: dict, vc: dict | None = None, *, paid: bool = True) -> str:
+    """Consolidated dated windows from Western horary perfection timing."""
+    del vc  # Vedic dasha timing lines parked.
     if not paid:
         return ""
     timing = j.get("timing") or []
-    timing_lines = vc.get("timing_lines") or []
-    
     items = []
     if timing:
         for d, label, _plain in timing[:3]:
             items.append(f"<li><b>{d.strftime('%d %b %Y').lstrip('0')}</b> — {_e(label)}</li>")
-    
-    for tl in timing_lines[:2]:
-        items.append(f"<li>{_e(_human_horary_timing_line(tl))}</li>")
 
     if not items:
         note = j.get("requested_horizon_note") or (
@@ -673,9 +641,9 @@ def _locked_block(*, price: int, n_windows: int, has_remedy: bool) -> str:
 
     return f"""
 <div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
-  <div class="qa-wlabel">The Verdict — Prashna outcome & confidence</div>
-  <p class="blurred">The unified confluence of classical planetary indicators delivers a direct verdict on whether this matter reaches completion, the strength of the opening, and the key obstacles to expect.</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>The Prashna verdict is locked.</b> Unlock to read the direct answer, confidence assessment, and astrological reasoning.</p>
+  <div class="qa-wlabel">The Verdict — moment-chart outcome & confidence</div>
+  <p class="blurred">The Western horary chart delivers a direct verdict on whether this matter reaches completion, the strength of the opening, and the key obstacles to expect.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>The horary verdict is locked.</b> Unlock to read the direct answer, confidence assessment, and chart reasoning.</p>
 </div>
 
 <div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
@@ -723,7 +691,6 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
     )
     r = reconcile(verdicts)
     j = western_judgment or {}
-    vc = vedic_customer or (r["vedic"] or {}).get("customer") or {}
     subject = _subject(question)
     who = (name or "").split()[0] if name else ""
     greeting = f"{_e(who)}, " if who else ""
@@ -732,20 +699,17 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
     conf_line = CONFIDENCE_SENTENCE[r["confidence"]]
 
     if r["contradicted"]:
-        conf_line = (
-            "The planetary indicators show a finely balanced chart with mixed "
-            "currents — the confidence is set to reflect that this requires active "
-            "effort and careful timing rather than an automatic outcome.")
+        conf_line = CONFIDENCE_SENTENCE["low"]
 
-    dynamics_html = _planetary_dynamics_block(r, j, vc) if paid else ""
-    timing_html = _timing_block(j, vc, paid=paid) if paid else ""
+    dynamics_html = _planetary_dynamics_block(r, j) if paid else ""
+    timing_html = _timing_block(j, paid=paid) if paid else ""
 
     # An unfavourable answer ALWAYS carries a remedy (paid view only).
     remedy_html = ""
     remedy_planet = ""
     has_remedy = r["favourable"] is False or r["confidence"] == "low"
     if paid and has_remedy:
-        planet = _blocking_planet(j, r["vedic"])
+        planet = _blocking_planet(j)
         remedy_planet = planet
         rem = REMEDIES.get(planet, GENERAL_REMEDY)
         heading = ("What actually moves this" if r["favourable"] is False
@@ -823,7 +787,7 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
         else:
             opening = (
                 f"<p class=\"lede\">{greeting}you asked about {subject}. "
-                f"Multiple classical methods read this chart independently. Here is what they found.</p>")
+                f"Here is the straight answer from the moment chart, then exactly why it says that.</p>")
         verdict_block = ""
         lead_attrs = ""
 

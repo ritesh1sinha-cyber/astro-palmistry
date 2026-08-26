@@ -1229,9 +1229,9 @@ def horary_fallback(facts: Any) -> dict[str, Any]:
     conf = getattr(facts, "confidence", "moderate") or "moderate"
     subject = getattr(facts, "subject", "this") or "this"
     return {
-        "lead": f"You asked about {subject}. Here is the combined reading.",
-        "verdict_line": f"The reading reads as: {label} (confidence {conf}).",
-        "why": "The moment-chart methods were combined under the product's weighting rules.",
+        "lead": f"You asked about {subject}. Here is the horary reading.",
+        "verdict_line": f"The chart reads as: {label} (confidence {conf}).",
+        "why": "The moment chart significators, dignities, and perfection rules support this verdict.",
         "action": "Act on the answer as framed — a horary chart speaks to this question only.",
     }
 
