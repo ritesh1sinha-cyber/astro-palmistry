@@ -4,7 +4,7 @@ A WebView shell around the live site, so the reading can be opened from a phone
 home screen instead of a browser tab. The reports, engines and payments all stay
 on the server; this project contains no astrology or palmistry logic.
 
-Currently pointed at **https://astro-palmistry.vercel.app/**.
+Currently pointed at **https://www.graharekha.com/** (GCP).
 
 ## Build
 
@@ -14,9 +14,10 @@ The toolchain is already installed on this machine (Microsoft OpenJDK 17, Gradle
 
 ```powershell
 cd mobile/android
-./build_apk.ps1                 # signed release -> dist/GrahaRekha-1.0.0.apk
-./build_apk.ps1 -Dev            # debug build
-./build_apk.ps1 -Install        # build, then adb install to a connected phone
+./build_apk.ps1                 # signed release APK -> dist/GrahaRekha-1.0.0.apk
+./build_apk.ps1 -Bundle         # Play App Bundle     -> dist/GrahaRekha-1.0.0.aab
+./build_apk.ps1 -Dev            # debug APK
+./build_apk.ps1 -Install        # build APK, then adb install to a connected phone
 ```
 
 Or drive Gradle directly:
@@ -25,9 +26,24 @@ Or drive Gradle directly:
 $env:JAVA_HOME = 'C:\Program Files\Microsoft\jdk-17.0.20.8-hotspot'
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 & "$env:USERPROFILE\android-dev\gradle-8.7\bin\gradle.bat" assembleRelease
+& "$env:USERPROFILE\android-dev\gradle-8.7\bin\gradle.bat" bundleRelease
 ```
 
-## Install on a phone
+## Google Play
+
+See **[PLAY_STORE.md](PLAY_STORE.md)** for:
+
+- Version bump rules (`versionCode` / `versionName`)
+- Store listing short + full description (ready to paste)
+- Data safety / privacy URL / review notes
+- Internal testing → production checklist
+
+Upload the **`.aab`** from `./build_apk.ps1 -Bundle`, not the sideload APK.
+
+Current build targets: `compileSdk` / `targetSdk` **35** (Play requirement). Bump
+`versionCode` on every Play upload.
+
+## Install on a phone (sideload)
 
 Over USB, which keeps the APK off any public host:
 
@@ -49,7 +65,7 @@ phone at once.
 One line in `gradle.properties`:
 
 ```properties
-graharekha.baseUrl=https://astro-palmistry.vercel.app/
+graharekha.baseUrl=https://www.graharekha.com/
 ```
 
 Rebuild after changing it. A `http://` value additionally switches on cleartext
@@ -77,14 +93,17 @@ pull while filling in birth details would throw the form away.
 
 ## Signing
 
-`assembleRelease` signs with the keystore named in `keystore.properties`, which is
-git-ignored along with the keystore itself (`%USERPROFILE%\android-dev\graharekha-release.jks`).
-Without that file the release variant still builds, just unsigned, so a fresh
-clone is never blocked on a secret it does not have.
+`assembleRelease` / `bundleRelease` sign with the keystore named in
+`keystore.properties`, which is git-ignored along with the keystore itself
+(`%USERPROFILE%\android-dev\graharekha-release.jks`). Without that file the
+release variant still builds, just unsigned, so a fresh clone is never blocked
+on a secret it does not have.
 
 Keep the keystore backed up. Android identifies an app by its signature, so a
-replacement key means every phone must uninstall before it can update. The current
-key is a self-signed sideloading key; a Play Store release should use its own.
+replacement key means every phone must uninstall before it can update (sideload)
+or Play updates fail (upload key). For Play, enable **Play App Signing**; your
+local keystore becomes the **upload** key — back it up offline and never rotate
+casually.
 
 ## Known limit: Google Sign-In
 
@@ -92,4 +111,6 @@ Google refuses to render its sign-in button for any user agent carrying the
 WebView `wv` token, so the shell presents the underlying Chrome user agent
 instead. If Google tightens that check, the sign-in button stops working inside
 the app while the promocode login continues to work. Nothing else on the site
-depends on it.
+depends on it. OAuth uses the same Web client origins as
+`https://www.graharekha.com` — no separate Android OAuth client is required for
+the current GIS button flow.

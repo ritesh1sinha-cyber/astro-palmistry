@@ -3,7 +3,7 @@ plugins {
 }
 
 def baseUrl = (project.findProperty('graharekha.baseUrl')
-        ?: 'https://astro-palmistry.vercel.app/').toString().trim()
+        ?: 'https://www.graharekha.com/').toString().trim()
 def webHost = new URI(baseUrl).host
 def plainHttp = baseUrl.startsWith('http://')
 
@@ -19,14 +19,14 @@ if (keystoreFile.exists()) {
 
 android {
     namespace 'com.graharekha.app'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId 'com.graharekha.app'
         minSdk 26
-        targetSdk 34
-        versionCode 1
-        versionName '1.0.0'
+        targetSdk 35
+        versionCode 4
+        versionName '1.0.3'
 
         buildConfigField 'String', 'BASE_URL', "\"${baseUrl}\""
         buildConfigField 'String', 'WEB_HOST', "\"${webHost}\""

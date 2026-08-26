@@ -29,7 +29,10 @@ www.graharekha.com, gcp.graharekha.com {
 		root * /srv/site
 		try_files {path} /index.html
 		file_server
-		header /index.html Cache-Control "no-cache"
+		# App WebView loads BASE_URL "/" not "/index.html"; without no-cache here
+		# Android keeps an old index.html on disk even after force-stop.
+		header / Cache-Control "no-cache, must-revalidate"
+		header /index.html Cache-Control "no-cache, must-revalidate"
 	}
 }
 

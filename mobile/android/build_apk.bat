@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 
-REM Forward any args (-Dev, -Install) to the PowerShell build script.
+REM Forward any args (-Dev, -Install, -Bundle) to the PowerShell build script.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0build_apk.ps1" %*
 set ERR=%ERRORLEVEL%
 

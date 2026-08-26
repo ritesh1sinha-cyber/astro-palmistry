@@ -36,7 +36,8 @@
 		root * /srv/site
 		try_files {path} /index.html
 		file_server
-		header /index.html Cache-Control "no-cache"
+		header / Cache-Control "no-cache, must-revalidate"
+		header /index.html Cache-Control "no-cache, must-revalidate"
 		header /assets/* Cache-Control "public, max-age=31536000, immutable"
 	}
 }

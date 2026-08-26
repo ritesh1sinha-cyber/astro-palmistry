@@ -3,6 +3,7 @@ package com.graharekha.app;
 import android.Manifest;
 import android.app.DownloadManager;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -13,6 +14,7 @@ import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
@@ -95,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
         if (state != null) {
             web.restoreState(state);
         } else {
+            clearWebCacheIfAppUpdated();
             web.loadUrl(BuildConfig.BASE_URL);
         }
 
@@ -103,6 +106,16 @@ public class MainActivity extends AppCompatActivity {
         // because declaring CAMERA makes the system require it.
         if (!hasCamera()) {
             cameraPermission.launch(Manifest.permission.CAMERA);
+        }
+    }
+
+    /** Drop stale site HTML when Play ships a new APK (WebView disk cache survives force-stop). */
+    private void clearWebCacheIfAppUpdated() {
+        SharedPreferences prefs = getSharedPreferences("graharekha_shell", MODE_PRIVATE);
+        int last = prefs.getInt("lastVersionCode", 0);
+        if (last != BuildConfig.VERSION_CODE) {
+            web.clearCache(true);
+            prefs.edit().putInt("lastVersionCode", BuildConfig.VERSION_CODE).apply();
         }
     }
 
@@ -137,7 +150,11 @@ public class MainActivity extends AppCompatActivity {
         cookies.setAcceptThirdPartyCookies(view, true);
 
         view.setDownloadListener((url, userAgent, disposition, mime, length) ->
-                download(url, disposition, mime));
+                download(url, disposition, mime, null));
+
+        // The page builds PDFs with fetch → blob: URLs; WebView rejects those in
+        // DownloadListener. Expose a native hand-off for the same HTTPS endpoint.
+        view.addJavascriptInterface(new AndroidBridge(), "GrahaRekhaAndroid");
     }
 
     /**
@@ -407,17 +424,31 @@ public class MainActivity extends AppCompatActivity {
 
     // -------------------------------------------------------------- downloads
 
-    /** Report PDFs are behind a session, so the cookie has to travel with them. */
-    private void download(String url, String disposition, String mime) {
+    /** Report PDFs are behind a session, so auth has to travel with them. */
+    private void download(String url, String disposition, String mime,
+                          @Nullable String bearerToken) {
         if (url == null || url.startsWith("blob:") || url.startsWith("data:")) {
+            toast(getString(R.string.download_failed));
+            return;
+        }
+        if (!isAllowedDownloadUrl(url)) {
             toast(getString(R.string.download_failed));
             return;
         }
         try {
             String name = URLUtil.guessFileName(url, disposition, mime);
+            if (TextUtils.isEmpty(name) || ".".equals(name)) {
+                name = "graharekha-report.pdf";
+            }
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-            request.setMimeType(mime);
-            request.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url));
+            request.setMimeType(mime != null ? mime : "application/pdf");
+            String cookie = CookieManager.getInstance().getCookie(url);
+            if (!TextUtils.isEmpty(cookie)) {
+                request.addRequestHeader("Cookie", cookie);
+            }
+            if (!TextUtils.isEmpty(bearerToken)) {
+                request.addRequestHeader("Authorization", "Bearer " + bearerToken);
+            }
             request.addRequestHeader("User-Agent", web.getSettings().getUserAgentString());
             request.setTitle(name);
             request.setNotificationVisibility(
@@ -432,6 +463,32 @@ public class MainActivity extends AppCompatActivity {
             toast(getString(R.string.download_started));
         } catch (Exception e) {
             toast(getString(R.string.download_failed));
+        }
+    }
+
+    private boolean isAllowedDownloadUrl(String url) {
+        try {
+            Uri uri = Uri.parse(url);
+            String scheme = uri.getScheme();
+            boolean httpOk = "https".equals(scheme)
+                    || (BuildConfig.ALLOW_PLAIN_HTTP && "http".equals(scheme));
+            return httpOk && BuildConfig.WEB_HOST.equals(uri.getHost())
+                    && uri.getPath() != null && uri.getPath().endsWith("/pdf");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** JS → native PDF download for endpoints the page already auth'd in JS. */
+    private final class AndroidBridge {
+        @JavascriptInterface
+        public void downloadReport(String url, String fileName, String bearerToken) {
+            runOnUiThread(() -> {
+                String disposition = TextUtils.isEmpty(fileName)
+                        ? null
+                        : "attachment; filename=\"" + fileName + "\"";
+                download(url, disposition, "application/pdf", bearerToken);
+            });
         }
     }
 
