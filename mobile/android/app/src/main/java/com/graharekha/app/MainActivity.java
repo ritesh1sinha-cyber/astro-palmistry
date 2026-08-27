@@ -424,9 +424,18 @@ public class MainActivity extends AppCompatActivity {
 
     // -------------------------------------------------------------- downloads
 
+    private String resolveDownloadUrl(String url) {
+        if (url == null) return null;
+        if (url.startsWith("/")) {
+            return BuildConfig.BASE_URL.replaceAll("/+$", "") + url;
+        }
+        return url;
+    }
+
     /** Report PDFs are behind a session, so auth has to travel with them. */
-    private void download(String url, String disposition, String mime,
+    private void download(String rawUrl, String disposition, String mime,
                           @Nullable String bearerToken) {
+        String url = resolveDownloadUrl(rawUrl);
         if (url == null || url.startsWith("blob:") || url.startsWith("data:")) {
             toast(getString(R.string.download_failed));
             return;
@@ -466,13 +475,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean isAllowedDownloadUrl(String url) {
+    private boolean isAllowedDownloadUrl(String rawUrl) {
         try {
+            String url = resolveDownloadUrl(rawUrl);
+            if (url == null) return false;
             Uri uri = Uri.parse(url);
             String scheme = uri.getScheme();
             boolean httpOk = "https".equals(scheme)
                     || (BuildConfig.ALLOW_PLAIN_HTTP && "http".equals(scheme));
-            return httpOk && BuildConfig.WEB_HOST.equals(uri.getHost())
+            return httpOk && BuildConfig.WEB_HOST.equalsIgnoreCase(uri.getHost())
                     && uri.getPath() != null && uri.getPath().endsWith("/pdf");
         } catch (Exception e) {
             return false;

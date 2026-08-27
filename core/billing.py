@@ -321,32 +321,24 @@ def check_report_generation(user_id: str, kind: str) -> tuple[bool, int, int]:
     return used < allowance, remaining, allowance
 
 
-def _account_age_days(user_id: str) -> int:
-    """Whole days since the account was created (UTC)."""
+def daily_trial_used_count(user_id: str) -> int:
+    """Count of unlocked full daily reports generated for this account."""
+    paid_clause = "paid = true" if S.is_postgres else "paid = 1"
     with engine().connect() as c:
-        row = c.execute(text("SELECT created_at FROM users WHERE id=:u"),
-                        {"u": user_id}).fetchone()
-    if not row or not row._mapping.get("created_at"):
-        return 999
-    raw = str(row._mapping["created_at"]).replace("Z", "+00:00")
-    try:
-        created = datetime.fromisoformat(raw)
-    except ValueError:
-        return 999
-    if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc).date() - created.date()).days
+        row = c.execute(text(
+            f"SELECT COUNT(*) FROM reports "
+            f"WHERE user_id = :u AND kind = 'daily' AND {paid_clause}"
+        ), {"u": user_id}).fetchone()
+        return int(row[0] if row else 0)
 
 
 def daily_trial_remaining(user_id: str) -> int:
-    """Calendar days of full daily access left (including today)."""
+    """Number of free full daily report generations left (out of FREE_DAILY, default 3)."""
     from .auth import has_full_access_id
     if has_full_access_id(user_id) or is_subscribed(user_id):
         return 0
-    age = _account_age_days(user_id)
-    if age >= S.free_daily:
-        return 0
-    return S.free_daily - age
+    used = daily_trial_used_count(user_id)
+    return max(0, S.free_daily - used)
 
 
 def daily_trial_grants_full(user_id: str) -> bool:

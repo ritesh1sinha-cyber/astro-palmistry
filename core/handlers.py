@@ -590,14 +590,15 @@ def h_daily(user: dict, p: dict) -> dict:
         price=S.price("subscription") // 100,
         pc=pc)
     saved = _save_report(user["id"], chart["id"], "daily",
-                         free_html, paid_html, meta, paid=subscribed)
+                         free_html, paid_html, meta, paid=paid)
     if subscribed:
         pin_subscribed_daily_reports(user["id"])
+    trial_left_after = daily_trial_remaining(user["id"]) if not subscribed else 0
     saved.update({
-        "locked": False,
+        "locked": not paid,
         "date": target.isoformat(),
         "subscribed": subscribed,
-        "dailyTrialLeft": trial_left,
+        "dailyTrialLeft": trial_left_after,
         "price": meta["price"],
         "chartId": chart["id"],
     })

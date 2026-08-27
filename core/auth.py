@@ -96,18 +96,18 @@ def login_with_google(id_token: str, *, ip: str = "", ua: str = "") -> tuple[dic
 
 def login_dev(email: str, name: str, *, passcode: str = "",
               ip: str = "", ua: str = "") -> tuple[dict, str]:
-    """Promocode / passcode login. Guarded by DEV_LOGIN; never enable in production.
-
-    Always maps to the configured promocode account (full readings, not admin).
-    """
+    """Promocode / passcode login. Guarded by DEV_LOGIN; never enable in production."""
     if not S.dev_login:
         raise HTTPException(404, "not enabled")
     expected = S.guest_passcode or ""
     if not expected or not secrets.compare_digest(passcode or "", expected):
         raise HTTPException(401, "invalid guest passcode")
-    # Ignore client-supplied email — prevent passcode login from impersonating admin.
-    guest_em = next(iter(sorted(promo_login_emails())), "guest@graharekha.co.in")
-    user = upsert_user(email=guest_em, name=name or "Promocode guest")
+    em = (email or "").strip().lower()
+    if em and em not in admin_emails():
+        target_em = em
+    else:
+        target_em = next(iter(sorted(promo_login_emails())), "guest@graharekha.co.in")
+    user = upsert_user(email=target_em, name=name or ("Promocode guest" if target_em.startswith("guest") else "Test User"))
     return user, create_session(user["id"], ip=ip, ua=ua)
 
 

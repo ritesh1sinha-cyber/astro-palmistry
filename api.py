@@ -800,6 +800,66 @@ def order_mark_paid_admin(public_id: str, user: dict = Depends(current_user)):
             "amount": o["amount_paise"] // 100}
 
 
+@app.get("/api/admin/orders-lookup")
+def orders_lookup_admin(q: str = "", email: str = "", user: dict = Depends(current_user)):
+    """Admin-only: look up orders by order ID (e.g. OD-77D2CC9B) or customer email address."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    query = (q or email or "").strip()
+    if not query:
+        raise HTTPException(400, "order id or email is required")
+    from sqlalchemy import text as _t
+    with engine().connect() as c:
+        if query.upper().startswith("OD-"):
+            rows = c.execute(_t(
+                "SELECT o.*, u.email, u.name as user_name FROM orders o "
+                "JOIN users u ON o.user_id = u.id "
+                "WHERE UPPER(o.public_id) = :p "
+                "ORDER BY o.created_at DESC"
+            ), {"p": query.upper()}).fetchall()
+        else:
+            rows = c.execute(_t(
+                "SELECT o.*, u.email, u.name as user_name FROM orders o "
+                "JOIN users u ON o.user_id = u.id "
+                "WHERE LOWER(u.email) LIKE :em OR UPPER(o.public_id) = :p "
+                "ORDER BY o.created_at DESC LIMIT 50"
+            ), {"em": f"%{query.lower()}%", "p": query.upper()}).fetchall()
+
+        orders = []
+        for r in rows:
+            m = r._mapping
+            orders.append({
+                "orderId": m["public_id"],
+                "status": m["status"],
+                "item": m["item"],
+                "amount": m["amount_paise"] // 100,
+                "refId": m.get("ref_id"),
+                "email": m.get("email") or "",
+                "userName": m.get("user_name") or "",
+                "createdAt": str(m.get("created_at") or ""),
+                "paidAt": str(m.get("paid_at") or ""),
+                "gatewayOrderId": m.get("gateway_order_id") or "",
+                "gatewayPaymentId": m.get("gateway_payment_id") or ""
+            })
+
+        matched_users = []
+        if not orders and ("@" in query or not query.upper().startswith("OD-")):
+            user_rows = c.execute(_t(
+                "SELECT id, email, name, created_at FROM users "
+                "WHERE LOWER(email) LIKE :em LIMIT 10"
+            ), {"em": f"%{query.lower()}%"}).fetchall()
+            for ur in user_rows:
+                um = ur._mapping
+                matched_users.append({
+                    "id": um["id"],
+                    "email": um.get("email") or "",
+                    "name": um.get("name") or "",
+                    "createdAt": str(um.get("created_at") or "")
+                })
+
+    return {"query": query, "orders": orders, "matchedUsers": matched_users}
+
+
 @app.get("/api/admin/order/{public_id}")
 def order_lookup_admin(public_id: str, user: dict = Depends(current_user)):
     """Admin-only: who an order belongs to, so support can confirm before unlocking."""

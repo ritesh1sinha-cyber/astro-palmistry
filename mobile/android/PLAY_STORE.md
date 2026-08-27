@@ -17,7 +17,7 @@ Edit `app/build.gradle` → `defaultConfig`:
 | `versionCode` | Integer. **Must increase** every upload (1 → 2 → 3…). Play rejects reuse. |
 | `versionName` | User-visible string (`1.0.0` → `1.0.1` → `1.1.0`). |
 
-Current: `versionCode 4` / `versionName 1.0.3` / `targetSdk 35`.
+Current: `versionCode 5` / `versionName 1.0.4` / `targetSdk 36`.
 
 Sideload APKs and Play AABs share the same counters. Bump before `./build_apk.ps1 -Bundle`.
 
