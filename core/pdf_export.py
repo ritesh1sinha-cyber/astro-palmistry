@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import base64
+import html as _html
 import logging
 import re
 from io import BytesIO
-from typing import Optional
+from typing import Any, Optional
 
 log = logging.getLogger("graharekha.pdf")
 
@@ -123,6 +124,117 @@ def report_title(kind: str, meta: Optional[dict] = None) -> str:
     if name:
         return f"{label} · {name}"
     return label
+
+
+# ---------------------------------------------------------------------------
+# Plain-English summary → cover page / standalone document
+# ---------------------------------------------------------------------------
+_SUMMARY_CSS = """
+.gr-sum{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  color:#16181d;max-width:640px;margin:0 auto;padding:8mm 0 4mm;line-height:1.55}
+.gr-sum .gr-sum-eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;
+  color:#8a6a1f;font-weight:600;margin:0 0 8px}
+.gr-sum h1{font-family:Fraunces,Georgia,serif;font-size:1.7rem;line-height:1.15;
+  font-weight:600;letter-spacing:-.015em;margin:0 0 6px;color:#16181d}
+.gr-sum .gr-sum-sub{font-size:.82rem;color:#6a7080;margin:0 0 18px}
+.gr-sum .gr-sum-lead{font-family:Fraunces,Georgia,serif;font-size:1.12rem;line-height:1.4;
+  color:#16181d;border-left:3px solid #c8a44a;padding:2px 0 2px 14px;margin:0 0 20px}
+.gr-sum section{margin:0 0 16px;page-break-inside:avoid}
+.gr-sum section h2{font-family:Fraunces,Georgia,serif;font-size:1.02rem;font-weight:600;
+  margin:0 0 5px;color:#16181d}
+.gr-sum section p{margin:0;font-size:.92rem;color:#2a2e38}
+.gr-sum .gr-sum-note{margin:20px 0 0;padding-top:12px;border-top:1px solid #e6e4df;
+  font-size:.78rem;color:#6a7080}
+.gr-sum-break{page-break-after:always;break-after:page}
+"""
+
+
+def summary_for_pdf(meta: Optional[dict], *, unlocked: bool = True) -> Optional[dict]:
+    """Pick the summary half that matches what this reader is entitled to.
+
+    Mirrors the app: a paid reader gets the summary written against the paid
+    report, and never the upsell sections that belong to the free preview.
+    """
+    m = meta if isinstance(meta, dict) else {}
+    candidates = ([m.get("plainSummaryPaid"), m.get("plainSummary")] if unlocked
+                  else [m.get("plainSummary")])
+    for cand in candidates:
+        if not isinstance(cand, dict):
+            continue
+        sections = [s for s in (cand.get("sections") or []) if isinstance(s, dict)]
+        if unlocked:
+            insights = [s for s in sections if (s.get("role") or "insight") == "insight"]
+            sections = insights or sections
+        sections = [s for s in sections if str(s.get("body") or "").strip()]
+        if sections:
+            return {
+                "headline": str(cand.get("headline") or "").strip(),
+                "sections": sections,
+            }
+    return None
+
+
+def summary_html(
+    summary: dict,
+    *,
+    title: str = "",
+    subtitle: str = "",
+    standalone: bool = False,
+) -> str:
+    """Render a plain summary as a print-ready block, or a whole document."""
+    def esc(value: Any) -> str:
+        return _html.escape(str(value or "").strip())
+
+    parts = [
+        '<div class="gr-sum">',
+        '<p class="gr-sum-eyebrow">Your reading in plain English</p>',
+    ]
+    if title:
+        parts.append(f"<h1>{esc(title)}</h1>")
+    if subtitle:
+        parts.append(f'<p class="gr-sum-sub">{esc(subtitle)}</p>')
+    if summary.get("headline"):
+        parts.append(f'<p class="gr-sum-lead">{esc(summary["headline"])}</p>')
+    for section in summary.get("sections") or []:
+        parts.append(
+            "<section>"
+            f'<h2>{esc(section.get("title") or "Overview")}</h2>'
+            f'<p>{esc(section.get("body"))}</p>'
+            "</section>"
+        )
+    parts.append(
+        '<p class="gr-sum-note">This is the crux of your reading in everyday '
+        "language. The full reading follows, with the detail behind every point.</p>"
+        if not standalone else
+        '<p class="gr-sum-note">This is the crux of your reading in everyday '
+        "language. Open the full reading for the detail behind every point.</p>"
+    )
+    parts.append("</div>")
+    block = "".join(parts)
+    if not standalone:
+        return block
+    return (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8"/>'
+        f"<title>{esc(title or 'Your reading in plain English')}</title>"
+        f"<style>{_SUMMARY_CSS}</style></head><body>{block}</body></html>"
+    )
+
+
+def prepend_summary(report_html: str, summary_block: str) -> str:
+    """Put the summary in front of the report as its own page."""
+    if not summary_block:
+        return report_html
+    cover = f'<div class="gr-sum-break">{summary_block}</div>'
+    doc = report_html or ""
+    style = f"<style>{_SUMMARY_CSS}</style>"
+    if re.search(r"</head>", doc, flags=re.I):
+        doc = re.sub(r"</head>", style + "</head>", doc, count=1, flags=re.I)
+    else:
+        cover = style + cover
+    m = re.search(r"<body\b[^>]*>", doc, flags=re.I)
+    if m:
+        return doc[:m.end()] + cover + doc[m.end():]
+    return cover + doc
 
 
 def entitlement_item_for_kind(kind: str) -> str:

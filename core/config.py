@@ -235,6 +235,12 @@ class Settings:
     llm_tabs: str = field(default_factory=lambda: _cfg(
         "llm_tabs", "LLM_TABS",
         "full_report,user_question,horary,palm,chat,summary"))
+    # One report layout whether or not the model answers. Python writes the
+    # prose when the LLM is off or failing, so the reader loses wording rather
+    # than whole sections. Set to 0 to send those readings back to the classic
+    # cards page — a one-variable rollback if the unified page misbehaves.
+    conversational_when_llm_off: bool = field(
+        default_factory=lambda: _bool("CONVERSATIONAL_WHEN_LLM_OFF", True))
 
     def llm_tab_enabled(self, kind: str) -> bool:
         """True when the LLM layer is on and ``kind`` is in the allow-list."""

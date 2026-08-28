@@ -667,15 +667,10 @@ def build_palm_html_reading(raw: dict, p: dict, *,
     )
 
     meta = {
-        "design": (
-            "conversational-v1"
-            if (
-                bool(llm_meta.get("enabled"))
-                and int(((llm_meta.get("paid") or {}).get("stats") or {}).get("accepted") or 0) > 0
-                and bool(((prose_overlay.get("paid") if isinstance(prose_overlay, dict) else {}) or {}).get("conversational"))
-            )
-            else "cards-v2"
-        ),
+        # The renderer that actually ran. Every palm reading goes through the
+        # conversational template — the model only supplies wording inside it,
+        # and whether it did is recorded under "llm" below, not here.
+        "design": "conversational-v1",
         "dominantHand": dom_key,
         "handType": ((dom.get("features") or {}).get("morphology") or {}).get("hand_type"),
         "photoQuality": quality.get("grade"),

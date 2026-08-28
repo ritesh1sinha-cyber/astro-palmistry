@@ -127,3 +127,39 @@ def test_grounded_astrology_survives_finalize_customer_html() -> None:
     cleaned = finalize_customer_html(dirty)
     assert "sub-lord" not in cleaned.lower()
     assert "karakamsa" not in cleaned.lower()
+
+
+def test_customer_citations_hide_author_and_ocr_labels() -> None:
+    from qa_checks.final_customer_boundary import finalize_customer_html
+    from qa_checks.customer_text_sanitizer import validate_customer_text
+
+    dirty = (
+        "<p>Bhardwaj/gochar_auspicious supports your work.</p>"
+        "<p>This line comes from OCR and the BNN method.</p>"
+        "<p>The Jaimini clock adds a second timing view.</p>"
+        "<p>Samudrik Shastra describes your hand as generous.</p>"
+    )
+    cleaned = finalize_customer_html(dirty)
+    lowered = cleaned.lower()
+    assert "bhardwaj" not in lowered
+    assert "ocr" not in lowered
+    assert "bnn" not in lowered
+    assert "jaimini" not in lowered
+    assert "samudrik" not in lowered
+    assert not validate_customer_text(cleaned)
+
+
+def test_daily_render_does_not_expose_source_labels() -> None:
+    from report_render import daily
+
+    reading = {
+        "sources": ["Bhardwaj/OCR daily source"],
+        "vedic_confluence": {"lanes": []},
+        "tarabala": {"tone": "neutral", "note": "Keep the pace steady."},
+        "chandrabal": {"tone": "neutral", "note": "Choose practical tasks."},
+        "moon_transit": {"sign": "Aries", "nakshatra": "Ashwini"},
+    }
+    _, paid_html, _ = daily(reading, name="Test User")
+    lowered = paid_html.lower()
+    assert "bhardwaj" not in lowered
+    assert "ocr" not in lowered

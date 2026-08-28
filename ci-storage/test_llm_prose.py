@@ -185,12 +185,50 @@ def llm_off(monkeypatch):
     clear_stub()
 
 
-def test_humanize_disabled_returns_empty(llm_off):
+def test_humanize_disabled_still_writes_the_page(llm_off):
+    """A switched-off model costs the reader wording, not whole sections."""
     from llm.humanize import humanize
     facts = _card_facts()
     out = humanize("full_report", facts, access="paid")
     assert out["enabled"] is False
-    assert out["overlay"] == {}
+    assert out["fallback_used"] is True
+    assert out["stats"]["accepted"] == 0
+    overlay = out["overlay"]
+    assert overlay.get("conversational") is True
+    assert overlay.get("personality")
+    assert overlay.get("current_phase")
+
+
+def test_disabled_free_prose_is_written_from_free_facts_only(llm_off):
+    """The firewall holds on the disabled path: no paid dates in free prose.
+
+    Writing prose before the enabled check is what made this reachable, so the
+    projection has to happen for the disabled path too.
+    """
+    from llm.humanize import humanize
+    from llm.schemas import CardFacts, ReportFacts, WindowFact
+    paid = ReportFacts(
+        first_name="Meera",
+        access="paid",
+        cards=[CardFacts(
+            area="profession",
+            label="Career",
+            status="supported",
+            activation_status="active",
+            direction="support",
+            window=WindowFact(start="2028-06", end="2029-02", label="career"),
+            approved_remedies=["pearl"],
+            remedy_eligible=True,
+            evidence=[],
+        )],
+        timing_windows=[WindowFact(start="2028-06", end="2029-02", label="career")],
+    )
+    free = humanize("full_report", paid, access="free")
+    blob = str(free["overlay"])
+    assert "2028-06" not in blob and "2029-02" not in blob
+    assert "pearl" not in blob
+    assert free["access"] == "free"
+    assert free["overlay"].get("personality")
 
 
 GOOD_CONV = {
@@ -782,7 +820,10 @@ def test_facts_builders_roundtrip():
         name="Meera",
     )
     assert hf.confidence == "high"  # "good" mapped
-    assert len(hf.lanes) == 2
+    # Horary answers from the Western moment chart alone. The two-lane build
+    # went when the reading stopped comparing systems at the reader, so a
+    # vedic verdict in the input is ignored rather than voiced.
+    assert [lane.lane for lane in hf.lanes] == ["western"]
 
 
 def test_report_cards_render_accepts_prose_kwarg():
@@ -968,48 +1009,40 @@ def test_merge_drops_manifestation_that_repeats_remedy():
     assert str(money.get("manifestation") or "").strip() == ""
 
 
-def test_confluence_classical_reprise_merges(llm_on):
-    """The classical rephrase pass must overwrite the page prose from a valid
-    ReportConfluenceProse reply, and inject a classical interpretation per area,
-    while the conversational fallback supplies the area shell."""
+def test_the_page_is_written_in_one_llm_pass(llm_on):
+    """No second rephrase of prose the model has already written.
+
+    A classical-tone rewrite pass used to run over the finished overlay. It was
+    removed deliberately: the model already receives the deterministic
+    analytical layer and is asked to express it once, and a second rewrite adds
+    a network round trip at the point where meaning is easiest to lose. This
+    holds the page to a single pass, so the pass cannot be quietly restored
+    without someone deciding to.
+    """
     from core.llm_client import set_stub
     from llm.humanize import humanize
-    from llm.schemas import ConversationalProse, ReportConfluenceProse
+    from llm.schemas import ConversationalProse
 
-    classical = ReportConfluenceProse(
-        astrological_basis=(
-            "Your chart runs under Jupiter's main period with Mercury as the "
-            "sub-period lord, and the Moon placed in Gemini."
-        ),
-        interpretation="This chapter reads as mentally active and communication-led.",
-        personality="Your mind leads the way most weeks; you think better by talking things through.",
-        current_phase="Momentum is gathering in creative and professional directions.",
-        hardest_area_note="The area asking for more care right now is Health & Vitality.",
-        mind_now=["if recognition feels a little slow just now"],
-        why_now="Jupiter supports reflection while Mercury shapes how ideas take shape.",
-        family_note=["your father comes across as steady and measured"],
-        areas={"profession": "Work moves ahead with steady visibility under the current period."},
-    )
+    schemas_seen: list = []
 
     def stub(schema, system, user, **kw):
+        schemas_seen.append(schema)
         if schema is ConversationalProse:
             return ConversationalProse.model_validate(GOOD_CONV)
-        if schema is ReportConfluenceProse:
-            return classical
         return None
 
     set_stub(stub)
     out = humanize("full_report", _card_facts(), access="paid")
     assert out["enabled"] is True
+    # Writing the page and writing the areas are both first-pass generation.
+    # A rephrase of finished prose would come back asking for the classical
+    # report schema, and nothing here should ever request it.
+    names = {getattr(s, "__name__", str(s)) for s in schemas_seen}
+    assert names <= {"ConversationalProse", "ConversationalAreasProse"}, names
+    assert "ReportConfluenceProse" not in names
     ov = out["overlay"]
-    # The whole astrological_basis line is taken from the classical reprise.
-    assert ov.get("astrological_basis") == classical.astrological_basis
-    assert "Jupiter's main period" in ov.get("astrological_basis", "")
-    assert "Mercury as the sub-period lord" in ov.get("astrological_basis", "")
-    # The classical per-area interpretation lands in the existing area shell.
+    assert str(ov.get("personality") or "").strip()
     assert "profession" in (ov.get("areas") or {})
-    prof = (ov.get("areas") or {}).get("profession") or {}
-    assert "Work moves ahead with steady visibility" in prof.get("interpretation", "")
 
 
 def test_validate_dasha_lords_catches_misattributed_periods():

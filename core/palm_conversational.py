@@ -554,6 +554,24 @@ def _problem_section(readings: dict, dom_key: str, *, paid: bool) -> str:
 # ---------------------------------------------------------------------------
 # the document
 # ---------------------------------------------------------------------------
+def _shape_prose(reading: Any) -> str:
+    """Temperament in prose, taken from the hand shape the CV measured.
+
+    The opening paragraph of the archetype section normally comes from the
+    prose overlay. When there is no overlay at all — facts could not be built —
+    the section would otherwise open with a bare table, so speak from the
+    measurements instead of saying nothing.
+    """
+    seen: list[str] = []
+    for r in getattr(reading, "shape", None) or []:
+        text = str(getattr(r, "means", "") or "").strip()
+        if text and text not in seen:
+            seen.append(text)
+    if not seen:
+        return ""
+    return " ".join(t if t[-1] in ".!?" else f"{t}." for t in seen[:3])
+
+
 def render(
     raw: dict,
     *,
@@ -626,7 +644,10 @@ def render(
     elif why_now:
         now_summary += f"<p>{_e(why_now)}</p>"
     else:
-        strong_areas = [_TITLE.get(str(a.get("key") or "")) for a in aspects if a.get("strength") == "strong"]
+        # An aspect key with no title would put None into the join below.
+        strong_areas = [t for t in (_TITLE.get(str(a.get("key") or ""))
+                                    for a in aspects
+                                    if a.get("strength") == "strong") if t]
         dom_name = dom_key.title()
         if strong_areas:
             now_summary += (f"<p>Your active {dom_name} hand shows pronounced momentum in {', '.join(strong_areas[:2])}. "
@@ -655,7 +676,8 @@ def render(
 
     # 2 — the hand itself (Core Archetype & Temperament)
     shape_rows = _rows(dom_reading.shape, agree)
-    opening = f"<p>{_e(personality)}</p>" if personality else ""
+    opening_text = personality or _shape_prose(dom_reading)
+    opening = f"<p>{_e(opening_text)}</p>" if opening_text else ""
     blocks.append(_section(
         "sec-hand", "Your Core Hand Archetype & Temperament",
         f"Shape, thumb and finger set — {_HAND_ROLE[True]}.",
