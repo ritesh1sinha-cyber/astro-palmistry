@@ -1188,7 +1188,9 @@ def synthesize_with_qwen(confluence: QuestionConfluenceReport, lang: str = "en")
         from core.llm_client import _get_client, complete_model
         from core.config import S
         
-        is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+        lang_code = str(lang or "").lower()
+        is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+        is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
         if is_hinglish:
             system_prompt = (
                 "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
@@ -1217,6 +1219,35 @@ FEW-SHOT HINGLISH EXAMPLES:
 - Mechanics: "Aapka Janma Lagna aur primary house lord achhi sthiti mein hain, jisse long-term results favorable rahenge."
 - Timing: "Sabse important milestone aur breakthrough window October 2026 se shuru ho raha hai."
 - Remedy: "Surya Dev ko regular jal arpit karein aur Gayatri Mantra ka daily 108 baar jaap karein."
+"""
+        elif is_tenglish:
+            system_prompt = (
+                "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
+                "and deeply insightful consultation reading for the seeker's question. "
+                "Write the entire consultation response in conversational Telugu using the English/Latin alphabet (Tenglish / Roman Telugu). "
+                "DO NOT use Telugu script characters. Use clear, fluent Roman Telugu words (e.g. 'Mee kundali prakaram...', 'Breakthrough period...', 'Grahala sthiti...'). "
+                "You have been provided with rigorous, verified classical confluence facts (Houses, Lords, Dignities, "
+                "Natural Karakas, Divisional Charts D9/D30, Sarvashtakavarga SAV Bindu strength, Live Planetary Transits Gochar, "
+                "Triple Dashas Vimshottari + Jaimini Chara + Yogini, and Vedic Upaya). "
+                "Speak directly to the seeker respectfully as 'Meeru' / 'Mee' like an experienced astrologer.\n\n"
+                "SPECIAL JUDGMENT RULES:\n"
+                "1. AMBIGUOUS / BROAD QUESTIONS: If the question is broad, general, or ambiguous (e.g. 'what is in store for my future?', 'bhavishyath ela untundi?'), "
+                "synthesize the Lagna, running Dasha chronology, SAV strength, and transit Gochar to deliver a comprehensive, deeply insightful reading on their overall life trajectory, key focus areas, and timing windows.\n"
+                "2. OUT-OF-DOMAIN QUESTIONS: If the question is entirely outside the scope of human life and Vedic astrology (e.g. coding, technical trivia, recipes, hardware repair), "
+                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite the seeker to ask about their personal life path or chart guidance."
+            )
+            instructions_text = """INSTRUCTIONS:
+Write a comprehensive, professional Vedic consultation response in natural conversational Telugu using English letters (Tenglish / Roman Telugu) containing:
+1. DIRECT ASTROLOGICAL VERDICT: Direct, honest answer in Roman Telugu addressing whether the chart indicates the issue and its nature. (If out-of-domain, explain politely).
+2. CORE PLANETARY MECHANICS: Detailed explanation in Roman Telugu of the primary house, lord placement, natural karakas, Ashtakavarga SAV support, and D9/D30 confirmations in clear, natural language.
+3. TIMELINE & KEY MILESTONE: Clear breakdown in Roman Telugu of the past origin, current active phase, and exact upcoming breakthrough window (citing dasha + transit dates).
+4. ACTIONABLE REMEDIAL GUIDANCE: Step-by-step practical and Vedic remedies (mantras, daan, puja) in Roman Telugu for immediate and long-term relief.
+
+FEW-SHOT TENGLISH EXAMPLES:
+- Verdict: "Mee prashnaku kundali samadhanam: prasthutha samayam konchem testing ga unna, aane dasha mariyu gocharam tho sthiti decisive ga improve avuthundi."
+- Mechanics: "Mee Janma Lagnam mariyu primary house lord manchi sthiti lo unnaru, anduvalla long-term lo manchi results vasthayi."
+- Timing: "Mukhya milestone mariyu breakthrough window October 2026 nundi start avuthundi."
+- Remedy: "Surya Bhagavanudiki daily arghyam samarpinchi, Gayatri Mantra ni roju 108 sarlu japinchandi."
 """
         else:
             system_prompt = (
@@ -1316,7 +1347,9 @@ def _llm_allowed(kind: str = "user_question") -> bool:
 
 def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str = "en") -> str:
     """The same consultation written from the facts, with no model involved."""
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     
     if confluence.domain_key == "out_of_domain":
         if is_hinglish:
@@ -1333,6 +1366,21 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
                 f"#### 3. Agla Kadam Aur Salah\n"
                 f"• Is specific non-astrological inquiry ke liye relevant domain resources ka upyog karein.\n"
                 f"• Yadi aapke jeevan ke kisi pehlu, aane wale samay, dasha fal, career, ya grah shanti ke baare mein koi prashna ho, toh kripya bejhijhak poochhein."
+            )
+        if is_tenglish:
+            return (
+                f"### Jyotishya Vishaya Margadarshanam: {confluence.domain_title}\n\n"
+                f"**Prashna:** *{confluence.question}*\n\n"
+                f"#### 1. Mukhya Sandesham (Scope of Astrology)\n"
+                f"Mee ee prashna Vedic Jyotishyam mariyu Janma Kundali paridhi (bhavalu, grahalu, dasha, jeevitha ghatanalu) ki bayata unna oka general leda technical vishayam meeda undi. "
+                f"Jyotishya sampradayam mee jeevitham loni mukhya rangalu — career, aarogyam, vivaham, dhanam, pillalu, prayanam, mariyu graha shanti upayamula meeda spashtamaina margadarshanam isthundi.\n\n"
+                f"#### 2. Kundali Moola Swaroopam\n"
+                f"• **Janma Lagnam:** {confluence.lagna} (Lagnaadhipathi: {confluence.lagna_lord})\n"
+                f"• **Chalu Dasha:** {confluence.current_dasha}\n"
+                f"• **Gocharam Sthiti:** {confluence.transit_finding}\n\n"
+                f"#### 3. Thadupari Adugu Mariyu Salaha\n"
+                f"• Ee specific non-astrological topic kosam sambandhitha domain resources chudandi.\n"
+                f"• Mee jeevitha gamanamu, aane samayam, dasha phalam, career, leda graha shanti gurinchi edaina prashna unte, dayachesi adagandi."
             )
         return (
             f"### Astrological Scope Notice: {confluence.domain_title}\n\n"
@@ -1366,6 +1414,24 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
                 f"• **Current Operating Period:** {confluence.current_dasha}\n"
                 f"• **Mukhya Breakthrough Window:** **{confluence.breakthrough_period}**\n\n"
                 f"#### 4. Dainik Margdarshan Aur Upaya\n"
+                + "\n".join(f"• {r}" for r in confluence.remedies)
+            )
+        if is_tenglish:
+            return (
+                f"### Sampoorna Kundali Vishleshana: {confluence.domain_title}\n\n"
+                f"**Prashna:** *{confluence.question}*\n\n"
+                f"#### 1. Mukhya Theerpu Mariyu Disha (Overall Life Trajectory Verdict)\n"
+                f"{confluence.classical_verdict}\n\n"
+                f"#### 2. Kundali Moola Aadharam Mariyu Graha Balam\n"
+                f"• **Lagnam Mariyu Lagnaadhipathi:** {confluence.lagna} Lagnam, adhipathi {confluence.lagna_lord} {confluence.primary_lord_placement} lo unnaru.\n"
+                f"• **Ashtakavarga (SAV) Balam:** {confluence.ashtakavarga_finding}\n"
+                f"• **Gocharam Graha Sthiti:** {confluence.transit_finding}\n"
+                f"• **D9 Varga Balam:** " + "; ".join(confluence.varga_findings[:2]) + "\n\n"
+                f"#### 3. Chalu Dasha Timeline Mariyu Breakthrough Samayam\n"
+                f"• **Active Triple Dasha:** {confluence.triple_dasha_confluence}\n"
+                f"• **Current Operating Period:** {confluence.current_dasha}\n"
+                f"• **Mukhya Breakthrough Window:** **{confluence.breakthrough_period}**\n\n"
+                f"#### 4. Actionable Margadarshanam Mariyu Upayamulu\n"
                 + "\n".join(f"• {r}" for r in confluence.remedies)
             )
         return (
@@ -1403,6 +1469,23 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
                 f"#### 4. Shubh Ratna, Niyam Aur Savdhani (Actionable Gemstone Protocol)\n"
                 + "\n".join(f"• {r}" for r in confluence.remedies)
             )
+        if is_tenglish:
+            return (
+                f"### Jyotishya Rathna Salaha Mariyu Upayamulu: {confluence.domain_title}\n\n"
+                f"**Prashna:** *{confluence.question}*\n\n"
+                f"#### 1. Mukhya Rathna Theerpu (Gemstone Recommendation Verdict)\n"
+                f"{confluence.classical_verdict}\n\n"
+                f"#### 2. Kundali Aadharam Mariyu Graha Sthiti\n"
+                f"• **Lagnam Mariyu Lagnaadhipathi:** {confluence.lagna} Lagnam, adhipathi {confluence.lagna_lord} ({confluence.primary_lord_placement}). Idi mee mukhya Life Gemstone nirdharisthundi.\n"
+                f"• **Trikona Graha Balam:** 1, 5, mariyu 9th bhavaadhipathulu functional benefics, veeti shaktini rathnam dharana chesi penchavachu.\n"
+                f"• **Graha Gocharam (Transits):** {confluence.transit_finding}\n"
+                f"• **Ashtakavarga SAV Balam:** {confluence.ashtakavarga_finding}\n\n"
+                f"#### 3. Chalu Dasha Mariyu Timing Alignment\n"
+                f"• **Active Dasha:** {confluence.current_dasha} ({confluence.triple_dasha_confluence})\n"
+                f"• **Prabhavavanthamaina Samayam:** {confluence.breakthrough_period}\n\n"
+                f"#### 4. Anukoolamaina Rathnamulu, Niyamalu (Actionable Gemstone Protocol)\n"
+                + "\n".join(f"• {r}" for r in confluence.remedies)
+            )
         return (
             f"### Astrological Gemstone Consultation: {confluence.domain_title}\n\n"
             f"**Question:** *{confluence.question}*\n\n"
@@ -1437,6 +1520,25 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
             f"• **Current Period:** {confluence.current_dasha}\n"
             f"• **Mukhya Breakthrough Samay:** **{confluence.breakthrough_period}**\n\n"
             f"#### 5. Vedic Upay Aur Margdarshan\n" + "\n".join(f"• {r}" for r in confluence.remedies)
+        )
+    if is_tenglish:
+        return (
+            f"### Jyotishya Salaha: {confluence.domain_title}\n\n"
+            f"**Prashna:** *{confluence.question}*\n\n"
+            f"#### 1. Mukhya Jyotishya Vishleshana\n"
+            f"Mee kundali prakaram, {confluence.domain_title} mukhya adhipathi {confluence.primary_house_lord} {confluence.primary_lord_placement} lo unnaru. "
+            f"Ee sthiti modatlo konchem aalasyam chupinchina, anukoolamaina dasha mariyu shubha graha gocharam valla sthiti decisive ga improve avuthundi.\n\n"
+            f"#### 2. Graha Sthiti Mariyu Jyotishya Aadharalu\n"
+            f"• **Mukhya Bhavam:** {confluence.primary_house}th House ({confluence.primary_house_sign}), adhipathi {confluence.primary_house_lord}, sthiti: {confluence.primary_lord_placement}.\n"
+            f"• **Ashtakavarga Balam:** {confluence.ashtakavarga_finding}\n"
+            f"• **Graha Gocharam (Transits):** {confluence.transit_finding}\n"
+            f"• **Karaka Grahalu:**\n" + "\n".join(f"  - {f}" for f in confluence.karaka_findings) + "\n\n"
+            f"#### 3. D9 Mariyu D30 Varga Balam\n" + "\n".join(f"• {f}" for f in confluence.varga_findings) + "\n\n"
+            f"#### 4. Dasha Timeline Mariyu Mukhya Breakthrough Window\n"
+            f"• **Chalu Dasha Alignment:** {confluence.triple_dasha_confluence}\n"
+            f"• **Current Period:** {confluence.current_dasha}\n"
+            f"• **Mukhya Breakthrough Samayam:** **{confluence.breakthrough_period}**\n\n"
+            f"#### 5. Vedic Upayamulu Mariyu Margadarshanam\n" + "\n".join(f"• {r}" for r in confluence.remedies)
         )
     return (
         f"### Astrological Consultation: {confluence.domain_title}\n\n"
@@ -1516,10 +1618,14 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     """Renders the comprehensive Vedic Astrological Consultation document in clean HTML."""
     import html
 
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     pill_color = "#8a6a1f" if not confluence.is_lord_in_dusthana else "#a3341f"
     if is_hinglish:
         pill_label = "Anukool Sanket" if not confluence.is_lord_in_dusthana else "Upay Aur Savdhani Aavashyak"
+    elif is_tenglish:
+        pill_label = "Anukoola Sanketham" if not confluence.is_lord_in_dusthana else "Upayam Mariyu Jagrattha Avasaram"
     else:
         pill_label = "Constructive Promise" if not confluence.is_lord_in_dusthana else "Requires Remedial Care"
 
@@ -1531,7 +1637,12 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     qwen_block = ""
     if paid and qwen_text:
         formatted_qwen = _format_consultation_markdown(qwen_text)
-        synth_hdr = "Vedic Jyotish Consultation Synthesis" if is_hinglish else "Jyotish Consultation Synthesis"
+        if is_hinglish:
+            synth_hdr = "Vedic Jyotish Consultation Synthesis"
+        elif is_tenglish:
+            synth_hdr = "Vedic Jyotish Consultation Samadhanam"
+        else:
+            synth_hdr = "Jyotish Consultation Synthesis"
         qwen_block = (
             f'<article class="card qwen-consultation-card" style="background:#fff;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:20px 22px;margin:18px 0;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
             f'  <div style="font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">{synth_hdr}</div>\n'
@@ -1539,9 +1650,18 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
             f'</article>\n'
         )
 
-    clock_hdr = "Chalu Dasha Aur Grah Alignment:" if is_hinglish else "Active Multi-Clock Alignment:"
-    av_hdr = "Ashtakavarga Bal:" if is_hinglish else "Ashtakavarga Strength:"
-    transit_hdr = "Grah Gochar (Transits):" if is_hinglish else "Planetary Transits (Gochar):"
+    if is_hinglish:
+        clock_hdr = "Chalu Dasha Aur Grah Alignment:"
+        av_hdr = "Ashtakavarga Bal:"
+        transit_hdr = "Grah Gochar (Transits):"
+    elif is_tenglish:
+        clock_hdr = "Chalu Dasha Mariyu Graha Alignment:"
+        av_hdr = "Ashtakavarga Balam:"
+        transit_hdr = "Graha Gocharam (Transits):"
+    else:
+        clock_hdr = "Active Multi-Clock Alignment:"
+        av_hdr = "Ashtakavarga Strength:"
+        transit_hdr = "Planetary Transits (Gochar):"
 
     if paid:
         confluence_bar = (
@@ -1562,7 +1682,12 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
             f'</div>\n'
         )
 
-    proof_title = "🔍 Jyotishiya Praman Aur Kundli Ganana (View Details)" if is_hinglish else "🔍 View Astrological Technical Proof &amp; Divisional Chart Working"
+    if is_hinglish:
+        proof_title = "🔍 Jyotishiya Praman Aur Kundli Ganana (View Details)"
+    elif is_tenglish:
+        proof_title = "🔍 Jyotishya Aadharalu Mariyu Kundali Ganana (View Details)"
+    else:
+        proof_title = "🔍 View Astrological Technical Proof &amp; Divisional Chart Working"
     proof_collapsible = (
         f'<details class="astro-proof-details" style="background:#fcfbf8;border:1px solid #e8e4dc;border-radius:10px;padding:12px 16px;margin:16px 0;">\n'
         f'  <summary style="cursor:pointer;font-size:0.82rem;font-weight:700;color:#7a4b18;outline:none;">\n'
@@ -1581,11 +1706,24 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     )
 
     if paid:
-        timing_hdr = "Dasha Timeline Aur Mukhya Badlav" if is_hinglish else "Dasha Timeline &amp; Key Turning Points"
-        running_hdr = "Chalu Dasha Period:" if is_hinglish else "Active Running Period:"
-        breakthrough_hdr = "Mukhya Breakthrough Window:" if is_hinglish else "Major Breakthrough Window:"
-        remedy_hdr = "Vedic Upay Aur Dainik Margdarshan" if is_hinglish else "Targeted Vedic Upaya (Actionable Remedies)"
-        remedy_p = "Grah shanti aur prabhavi upayo se chunautiyon ko santulit kiya ja sakta hai:" if is_hinglish else "Practical steps and planetary mantras designed to neutralize obstructive friction and energize your key functional rulers:"
+        if is_hinglish:
+            timing_hdr = "Dasha Timeline Aur Mukhya Badlav"
+            running_hdr = "Chalu Dasha Period:"
+            breakthrough_hdr = "Mukhya Breakthrough Window:"
+            remedy_hdr = "Vedic Upay Aur Dainik Margdarshan"
+            remedy_p = "Grah shanti aur prabhavi upayo se chunautiyon ko santulit kiya ja sakta hai:"
+        elif is_tenglish:
+            timing_hdr = "Dasha Timeline Mariyu Mukhya Badlavulu"
+            running_hdr = "Chalu Dasha Period:"
+            breakthrough_hdr = "Mukhya Breakthrough Window:"
+            remedy_hdr = "Vedic Upayamulu Mariyu Margadarshanam"
+            remedy_p = "Graha shanti mariyu prabhavavanthamaina upayamulatho challenges ni balance cheyavachu:"
+        else:
+            timing_hdr = "Dasha Timeline &amp; Key Turning Points"
+            running_hdr = "Active Running Period:"
+            breakthrough_hdr = "Major Breakthrough Window:"
+            remedy_hdr = "Targeted Vedic Upaya (Actionable Remedies)"
+            remedy_p = "Practical steps and planetary mantras designed to neutralize obstructive friction and energize your key functional rulers:"
 
         timing_section = (
             f'<article class="card timing-card" style="background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
@@ -1640,6 +1778,36 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
                 f'  <div style="font-size:0.74rem;color:#8c93a6;margin-top:10px;">Instant Access · 100% Secure Checkout</div>\n'
                 f'</div>\n'
             )
+        elif is_tenglish:
+            timing_section = (
+                f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
+                f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
+                f'    <b>Mukhya Badlavulu Mariyu Timing Windows:</b> Sthiti maarina specific nela mariyu samvathsaram, breakthrough windows mariyu Dasha milestones.\n'
+                f'  </div>\n'
+                f'  <div class="lock-over" data-unlock="1">\n'
+                f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Breakthrough Dates Mariyu Timeline Unlock Cheyandi</span>\n'
+                f'  </div>\n'
+                f'</div>\n'
+            )
+            remedy_section = (
+                f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
+                f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
+                f'    <b>Vedic Upayamulu Mariyu Pariharalu:</b> Graha mantralu, daana vidhi mariyu daily rituals ee prashna parishkaram kosam.\n'
+                f'  </div>\n'
+                f'  <div class="lock-over" data-unlock="1">\n'
+                f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Sampoorna Upayamulu Unlock Cheyandi</span>\n'
+                f'  </div>\n'
+                f'</div>\n'
+            )
+            unlock_cta_box = (
+                f'<div class="buy" style="margin:20px 0;background:linear-gradient(135deg,#1f2430 0%,#141720 100%);border:1px solid #c9a227;border-radius:14px;padding:22px 20px;text-align:center;color:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.12);">\n'
+                f'  <div style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#d9a544;font-weight:700;margin-bottom:6px;">Sampoorna Astrological Consultation Siddham Ga Undi</div>\n'
+                f'  <h3 style="font-family:Georgia,serif;font-size:1.2rem;color:#fbf6e4;margin:0 0 8px;font-weight:600;">Breakthrough Dates, Full Timeline &amp; Upaya Pariharalu Unlock Cheyandi</h3>\n'
+                f'  <p style="font-size:0.85rem;color:#b8bdcc;margin:0 auto 16px;max-width:540px;line-height:1.5;">Exact milestone dates, active Dasha turning points mariyu custom graha pariharalatho sampoorna consultation chudandi.</p>\n'
+                f'  <a class="cta" href="#unlock" data-unlock="1" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#e8b75b 0%,#c9a227 100%);color:#16181d;font-weight:700;font-size:0.95rem;padding:13px 28px;border-radius:99px;text-decoration:none;box-shadow:0 4px 14px rgba(201,162,39,0.35);width:100%;max-width:320px;margin:0 auto;">🔒 Sampoorna Consultation Unlock Cheyandi — ₹298</a>\n'
+                f'  <div style="font-size:0.74rem;color:#8c93a6;margin-top:10px;">Instant Access · 100% Secure Checkout</div>\n'
+                f'</div>\n'
+            )
         else:
             timing_section = (
                 f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
@@ -1678,10 +1846,25 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
             f"Yeh sthiti vartaman samay mein thoda vilamb aur mehnat ka sanket deti hai. "
             f"Lekin D10/D9 chart ki sthirta aur shubh dasha aane par sthiti mein decisive aur positive sudhar dekhne ko milega."
         )
+    elif is_tenglish and verdict_text and "chart indicates" in verdict_text.lower():
+        verdict_text = (
+            f"Mee kundali prakaram, {confluence.domain_title} mukhya adhipathi {confluence.primary_house_lord} {confluence.primary_lord_placement} lo unnaru. "
+            f"Ee sthiti prasthutham konchem aalasyam mariyu shrama avasaramani chupisthondi. "
+            f"Ayina D10/D9 chart sthiratha mariyu shubha dasha valla sthiti lo decisive mariyu positive maarpu vasthundi."
+        )
 
-    domain_kicker = f"Jeevan Ka Kshetra · {html.escape(confluence.domain_title)}" if is_hinglish else f"Life Domain · {html.escape(confluence.domain_title)}"
-    heading_title = f"\"{html.escape(confluence.question)}\" Ke Liye Jyotishiya Salah" if is_hinglish else f"Consultation for \"{html.escape(confluence.question)}\""
-    root_hdr = "Grah Sthiti Aur Mool Jyotishiya Vishleshan:" if is_hinglish else "Astrological Root Cause &amp; Situation Diagnostic:"
+    if is_hinglish:
+        domain_kicker = f"Jeevan Ka Kshetra · {html.escape(confluence.domain_title)}"
+        heading_title = f"\"{html.escape(confluence.question)}\" Ke Liye Jyotishiya Salah"
+        root_hdr = "Grah Sthiti Aur Mool Jyotishiya Vishleshan:"
+    elif is_tenglish:
+        domain_kicker = f"Jeevitha Rangamu · {html.escape(confluence.domain_title)}"
+        heading_title = f"\"{html.escape(confluence.question)}\" Kosam Jyotishya Salaha"
+        root_hdr = "Graha Sthiti Mariyu Moola Jyotishya Vishleshana:"
+    else:
+        domain_kicker = f"Life Domain · {html.escape(confluence.domain_title)}"
+        heading_title = f"Consultation for \"{html.escape(confluence.question)}\""
+        root_hdr = "Astrological Root Cause &amp; Situation Diagnostic:"
 
     return (
         f'<div class="confluence-consultation-wrap" style="margin:10px 0 24px;">\n'

@@ -198,6 +198,69 @@ VARGA_META_HINGLISH: dict[str, dict[str, str]] = {
     },
 }
 
+VARGA_META_TENGLISH: dict[str, dict[str, str]] = {
+    "D1": {
+        "name": "Janma Kundali (D1)",
+        "governs": "Moola Swabhavam Mariyu Sharirika Balam",
+        "nav": "Mee vyakthithvam mariyu urja",
+        "desc": "Mee moola vyakthithvam, physical vitality mariyu jeevitha orientation.",
+    },
+    "D2": {
+        "name": "Dhana Vargamu (D2 · Hora)",
+        "governs": "Dhanam, Podupu Mariyu Aarthika Sthiratha",
+        "nav": "Dhanam mariyu aarthika sthiti",
+        "desc": "Dhana sanchayam, aasthula vikasam mariyu aarthika sthiratha.",
+    },
+    "D3": {
+        "name": "Dhairyam, Sahodharulu (D3 · Drekkana)",
+        "governs": "Sahodharulu, Dhairyam Mariyu Initiative",
+        "nav": "Sahodharulu mariyu dhairyam",
+        "desc": "Mee sahasam, dainandina initiative, sahodharulatho sambandham.",
+    },
+    "D4": {
+        "name": "Aasthi, Nivasam (D4 · Chaturthamsha)",
+        "governs": "Illu, Bhoomi, Vahanam Mariyu Sthiratha",
+        "nav": "Illu mariyu aasthi",
+        "desc": "Property ownership, illu sthiratha mariyu sthana maarpu yogalu.",
+    },
+    "D7": {
+        "name": "Santhana Vargamu (D7 · Saptamsha)",
+        "governs": "Pillalu, Kutumbam Mariyu Bhavishyathu",
+        "nav": "Pillalu mariyu kutumbam",
+        "desc": "Santhana soukhyam, kutumba vikasam mariyu legacy.",
+    },
+    "D9": {
+        "name": "Vivaham Mariyu Navamsha (D9)",
+        "governs": "Jeevithabhagswami, Vivaham Mariyu Aantrika Vikasamu",
+        "nav": "Vivaham mariyu jeevithabhagswami",
+        "desc": "Mee aadhyaathmika vikasam, jeevithabhagswami anukoolatha mariyu vaivahika soukhyam.",
+    },
+    "D10": {
+        "name": "Career Mariyu Profession (D10 · Dasamsha)",
+        "governs": "Career Growth, Gouravam Mariyu Status",
+        "nav": "Career mariyu gouravam",
+        "desc": "Mee professional karma, gouravam, adhikaaram mariyu career trajectory.",
+    },
+    "D12": {
+        "name": "Vamsham Mariyu Thallidandrulu (D12 · Dwadashamsha)",
+        "governs": "Thallidandrulu Mariyu Poorveekula Aashirwadam",
+        "nav": "Thallidandrulu mariyu vamsham",
+        "desc": "Kutumba moolalu, thallidandrula sahakaram mariyu samskaralu.",
+    },
+    "D24": {
+        "name": "Uchha Vidya (D24 · Chaturvimshamsha)",
+        "governs": "Chaduvu, Memory Mariyu Telivi",
+        "nav": "Chaduvu mariyu gyanam",
+        "desc": "Uchha vidya, analytical skills mariyu vidya samardhyam.",
+    },
+    "D30": {
+        "name": "Aarogyam Mariyu Immunity (D30 & D27)",
+        "governs": "Sharirika Stamina Mariyu Aarogya Jagratthalu",
+        "nav": "Aarogyam mariyu stamina",
+        "desc": "Sharirika immunity, health sensitivities mariyu kashtalanu edurkonedi shakti.",
+    },
+}
+
 PLANET_REMEDIES: dict[str, dict[str, str]] = {
     "Sun": {
         "strengthen": "Offer fresh water to the morning sun daily (Surya Arghya) with a calm mind; nurture respect for elders and father figures.",
@@ -248,14 +311,18 @@ PLANET_REMEDIES: dict[str, dict[str, str]] = {
 
 
 def _get_varga_lagna(pc: dict, code: str) -> str:
+    div_entry = pc.get("divisional", {}).get(code, {}) or {}
     if code == "D1":
         return (
             pc.get("meta", {}).get("lagna_sign", "")
+            or pc.get("lagna", "")
             or pc.get("planets", {}).get("Lagna", {}).get("sign", "")
-            or (pc.get("divisional", {}).get("D1", {}) or {}).get("Lagna", "")
+            or pc.get("planets", {}).get("lagna", {}).get("sign", "")
+            or div_entry.get("Lagna", "")
+            or div_entry.get("lagna", "")
             or ""
         )
-    return (pc.get("divisional", {}).get(code, {}) or {}).get("Lagna", "")
+    return div_entry.get("Lagna", "") or div_entry.get("lagna", "")
 
 
 def _get_varga_planet_sign(pc: dict, code: str, planet: str) -> str:
@@ -331,7 +398,11 @@ AV_TABLE = {
 
 def compute_chart_ashtakavarga(pc: dict) -> dict[str, Any]:
     planets = pc.get("planets", {})
-    lagna_sign = pc.get("meta", {}).get("lagna_sign", "") or (pc.get("lagna", {}) or {}).get("sign", "")
+    raw_l = pc.get("lagna")
+    lagna_sign = (
+        pc.get("meta", {}).get("lagna_sign", "")
+        or (raw_l if isinstance(raw_l, str) else (raw_l or {}).get("sign", ""))
+    )
     if not lagna_sign or lagna_sign not in SIGNS:
         return {}
     pos = {}
@@ -389,7 +460,11 @@ def get_transit_ashtakavarga_domain_note(
 ) -> str:
     if not target_start or not target_end or not av_data:
         return ""
-    d1_lagna = pc.get("meta", {}).get("lagna_sign", "") or (pc.get("lagna", {}) or {}).get("sign", "")
+    raw_l = pc.get("lagna")
+    d1_lagna = (
+        pc.get("meta", {}).get("lagna_sign", "")
+        or (raw_l if isinstance(raw_l, str) else (raw_l or {}).get("sign", ""))
+    )
     if not d1_lagna or d1_lagna not in SIGNS:
         return ""
 
@@ -471,7 +546,9 @@ def _build_domain_specific_timeline(
     lang: str = "en",
 ) -> str:
     """Builds distinct, domain-specific multi-clock confluence timeline guidance (Vimshottari + Jaimini Chara + Yogini Antardashas + Transits)."""
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     is_child = current_age < 18
     this_yr = date.today().year
     t_now = date.today()
@@ -556,7 +633,15 @@ def _build_domain_specific_timeline(
     gk = k_map.get("GK", "Saturn")
     dk = k_map.get("DK", "Venus")
 
-    d1_lagna = pc.get("meta", {}).get("lagna_sign", "") or (pc.get("lagna", {}) or {}).get("sign", "Gemini")
+    d1_lagna = pc.get("meta", {}).get("lagna_sign", "")
+    if not d1_lagna:
+        raw_lagna = pc.get("lagna")
+        if isinstance(raw_lagna, dict):
+            d1_lagna = raw_lagna.get("sign", "Gemini")
+        elif isinstance(raw_lagna, str) and raw_lagna:
+            d1_lagna = raw_lagna
+        else:
+            d1_lagna = "Gemini"
 
     def get_h_lord(h: int) -> str:
         if not d1_lagna or d1_lagna not in SIGNS:
@@ -631,6 +716,8 @@ def _build_domain_specific_timeline(
     yog_str = f" · Yogini: <b>{yog_display}</b>" if yog_display else ""
     if is_hinglish:
         active_clocks = f"<b>Chalu Dasha Aur Grah Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> ({curr_ad_end_fmt} tak){chara_str}{yog_str}."
+    elif is_tenglish:
+        active_clocks = f"<b>Chalu Dasha Mariyu Graha Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> ({curr_ad_end_fmt} varaku){chara_str}{yog_str}."
     else:
         active_clocks = f"<b>Active Multi-Clock Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> (until {curr_ad_end_fmt}){chara_str}{yog_str}."
 
@@ -1003,8 +1090,10 @@ def build_divisional_insights(pc: dict, lang: str = "en") -> list[DivisionalInsi
     if not adulthood_md:
         adulthood_md = "Jupiter"
 
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
-    v_meta_dict = VARGA_META_HINGLISH if is_hinglish else VARGA_META
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+    v_meta_dict = VARGA_META_TENGLISH if is_tenglish else (VARGA_META_HINGLISH if is_hinglish else VARGA_META)
 
     for code in codes:
         meta = v_meta_dict.get(code, {})
@@ -1152,7 +1241,9 @@ def _interpret_varga_concrete(
     """Generates rich, highly specific, practical life interpretations for each divisional chart."""
     div_dict = pc.get("divisional", {})
     d1_planets = pc.get("planets", {})
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
 
     reading_parts: list[str] = []
     remedy_planet = lord
@@ -1175,6 +1266,22 @@ def _interpret_varga_concrete(
             else:
                 reading_parts.append(
                     f"Aapka lagnesh (<b>{lord}</b>) {ORDINALS.get(lord_house, '1st')} bhav mein sthit hokar aapko physical stamina, aatmavishwas aur svatantrata pradan karta hai."
+                )
+        elif is_tenglish:
+            headline = f"Moola Swabhavam Mariyu Vyakthigatha Balam ({v_lagna} Rising)"
+            reading_parts.append(
+                f"Mee janma kundali oka vivekamaina, chulakana mariyu vyavaharamaina vyakthithvam (<b>{v_lagna} Rising</b>) chupisthondi. "
+                f"Moon in <b>{moon_sign} under {nakshatra}</b> tho, mee alert mind vishayalani thondaraga grahisthundi."
+            )
+            if lord_house in DUSTHANA:
+                reading_parts.append(
+                    f"Mee lagnaadhipathi (<b>{lord}</b>) {ORDINALS.get(lord_house, '8th')} bhavam lo undadam valla, mee vijayam deep research mariyu patience tho sadhistharu."
+                )
+                remedy_type = "dusthana"
+                remedy_reason = f"To Support Your Ruling Planet ({lord})"
+            else:
+                reading_parts.append(
+                    f"Mee lagnaadhipathi (<b>{lord}</b>) {ORDINALS.get(lord_house, '1st')} bhavam lo undi meeku physical stamina, aathmavishwasam mariyu independence istharu."
                 )
         else:
             headline = f"Core Nature & Personal Vitality ({v_lagna} Rising)"
@@ -1204,6 +1311,16 @@ def _interpret_varga_concrete(
                 reading_parts.append(
                     f"Kundli mein shubh grah ({', '.join(strong_planets)}) ke sahyog se aapki financial holding capacity aur bachat samay ke sath majboot hoti hai."
                 )
+        elif is_tenglish:
+            headline = f"Dhanam, Podupu Mariyu Aarthika Sthiratha (Hora · D2)"
+            reading_parts.append(
+                f"Ee vargamu mee aarthika sthiratha, podupu mariyu aasthi vikasam chupisthondi. "
+                f"Kundali short-cuts lekunda kramamga wealth compound avuthundani sanketham isthondi."
+            )
+            if strong_planets:
+                reading_parts.append(
+                    f"Shubha grahala ({', '.join(strong_planets)}) sahayatho mee financial holding capacity mariyu savings samayam tho paatu balapadathayi."
+                )
         else:
             headline = f"Wealth, Savings & Financial Stability (Hora)"
             hora_nature = "strategic asset accumulation and compounding investments"
@@ -1229,6 +1346,12 @@ def _interpret_varga_concrete(
             reading_parts.append(
                 f"Drekkana chart (D3) <b>vyaktigat sahas (*Parakrama*), bhai-behen sambandh (*Bhratru*) aur dainik initiative</b> ko darshata hai. "
                 f"Aapke andar kisi bhi karya ko shuru karne aur use poora karne ka dridh sankalp hai."
+            )
+        elif is_tenglish:
+            headline = f"Dhairyam, Initiative Mariyu Sahodharulu (Drekkana · D3)"
+            reading_parts.append(
+                f"Drekkana chart (D3) <b>vyakthigatha dhairyam (*Parakrama*), sahodharula sambandhalu (*Bhratru*) mariyu initiative</b> chupisthondi. "
+                f"Mee loni sankalpa balam tho panulanu vijayavanthamga poorthi cheyagalaru."
             )
         else:
             headline = f"Courage, Siblings & Everyday Initiative (Drekkana)"
@@ -1263,6 +1386,12 @@ def _interpret_varga_concrete(
             reading_parts.append(
                 "Chaturthamsha (D4) <b>manasik shanti (*Griha Sukha*), fixed property, bhumi labh aur videsh ya sthan parivartan</b> ko darshata hai. "
                 "Aapki kundli mein aage chal kar sthayi nivas aur residential property banane ke anukool yog hain."
+            )
+        elif is_tenglish:
+            headline = f"Illu, Aasthi, Vahanam Mariyu Sthiratha (Chaturthamsha · D4)"
+            reading_parts.append(
+                "Chaturthamsha (D4) <b>manasika prasanthatha (*Griha Sukha*), fixed property, sthala labham mariyu sthana maarpu</b> chupisthondi. "
+                "Mee kundali lo sthiramaina illu mariyu residential property pondadaniki anukoolamaina yogalu unnai."
             )
         else:
             headline = f"Home, Land, Vehicles & Relocation (Chaturthamsha · D4)"
@@ -1330,6 +1459,12 @@ def _interpret_varga_concrete(
                 f"Yeh varga santan sukh, parivarik vistar aur vansh vriddhi ka sanket deta hai. "
                 f"Kundli mein santan se santushti, sneh aur parivarik anand ke shubh sanket hain."
             )
+        elif is_tenglish:
+            headline = f"Pillalu, Kutumbam Mariyu Vamsham (Saptamsha · D7)"
+            reading_parts.append(
+                f"Ee vargamu santhana soukhyam, kutumba vikasam mariyu vamsha vriddhi sankethalu isthondi. "
+                f"Kundali lo santhanam tho santhosham mariyu kutumba aanandam anukoolanga unnai."
+            )
         else:
             headline = f"Children, Family Lineage & Progeny (Saptamsha)"
             d7_moon = div_dict.get("D7", {}).get("Moon", "")
@@ -1367,6 +1502,12 @@ def _interpret_varga_concrete(
                 f"Navamsha kundli jeevansathi, vaivahik sukh aur bhagyodaya ko darshati hai. "
                 f"Aapki kundli ek samajhdar, supportive jeevansathi aur vivah ke baad aarthik v manasik sthirta ka sanket deti hai."
             )
+        elif is_tenglish:
+            headline = f"Vivaham, Jeevithabhagswami Mariyu Bhagyodayam (Navamsha · D9)"
+            reading_parts.append(
+                f"Navamsha kundali jeevithabhagswami, vaivahika soukhyam mariyu bhagyodayam chupisthondi. "
+                f"Mee kundali vivekamaina jeevithabhagswami mariyu vivaham tharuvatha aarthika, manasika sthiratha sankethalu isthondi."
+            )
         else:
             headline = f"Marriage, Life Partner & Soul Purpose (Navamsha)"
             partner_nature, partner_realm, dynamics = _determine_marriage_profile(
@@ -1392,6 +1533,12 @@ def _interpret_varga_concrete(
             reading_parts.append(
                 f"Yeh varga aapke career, professional status aur leadership abilities ko darshata hai.<br><br>"
                 f"<b>Anukool Karyakshetra:</b> Grah sthiti ke anusar aapko specialized mastery, structured execution aur executive responsibility mein safalta milti hai."
+            )
+        elif is_tenglish:
+            headline = f"Karyakshetram, Vijayam Mariyu Gouravam (Dashamsha · D10)"
+            reading_parts.append(
+                f"Ee vargamu mee career, professional status mariyu leadership abilities chupisthondi.<br><br>"
+                f"<b>Anukoolamaina Rangamu:</b> Graha sthiti prakaram meeku specialized mastery, structured execution mariyu executive responsibility lo manchi vijayam vasthundi."
             )
         else:
             headline = f"Career, Leadership & Professional Status (Dasamsha)"
@@ -1422,6 +1569,12 @@ def _interpret_varga_concrete(
                 f"Yeh kundli parivarik sanskar, mata-pita ka sahyog aur ancestral blessings ko darshati hai. "
                 f"Buzurgo ka samman aur parivarik mulya aapko jeevan mein sakaratmak urja aur shanti dete hain."
             )
+        elif is_tenglish:
+            headline = f"Thallidandrulu Mariyu Poorveekula Ashirwadam (Dwadashamsha · D12)"
+            reading_parts.append(
+                f"Ee kundali kutumba sanskaralu, thallidandrula sahakaram mariyu ancestral blessings chupisthondi. "
+                f"Peddala gouravam mariyu parivara moolalu meeku jeevitham lo shantini, positivity ni isthayi."
+            )
         else:
             headline = f"Family Roots & Parental Blessings (Dwadashamsha)"
             reading_parts.append(
@@ -1441,6 +1594,12 @@ def _interpret_varga_concrete(
             reading_parts.append(
                 f"D24 chart aapki conceptual grasping power, analytical thinking aur complex vishayon ko sikhne ki shamta darshata hai. "
                 f"Niyamit abhyas se aap technical, management ya professional certifications mein utkrisht safalta pa sakte hain."
+            )
+        elif is_tenglish:
+            headline = f"Chaduvu, Gyanam Mariyu Intellectual Growth (Chaturvimshamsha · D24)"
+            reading_parts.append(
+                f"D24 chart mee conceptual grasping power, analytical thinking mariyu kottha vishayalanu nerchukune shaktini chupisthondi. "
+                f"Regular practice tho technical, management leda professional certifications lo goppa safalatha pondavachu."
             )
         else:
             headline = f"Education, Memory & Intellectual Mastery (Chaturvimshamsha)"
@@ -1824,7 +1983,9 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
     Paid tier:
       - All 9 divisional cards rendered in full depth with strengths, domain-specific timelines, unblurred remedies, and collapsible proof.
     """
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     insights = build_divisional_insights(pc, lang=lang)
     summary_108 = get_108_snapshot_summary_paragraph(pc)
     if is_hinglish:
@@ -1833,6 +1994,12 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
             "jeevan ke mukhya kshetro mein naye avsar aur sthirta prapt hoti hai. Supportive dasha aur transits "
             "ke dauran sahi disha mein uthaye gaye kadam lambe samay tak safalta aur santushti dete hain."
         )
+    elif is_tenglish:
+        summary_108 = (
+            "Mee janma kundali lo moola classical balam undi: mee vyakthigatha prayathnam mariyu anushasanam tho "
+            "jeevitha mukhya rangalalo kottha avakashalu mariyu sthiratha labhisthayi. Supportive dasha mariyu transits "
+            "samayam lo theesukunna decisions deergha kaalam lo manchi vijayam mariyu santhrupthi isthayi."
+        )
 
     div_cards_html = []
     teaser_items = []
@@ -1840,18 +2007,25 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
     def _free_timeline(text: str) -> str:
         from free_dates import strip_future_sentences
         kept = strip_future_sentences(text, today)
-        locked_msg = "🔒 Is kshetra ka dated window poori reading mein shamil hai." if is_hinglish else "🔒 The dated window for this area is in the full reading."
+        if is_hinglish:
+            locked_msg = "🔒 Is kshetra ka dated window poori reading mein shamil hai."
+        elif is_tenglish:
+            locked_msg = "🔒 Ee kshetram yokka dated window sampoorna reading lo undi."
+        else:
+            locked_msg = "🔒 The dated window for this area is in the full reading."
         locked = (
             f'<span style="display:block;margin-top:6px;font-size:0.78rem;'
             f'font-weight:700;color:#8a6a1f;">{locked_msg}</span>')
         return (kept + locked) if kept else locked.strip()
 
-    v_meta_dict = VARGA_META_HINGLISH if is_hinglish else VARGA_META
+    v_meta_dict = VARGA_META_TENGLISH if is_tenglish else (VARGA_META_HINGLISH if is_hinglish else VARGA_META)
 
     for ins in insights:
         pill_cls = "up" if ins.strength == "strong" else "down" if ins.strength == "weak" else "mixed"
         if is_hinglish:
             pill_lbl = "Anukool / Mazboot" if ins.strength == "strong" else "Savdhani Aavashyak" if ins.strength == "weak" else "Sakriya"
+        elif is_tenglish:
+            pill_lbl = "Anukoolam / Balanga" if ins.strength == "strong" else "Jagratha Avasaram" if ins.strength == "weak" else "Sakriyam"
         else:
             pill_lbl = "Well Supported" if ins.strength == "strong" else "Needs Care" if ins.strength == "weak" else "Constructive / Active"
         border_color = "#1c6b45" if ins.strength == "strong" else "#a3341f" if ins.strength == "weak" else "#8a6a1f"
@@ -1872,7 +2046,12 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
                 )
 
             # Remedy display: Clear if paid, blurred with lock overlay if free
-            upaya_lbl = "Vedic Upay:" if is_hinglish else "Targeted Vedic Upaya:"
+            if is_hinglish:
+                upaya_lbl = "Vedic Upay:"
+            elif is_tenglish:
+                upaya_lbl = "Vedic Upayam:"
+            else:
+                upaya_lbl = "Targeted Vedic Upaya:"
             if paid:
                 remedy_box = (
                     f'  <div style="background:#f9f8f5;border-left:3px solid #1c6b45;padding:8px 12px;border-radius:6px;margin:8px 0 10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">\n'
@@ -1880,13 +2059,18 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
                     f'  </div>\n'
                 )
             else:
-                teaser_remedy = (
-                    f'Mantra, daan aur dainik abhyas jo {html.escape(ins.lord or "grahadhipati")} se mel khate hain.'
-                    if is_hinglish else
-                    f'Mantra, charity and daily practice matched to '
-                    f'{html.escape(ins.lord or "your chart ruler")} for this area of life.'
-                )
-                lock_text = "🔒 Complete Reading Mein Upay Shamil" if is_hinglish else "🔒 Remedial Action in Full Reading"
+                if is_hinglish:
+                    teaser_remedy = f'Mantra, daan aur dainik abhyas jo {html.escape(ins.lord or "grahadhipati")} se mel khate hain.'
+                    lock_text = "🔒 Complete Reading Mein Upay Shamil"
+                elif is_tenglish:
+                    teaser_remedy = f'Mantra japam, daanam mariyu daily pariharam jo {html.escape(ins.lord or "grahadhipati")} ki anukoolanga untundi.'
+                    lock_text = "🔒 Sampoorna Reading Lo Upayamulu Unnai"
+                else:
+                    teaser_remedy = (
+                        f'Mantra, charity and daily practice matched to '
+                        f'{html.escape(ins.lord or "your chart ruler")} for this area of life.'
+                    )
+                    lock_text = "🔒 Remedial Action in Full Reading"
                 remedy_box = (
                     f'  <div class="lock-wrap" style="margin:8px 0 10px;border-radius:8px;">\n'
                     f'    <div class="lock-blur" style="padding:8px 12px;font-size:0.84rem;line-height:1.45;">\n'
@@ -1899,7 +2083,12 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
                 )
 
             # Collapsible Proof Drawer
-            proof_title = f"Jyotishiya Praman ({html.escape(ins.name)})" if is_hinglish else f"Technical Astrological Proof ({html.escape(ins.name)})"
+            if is_hinglish:
+                proof_title = f"Jyotishiya Praman ({html.escape(ins.name)})"
+            elif is_tenglish:
+                proof_title = f"Jyotisha Pramanam ({html.escape(ins.name)})"
+            else:
+                proof_title = f"Technical Astrological Proof ({html.escape(ins.name)})"
             proof_drawer = (
                 f'  <details style="margin-top:10px;border-top:1px solid #eeeae3;padding-top:8px;font-size:0.78rem;color:#7a756c;line-height:1.45;">\n'
                 f'    <summary style="cursor:pointer;font-weight:600;color:#1f2430;">{proof_title}</summary>\n'
@@ -1937,6 +2126,11 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
                                 else "savdhani aavashyak" if ins.strength == "weak"
                                 else "sakriya aur mixed")
                 teaser_chart_msg = f'Aapki kundli mein yahan <b style="color:{verdict_fg};">{verdict_said}</b> hai{" — dated window already calculated hai" if ins.timeline else ""}.'
+            elif is_tenglish:
+                verdict_said = ("anukoolamaina sthiti" if ins.strength == "strong"
+                                else "jagratha avasaram" if ins.strength == "weak"
+                                else "sakriyam mariyu mixed")
+                teaser_chart_msg = f'Mee kundali lo ikkada <b style="color:{verdict_fg};">{verdict_said}</b> undi{" — dated window already calculated ayyindi" if ins.timeline else ""}.'
             else:
                 verdict_said = ("well supported" if ins.strength == "strong"
                                 else "needing care" if ins.strength == "weak"
@@ -1958,14 +2152,21 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
 
     teaser_html = ""
     if not paid and teaser_items:
-        t_area = "Baki 5 Jeevan Kshetra" if is_hinglish else "The other five areas"
-        t_avail = "Full Reading Mein Uplabdh" if is_hinglish else "Available in Full Reading"
-        t_desc = (
-            "Aapke baki divisional charts career karma (D10), vivah aur jeevansathi (D9), santan (D7), uccha shiksha (D24), aur swasthya/immunity (D30) ko map karte hain:"
-            if is_hinglish else
-            "Your remaining divisional charts map deep career karma (D10), marriage and soul purpose (D9), progeny dynamics (D7), intellectual mastery (D24), and overcoming life obstacles (D30):"
-        )
-        t_cta = "Complete Divisional Breakdown Unlock Karein" if is_hinglish else "Unlock Complete Divisional Breakdown"
+        if is_hinglish:
+            t_area = "Baki 5 Jeevan Kshetra"
+            t_avail = "Full Reading Mein Uplabdh"
+            t_desc = "Aapke baki divisional charts career karma (D10), vivah aur jeevansathi (D9), santan (D7), uccha shiksha (D24), aur swasthya/immunity (D30) ko map karte hain:"
+            t_cta = "Complete Divisional Breakdown Unlock Karein"
+        elif is_tenglish:
+            t_area = "Migilina 5 Jeevitha Rangalu"
+            t_avail = "Full Reading Lo Labhisthundi"
+            t_desc = "Mee migilina divisional charts career karma (D10), vivaham mariyu jeevithabhagswami (D9), santhanam (D7), uccha vidya (D24), mariyu aarogyam/immunity (D30) ni map chesthayi:"
+            t_cta = "Complete Divisional Breakdown Unlock Cheyandi"
+        else:
+            t_area = "The other five areas"
+            t_avail = "Available in Full Reading"
+            t_desc = "Your remaining divisional charts map deep career karma (D10), marriage and soul purpose (D9), progeny dynamics (D7), intellectual mastery (D24), and overcoming life obstacles (D30):"
+            t_cta = "Unlock Complete Divisional Breakdown"
         teaser_html = (
             f'<article class="card div-teaser-card" id="domain-locked" style="background:#fcfbf9;border:1px dashed #d5cfc4;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
             f'  <div class="card-top">\n'
@@ -1985,9 +2186,18 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
         )
 
     # 108 Rule Snapshot Card
-    base_kicker = "Mool adhar" if is_hinglish else "Foundational baseline"
-    base_chip = "Janm Kundli Mool Vaada" if is_hinglish else "Static Promise"
-    base_heading = "Mool Jyotishiya Adhar" if is_hinglish else "Foundational Astrological Baseline"
+    if is_hinglish:
+        base_kicker = "Mool adhar"
+        base_chip = "Janm Kundli Mool Vaada"
+        base_heading = "Mool Jyotishiya Adhar"
+    elif is_tenglish:
+        base_kicker = "Moola aadharam"
+        base_chip = "Janma Kundali Moola Prathigna"
+        base_heading = "Moola Jyotisha Aadharam"
+    else:
+        base_kicker = "Foundational baseline"
+        base_chip = "Static Promise"
+        base_heading = "Foundational Astrological Baseline"
 
     snapshot_108_html = (
         f'<article class="card snapshot-108-card" id="domain-baseline" style="margin-bottom:16px;background:#fbfbf9;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'

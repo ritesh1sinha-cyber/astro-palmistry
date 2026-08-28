@@ -1170,7 +1170,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
        <div class="field"><label for="fDom">Dominant hand <span style="color:#a3341f" aria-hidden="true">*</span></label>
         <select class="inp" id="fDom" aria-required="true"><option value="right">Right handed</option><option value="left">Left handed</option></select></div>
        <div class="field"><label for="fLang">Report language</label>
-        <select class="inp" id="fLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option></select></div>
+        <select class="inp" id="fLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option><option value="te_en">Telugu (Tenglish)</option></select></div>
       </div>
      </div>
     </div>
@@ -1217,6 +1217,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
        <select class="inp" id="pLang" onchange="syncPalmReportLang(this.value)">
         <option value="en">English (Default)</option>
         <option value="hi_en">Hindi (Hinglish)</option>
+        <option value="te_en">Telugu (Tenglish)</option>
        </select>
       </div>
       <button class="btn btn-gold btn-block" id="submitBtn" onclick="submitReading()" disabled>Reveal my reading</button>
@@ -1317,7 +1318,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
       <p class="placenote" id="aPlaceNote">We fill coordinates from the city you pick.</p></div>
      <div class="grid g2" style="gap:10px">
        <div class="field"><label for="aGender">Gender</label><select class="inp" id="aGender"><option value="0">Male</option><option value="1">Female</option></select></div>
-       <div class="field"><label for="aLang">Report language</label><select class="inp" id="aLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option></select></div>
+       <div class="field"><label for="aLang">Report language</label><select class="inp" id="aLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option><option value="te_en">Telugu (Tenglish)</option></select></div>
       </div>
      <p class="hint"><button type="button" class="btn-line" id="toggleCoords" onclick="toggleAstroCoords()">Enter coordinates manually</button></p>
      <div class="coords-adv" id="astroCoords">
@@ -1429,7 +1430,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
      <p class="hint" style="margin-top:8px">Pick the area first — we read it together with your wording so the answer stays on the right houses.</p>
     </div>
     <div class="field" style="margin-top:14px"><label for="hLang">Report language</label>
-     <select class="inp" id="hLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option></select>
+     <select class="inp" id="hLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option><option value="te_en">Telugu (Tenglish)</option></select>
     </div>
     <div class="field" style="margin-top:14px"><label for="hQ">Your question</label>
      <input class="inp" id="hQ" placeholder="Will I get the promotion this year?"><div class="err">Required</div></div>

@@ -561,7 +561,9 @@ def _western_favour_against(j: dict) -> tuple[list[str], list[str]]:
 def _planetary_dynamics_block(r: dict, j: dict, vc: dict | None = None, *, lang: str = "en") -> str:
     """Planetary dynamics and supporting vs friction factors (Western horary)."""
     del vc  # Vedic timing/planet lists parked.
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     from western_horary_report import plain_western_parts
     asc_lord, q_lord = j.get("asc_lord", ""), j.get("q_lord", "")
     p_parts = plain_western_parts(j, asc_lord, q_lord) if asc_lord else {}
@@ -575,6 +577,11 @@ def _planetary_dynamics_block(r: dict, j: dict, vc: dict | None = None, *, lang:
         sec_title = "Grah Sthiti Aur Sambandh"
         fav_lbl = "Aapke sahayak grah:"
         against_lbl = "Chunauti paida karne wale grah:"
+    elif is_tenglish:
+        agree_line = "Prashna kundali lagnaadhipathi mariyu kaaryeshudu balam, graha sthiti mariyu drushti sambandhalanu vishleshana chesthundi."
+        sec_title = "Graha Sthiti Mariyu Sambandhalu"
+        fav_lbl = "Meeku sahayapade grahalu:"
+        against_lbl = "Chunautilu kalipinche grahalu:"
     else:
         agree_line = (
             "The moment chart weighs the querent and quesited significators, "
@@ -618,19 +625,38 @@ def _timing_block(j: dict, vc: dict | None = None, *, paid: bool = True, lang: s
     del vc  # Vedic dasha timing lines parked.
     if not paid:
         return ""
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     timing = j.get("timing") or []
     items = []
     if timing:
-        for d, label, _plain in timing[:3]:
-            items.append(f"<li><b>{d.strftime('%d %b %Y').lstrip('0')}</b> — {_e(label)}</li>")
+        for item in timing[:3]:
+            if isinstance(item, (list, tuple)):
+                d = item[0]
+                label = item[1] if len(item) > 1 else ""
+            elif isinstance(item, dict):
+                d = item.get("date") or item.get("window")
+                label = item.get("label") or item.get("significance") or ""
+            else:
+                continue
+            d_str = d.strftime('%d %b %Y').lstrip('0') if hasattr(d, "strftime") else str(d or "")
+            items.append(f"<li><b>{d_str}</b> — {_e(label)}</li>")
 
-    sec_title = "Mahatvapurna Dates Aur Timing Windows" if is_hinglish else "Key timing & dated windows"
+    if is_hinglish:
+        sec_title = "Mahatvapurna Dates Aur Timing Windows"
+    elif is_tenglish:
+        sec_title = "Mukhya Dates Mariyu Timing Windows"
+    else:
+        sec_title = "Key timing & dated windows"
+
     if not items:
-        note = j.get("requested_horizon_note") or (
-            "Koi ek nishchit date nahi hai; ise ek niyamit aur kramik prakriya ke roop mein samjhein." if is_hinglish else
-            "No single dated window stands out; read this as a gradual process rather than one calendar day."
-        )
+        if is_hinglish:
+            note = j.get("requested_horizon_note") or "Koi ek nishchit date nahi hai; ise ek niyamit aur kramik prakriya ke roop mein samjhein."
+        elif is_tenglish:
+            note = j.get("requested_horizon_note") or "Oka nishchitha date ledu; idi kramamga jarige prakriya ga grahinchandi."
+        else:
+            note = j.get("requested_horizon_note") or "No single dated window stands out; read this as a gradual process rather than one calendar day."
         return f"""
 <section class="section timing-windows">
   <h2>{sec_title}</h2>
@@ -652,7 +678,9 @@ def _timing_block(j: dict, vc: dict | None = None, *, paid: bool = True, lang: s
 
 def _locked_block(*, price: int, n_windows: int, has_remedy: bool, lang: str = "en") -> str:
     """Free view: high-converting blurred preview cards and an unlock CTA."""
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     if is_hinglish:
         return f"""
 <div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
@@ -683,6 +711,38 @@ def _locked_block(*, price: int, n_windows: int, has_remedy: bool, lang: str = "
   <h3>Poora Prashna Uttar Unlock Karein</h3>
   <p>Prashna kundli ban chuki hai. Poora faisla, dates aur grah upayas unlock karein.</p>
   <a class="cta" href="#unlock" data-unlock="1">Poori Reading Unlock Karein · ₹{price}</a>
+</div>"""
+
+    if is_tenglish:
+        return f"""
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
+  <div class="qa-wlabel">Prashna Kundali Theerpu (The Verdict)</div>
+  <p class="blurred">Prashna Kundali spashtamaina theerpu isthundi: pani eppudu mariyu ela poorthi avuthundo, aane challenges mariyu anukoolamaina samayalu.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Theerpu locked ga undi.</b> Direct samadhanam mariyu graha lekkalalo theerpu chudataniki unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
+  <div class="qa-wlabel">Graha Sthiti Mariyu Sahaya Urja</div>
+  <p class="blurred">Mee pakshana unna grahalu mariyu aalasyaniki karanamaina grahala poorthi vishleshana.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Graha vishleshana locked ga undi.</b> Graha sthiti chudataniki unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
+  <div class="qa-wlabel">Mukhya Dates Mariyu Timing Windows</div>
+  <p class="blurred">Pani safalam avvadaniki exact dates mariyu mukhya turning points.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Dates mariyu timing locked ga unnai.</b> Exact milestone dates kosam unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
+  <div class="qa-wlabel">Graha Upayamulu Mariyu Pariharalu</div>
+  <p class="blurred">Badhaka graha shanti upayamulu, beej mantra japam mariyu daily remedies.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Graha upayamulu locked ga unnai.</b> Pariharalu mariyu mantra rituals unlock cheyandi.</p>
+</div>
+
+<div class="buy" style="margin-top:20px;">
+  <h3>Sampoorna Prashna Samadhanam Unlock Cheyandi</h3>
+  <p>Prashna kundali siddham ga undi. Poorthi theerpu, dates mariyu graha pariharalu unlock cheyandi.</p>
+  <a class="cta" href="#unlock" data-unlock="1">Sampoorna Reading Unlock Cheyandi · ₹{price}</a>
 </div>"""
 
     timing_teaser = (
@@ -735,7 +795,9 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
     ``prose`` is an optional LLM overlay: lead, verdict_line, why, action.
     """
     prose = prose or {}
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     # Enforce the requested horizon even when this renderer is called directly
     # (outside report_render). This keeps a "this year" question from showing
     # only a next-year trigger.
@@ -771,6 +833,12 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
             do_first_lbl = "Pehle Yeh Karein:"
             trad_lbl = "Paramparik Sahayata:"
             rem_fine = "Upay kundli ke faisle ko badalte nahi hain, balki sthiti ko behtar dhang se sambhalne ki kshamta aur anukool samay aane par labh lene ki tayyari dete hain."
+        elif is_tenglish:
+            heading = "Sthitini Meharu Parache Graha Upayamulu" if r["favourable"] is False else "Anukoolatha Penchukune Upayamulu"
+            planet_note = f"Kundali loni mukhya pressure <strong>{_e(_named(planet))}</strong> meeda undi, anduku ee pariharam cheppabadindi." if planet else ""
+            do_first_lbl = "Modata Idi Cheyandi:"
+            trad_lbl = "Sampradaya Sahayam:"
+            rem_fine = "Upayamulu kundali theerpuni marchavu, kani sthitini dhairyamga sambhalinchi anukoolamaina samayam lo manchi labham pondataniki tayyaru chesthayi."
         else:
             heading = ("What actually moves this" if r["favourable"] is False
                        else "What tips a close chart your way")
@@ -799,6 +867,13 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
   <p>Prashna kundli vartaman kshan ka snapshot hai — yeh is prashna par spasht uttar deti hai. Aapki Janma Kundli doosra mukhya hissa hai: kab kaun sa daur shuru hoga, {_e(subject)} mein kab decisive turning point aayega aur baki jeevan kshetron mein grah kya prabhav de rahe hain.</p>
   <p>Poori reading aapki kundli par 15 alag-alag vidhiyon se vishleshan karti hai aur timeline dates deti hai — ₹{full_report_price}.</p>
 </section>"""
+        elif is_tenglish:
+            tail_html = f"""
+<section class="section upsell">
+  <h2>Idi kevalam oka prashnaku samadhanam. Mee sampoorna kundali aage margadarshanam isthundi.</h2>
+  <p>Prashna kundali prasthutha kshanam snapshot — idi ee prashnaku direct theerpu isthundi. Mee Janma Kundali maro mukhya bhaagam: eppudu ae dasha start avuthundi, {_e(subject)} lo eppudu turning point vasthundo mariyu migilina jeevitha rangalalo grahalu ela unnaayo thelusthundi.</p>
+  <p>Sampoorna reading mee kundali meeda 15 vidhaala paddhatulatho vishleshana chesi timeline dates isthundi — ₹{full_report_price}.</p>
+</section>"""
         else:
             tail_html = f"""
 <section class="section upsell">
@@ -820,7 +895,12 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
     llm_why = (prose.get("why") or "").strip()
     llm_action = (prose.get("action") or "").strip()
 
-    sure_lbl = "Pramanikta / Vishwas Level:" if is_hinglish else "How sure is this?"
+    if is_hinglish:
+        sure_lbl = "Pramanikta / Vishwas Level:"
+    elif is_tenglish:
+        sure_lbl = "Nambakam / Vishwas Level:"
+    else:
+        sure_lbl = "How sure is this?"
     is_ood = r.get("label") == "Non-Astrological Inquiry"
     if paid:
         if llm_lead:
@@ -831,6 +911,11 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                     f"<p class=\"lede\">Aapka yeh prashna ek technical ya non-astrological vishay par hai jo Prashna Kundli ke daayre se alag hai. "
                     f"Prashna (Horary) Jyotish aapke jeevan ke mukhya vishayon (jaise career, vivah, sampatti, court case, swasthya sudhar, yaatra, aur samay) par sateek margdarshan deta hai. "
                     f"Technical tasks ke liye specialized resources ka upyog karein. Yadi aapke jeevan se juda koi prashna ho, toh kripya bejhijhak poochhein.</p>")
+            elif is_tenglish:
+                opening = (
+                    f"<p class=\"lede\">Mee ee prashna technical leda non-astrological vishayam meeda undi, idi Prashna Kundali paridhiki bayata undi. "
+                    f"Prashna Jyotishyam mee vyakthigatha jeevitha vishayalu (career, vivaham, aasthi, court case, aarogyam, prayanam, mariyu timing) meeda sateeka theerpu isthundi. "
+                    f"Technical vishayala kosam sambandhitha resources chudandi. Mee jeevitham gurinchi edaina prashna unte kripya adagandi.</p>")
             else:
                 opening = (
                     f"<p class=\"lede\">Your question pertains to a technical, factual, or non-astrological topic outside the scope of classical horary chart analysis. "
@@ -840,6 +925,10 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
             opening = (
                 f"<p class=\"lede\">{greeting}aapne {subject} ke baare mein prashna poocha hai. "
                 f"Yahan seedha uttar aur uske pichhe ki grah sthiti ka vishleshan diya gaya hai.</p>")
+        elif is_tenglish:
+            opening = (
+                f"<p class=\"lede\">{greeting}meeru {subject} gurinchi prashna adigaru. "
+                f"Ikkada direct samadhanam mariyu graha sthitula vishleshana ivvabadindi.</p>")
         else:
             opening = (
                 f"<p class=\"lede\">{greeting}you asked about {subject}. "
@@ -849,6 +938,7 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                 f'<p class="pred-why"><b>Why:</b> {_e(llm_why)}</p>'
                 if llm_why else
                 f"<p class=\"pred-why\"><b>Why:</b> Prashna kundli {_e(r.get('label','a mixed situation'))} darshati hai.</p>" if is_hinglish else
+                f"<p class=\"pred-why\"><b>Why:</b> Prashna kundali {_e(r.get('label','a mixed situation'))} chupisthondi.</p>" if is_tenglish else
                 f"<p class=\"pred-why\"><b>Why:</b> The moment chart reflects {_e(r.get('label','a mixed situation'))} with {_e(r.get('confidence','moderate'))} confidence.</p>"
             )
             action_line = (
@@ -861,7 +951,11 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                 f"{action_line}"
             )
         else:
-            why_txt = "Prashna kundli human life aur decision-making par focus karti hai." if (is_ood and is_hinglish) else ("Horary chart analysis is designed for personal human life questions." if is_ood else f"The moment chart reflects {_e(r.get('label','a mixed situation'))} with {_e(r.get('confidence','moderate'))} confidence.")
+            why_txt = (
+                "Prashna kundli human life aur decision-making par focus karti hai." if (is_ood and is_hinglish)
+                else "Prashna kundali human life mariyu decision-making meeda focus chesthundi." if (is_ood and is_tenglish)
+                else ("Horary chart analysis is designed for personal human life questions." if is_ood else f"The moment chart reflects {_e(r.get('label','a mixed situation'))} with {_e(r.get('confidence','moderate'))} confidence.")
+            )
             verdict_block = (
                 f"<h1 class=\"verdict-line\">{headline}</h1>"
                 f"<p class=\"pred-why\"><b>Why:</b> {why_txt}</p>"
@@ -877,6 +971,10 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                 opening = (
                     f"<p class=\"lede\">Aapka yeh prashna ek technical ya non-astrological vishay par hai jo Prashna Kundli ke daayre se alag hai. "
                     f"Prashna (Horary) Jyotish aapke jeevan ke mukhya vishayon (jaise career, vivah, sampatti, court case, swasthya sudhar, yaatra, aur samay) par sateek margdarshan deta hai.</p>")
+            elif is_tenglish:
+                opening = (
+                    f"<p class=\"lede\">Mee ee prashna technical leda non-astrological topic meeda undi, idi Prashna Kundali paridhiki bayata undi. "
+                    f"Prashna Jyotishyam mee jeevitha vishayala meeda spashtamaina margadarshanam isthundi.</p>")
             else:
                 opening = (
                     f"<p class=\"lede\">Your question pertains to a technical, factual, or non-astrological topic outside the scope of classical horary chart analysis. "
@@ -885,6 +983,10 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
             opening = (
                 f"<p class=\"lede\">{greeting}aapne {subject} ke baare mein prashna poocha hai. "
                 f"Prashna kundli ka prarambhik vishleshan neeche diya gaya hai.</p>")
+        elif is_tenglish:
+            opening = (
+                f"<p class=\"lede\">{greeting}meeru {subject} gurinchi prashna adigaru. "
+                f"Prashna kundali prarambha vishleshana kindha ivvabadindi.</p>")
         else:
             opening = (
                 f"<p class=\"lede\">{greeting}you asked about {subject}. "
@@ -892,7 +994,12 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
         verdict_block = ""
         lead_attrs = ""
 
-    asked_lbl = "Aapka Prashna:" if is_hinglish else "You asked:"
+    if is_hinglish:
+        asked_lbl = "Aapka Prashna:"
+    elif is_tenglish:
+        asked_lbl = "Mee Prashna:"
+    else:
+        asked_lbl = "You asked:"
     html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <title>Your question — answered</title></head><body>
 <article class="horary-answer">

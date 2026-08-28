@@ -605,7 +605,9 @@ def _remedies(dom: dict, conf: dict, *, paid: bool = False, lang: str = "en") ->
     except Exception:  # noqa: BLE001
         return ""
 
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     feats = dom.get("features") if (isinstance(dom, dict) and "features" in dom) else dom
     feats = feats if isinstance(feats, dict) else {}
     quality = feats.get("quality") or {}
@@ -652,18 +654,43 @@ Planetary mantras, sacred mudras, gemstones, and Vedic daan rituals are in the f
     donts = [r for r in items if r.bucket == "dont"]
 
     def _render_list(rem_list: list[Any]) -> str:
-        ctx_label = "Vistrut Sandarbh" if is_hinglish else "Context"
+        ctx_label = "Sandarbham" if is_tenglish else ("Vistrut Sandarbh" if is_hinglish else "Context")
         return "".join(
             f'<li class="stone up"><div class="stone-detail">{r.action}</div>'
             f'<p class="fine" style="margin:4px 0 0 0;color:#5a554c;"><b>{ctx_label}:</b> {_e(r.reason)}</p></li>'
             for r in rem_list
         )
 
-    mudra_lbl = "Hast Mudrayen (Pranic Urja Santulan)" if is_hinglish else "Sacred Hast Mudras (Pranic Nerve Channel Activation)"
-    mantra_lbl = "Grah Beej Mantra & Jaap" if is_hinglish else "Planetary Beej Mantras & Chanting"
-    gem_lbl = "Rashi Ratna Aur Dhaatu Nirdharan" if is_hinglish else "Gemstones, Setting Metals & Finger Alignment"
-    daan_lbl = "Vedic Daan Aur Seva" if is_hinglish else "Vedic Daan & Seva Rituals"
-    habits_lbl = "Jyotishiya Dainik Aadatein" if is_hinglish else "Astrological Lifestyle Habits"
+    if is_hinglish:
+        mudra_lbl = "Hast Mudrayen (Pranic Urja Santulan)"
+        mantra_lbl = "Grah Beej Mantra & Jaap"
+        gem_lbl = "Rashi Ratna Aur Dhaatu Nirdharan"
+        daan_lbl = "Vedic Daan Aur Seva"
+        habits_lbl = "Jyotishiya Dainik Aadatein"
+        rem_title = "Prabhavi Hast Samudrika & Jyotishiya Upay"
+        rem_sub = "Yeh Hast Samudrika aur Vedic upayas aapke hatho ke parvat aur rekhayein ke anusar taiyar kiye gaye hain."
+        rem_fine = "Samudrika Shastra parampara. Mudraon ka abhyas shant vatavaran mein 10-15 minute karein. Mantra jaap pratah ya sandhya kal purva/uttar disha ki taraf mukh karke karein."
+        nav_lbl = "Vedic Upay"
+    elif is_tenglish:
+        mudra_lbl = "Hastha Mudralu (Praana Shakthi Samathoulyam)"
+        mantra_lbl = "Graha Beeja Mantramulu & Japam"
+        gem_lbl = "Rasi Ratnamulu Mariyu Loaham Nirdharana"
+        daan_lbl = "Vedic Daanam Mariyu Seva"
+        habits_lbl = "Jyotisha Dainandina Alavatlu"
+        rem_title = "Prabhavavanthamaina Hastha Samudrika & Jyotisha Upayamulu"
+        rem_sub = "Ee Hastha Samudrika mariyu Vedic upayamulu mee chethi parvathalu mariyu rekhalaku anugunam ga nirdharinchabadinavi."
+        rem_fine = "Samudrika Shastra sampradayam. Mudralanu prashantha vatavaranamlo roju 10-15 nimishalu abhyasinchandi. Mantra japam udayam leda saayamkala sandhya velalo thoorpu/utharam vaipu choosthu cheyandi."
+        nav_lbl = "Vedic Upayamulu"
+    else:
+        mudra_lbl = "Sacred Hast Mudras (Pranic Nerve Channel Activation)"
+        mantra_lbl = "Planetary Beej Mantras & Chanting"
+        gem_lbl = "Gemstones, Setting Metals & Finger Alignment"
+        daan_lbl = "Vedic Daan & Seva Rituals"
+        habits_lbl = "Astrological Lifestyle Habits"
+        rem_title = "Authentic Astrological & Palmistry Upayas"
+        rem_sub = "These classical Hast Samudrika and Vedic Jyotish upayas are aligned directly with the planetary mount elevations, finger proportions, and line trajectories measured in your hands."
+        rem_fine = "Classical Hast Samudrika tradition. Practice sacred mudras in a relaxed posture for 10–15 minutes daily. Mantras are ideally chanted during morning or evening twilight (Sandhya) facing East or North."
+        nav_lbl = "Remedies"
 
     mudra_html = f'''<div class="stones-group up"><div class="stones-group-label">&#129330; {mudra_lbl}</div><ul class="stones">{_render_list(mudras)}</ul></div>''' if mudras else ''
     mantra_html = f'''<div class="stones-group up"><div class="stones-group-label">&#128330; {mantra_lbl}</div><ul class="stones">{_render_list(mantras)}</ul></div>''' if mantras else ''
@@ -672,11 +699,6 @@ Planetary mantras, sacred mudras, gemstones, and Vedic daan rituals are in the f
     habits_html = ""
     if dos or donts:
         habits_html = f'''<div class="stones-group up"><div class="stones-group-label">&#9757; {habits_lbl}</div><ul class="stones">{_render_list(dos + donts)}</ul></div>'''
-
-    rem_title = "Prabhavi Hast Samudrika & Jyotishiya Upay" if is_hinglish else "Authentic Astrological & Palmistry Upayas"
-    rem_sub = "Yeh Hast Samudrika aur Vedic upayas aapke hatho ke parvat aur rekhayein ke anusar taiyar kiye gaye hain." if is_hinglish else "These classical Hast Samudrika and Vedic Jyotish upayas are aligned directly with the planetary mount elevations, finger proportions, and line trajectories measured in your hands."
-    rem_fine = "Samudrika Shastra parampara. Mudraon ka abhyas shant vatavaran mein 10-15 minute karein. Mantra jaap pratah ya sandhya kal purva/uttar disha ki taraf mukh karke karein." if is_hinglish else "Classical Hast Samudrika tradition. Practice sacred mudras in a relaxed posture for 10–15 minutes daily. Mantras are ideally chanted during morning or evening twilight (Sandhya) facing East or North."
-    nav_lbl = "Vedic Upay" if is_hinglish else "Remedies"
 
     return f"""
 <section class="remedy-card">

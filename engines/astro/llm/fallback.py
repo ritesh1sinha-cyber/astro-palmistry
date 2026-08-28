@@ -855,13 +855,21 @@ def _life_state_prose(life_state: Any) -> tuple[list[str], str]:
 
 def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
     name = getattr(facts, "first_name", "") or ""
-    is_hinglish = str(getattr(facts, "language", "") or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(getattr(facts, "language", "") or "").lower()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     traits = [str(t).strip() for t in (getattr(facts, "personality_traits", None) or []) if str(t).strip()]
     if is_hinglish:
         personality = (
             f"{name}, aapke haath aapke swabhav, dhyan aur karya shaili ka santulan darshate hain."
             if name else
             "Aapke haath aapke swabhav, dhyan aur karya shaili ka majboot santulan darshate hain."
+        )
+    elif is_tenglish:
+        personality = (
+            f"{name}, mee chethulu mee vyaktithvam, aalochana mariyu panithanam lo manchi balance chupisthunnai."
+            if name else
+            "Mee chethulu mee vyaktithvam, aalochana mariyu panithanam lo manchi balance chupisthunnai."
         )
     elif traits:
         # Use the primary character and temperament sentence intact
@@ -883,6 +891,9 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
     if is_hinglish:
         current_phase = "Aapke haath vartaman jeevan phase mein sthirta aur dheeraj ke sath aage badhne ka sanket dete hain."
         hardest = f"Vartaman samay mein sabse jyada dhyan dene yogya kshetra: {demanding}." if demanding else ""
+    elif is_tenglish:
+        current_phase = "Mee chethulu prasthutha jeevitha phase lo sthiramga mariyu patience tho munduki saagalsina avasaram undani chupisthunnai."
+        hardest = f"Prasthutha samayam lo ekkuva dhyanam pettalsina vishayam: {demanding}." if demanding else ""
     else:
         current_phase = stage or (
             "Your hands point to a life stage that rewards steadiness. Do not rush "
@@ -910,6 +921,8 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
             )
             if is_hinglish:
                 outlook = f"Aapke haath {title} ke kshetra mein santulit aur sakriy urja darshate hain."
+            elif is_tenglish:
+                outlook = f"Mee chethulu {title} vishayam lo balanced mariyu active energy ni chupisthunnai."
             else:
                 outlook = clean_palm_summary(summary) or (
                     f"Your hands read as steady on {title.lower()}."
@@ -923,6 +936,8 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
             if not outlook:
                 if is_hinglish:
                     outlook = f"Aapke haath {title} ke kshetra mein sthirta darshate hain."
+                elif is_tenglish:
+                    outlook = f"Mee chethulu {title} vishayam lo sthirathvam chupisthunnai."
                 elif recognize:
                     first = str(recognize[0]).strip().rstrip(".")
                     outlook = (
@@ -1001,7 +1016,7 @@ _PALM_TONE_LINE = {
 }
 
 
-def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False) -> tuple[list[str], str]:
+def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False, lang: str = "en") -> tuple[list[str], str]:
     """Deterministic 'what may be on your mind' lines for a palm reading.
 
     Every line stays a possibility. A hand can show a tendency or an unmet
@@ -1009,6 +1024,9 @@ def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False) -> tuple[li
     """
     if palm_state is None:
         return [], ""
+    lang_code = str(lang or "").lower()
+    is_hi = is_hinglish or lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
     lines: list[str] = []
     for i, topic in enumerate(list(getattr(palm_state, "mind_now", None) or [])[:3]):
         label = str(getattr(topic, "label", "") or "").strip()
@@ -1024,8 +1042,10 @@ def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False) -> tuple[li
             subject = experience[0]
         else:
             subject = ""
-        if is_hinglish:
+        if is_hi:
             lines.append(f"Agar {head.lower()} aapke dhyan mein raha hai, toh yeh samay santulan aur samajhdari se aage badhne ka hai.")
+        elif is_te:
+            lines.append(f"{head} vishayam lo meeru aalochisthunte, idi patience mariyu balance tho munduki vellalsina samayam.")
         elif not subject:
             lines.append(f"If {head.lower()} has been on your mind, this {lead} be the theme your hands keep bringing back.")
         elif i == 0:
@@ -1035,8 +1055,10 @@ def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False) -> tuple[li
         else:
             lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be in the background too.")
 
-    if is_hinglish:
+    if is_hi:
         why = "Kul milakar aapke haath supportive urja darshate hain. Yeh samay sthirta aur vishwas ke sath karya karne ka hai."
+    elif is_te:
+        why = "Mothaniki mee chethulu anukulamaina urjanu chupisthunnai. Idi sthiranga mariyu nambakanga pani cheyalsina samayam."
     else:
         tone = str(getattr(palm_state, "chapter_tone", "") or "mixed")
         why = _PALM_TONE_LINE.get(tone, _PALM_TONE_LINE["mixed"])
@@ -1051,7 +1073,7 @@ def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False) -> tuple[li
     return lines[:3], why
 
 
-def _hand_contrast_prose(contrast: Any, *, is_hinglish: bool = False) -> str:
+def _hand_contrast_prose(contrast: Any, *, is_hinglish: bool = False, lang: str = "en") -> str:
     """The two-hand story, written in natural, fluent consultation voice."""
     if contrast is None:
         return ""
@@ -1065,11 +1087,18 @@ def _hand_contrast_prose(contrast: Any, *, is_hinglish: bool = False) -> str:
     if not (steady or developed or latent or traits or latent_traits):
         return ""
 
-    if is_hinglish:
+    lang_code = str(lang or "").lower()
+    if is_hinglish or lang_code in ("hi_en", "hinglish", "hi", "hindi"):
         return (
             f"Aapke dono haath aapke jeevan vikas ki spasht kahani batate hain. "
             f"Aapka {other} haath janma se mili pratibha ko darshata hai, "
             f"jabki {dominant} haath aapke abhyas aur parishram se viksit gunon ko dikhata hai."
+        )
+    if lang_code in ("te_en", "tenglish", "te", "telugu"):
+        return (
+            f"Mee rendu chethulu mee vyakthithva vikasam gurinchi spashtamga chepthunnai. "
+            f"Mee {other} cheyi janma tho vachina prathibhanu chupisthe, "
+            f"{dominant} cheyi mee prayathnam tho meeru sadhinchina balanni chupisthondi."
         )
 
     parts = [
@@ -1108,6 +1137,10 @@ def question_fallback(facts: Any) -> dict[str, Any]:
     direction = getattr(facts, "direction", "mixed") or "mixed"
     area = getattr(facts, "area_key", "this question") or "this question"
     conf = getattr(facts, "confidence", "moderate") or "moderate"
+    lang_code = str(getattr(facts, "language", "") or "").lower()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
+
     dir_word = {
         "support": "supports", "up": "supports",
         "caution": "does not strongly favour", "down": "does not strongly favour",
@@ -1128,11 +1161,34 @@ def question_fallback(facts: Any) -> dict[str, Any]:
         start_d = getattr(best, "start", "")
         end_d = getattr(best, "end", "")
         if start_d and end_d:
-            timing = f"The primary window of momentum runs between {start_d} and {end_d}, when supportive planetary currents align."
+            if is_hi:
+                timing = f"Mukhya supportive window {start_d} aur {end_d} ke beech open hoti hai."
+            elif is_te:
+                timing = f"Mukhya anukulamaina timing window {start_d} mariyu {end_d} madhyalo untundi."
+            else:
+                timing = f"The primary window of momentum runs between {start_d} and {end_d}, when supportive planetary currents align."
         else:
-            timing = "Validated timing windows are listed below based on planetary periods and transit alignments."
+            timing = "Timing windows are listed based on planetary periods and transits."
     else:
-        timing = "Validated timing windows are listed below based on planetary periods and transit alignments."
+        timing = "Timing windows are listed based on planetary periods and transits."
+
+    if is_hi:
+        return {
+            "opening": "Aapke prashna par kundli ke aadhar par saransh:",
+            "answer": f"Kundli {area} ke liye {direction} sanket deti hai (vishwas: {conf}).",
+            "why": f"Janma kundli ke grah placements aur dasha prabhav is vishay par {conf} sthiti darshate hain.",
+            "timing": timing[:220],
+            "action": "Pehle se dates par force karne ke bajay favorable windows mein tayyari karein.",
+        }
+    if is_te:
+        return {
+            "opening": "Mee prashnaku kundali aadharanga saramsam:",
+            "answer": f"Kundali {area} vishayam lo {direction} sankethalu isthondi (nambakam: {conf}).",
+            "why": f"Janma kundali loni graha sthitulu mariyu dasha prabhavam ee vishayam meeda {conf} sthitini chupisthunnai.",
+            "timing": timing[:220],
+            "action": "Force cheyadam kante anukulamaina timing windows lo prepare avvadam manchidi.",
+        }
+
     return {
         "opening": "Here is the straight answer from your chart facts.",
         "answer": answer[:420],
@@ -1296,13 +1352,22 @@ def horary_fallback(facts: Any) -> dict[str, Any]:
     label = getattr(facts, "label", "Genuinely open") or "Genuinely open"
     conf = getattr(facts, "confidence", "moderate") or "moderate"
     subject = getattr(facts, "subject", "this") or "this"
-    is_hinglish = str(getattr(facts, "language", "") or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(getattr(facts, "language", "") or "").lower()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     if is_hinglish:
         return {
             "lead": f"Aapne {subject} ke baare mein prashna poocha hai. Prashna kundli ka vishleshan neeche diya gaya hai.",
             "verdict_line": f"Prashna Kundli Ka Faisla: {label} (Pramanikta: {conf}).",
             "why": "Prashna samay ke lagnesh, karyesh aur grah drishti is faisle ka samarthan karte hain.",
             "action": "Is uttar ke anusar santulit aur vivekpurna kadam uthayein.",
+        }
+    if is_tenglish:
+        return {
+            "lead": f"Meeru {subject} gurinchi prashna adigaru. Prashna kundali vishleshana kindha ivvabadindi.",
+            "verdict_line": f"Prashna Kundali Theerpu: {label} (Nambakam: {conf}).",
+            "why": "Prashna samayam loni lagnaadhipathi, kaaryeshudu mariyu graha drushtulu ee theerpuku aadharam.",
+            "action": "Ee samadhanam aadharanga vivekam tho anukulamaina adugulu veyandi.",
         }
     return {
         "lead": f"You asked about {subject}. Here is the horary reading.",

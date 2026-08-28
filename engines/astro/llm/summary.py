@@ -1280,7 +1280,9 @@ def _fallback_from_report_text(text: str, *, max_sections: int = 5, paid: bool =
 
 
 def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     out: list[Optional[dict]] = []
     tone = brief.get("current_phase_tone")
     notes = brief.get("current_phase_notes") or []
@@ -1290,6 +1292,11 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
             lead = {
                 "support": "Aapka vartaman samay aapke paksh mein kaam kar raha hai.",
                 "caution": "Vartaman samay aage badhne ke liye jaldbaazi ke bajay dhairya maangta hai.",
+            }.get(direction, "")
+        elif is_tenglish:
+            lead = {
+                "support": "Mee prasthutha samayam meeku anukulam ga pani chesthondi.",
+                "caution": "Prasthutha samayam lo aathram kante patience tho munduki vellali.",
             }.get(direction, "")
         else:
             lead = {
@@ -1304,14 +1311,26 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
         if paid and brief.get("current_phase_ends"):
             if is_hinglish:
                 parts.append(f"Yeh adhyay {_human_date(brief['current_phase_ends'])} tak chalega.")
+            elif is_tenglish:
+                parts.append(f"Ee adhyayam {_human_date(brief['current_phase_ends'])} varaku untundi.")
             else:
                 parts.append(f"This chapter runs to {_human_date(brief['current_phase_ends'])}")
-        sec_title = "Aapka Vartaman Samay (Current Phase)" if is_hinglish else "Where you are right now"
+        if is_hinglish:
+            sec_title = "Aapka Vartaman Samay (Current Phase)"
+        elif is_tenglish:
+            sec_title = "Mee Vartamana Samayam (Current Phase)"
+        else:
+            sec_title = "Where you are right now"
         out.append(_sec(sec_title, _join_sentences(parts)))
 
     traits = brief.get("personality_traits") or []
     if traits:
-        sec_title = "Aapke Swabhav Aur Kundli Ke Mukhya Lakshana" if is_hinglish else "What your chart says about you"
+        if is_hinglish:
+            sec_title = "Aapke Swabhav Aur Kundli Ke Mukhya Lakshana"
+        elif is_tenglish:
+            sec_title = "Mee Swabhavam Mariyu Kundali Mukhya Lakshanalu"
+        else:
+            sec_title = "What your chart says about you"
         out.append(_sec(
             sec_title,
             _join_sentences(list(traits[:6] if paid else traits[:3])),
@@ -1323,7 +1342,12 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
         if isinstance(item, dict) and item.get("chart") and item.get("outlook")
     ]
     if foundations:
-        sec_title = "Aapki Kundli Ke Mukhya Aadhar (Vargas)" if is_hinglish else "What your key chart foundations say"
+        if is_hinglish:
+            sec_title = "Aapki Kundli Ke Mukhya Aadhar (Vargas)"
+        elif is_tenglish:
+            sec_title = "Mee Kundali Mukhya Aadharalu (Vargas)"
+        else:
+            sec_title = "What your key chart foundations say"
         out.append(_sec(
             sec_title,
             _join_sentences(foundations),
@@ -1334,7 +1358,12 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
         picked = areas[:5]
         lines = [f"{a.get('area')}: {a.get('outlook')}" for a in picked if a.get("outlook")]
         if lines:
-            sec_title = "Jeevan Ke Mukhya Kshetra" if is_hinglish else "How each part of life reads"
+            if is_hinglish:
+                sec_title = "Jeevan Ke Mukhya Kshetra"
+            elif is_tenglish:
+                sec_title = "Jeevitha Mukhya Rangalu"
+            else:
+                sec_title = "How each part of life reads"
             out.append(_sec(sec_title, _join_sentences(lines)))
 
     pressure = brief.get("areas_under_pressure") or []
@@ -1343,6 +1372,10 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
             sec_title = "Chunauti Aur Dabav Wale Kshetra"
             body = ("Kundli in kshetron par vishesh dabav darshati hai: " + ", ".join(pressure[:3])
                     + ". In kshetron mein dhairya aur niyamit prayas se hi behtar parinam milenge.")
+        elif is_tenglish:
+            sec_title = "Prathyeka Dhyanam Pettalsina Rangalu"
+            body = ("Kundali ee vishayala meeda prathyeka pressure chupisthondi: " + ", ".join(pressure[:3])
+                    + ". Ee vishayallo patience mariyu regular effort tho manchi results vasthayi.")
         else:
             sec_title = "Where the pressure sits"
             body = ("The chart puts the most strain on " + ", ".join(pressure[:3])
@@ -1359,6 +1392,13 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
                 for w in windows[:4] if w.get("start")
             ]
             sec_title = "Mahatvapurna Dates Aur Samay Chakra"
+        elif is_tenglish:
+            lines = [
+                f"{_label(w.get('label')) or 'Oka timing window'} {_human_date(w.get('start'))} lo start avuthundi"
+                + (f" mariyu {_human_date(w.get('end'))} varaku untundi" if w.get("end") else "")
+                for w in windows[:4] if w.get("start")
+            ]
+            sec_title = "Mukhya Dates Mariyu Timing Windows"
         else:
             lines = [
                 f"{_label(w.get('label')) or 'A window'} opens {_human_date(w.get('start'))}"
@@ -1373,7 +1413,9 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
 
 
 def _fb_user_question(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list[dict]:
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     out: list[Optional[dict]] = []
     q = _tidy(_clip(brief.get("question") or meta.get("question") or meta.get("area"), 200))
     q = q.rstrip(".?!")
@@ -1399,6 +1441,24 @@ def _fb_user_question(brief: dict, meta: dict, *, paid: bool, lang: str = "en") 
             if area:
                 note = f"Yeh aapke {area} kshetra se juda hai. " + note
             out.append(_sec("Vyavaharik Margdarshan", note))
+    elif is_tenglish:
+        if q:
+            body = f"Mee prashna ({q}) meeda kundali spashtamaina sankethalu isthondi: {finding}"
+        else:
+            body = f"Mee prashnaku kundali vishleshana: {finding}"
+        if paid and brief.get("breakthrough_window"):
+            body += f" Mukhya anukoolamaina breakthrough window {_tidy(brief['breakthrough_window'])} daggara untundi."
+        out.append(_sec("Direct Samadhanam", body))
+
+        if direction in ("support", "caution", "mixed"):
+            note = {
+                "support": "Kundali balam meeku anukulam ga undi, meeru chese prayathnalu manchi phalithalanu isthayi.",
+                "caution": "Kundali jagratthaga undalsindi ga chupisthondi. Time mariyu patience tho results vasthayi.",
+                "mixed": "Kundali ee vishayam lo mixed current chupisthondi. Balanced ga decisions thesukondi.",
+            }[direction]
+            if area:
+                note = f"Idi mee {area} vishayaniki sambandhinchindi. " + note
+            out.append(_sec("Mee Kosam Margadarshanam", note))
     else:
         low = finding.lower()
         if low.startswith(("the chart", "your chart", "regarding", "on your question")):
@@ -1428,7 +1488,9 @@ def _fb_user_question(brief: dict, meta: dict, *, paid: bool, lang: str = "en") 
 
 
 def _fb_horary(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list[dict]:
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     out: list[Optional[dict]] = []
     q = _clip(brief.get("question") or meta.get("question"), 200).rstrip(".?!")
     subject = _clip(brief.get("subject"), 120)
@@ -1440,6 +1502,12 @@ def _fb_horary(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list
                 body += f" Prashna kundli {subject} par kendrit hai."
             body += " Poora prashna kundli faisla report mein taiyar hai."
             out.append(_sec("Prashna Ka Vishleshan", body))
+        elif is_tenglish:
+            body = f"Mee prashna{(' ' + q) if q else ''} gurinchi."
+            if subject:
+                body += f" Prashna kundali {subject} meeda focus chesthondi."
+            body += " Sampoorna theerpu report lo siddham ga undi."
+            out.append(_sec("Prashna Vishleshana", body))
         else:
             body = f"Your question is{(' about ' + q) if q else ''}."
             if subject:
@@ -1455,6 +1523,11 @@ def _fb_horary(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list
         if conf:
             body += f" Is faisle par vishwas level {conf} hai."
         out.append(_sec("Prashna Ka Faisla", body))
+    elif is_tenglish:
+        body = f"Mee prashna{(' — ' + q) if q else ''} meeda prashna kundali theerpu: {verdict}."
+        if conf:
+            body += f" Ee theerpuku nambakam {conf} ga undi."
+        out.append(_sec("Prashna Theerpu", body))
     else:
         body = f"On your question{(' — ' + q) if q else ''}, the moment chart reads: {verdict}."
         if conf:
@@ -1474,6 +1547,17 @@ def _fb_horary(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list
             out.append(_sec(
                 "Kaise Aage Badhein",
                 "Vartaman kshan mein chunautiyan hain. Jaldbaazi ke bajay sahi samay ka intezar karein aur grah shanti ke upay karein.",
+            ))
+    elif is_tenglish:
+        if fav is True:
+            out.append(_sec(
+                "Mundhuku Ela Vellali",
+                "Samayam meeku anukulam ga undi, ippude drudhamaina adugulu veyadam manchidi.",
+            ))
+        elif fav is False:
+            out.append(_sec(
+                "Mundhuku Ela Vellali",
+                "Prasthutha kshanam lo challenges unnai. Aathram padakunda anukoolamaina samayam kosam aagi graha shanti upayam cheyandi.",
             ))
     else:
         if fav is True:
@@ -1500,6 +1584,13 @@ def _fb_horary(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list
                 for w in windows[:3] if w.get("start")
             ]
             sec_title = "Dates Aur Samay Chakra"
+        elif is_tenglish:
+            lines = [
+                f"{_label(w.get('label')) or 'Oka timing window'} {_human_date(w.get('start'))} lo start avuthundi"
+                + (f" mariyu {_human_date(w.get('end'))} varaku untundi" if w.get("end") else "")
+                for w in windows[:3] if w.get("start")
+            ]
+            sec_title = "Dates Mariyu Timing Windows"
         else:
             lines = [
                 f"{_label(w.get('label')) or 'A window'} opens {_human_date(w.get('start'))}"
@@ -1514,7 +1605,9 @@ def _fb_horary(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list
 
 
 def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool, lang: str = "en") -> list[dict]:
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     out = _fallback_from_palm_text(text, paid=paid)
     if out:
         return out
@@ -1528,6 +1621,12 @@ def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool, lang: str = "en"
                 "Swabhav Aur Core Archetype",
                 lead + _join_sentences(list(traits[:4])),
             ))
+        elif is_tenglish:
+            lead = f"Mee cheyi {shape.title()} archetype ni chupisthondi. " if shape else ""
+            sections.append(_sec(
+                "Swabhavam Mariyu Core Archetype",
+                lead + _join_sentences(list(traits[:4])),
+            ))
         else:
             lead = f"Your hands read as an {shape.title()} hand. " if shape else ""
             sections.append(_sec(
@@ -1538,10 +1637,20 @@ def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool, lang: str = "en"
     if areas:
         lines = [f"{a.get('area')}: {a.get('reading')}" for a in areas[:4] if a.get("reading")]
         if lines:
-            sec_title = "Hatho Ke Mukhya Kshetra" if is_hinglish else "What your hands say about your life"
+            if is_hinglish:
+                sec_title = "Hatho Ke Mukhya Kshetra"
+            elif is_tenglish:
+                sec_title = "Chethula Mukhya Rangalu"
+            else:
+                sec_title = "What your hands say about your life"
             sections.append(_sec(sec_title, _join_sentences(lines)))
     if brief.get("both_hands_summary"):
-        sec_title = "Dono Hatho Ka Tulnatmak Vishleshan" if is_hinglish else "Both hands together"
+        if is_hinglish:
+            sec_title = "Dono Hatho Ka Tulnatmak Vishleshan"
+        elif is_tenglish:
+            sec_title = "Rendu Chethula Thulanathmaka Vishleshana"
+        else:
+            sec_title = "Both hands together"
         sections.append(_sec(sec_title, str(brief["both_hands_summary"])))
     return [s for s in sections if s]
 
@@ -1632,7 +1741,9 @@ def _fallback_sections(
 def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
                        text: str = "", lang: str = "en") -> str:
     """One clean sentence. A bare adjective or a page of teaser copy is not one."""
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     candidates: list[str] = []
     if kind in ("horary", "user_question"):
         if kind == "horary" and not paid:
@@ -1641,6 +1752,11 @@ def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
                 candidates.append(
                     f"Prashna kundli aapke prashna ({q}) ka vishleshan karti hai." if q
                     else "Prashna kundli aapke prashna ka vishleshan karti hai."
+                )
+            elif is_tenglish:
+                candidates.append(
+                    f"Prashna kundali mee prashna ({q}) vishleshana chesthondi." if q
+                    else "Prashna kundali mee prashna vishleshana chesthondi."
                 )
             else:
                 candidates.append(
@@ -1651,6 +1767,8 @@ def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
         if verdict and len(verdict.split()) < 5 and not (kind == "horary" and not paid):
             if is_hinglish:
                 candidates.append(f"Aapke prashna par kundli ka faisla: {verdict}")
+            elif is_tenglish:
+                candidates.append(f"Mee prashnaku kundali theerpu: {verdict}")
             else:
                 candidates.append(f"On the question you asked, the chart reads: {verdict}")
         if not (kind == "horary" and not paid):
@@ -1667,6 +1785,15 @@ def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
             elif tone:
                 candidates.append("Aapki kundli ka vartaman daur anukool aur sahayak hai.")
             candidates.append("Aapke vyaktitva aur current phase ke sanket anukool hain.")
+        elif is_tenglish:
+            if tone and pressure:
+                candidates.append(
+                    f"Mee vartamana dasha anukulam ga undi, konni visheshalu "
+                    + " mariyu ".join(p.lower() for p in pressure) + " meeda unnai."
+                )
+            elif tone:
+                candidates.append("Mee kundali vartamana dasha anukulam ga undi.")
+            candidates.append("Mee vyaktithvam mariyu current phase sankethalu anukulam ga unnai.")
         else:
             if tone and pressure:
                 candidates.append(
@@ -1681,6 +1808,8 @@ def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
         if shape:
             if is_hinglish:
                 candidates.append(f"Aapke haath {shape.title()} archetype darshate hain.")
+            elif is_tenglish:
+                candidates.append(f"Mee cheyi {shape.title()} archetype ni chupisthondi.")
             else:
                 candidates.append(f"Your hands read as an {shape.title()} hand")
         candidates += list((brief.get("personality_traits") or [])[:1])

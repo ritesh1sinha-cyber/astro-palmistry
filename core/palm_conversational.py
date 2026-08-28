@@ -60,28 +60,40 @@ def _reading_row(reading: Any, *, both: bool = False, lang: str = "en") -> str:
         translate_feature_name, translate_sign_text,
         translate_means_text, translate_remedy_text
     )
-    is_hi = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
     tone = reading.tone if reading.tone in ("strong", "care") else "steady"
-    tag = {"strong": ("Mukhya Shakti" if is_hi else "A strength"),
-           "care": ("Dhyan Dein" if is_hi else "Needs care")}.get(tone, "")
+    if is_te:
+        tag = {"strong": "Mukhya Shakthi", "care": "Jagrattha Avashyakam"}.get(tone, "")
+    elif is_hi:
+        tag = {"strong": "Mukhya Shakti", "care": "Dhyan Dein"}.get(tone, "")
+    else:
+        tag = {"strong": "A strength", "care": "Needs care"}.get(tone, "")
     pill = (f'<span class="pv-pill {tone}">{_e(tag)}</span>' if tag else "")
-    agree = (f'<span class="pv-both">&#10003; {"dono haatho mein" if is_hi else "in both hands"}</span>' if both else "")
+    if both:
+        agree_txt = "rendu chethulalo" if is_te else ("dono haatho mein" if is_hi else "in both hands")
+        agree = f'<span class="pv-both">&#10003; {agree_txt}</span>'
+    else:
+        agree = ""
     when = ""
     if getattr(reading, "age_range", None):
         low, high = reading.age_range
-        when = f'<span class="pv-when">{"aayu" if is_hi else "ages"} {low}&ndash;{high}</span>'
+        prefix = "aayu" if (is_hi or is_te) else "ages"
+        when = f'<span class="pv-when">{prefix} {low}&ndash;{high}</span>'
     elif getattr(reading, "age", None):
-        when = f'<span class="pv-when">{"lagbhag aayu" if is_hi else "around age"} {reading.age}</span>'
+        prefix = "dhadhapu aayu" if is_te else ("lagbhag aayu" if is_hi else "around age")
+        when = f'<span class="pv-when">{prefix} {reading.age}</span>'
     remedy = ""
-    rem_text = translate_remedy_text(reading.remedy, is_hi) if reading.remedy else ""
+    rem_text = translate_remedy_text(reading.remedy, is_hinglish=is_hi, is_tenglish=is_te) if reading.remedy else ""
     if rem_text:
-        do_lbl = "Karan / Upay" if is_hi else "What to do"
+        do_lbl = "Karanam / Upayam" if is_te else ("Karan / Upay" if is_hi else "What to do")
         remedy = (f'<p class="pv-do"><span class="ev-label">{do_lbl}</span> '
                   f"{_e(_sentence(rem_text))}</p>")
     
-    feat = translate_feature_name(reading.feature, is_hi)
-    sign = translate_sign_text(reading.sign, is_hi)
-    means = translate_means_text(reading.means, is_hi)
+    feat = translate_feature_name(reading.feature, is_hinglish=is_hi, is_tenglish=is_te)
+    sign = translate_sign_text(reading.sign, is_hinglish=is_hi, is_tenglish=is_te)
+    means = translate_means_text(reading.means, is_hinglish=is_hi, is_tenglish=is_te)
     return f"""
 <div class="pv-row {tone}">
   <div class="pv-head"><b>{_e(feat)}</b>{pill}{agree}{when}</div>
@@ -96,27 +108,36 @@ def _observation(reading: Any, *, both: bool = False, lang: str = "en") -> str:
     from .palm_localization import (
         translate_sign_text, translate_means_text, translate_remedy_text
     )
-    is_hi = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
     tone = reading.tone if reading.tone in ("strong", "care") else "steady"
-    tag = {"strong": ("Mukhya Shakti" if is_hi else "A strength"),
-           "care": ("Dhyan Dein" if is_hi else "Needs care")}.get(tone, "")
+    if is_te:
+        tag = {"strong": "Mukhya Shakthi", "care": "Jagrattha Avashyakam"}.get(tone, "")
+    elif is_hi:
+        tag = {"strong": "Mukhya Shakti", "care": "Dhyan Dein"}.get(tone, "")
+    else:
+        tag = {"strong": "A strength", "care": "Needs care"}.get(tone, "")
     marks = (f'<span class="pv-pill {tone}">{_e(tag)}</span>' if tag else "")
     if both:
-        marks += f'<span class="pv-both">&#10003; {"dono haatho mein" if is_hi else "in both hands"}</span>'
+        agree_txt = "rendu chethulalo" if is_te else ("dono haatho mein" if is_hi else "in both hands")
+        marks += f'<span class="pv-both">&#10003; {agree_txt}</span>'
     if getattr(reading, "age_range", None):
         low, high = reading.age_range
-        marks += f'<span class="pv-when">{"aayu" if is_hi else "ages"} {low}&ndash;{high}</span>'
+        prefix = "aayu" if (is_hi or is_te) else "ages"
+        marks += f'<span class="pv-when">{prefix} {low}&ndash;{high}</span>'
     elif getattr(reading, "age", None):
-        marks += f'<span class="pv-when">{"lagbhag aayu" if is_hi else "around age"} {reading.age}</span>'
+        prefix = "dhadhapu aayu" if is_te else ("lagbhag aayu" if is_hi else "around age")
+        marks += f'<span class="pv-when">{prefix} {reading.age}</span>'
     remedy = ""
-    rem_text = translate_remedy_text(reading.remedy, is_hi) if reading.remedy else ""
+    rem_text = translate_remedy_text(reading.remedy, is_hinglish=is_hi, is_tenglish=is_te) if reading.remedy else ""
     if rem_text:
-        do_lbl = "Karan / Upay" if is_hi else "What to do"
+        do_lbl = "Karanam / Upayam" if is_te else ("Karan / Upay" if is_hi else "What to do")
         remedy = (f'<p class="pv-do"><span class="ev-label">{do_lbl}</span> '
                   f"{_e(_sentence(rem_text))}</p>")
     
-    sign = translate_sign_text(reading.sign, is_hi)
-    means = translate_means_text(reading.means, is_hi)
+    sign = translate_sign_text(reading.sign, is_hinglish=is_hi, is_tenglish=is_te)
+    means = translate_means_text(reading.means, is_hinglish=is_hi, is_tenglish=is_te)
     return (f'<div class="pv-obs {tone}">'
             f'<p class="pv-sign">{_e(_sentence(sign))}{marks}</p>'
             f'<p class="pv-means">{_e(_sentence(means))}</p>'
@@ -131,7 +152,9 @@ def _rows(readings: Iterable[Any], agree: set[str] | None = None, lang: str = "e
     into an inventory — "Head line", "Head line", "Head line" down the page.
     """
     from .palm_localization import translate_feature_name
-    is_hi = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
     agree = agree or set()
     groups: list[tuple[str, list[Any]]] = []
     for reading in readings:
@@ -149,7 +172,7 @@ def _rows(readings: Iterable[Any], agree: set[str] | None = None, lang: str = "e
         tone = "care" if "care" in tones else (
             "strong" if "strong" in tones else "steady")
         body = "".join(_observation(r, both=r.key in agree, lang=lang) for r in items)
-        feat_lbl = translate_feature_name(feature, is_hi)
+        feat_lbl = translate_feature_name(feature, is_hinglish=is_hi, is_tenglish=is_te)
         out.append(f'<div class="pv-row {tone}">'
                    f'<div class="pv-head"><b>{_e(feat_lbl)}</b></div>'
                    f"{body}</div>")
@@ -183,9 +206,17 @@ _GRADE_NOTE_HI = {
     "poor": "bareek chinho ya age positions ke liye spasht nahi; keval broad pattern aur rekhaon ka mukhya aakar padha gaya hai",
 }
 
+_GRADE_NOTE_TE = {
+    "good": "sukshma chihnalu mariyu age timing chadhavadaniki saraina photo",
+    "fair": "mukhya rekhalaku spashtamga undi, kani sukshma chihnalaku konchem parimitham",
+    "poor": "sukshma chihnalu leda age positions ku spashtamga ledu; kevalam broad pattern mariyu rekhalu matrame chadavabaddayi",
+}
+
 
 def _photo_note(raw: dict, lang: str = "en") -> str:
-    is_hi = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
     rows = ""
     for hand in ("left", "right"):
         block = raw.get(hand) or {}
@@ -193,20 +224,31 @@ def _photo_note(raw: dict, lang: str = "en") -> str:
             continue
         grade = str(((block.get("features") or {}).get("quality") or {})
                     .get("grade") or "fair").lower()
-        desc = _GRADE_NOTE_HI.get(grade, _GRADE_NOTE_HI["fair"]) if is_hi else _GRADE_NOTE.get(grade, _GRADE_NOTE["fair"])
-        h_name = f"{hand.title()} hand" if not is_hi else f"{hand.title()} Hand"
+        if is_te:
+            desc = _GRADE_NOTE_TE.get(grade, _GRADE_NOTE_TE["fair"])
+        elif is_hi:
+            desc = _GRADE_NOTE_HI.get(grade, _GRADE_NOTE_HI["fair"])
+        else:
+            desc = _GRADE_NOTE.get(grade, _GRADE_NOTE["fair"])
+        h_name = f"{hand.title()} Hand" if (is_hi or is_te) else f"{hand.title()} hand"
         rows += (f'<li><b>{h_name}</b> — photo grade {_e(grade)}: '
                  f"{_e(desc)}.</li>")
     if not rows:
         return ""
     
-    card_title = "Photo Quality Aur Vishleshan Kshamta" if is_hi else "What each photograph allows"
-    fine_txt = ("Samudrika Shastra mein haath ko roshni mein ghumakar dekha jata hai. "
-                "Photo ke aadhar par hum wahi darshate hain jo spasht roop se dekha ja sake."
-                if is_hi else
-                "A palmist holds the hand and turns it to the light. "
-                "Working from a photograph, we say plainly what the photograph will "
-                "and will not support rather than guessing past it.")
+    if is_te:
+        card_title = "Photo Quality Mariyu Vishleshana Samarthyam"
+        fine_txt = ("Samudrika Shastram lo chethini velugulo tiripi pariseelistharu. "
+                    "Photo aadharamga memu spashtamga kanipinche vishayalanu matrame report chestham.")
+    elif is_hi:
+        card_title = "Photo Quality Aur Vishleshan Kshamta"
+        fine_txt = ("Samudrika Shastra mein haath ko roshni mein ghumakar dekha jata hai. "
+                    "Photo ke aadhar par hum wahi darshate hain jo spasht roop se dekha ja sake.")
+    else:
+        card_title = "What each photograph allows"
+        fine_txt = ("A palmist holds the hand and turns it to the light. "
+                    "Working from a photograph, we say plainly what the photograph will "
+                    "and will not support rather than guessing past it.")
     return (f'<div class="card"><div class="ev-label">{card_title}</div><ul class="pv-plain">{rows}</ul>'
             f'<p class="fine">{fine_txt}</p></div>')
 
@@ -246,7 +288,9 @@ def _remedy_source(raw: dict, dom_key: str) -> tuple[str, dict]:
 
 def _marks_section(readings: dict, raw: dict, lang: str = "en") -> str:
     from .palm_localization import localize_mark
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     seen_marks: dict[tuple[str, str], dict] = {}
     for hand in ("right", "left"):
         hr = readings.get(hand)
@@ -269,24 +313,44 @@ def _marks_section(readings: dict, raw: dict, lang: str = "en") -> str:
         hands = item["hands"]
         is_both = len(hands) > 1
         tone = mark.tone if mark.tone in ("strong", "care") else "steady"
-        tag = {"strong": ("Mukhya Shakti" if is_hinglish else "A strength"),
-               "care": ("Dhyan Dein" if is_hinglish else "Needs care")}.get(tone, "")
+        if is_tenglish:
+            tag = {"strong": "Mukhya Shakthi", "care": "Jagrattha Avashyakam"}.get(tone, "")
+        elif is_hinglish:
+            tag = {"strong": "Mukhya Shakti", "care": "Dhyan Dein"}.get(tone, "")
+        else:
+            tag = {"strong": "A strength", "care": "Needs care"}.get(tone, "")
         pill = f'<span class="pv-pill {tone}">{_e(tag)}</span>' if tag else ""
-        both_badge = (
-            ('<span class="pv-both">&#10003; dono haatho mein (Uchha vishwas)</span>' if is_hinglish else
-             '<span class="pv-both">&#10003; in both hands (High confidence)</span>')
-            if is_both else
-            (f'<span class="pv-pill neutral">{hands[0].title()} Hand par drishtigat · Santulit vishwas</span>' if is_hinglish else
-             f'<span class="pv-pill neutral">Seen on {hands[0].title()} hand · Moderate confidence</span>')
-        )
+        if is_tenglish:
+            both_badge = (
+                '<span class="pv-both">&#10003; rendu chethulalo (Uchha vishwasam)</span>'
+                if is_both else
+                f'<span class="pv-pill neutral">{hands[0].title()} Hand meeda drishtigatham · Madhyama vishwasam</span>'
+            )
+        elif is_hinglish:
+            both_badge = (
+                '<span class="pv-both">&#10003; dono haatho mein (Uchha vishwas)</span>'
+                if is_both else
+                f'<span class="pv-pill neutral">{hands[0].title()} Hand par drishtigat · Santulit vishwas</span>'
+            )
+        else:
+            both_badge = (
+                '<span class="pv-both">&#10003; in both hands (High confidence)</span>'
+                if is_both else
+                f'<span class="pv-pill neutral">Seen on {hands[0].title()} hand · Moderate confidence</span>'
+            )
 
         feat, sign, means, remedy_txt = localize_mark(
-            mark.feature, mark.sign, mark.means, mark.remedy, is_hinglish
+            mark.feature, mark.sign, mark.means, mark.remedy, is_hinglish=is_hinglish, is_tenglish=is_tenglish
         )
 
         remedy = ""
         if remedy_txt:
-            guidance_lbl = "Vedic Margdarshan" if is_hinglish else "Traditional Guidance"
+            if is_tenglish:
+                guidance_lbl = "Vedic Margadarshanam"
+            elif is_hinglish:
+                guidance_lbl = "Vedic Margdarshan"
+            else:
+                guidance_lbl = "Traditional Guidance"
             remedy = (f'<p class="pv-do"><span class="ev-label">{guidance_lbl}</span> '
                       f"{_e(_sentence(remedy_txt))}</p>")
 
@@ -303,24 +367,41 @@ def _marks_section(readings: dict, raw: dict, lang: str = "en") -> str:
     note = ""
     if blocked:
         which = " and ".join(h.title() for h in blocked)
-        note = (("Bareek chinh aapke " + _e(which) + " hand photo se report nahi kiye gaye hain — "
-                 "is grade par shadow aur mark mein bhed karna kathin hota hai. "
-                 "Behtar vishleshan ke liye spasht roshni mein photo lein.")
-                if is_hinglish else
-                (f'<p class="fine">Fine marks are not reported from your '
-                 f"{_e(which)} hand photograph — at that grade a shadow and a star "
-                 f"look alike, and a mark invented from a blur is worse than no "
-                 f"mark at all. Retake that hand straight-on in bright, even "
-                 f"light to have it read.</p>"))
+        if is_tenglish:
+            note = ("Sukshma chihnalu mee " + _e(which) + " hand photo nunchi report cheyaledu — "
+                    "ee grade lo needa mariyu chihnam madhya theda thelusukovatam kashtam. "
+                    "Manchi vishleshana kosam velugulo photo theeyandi.")
+        elif is_hinglish:
+            note = (("Bareek chinh aapke " + _e(which) + " hand photo se report nahi kiye gaye hain — "
+                     "is grade par shadow aur mark mein bhed karna kathin hota hai. "
+                     "Behtar vishleshan ke liye spasht roshni mein photo lein."))
+        else:
+            note = (f'<p class="fine">Fine marks are not reported from your '
+                    f"{_e(which)} hand photograph — at that grade a shadow and a star "
+                    f"look alike, and a mark invented from a blur is worse than no "
+                    f"mark at all. Retake that hand straight-on in bright, even "
+                    f"light to have it read.</p>")
     if not rows and not note:
         return ""
     if not rows:
-        rows = (('<p class="pv-means">Koi vishesh chinh spasht roop se drishtigat nahi hua.</p>')
-                if is_hinglish else
-                ('<p class="pv-means">No special mark was resolved clearly enough to report.</p>'))
-    marks_title = "Aapke Hatho Ke Vishesh Chinh (Special Marks)" if is_hinglish else "The special marks on your hands"
-    marks_sub = "Haath ke vishesh chinh (jaise Trishul, Tara, Matsya) parvato ki shakti ko badhate hain." if is_hinglish else "A mark modifies the mount beneath it. It is read together with the lines around it, never on its own."
-    marks_nav = "Vishesh Chinh" if is_hinglish else "Special marks"
+        if is_tenglish:
+            rows = '<p class="pv-means">Etuvanthi vishesha chihnalu spashtamga drishtigatham kaledu.</p>'
+        elif is_hinglish:
+            rows = '<p class="pv-means">Koi vishesh chinh spasht roop se drishtigat nahi hua.</p>'
+        else:
+            rows = '<p class="pv-means">No special mark was resolved clearly enough to report.</p>'
+    if is_tenglish:
+        marks_title = "Mee Chethula Vishesha Chihnalu (Special Marks)"
+        marks_sub = "Chethi vishesha chihnalu (Trishulam, Thaara, Mathsya) parvathala shakthini penchuthayi."
+        marks_nav = "Vishesha Chihnalu"
+    elif is_hinglish:
+        marks_title = "Aapke Hatho Ke Vishesh Chinh (Special Marks)"
+        marks_sub = "Haath ke vishesh chinh (jaise Trishul, Tara, Matsya) parvato ki shakti ko badhate hain."
+        marks_nav = "Vishesh Chinh"
+    else:
+        marks_title = "The special marks on your hands"
+        marks_sub = "A mark modifies the mount beneath it. It is read together with the lines around it, never on its own."
+        marks_nav = "Special marks"
     return _section(
         "sec-marks", marks_title,
         marks_sub,
@@ -338,7 +419,9 @@ def _split_prediction(text: str) -> tuple[str, str]:
 
 
 def _timeline(conf: dict, age: int, *, ahead: bool, lang: str = "en") -> str:
-    is_hi = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
     rows = ""
     for pred in conf.get("predictions") or []:
         when = pred.get("age")
@@ -363,16 +446,17 @@ def _timeline(conf: dict, age: int, *, ahead: bool, lang: str = "en") -> str:
             clamped_high = min(age + 10, span[1])
             if clamped_high <= clamped_low:
                 clamped_high = min(age + 10, clamped_low + 3)
-            window = f"aayu {clamped_low}&ndash;{clamped_high} varsh" if is_hi else f"ages {clamped_low}&ndash;{clamped_high}"
+            window = f"aayu {clamped_low}&ndash;{clamped_high} varshalu" if is_te else (f"aayu {clamped_low}&ndash;{clamped_high} varsh" if is_hi else f"ages {clamped_low}&ndash;{clamped_high}")
         else:
-            window = ((f"aayu {span[0]}&ndash;{span[1]} varsh" if is_hi else f"ages {span[0]}&ndash;{span[1]}")
-                      if len(span) == 2 and span[1] > span[0] else
-                      (f"lagbhag aayu {when} varsh" if is_hi else f"around age {when}"))
+            if len(span) == 2 and span[1] > span[0]:
+                window = f"aayu {span[0]}&ndash;{span[1]} varshalu" if is_te else (f"aayu {span[0]}&ndash;{span[1]} varsh" if is_hi else f"ages {span[0]}&ndash;{span[1]}")
+            else:
+                window = f"dhadhapu aayu {when} varshalu" if is_te else (f"lagbhag aayu {when} varsh" if is_hi else f"around age {when}")
         
-        conf_lbl = "Santulit Vishwas" if is_hi else "Moderate Confidence"
+        conf_lbl = "Madhyama Vishwasam" if is_te else ("Santulit Vishwas" if is_hi else "Moderate Confidence")
         confidence_tag = f'<span class="pill-conf" style="font-size:0.7rem;font-weight:600;padding:2px 6px;border-radius:10px;background:#f0efe9;color:#5a554c;margin-left:8px;">{conf_lbl}</span>'
         
-        sign_lbl = "Drishtigat Rekha:" if is_hi else "Observed Physical Sign:"
+        sign_lbl = "Drishtigatha Rekha:" if is_te else ("Drishtigat Rekha:" if is_hi else "Observed Physical Sign:")
         backing_feat = f'<p class="pv-sign" style="font-size:0.83rem;color:#6b7280;margin:4px 0 0 0;"><b>{sign_lbl}</b> Traced along {_e(why)}.</p>' if why else ""
         rows += (f'<li><div class="tl-when">{window}</div>'
                  f'<div class="tl-body"><b>{_e(pred.get("title"))}</b>{confidence_tag}'
@@ -398,10 +482,13 @@ def _vedic_life_reading(conf: dict, first: str, lang: str = "en") -> str:
     """Deterministic Vedic predictive profile: personality, profession, spouse,
     wealth, health, and authentic planetary upayas."""
     from .palm_localization import (
-        VEDIC_ASPECT_TITLES_HI, VEDIC_UPAYA_HEADINGS_HI,
+        VEDIC_ASPECT_TITLES_HI, VEDIC_ASPECT_TITLES_TE,
+        VEDIC_UPAYA_HEADINGS_HI, VEDIC_UPAYA_HEADINGS_TE,
         localize_vedic_text, localize_trait_item
     )
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     vp = conf.get("vedic_profile") if isinstance(conf.get("vedic_profile"), dict) else {}
     if not vp:
         return ""
@@ -417,13 +504,13 @@ def _vedic_life_reading(conf: dict, first: str, lang: str = "en") -> str:
     wealth = vp.get("wealth") or {}
 
     # 1 — Mind & Intellectual Temperament
-    arch_sum = localize_vedic_text(archetype.get("summary") or "", is_hinglish)
+    arch_sum = localize_vedic_text(archetype.get("summary") or "", is_hinglish=is_hinglish, is_tenglish=is_tenglish)
     pers_bits = [f"<p>{arch_sum}</p>"] if arch_sum else []
     traits = [t for t in personality if isinstance(t, dict) and t.get("text")]
     if traits:
         trait_items = []
         for t in traits:
-            t_name, t_desc = localize_trait_item(t.get("trait", ""), t.get("text", ""), is_hinglish)
+            t_name, t_desc = localize_trait_item(t.get("trait", ""), t.get("text", ""), is_hinglish=is_hinglish, is_tenglish=is_tenglish)
             trait_items.append(f'<li><b>{_e(t_name)}:</b> {t_desc}</li>')
         pers_bits.append(
             '<ul class="pv-plain" style="margin-top:10px;">'
@@ -431,98 +518,167 @@ def _vedic_life_reading(conf: dict, first: str, lang: str = "en") -> str:
             + "</ul>")
     upaya_mind = _ASPECT_VEDIC_UPAYAS.get("mind", {}).get("upaya")
     if upaya_mind:
-        head_up = VEDIC_UPAYA_HEADINGS_HI["Mind & Intellect"] if is_hinglish else "Targeted Vedic Upaya (Mind &amp; Intellect):"
+        if is_tenglish:
+            head_up = VEDIC_UPAYA_HEADINGS_TE["Mind & Intellect"]
+        elif is_hinglish:
+            head_up = VEDIC_UPAYA_HEADINGS_HI["Mind & Intellect"]
+        else:
+            head_up = "Targeted Vedic Upaya (Mind &amp; Intellect):"
         pers_bits.append(
             f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
             f'<b style="color:#7a4b18;">{head_up}</b><br>{upaya_mind}</div>'
         )
     if pers_bits:
-        c_title, c_tag = VEDIC_ASPECT_TITLES_HI["Mind, Intellect & Temperament"] if is_hinglish else ("Mind, Intellect & Temperament", "Intellect & Disposition")
+        if is_tenglish:
+            c_title, c_tag = VEDIC_ASPECT_TITLES_TE["Mind, Intellect & Temperament"]
+        elif is_hinglish:
+            c_title, c_tag = VEDIC_ASPECT_TITLES_HI["Mind, Intellect & Temperament"]
+        else:
+            c_title, c_tag = ("Mind, Intellect & Temperament", "Intellect & Disposition")
         cards.append(_vedic_card(c_title, "".join(pers_bits), c_tag))
 
     # 2 — Profession, Leadership & Career Trajectory
-    prof_txt = localize_vedic_text(profession.get("summary") or "", is_hinglish)
+    prof_txt = localize_vedic_text(profession.get("summary") or "", is_hinglish=is_hinglish, is_tenglish=is_tenglish)
     if prof_txt:
         win = profession.get("window")
-        tag = "Career Aur Karya-Kshetra" if is_hinglish else "Career & Vocation"
+        tag = "Career Mariyu Udyogam" if is_tenglish else ("Career Aur Karya-Kshetra" if is_hinglish else "Career & Vocation")
         win_note = ""
         if isinstance(win, list) and len(win) == 2:
-            lbl_win = f"<b>Mukhya Career Establishment Samay:</b> Aayu {int(win[0])}–{int(win[1])} varsh." if is_hinglish else f"<b>Major Vocational Establishment Window:</b> Ages {int(win[0])}–{int(win[1])}."
+            if is_tenglish:
+                lbl_win = f"<b>Mukhya Career Sthiratha Samayam:</b> Aayu {int(win[0])}–{int(win[1])} varshalu."
+                tag = f"Career · Sthiratha {int(win[0])}–{int(win[1])} varshalu"
+            elif is_hinglish:
+                lbl_win = f"<b>Mukhya Career Establishment Samay:</b> Aayu {int(win[0])}–{int(win[1])} varsh."
+                tag = f"Career · Sthirata {int(win[0])}–{int(win[1])} varsh"
+            else:
+                lbl_win = f"<b>Major Vocational Establishment Window:</b> Ages {int(win[0])}–{int(win[1])}."
+                tag = f"Career · Establishes {int(win[0])}–{int(win[1])}"
             win_note = f"<p style='margin:6px 0 0;font-size:0.85rem;color:#6a7080;'>{lbl_win}</p>"
-            tag = f"Career · Sthirata {int(win[0])}–{int(win[1])} varsh" if is_hinglish else f"Career · Establishes {int(win[0])}–{int(win[1])}"
 
         prof_body = [f"<p>{prof_txt}</p>{win_note}"]
         upaya_car = _ASPECT_VEDIC_UPAYAS.get("career", {}).get("upaya")
         if upaya_car:
-            head_up = VEDIC_UPAYA_HEADINGS_HI["Career & Status"] if is_hinglish else "Targeted Vedic Upaya (Career &amp; Status):"
+            if is_tenglish:
+                head_up = VEDIC_UPAYA_HEADINGS_TE["Career & Status"]
+            elif is_hinglish:
+                head_up = VEDIC_UPAYA_HEADINGS_HI["Career & Status"]
+            else:
+                head_up = "Targeted Vedic Upaya (Career &amp; Status):"
             prof_body.append(
                 f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
                 f'<b style="color:#7a4b18;">{head_up}</b><br>{upaya_car}</div>'
             )
         basis = profession.get("basis")
         if basis:
-            b_lbl = "Jyotishiya Palm Adhar:" if is_hinglish else "Astrological Palm Basis:"
+            b_lbl = "Jyotisha Hastha Aadharam:" if is_tenglish else ("Jyotishiya Palm Adhar:" if is_hinglish else "Astrological Palm Basis:")
             prof_body.append(f'<div style="border-top:1px solid #eeeae3;padding-top:8px;margin-top:10px;font-size:0.75rem;color:#7a756c;"><b>{b_lbl}</b> {_e(basis)}</div>')
-        c_title, _ = VEDIC_ASPECT_TITLES_HI["Career Trajectory, Status & Leadership"] if is_hinglish else ("Career Trajectory, Status & Leadership", "")
+        if is_tenglish:
+            c_title, _ = VEDIC_ASPECT_TITLES_TE["Career Trajectory, Status & Leadership"]
+        elif is_hinglish:
+            c_title, _ = VEDIC_ASPECT_TITLES_HI["Career Trajectory, Status & Leadership"]
+        else:
+            c_title, _ = ("Career Trajectory, Status & Leadership", "")
         cards.append(_vedic_card(c_title, "".join(prof_body), tag))
 
     # 3 — Marriage, Partnerships & Spouse Dynamics
-    mar_txt = localize_vedic_text(marriage.get("summary") or "", is_hinglish)
+    mar_txt = localize_vedic_text(marriage.get("summary") or "", is_hinglish=is_hinglish, is_tenglish=is_tenglish)
     if mar_txt:
         mar_body = [f"<p>{mar_txt}</p>"]
         upaya_love = _ASPECT_VEDIC_UPAYAS.get("love", {}).get("upaya")
         if upaya_love:
-            head_up = VEDIC_UPAYA_HEADINGS_HI["Harmony & Partnership"] if is_hinglish else "Targeted Vedic Upaya (Harmony &amp; Partnership):"
+            if is_tenglish:
+                head_up = VEDIC_UPAYA_HEADINGS_TE["Harmony & Partnership"]
+            elif is_hinglish:
+                head_up = VEDIC_UPAYA_HEADINGS_HI["Harmony & Partnership"]
+            else:
+                head_up = "Targeted Vedic Upaya (Harmony &amp; Partnership):"
             mar_body.append(
                 f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
                 f'<b style="color:#7a4b18;">{head_up}</b><br>{upaya_love}</div>'
             )
         basis = marriage.get("basis")
         if basis:
-            b_lbl = "Jyotishiya Palm Adhar:" if is_hinglish else "Astrological Palm Basis:"
+            b_lbl = "Jyotisha Hastha Aadharam:" if is_tenglish else ("Jyotishiya Palm Adhar:" if is_hinglish else "Astrological Palm Basis:")
             mar_body.append(f'<div style="border-top:1px solid #eeeae3;padding-top:8px;margin-top:10px;font-size:0.75rem;color:#7a756c;"><b>{b_lbl}</b> {_e(basis)}</div>')
-        c_title, c_tag = VEDIC_ASPECT_TITLES_HI["Love, Marriage & Partner Compatibility"] if is_hinglish else ("Love, Marriage & Partner Compatibility", "Partnership & Dharma")
+        if is_tenglish:
+            c_title, c_tag = VEDIC_ASPECT_TITLES_TE["Love, Marriage & Partner Compatibility"]
+        elif is_hinglish:
+            c_title, c_tag = VEDIC_ASPECT_TITLES_HI["Love, Marriage & Partner Compatibility"]
+        else:
+            c_title, c_tag = ("Love, Marriage & Partner Compatibility", "Partnership & Dharma")
         cards.append(_vedic_card(c_title, "".join(mar_body), c_tag))
 
     # 4 — Wealth, Assets & Financial Trajectory
-    wea_txt = localize_vedic_text(wealth.get("summary") or "", is_hinglish)
+    wea_txt = localize_vedic_text(wealth.get("summary") or "", is_hinglish=is_hinglish, is_tenglish=is_tenglish)
     if wea_txt:
         wea_body = [f"<p>{wea_txt}</p>"]
         upaya_wea = _ASPECT_VEDIC_UPAYAS.get("wealth", {}).get("upaya")
         if upaya_wea:
-            head_up = VEDIC_UPAYA_HEADINGS_HI["Wealth & Abundance"] if is_hinglish else "Targeted Vedic Upaya (Wealth &amp; Abundance):"
+            if is_tenglish:
+                head_up = VEDIC_UPAYA_HEADINGS_TE["Wealth & Abundance"]
+            elif is_hinglish:
+                head_up = VEDIC_UPAYA_HEADINGS_HI["Wealth & Abundance"]
+            else:
+                head_up = "Targeted Vedic Upaya (Wealth &amp; Abundance):"
             wea_body.append(
                 f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
                 f'<b style="color:#7a4b18;">{head_up}</b><br>{upaya_wea}</div>'
             )
         basis = wealth.get("basis")
         if basis:
-            b_lbl = "Jyotishiya Palm Adhar:" if is_hinglish else "Astrological Palm Basis:"
+            b_lbl = "Jyotisha Hastha Aadharam:" if is_tenglish else ("Jyotishiya Palm Adhar:" if is_hinglish else "Astrological Palm Basis:")
             wea_body.append(f'<div style="border-top:1px solid #eeeae3;padding-top:8px;margin-top:10px;font-size:0.75rem;color:#7a756c;"><b>{b_lbl}</b> {_e(basis)}</div>')
-        c_title, c_tag = VEDIC_ASPECT_TITLES_HI["Wealth Accumulation & Financial Trajectory"] if is_hinglish else ("Wealth Accumulation & Financial Trajectory", "Wealth & Resources")
+        if is_tenglish:
+            c_title, c_tag = VEDIC_ASPECT_TITLES_TE["Wealth Accumulation & Financial Trajectory"]
+        elif is_hinglish:
+            c_title, c_tag = VEDIC_ASPECT_TITLES_HI["Wealth Accumulation & Financial Trajectory"]
+        else:
+            c_title, c_tag = ("Wealth Accumulation & Financial Trajectory", "Wealth & Resources")
         cards.append(_vedic_card(c_title, "".join(wea_body), c_tag))
 
     # 5 — Health, Physical Vitality & Immunity
     upaya_hlth = _ASPECT_VEDIC_UPAYAS.get("health", {}).get("upaya")
-    hlth_raw = ("<p>Aapki jeevan rekha aur Shukra Parvat <b>sthir sharirik stamina, natural resilience aur achhi recovery kshamta</b> ko darshate hain. Niyamit dhyan aur santulit routine aapki urja ko banaye rakhta hai.</p>"
-                if is_hinglish else
-                "<p>Your life line and Mount of Venus indicate <b>steady baseline stamina, natural physical resilience, and strong vital recovery</b>. "
-                "Maintaining regular nervous system relaxation and grounding physical routines ensures sustained high-performance energy.</p>")
+    if is_tenglish:
+        hlth_raw = "<p>Mee jeevana rekha mariyu Shukra Parvatham <b>sthira shareeraka stamina, natural resilience mariyu manchi recovery samarthyam</b> chupisthunnayi. Niyamitha dincharya mee urjanu kapaduthundi.</p>"
+    elif is_hinglish:
+        hlth_raw = "<p>Aapki jeevan rekha aur Shukra Parvat <b>sthir sharirik stamina, natural resilience aur achhi recovery kshamta</b> ko darshate hain. Niyamit dhyan aur santulit routine aapki urja ko banaye rakhta hai.</p>"
+    else:
+        hlth_raw = ("<p>Your life line and Mount of Venus indicate <b>steady baseline stamina, natural physical resilience, and strong vital recovery</b>. "
+                    "Maintaining regular nervous system relaxation and grounding physical routines ensures sustained high-performance energy.</p>")
     hlth_body = [hlth_raw]
     if upaya_hlth:
-        head_up = VEDIC_UPAYA_HEADINGS_HI["Health & Vitality"] if is_hinglish else "Targeted Vedic Upaya (Health &amp; Vitality):"
+        if is_tenglish:
+            head_up = VEDIC_UPAYA_HEADINGS_TE["Health & Vitality"]
+        elif is_hinglish:
+            head_up = VEDIC_UPAYA_HEADINGS_HI["Health & Vitality"]
+        else:
+            head_up = "Targeted Vedic Upaya (Health &amp; Vitality):"
         hlth_body.append(
             f'<div style="background:#fcf8f2;border-left:3px solid #c97d3e;padding:10px 14px;border-radius:6px;margin-top:10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">'
             f'<b style="color:#7a4b18;">{head_up}</b><br>{upaya_hlth}</div>'
         )
-    c_title, c_tag = VEDIC_ASPECT_TITLES_HI["Health, Physical Vitality & Stamina"] if is_hinglish else ("Health, Physical Vitality & Stamina", "Vitality & Prana")
+    if is_tenglish:
+        c_title, c_tag = VEDIC_ASPECT_TITLES_TE["Health, Physical Vitality & Stamina"]
+    elif is_hinglish:
+        c_title, c_tag = VEDIC_ASPECT_TITLES_HI["Health, Physical Vitality & Stamina"]
+    else:
+        c_title, c_tag = ("Health, Physical Vitality & Stamina", "Vitality & Prana")
     cards.append(_vedic_card(c_title, "".join(hlth_body), c_tag))
 
     if not cards:
         return ""
-    vedic_title = f"{first}, Aapke Mukhya Jeevan Kshetra" if is_hinglish else f"{first}, your Core Life Readings"
-    vedic_sub = "Samudrika Shastra ke adhar par aapki palm lines aur parvato ka gehra vishleshan." if is_hinglish else "A synthesized Vedic reading in the classical tradition of Samudrika Shastra, built strictly from the lines, mounts, and signs measured on your palms."
-    vedic_nav = "Jeevan Kshetra" if is_hinglish else "Life Domains"
+    if is_tenglish:
+        vedic_title = f"{first}, Mee Mukhya Jeevitha Rangalu"
+        vedic_sub = "Samudrika Shastra sampradayam prakaram mee chethi rekhalu mariyu parvathala vishleshana."
+        vedic_nav = "Jeevitha Rangalu"
+    elif is_hinglish:
+        vedic_title = f"{first}, Aapke Mukhya Jeevan Kshetra"
+        vedic_sub = "Samudrika Shastra ke adhar par aapki palm lines aur parvato ka gehra vishleshan."
+        vedic_nav = "Jeevan Kshetra"
+    else:
+        vedic_title = f"{first}, your Core Life Readings"
+        vedic_sub = "A synthesized Vedic reading in the classical tradition of Samudrika Shastra, built strictly from the lines, mounts, and signs measured on your palms."
+        vedic_nav = "Life Domains"
     return _section(
         "sec-vedic", vedic_title,
         vedic_sub,
@@ -530,12 +686,17 @@ def _vedic_life_reading(conf: dict, first: str, lang: str = "en") -> str:
 
 
 def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, lang: str = "en") -> str:
-    is_hi = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
     f = str(feature or "").strip()
     s = str(sign or "").strip()
     f_low = f.lower()
     s_low = s.lower()
     if "mercury" in f_low:
+        if is_te:
+            return ("<b>Vyaparika Kushalatha Mariyu Vak-Chathuryam</b> — Meeru sharp communication skills, negotiation confidence mariyu practical business judgment develop chesukunnaru." if is_active else
+                    "<b>Janma Tho Vachina Jigyasa</b> — Sahajamaina conversational curiosity mariyu observation instinct.")
         if is_hi:
             return ("<b>Vyaparik Kushalta Aur Vani</b> — Aapne kushal communication skills, negotiation confidence aur practical business judgment develop kiya hai." if is_active else
                     "<b>Janma Se Mili Jigyasa</b> — Swabhavik baatcheet ki curiosity aur observational instinct.")
@@ -543,6 +704,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Commercial Acumen &amp; Speech</b> — You have developed sharp communication skills, negotiation confidence, and practical business judgment."
         return "<b>Innate Inquisitiveness</b> — Natural conversational curiosity and thoughtful observational instinct."
     if "venus" in f_low:
+        if is_te:
+            return ("<b>Prema Mariyu Bhavodvega Urja</b> — Apyayatha, prema mariyu sambandhalalo sthira nishtha." if is_active else
+                    "<b>Janma Tho Vachina Bhavana Swabhavam</b> — Kutumbam mariyu sneham patla sahaja sensitive baseline.")
         if is_hi:
             return ("<b>Prem Aur Bhavnatmak Urja</b> — Gehara sauhard, prem aur rishto mein pakki nishtha." if is_active else
                     "<b>Janma Se Mila Bhavnatmak Swabhav</b> — Parivar aur aatmiyata ke prati natural sensitive baseline.")
@@ -550,6 +714,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Warmth &amp; Emotional Vitality</b> — Deepened capacity for warmth, generous devotion, and grounded interpersonal loyalty."
         return "<b>Innate Emotional Nature</b> — Core sensitive baseline and natural responsiveness to family warmth."
     if "saturn" in f_low:
+        if is_te:
+            return ("<b>Karthavyam Mariyu Sthira Anushasanam</b> — Orpu, pressure lo sthiratha mariyu professional responsibility." if is_active else
+                    "<b>Janma Tho Vachina Gambhiratha</b> — Jagrattha, karthavyam mariyu prarambha prudence.")
         if is_hi:
             return ("<b>Kartavya Aur Sthir Anushasan</b> — Dheeraj, pressure mein sthirata aur professional responsibility." if is_active else
                     "<b>Janma Se Mili Gambhirta</b> — Savdhani, kartavya aur shuruati prudence.")
@@ -557,6 +724,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Duty &amp; Steadfast Discipline</b> — Proven endurance, patience under pressure, and reliable professional responsibility."
         return "<b>Innate Caution &amp; Seriousness</b> — Early predisposition toward prudence, duty, and careful forethought."
     if "jupiter" in f_low:
+        if is_te:
+            return ("<b>Nayakathvam Mariyu Gouravam</b> — Authority, aathma-gouravam mariyu strategic vision abhivrudhi." if is_active else
+                    "<b>Janma Tho Vachina Unna Aadarshalu</b> — Sahaja pride mariyu high standards.")
         if is_hi:
             return ("<b>Netritva Aur Samman</b> — Authority, aatm-samman aur strategic vision ka vikas." if is_active else
                     "<b>Janma Se Mile Uchha Aadarsh</b> — Natural pride aur uchha standards.")
@@ -564,6 +734,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Leadership &amp; Executive Ambition</b> — Active cultivation of authority, dignified self-respect, and strategic vision."
         return "<b>Innate Inner Ideals</b> — Natural pride, high personal standards, and quiet self-worth."
     if "apollo" in f_low or "sun" in f_low:
+        if is_te:
+            return ("<b>Kala Mariyu Samajika Gurthimpu</b> — Creative skill, gouravam mariyu public appreciation." if is_active else
+                    "<b>Janma Tho Vachina Kala Drushti</b> — Soundaryam mariyu creative expression samajh.")
         if is_hi:
             return ("<b>Kala Aur Samajik Pehchan</b> — Applied creative skill, samman aur public appreciation." if is_active else
                     "<b>Janma Se Mili Kala Drishti</b> — Sundarta aur creative expression ki samajh.")
@@ -571,6 +744,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Creative Merit &amp; Recognition</b> — Applied creative skill, polished personal taste, and earning public appreciation."
         return "<b>Innate Aesthetic Sense</b> — Natural appreciation for beauty, balance, and creative expression."
     if "mars" in f_low:
+        if is_te:
+            return ("<b>Sahasam Mariyu Samarthyam</b> — Kashtakalamlo sthiramga unde shakthi mariyu constitutional stamina." if is_active else
+                    "<b>Janma Tho Vachina Aantrika Josh</b> — Fighting spirit mariyu emotional stamina.")
         if is_hi:
             return ("<b>Sahas Aur Kshamta</b> — Mushkil sthitiyon mein sthir rehne ki kshamta aur constitutional stamina." if is_active else
                     "<b>Janma Se Mila Aantrik Josh</b> — Natural fighting spirit aur emotional stamina.")
@@ -578,6 +754,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Courage &amp; Practical Grit</b> — Hard-earned resilience, constitutional stamina, and standing firm through adversity."
         return "<b>Innate Inner Fire</b> — Underlying fighting spirit and baseline emotional stamina."
     if "luna" in f_low or "moon" in f_low:
+        if is_te:
+            return ("<b>Vyavaharika Antardrushti</b> — Kalpananu thos future plans ga marchatam." if is_active else
+                    "<b>Janma Tho Vachina Kalpanashakthi</b> — Rich inner world mariyu vivid intuitive impressions.")
         if is_hi:
             return ("<b>Vyavaharik Antardrishti</b> — Kalpana ko thos aur realistic future plans mein badalna." if is_active else
                     "<b>Janma Se Mili Kalpanashakti</b> — Rich inner world aur vivid intuitive impressions.")
@@ -585,6 +764,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Applied Intuition &amp; Strategy</b> — Channeling imaginative breadth into realistic, actionable future plans."
         return "<b>Innate Restless Imagination</b> — Rich inner world, love for new horizons, and vivid instinctive impressions."
     if "life line" in f_low:
+        if is_te:
+            return ("<b>Sthira Jeevana Urja</b> — Shareeraka stamina mariyu daily work lo samathoulya pacing." if is_active else
+                    "<b>Janma Tho Vachina Shareera Swasthyam</b> — Moola shareeraka sanrachana mariyu vitality.")
         if is_hi:
             return ("<b>Sthir Jeevan Urja</b> — Sharirik stamina aur daily work mein santulit pacing." if is_active else
                     "<b>Janma Se Mila Sharir Swasthya</b> — Mool sharirik sanrachna aur vitality.")
@@ -592,6 +774,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Active Vitality &amp; Stamina</b> — Cultivated physical resilience and steady pacing throughout daily work."
         return "<b>Inborn Constitution</b> — Baseline physical constitution and ancestral vitality."
     if "head line" in f_low:
+        if is_te:
+            return ("<b>Spashta Nirnaya Samarthyam</b> — Anubhavam tho nikharina structured decision-making." if is_active else
+                    "<b>Janma Tho Vachina Dimaag</b> — Sahajamaina mental agility mariyu problem-solving instinct.")
         if is_hi:
             return ("<b>Spasht Nirnay Kshamta</b> — Anubhav se nikharne wala structured decision-making." if is_active else
                     "<b>Janma Se Mila Dimaag</b> — Natural mental agility aur problem-solving instinct.")
@@ -599,6 +784,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Practical Reasoning &amp; Focus</b> — Clear, structured decision-making sharpened through real-world experience."
         return "<b>Innate Intellectual Style</b> — Natural mental agility and instinctive problem-solving."
     if "fate line" in f_low:
+        if is_te:
+            return ("<b>Swayam Nirmitamaina Career</b> — Swatantra krushi tho nirminchina purposeful career direction." if is_active else
+                    "<b>Janma Tho Vachina Career Baseline</b> — Prarambha adaptability mariyu potential.")
         if is_hi:
             return ("<b>Swayam Nirmit Career</b> — Swatantra mehnat se banayi gayi purposeful career direction." if is_active else
                     "<b>Janma Se Mila Career Baseline</b> — Shuruati adaptability aur potential.")
@@ -606,6 +794,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
             return "<b>Vocational Trajectory</b> — Distinct, purposeful career direction forged through independent choices and focus."
         return "<b>Innate Vocational Baseline</b> — Early adaptability before taking definitive command of your destiny."
     if "heart line" in f_low:
+        if is_te:
+            return ("<b>Sambandhalalo Imandari</b> — Mature loyalty mariyu meaningful sambandhalalo investment." if is_active else
+                    "<b>Janma Tho Vachina Samvedana</b> — Aatmeeyulatho heartfelt connection.")
         if is_hi:
             return ("<b>Rishto Mein Imandari</b> — Mature loyalty aur meaningful rishto mein investment." if is_active else
                     "<b>Janma Se Mili Samvedna</b> — Karibi logo se heartfelt connection.")
@@ -614,6 +805,9 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
         return "<b>Innate Emotional Receptivity</b> — Baseline sensitivity and heartfelt connection with close companions."
     if "thumb" in f_low:
         if "reasoning" in s_low or "logic" in s_low:
+            if is_te:
+                return ("<b>Strategic Vishleshana</b> — Methodical reasoning mariyu aalochana tharvatha action." if is_active else
+                        "<b>Janma Tho Vachina Tharkika Swabhavam</b> — Sahaja logical balance.")
             if is_hi:
                 return ("<b>Strategic Vishleshan</b> — Methodical reasoning aur options ko tolnay ke baad action." if is_active else
                         "<b>Janma Se Mila Tarkik Swabhav</b> — Natural logical balance.")
@@ -621,10 +815,16 @@ def _clean_contrast_label(feature: str, sign: str, *, is_active: bool = True, la
                 return "<b>Strategic Deliberation</b> — Methodical reasoning and weighing options before taking major action."
             return "<b>Innate Analytical Nature</b> — Instinctive logical balance and thoughtful hesitation."
         if "short" in s_low or "receptive" in s_low:
+            if is_te:
+                return ("<b>Lachila Samarthyam</b> — Paristhithulaku thaggattu tvaraga adjust ayye adaptability." if is_active else
+                        "<b>Janma Tho Vachina Receptive Swabhavam</b> — Sensitive baseline.")
             if is_hi:
                 return ("<b>Lachili Kshamta</b> — Badalti sthitiyon ke sath turant adjust hone ki adaptability." if is_active else
                         "<b>Janma Se Mila Receptive Swabhav</b> — Sensitive baseline.")
             return "<b>Adaptive Flexibility</b> — Agile, feeling-led responsiveness that adjusts quickly to changing circumstances."
+        if is_te:
+            return ("<b>Dridha Ichhashakthi Mariyu Action</b> — Strong follow-through, boundary setting mariyu decisive execution." if is_active else
+                    "<b>Janma Tho Vachina Sankalpam</b> — Moola convictions mariyu tenacity.")
         if is_hi:
             return ("<b>Dridh Ichhashakti Aur Action</b> — Strong follow-through, boundary setting aur decisive execution." if is_active else
                     "<b>Janma Se Mila Sankalp</b> — Mool convictions aur tenacity.")
@@ -708,7 +908,9 @@ def render(
     import report_shell as RS
     from palm_api import palmist_voice as PVoice
 
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     prose = prose if isinstance(prose, dict) else {}
     rr = raw.get("reading_result") if isinstance(raw.get("reading_result"), dict) else {}
     if rr:
@@ -754,8 +956,15 @@ def render(
     blocks: list[str] = []
 
     # 1 — the photographs
-    hands_title = "Aapke Haath Aur Rekhayein" if is_hinglish else "Your hands, and what I traced on them"
-    hands_nav = "Aapke Haath" if is_hinglish else "Your hands"
+    if is_tenglish:
+        hands_title = "Mee Chethulu Mariyu Rekhalu"
+        hands_nav = "Mee Chethulu"
+    elif is_hinglish:
+        hands_title = "Aapke Haath Aur Rekhayein"
+        hands_nav = "Aapke Haath"
+    else:
+        hands_title = "Your hands, and what I traced on them"
+        hands_nav = "Your hands"
     blocks.append(_section(
         "sec-hands", hands_title,
         "",
@@ -768,36 +977,68 @@ def render(
     elif why_now:
         now_summary += f"<p>{_e(why_now)}</p>"
     else:
-        # An aspect key with no title would put None into the join below.
         strong_areas = [t for t in (_TITLE.get(str(a.get("key") or ""))
                                     for a in aspects
                                     if a.get("strength") == "strong") if t]
         dom_name = dom_key.title()
         if strong_areas:
-            now_summary += (f"<p>Your active {dom_name} hand shows pronounced momentum in {', '.join(strong_areas[:2])}. "
-                            f"The recurring palm pattern reflects purposeful focus and deliberate application of your core strengths.</p>")
+            if is_tenglish:
+                now_summary += (f"<p>Mee active {dom_name} hand {', '.join(strong_areas[:2])} lo balamaina momentum chupisthundi. "
+                                f"Chethi rekhalu mee core strengths ni deliberate ga vaduthunnarani spashtam chesthunnayi.</p>")
+            elif is_hinglish:
+                now_summary += (f"<p>Aapka active {dom_name} hand {', '.join(strong_areas[:2])} mein majboot momentum dikhata hai. "
+                                f"Recurring palm pattern aapki mukhya shaktiyon ke purposeful upyog ko darshata hai.</p>")
+            else:
+                now_summary += (f"<p>Your active {dom_name} hand shows pronounced momentum in {', '.join(strong_areas[:2])}. "
+                                f"The recurring palm pattern reflects purposeful focus and deliberate application of your core strengths.</p>")
         else:
-            now_summary += (f"<p>Your active {dom_name} hand reflects a balanced, adaptive constitution. "
-                            f"Lived choices show an evolving mastery of practical decisions and steady personal development.</p>")
+            if is_tenglish:
+                now_summary += (f"<p>Mee active {dom_name} hand samathoulya, anukoola swabhavanni chupisthundi. "
+                                f"Jeevitha nirnayalu sthira vyakthithva vikasanni darshisthunnayi.</p>")
+            elif is_hinglish:
+                now_summary += (f"<p>Aapka active {dom_name} hand ek santulit, anukoolit swabhav ko darshata hai. "
+                                f"Jeevan ke faisle sthir vyaktitva vikas ko dikhate hain.</p>")
+            else:
+                now_summary += (f"<p>Your active {dom_name} hand reflects a balanced, adaptive constitution. "
+                                f"Lived choices show an evolving mastery of practical decisions and steady personal development.</p>")
 
     now_points = []
     if mind_now:
         for m in mind_now[:2]:
             now_points.append(f"<li>{_e(m)}</li>")
     if hardest:
-        hardest_lbl = "Dhyan dene yogya mukhya bindu:" if is_hinglish else "Core tension to watch:"
+        if is_tenglish:
+            hardest_lbl = "Jagrattha vahinchalsina mukhya amsham:"
+        elif is_hinglish:
+            hardest_lbl = "Dhyan dene yogya mukhya bindu:"
+        else:
+            hardest_lbl = "Core tension to watch:"
         now_points.append(f'<li><b style="color:#a44c12;">{hardest_lbl}</b> {_e(hardest)}</li>')
 
     if now_points:
-        focus_head = "Mukhya Focus Aur Vartaman Disha" if is_hinglish else "Key Focus & Immediate Direction"
+        if is_tenglish:
+            focus_head = "Mukhya Focus Mariyu Varthamana Disha"
+        elif is_hinglish:
+            focus_head = "Mukhya Focus Aur Vartaman Disha"
+        else:
+            focus_head = "Key Focus & Immediate Direction"
         now_summary += (f'<div class="card" style="background:#faf8f5;border-left:4px solid #b57c38;padding:12px 16px;margin-top:10px;">'
                         f'<div class="ev-label" style="color:#7a4b18;font-weight:700;margin-bottom:6px;">{focus_head}</div>'
                         f'<ul class="pv-plain" style="margin:0;padding-left:18px;">{"".join(now_points)}</ul></div>')
 
     if now_summary:
-        now_title = f"Aapki Vartaman Sthiti, {first}" if is_hinglish else f"Where You Are Now, {first}"
-        now_sub = "Aapke vartaman jeevan phase, mukhya focus aur dhyan dene yogya binduon ka saransh." if is_hinglish else "An executive synthesis of your current life phase, active focus, and primary tension."
-        now_nav = "Vartaman Sthiti" if is_hinglish else "Where You Are"
+        if is_tenglish:
+            now_title = f"Mee Varthamana Sthiti, {first}"
+            now_sub = "Mee varthamana jeevitha phase, mukhya focus mariyu jagratthala saramsam."
+            now_nav = "Varthamana Sthiti"
+        elif is_hinglish:
+            now_title = f"Aapki Vartaman Sthiti, {first}"
+            now_sub = "Aapke vartaman jeevan phase, mukhya focus aur dhyan dene yogya binduon ka saransh."
+            now_nav = "Vartaman Sthiti"
+        else:
+            now_title = f"Where You Are Now, {first}"
+            now_sub = "An executive synthesis of your current life phase, active focus, and primary tension."
+            now_nav = "Where You Are"
         blocks.append(_section(
             "sec-now", now_title,
             now_sub,
@@ -807,8 +1048,15 @@ def render(
     shape_rows = _rows(dom_reading.shape, agree, lang=lang)
     opening_text = personality or _shape_prose(dom_reading)
     opening = f"<p>{_e(opening_text)}</p>" if opening_text else ""
-    hand_title = "Aapka Core Hand Archetype & Swabhav" if is_hinglish else "Your Core Hand Archetype & Temperament"
-    hand_sub = "Haath ka aakar, angutha aur ungliyon ka vishleshan." if is_hinglish else f"Shape, thumb and finger set — {_HAND_ROLE[True]}."
+    if is_tenglish:
+        hand_title = "Mee Core Hand Archetype & Swabhavam"
+        hand_sub = "Chethi aakaram, botana velu mariyu velula vishleshana."
+    elif is_hinglish:
+        hand_title = "Aapka Core Hand Archetype & Swabhav"
+        hand_sub = "Haath ka aakar, angutha aur ungliyon ka vishleshan."
+    else:
+        hand_title = "Your Core Hand Archetype & Temperament"
+        hand_sub = f"Shape, thumb and finger set — {_HAND_ROLE[True]}."
     blocks.append(_section(
         "sec-hand", hand_title,
         hand_sub,
@@ -824,9 +1072,18 @@ def render(
         mount_rows = _rows(dom_reading.mounts, agree, lang=lang)
         mounts_html = f'<div class="card">{mount_rows}</div>' if mount_rows else ""
         marks_html = _marks_section(readings, raw, lang=lang)
-        mounts_title = "Grah Parvat Aur Shubh Chinh" if is_hinglish else "Planetary Mounts & Auspicious Markings"
-        mounts_sub = "Haath ke parvat darshate hain ki grahon ki urja aapke hatho mein kaise faili hui hai." if is_hinglish else "The raised and flat pads indicate how cosmic planetary energies distribute across your palm, modified by unique signs."
-        mounts_nav = "Grah Parvat" if is_hinglish else "Mounts & Signs"
+        if is_tenglish:
+            mounts_title = "Graha Parvathalu Mariyu Shubha Chihnalu"
+            mounts_sub = "Chethi parvathalu grahala urja mee arachethilo ela unnadhi chupisthayi."
+            mounts_nav = "Graha Parvathalu"
+        elif is_hinglish:
+            mounts_title = "Grah Parvat Aur Shubh Chinh"
+            mounts_sub = "Haath ke parvat darshate hain ki grahon ki urja aapke hatho mein kaise faili hui hai."
+            mounts_nav = "Grah Parvat"
+        else:
+            mounts_title = "Planetary Mounts & Auspicious Markings"
+            mounts_sub = "The raised and flat pads indicate how cosmic planetary energies distribute across your palm, modified by unique signs."
+            mounts_nav = "Mounts & Signs"
         blocks.append(_section(
             "sec-mounts", mounts_title,
             mounts_sub,
@@ -835,9 +1092,18 @@ def render(
         # 6 — Chronological Timeline (Past Milestones)
         behind = _timeline(conf, age, ahead=False, lang=lang)
         if behind:
-            behind_title = f"{first}, aapke pichhle jeevan ke milestones" if is_hinglish else f"{first}, your past life milestones"
-            behind_sub = "Samudrika Shastra ke 7-varshiya niyam ke adhar par pichhle mukhya milestones ka vishleshan." if is_hinglish else "Calculated using the classical seven-year division across your major lines to map key developmental chapters."
-            behind_nav = "Pichhla Samay" if is_hinglish else "Past Timeline"
+            if is_tenglish:
+                behind_title = f"{first}, mee gatha jeevitha milestones"
+                behind_sub = "Samudrika Shastra 7-varshala niyamam prakaram gatha mukhya ghattala vishleshana."
+                behind_nav = "Gatha Samayam"
+            elif is_hinglish:
+                behind_title = f"{first}, aapke pichhle jeevan ke milestones"
+                behind_sub = "Samudrika Shastra ke 7-varshiya niyam ke adhar par pichhle mukhya milestones ka vishleshan."
+                behind_nav = "Pichhla Samay"
+            else:
+                behind_title = f"{first}, your past life milestones"
+                behind_sub = "Calculated using the classical seven-year division across your major lines to map key developmental chapters."
+                behind_nav = "Past Timeline"
             blocks.append(_section(
                 "sec-behind", behind_title,
                 behind_sub,
@@ -846,16 +1112,30 @@ def render(
         # 7 — Forward Roadmap (Upcoming Age Windows)
         ahead = _timeline(conf, age, ahead=True, lang=lang)
         if ahead:
-            ahead_title = "Aane Wale Age Windows Aur Disha" if is_hinglish else "Your Upcoming Age Windows & Direction"
-            ahead_sub = "Aapki active palm lines ke adhar par aane wale varsho ka roadmap." if is_hinglish else "Upcoming developmental windows read forward along your active palm lines."
-            ahead_nav = "Aane Wala Samay" if is_hinglish else "Future Roadmap"
+            if is_tenglish:
+                ahead_title = "Munde Vache Age Windows Mariyu Disha"
+                ahead_sub = "Mee active palm lines aadharamga vache samvatsarala roadmap."
+                ahead_nav = "Bhavishyath Samayam"
+            elif is_hinglish:
+                ahead_title = "Aane Wale Age Windows Aur Disha"
+                ahead_sub = "Aapki active palm lines ke adhar par aane wale varsho ka roadmap."
+                ahead_nav = "Aane Wala Samay"
+            else:
+                ahead_title = "Your Upcoming Age Windows & Direction"
+                ahead_sub = "Upcoming developmental windows read forward along your active palm lines."
+                ahead_nav = "Future Roadmap"
             blocks.append(_section(
                 "sec-ahead", ahead_title,
                 ahead_sub,
                 ahead, nav=ahead_nav))
 
         # 8 — Innate vs. Made (Left vs. Right Hand Confluence)
-        if is_hinglish:
+        if is_tenglish:
+            contrast = (f'<p style="margin:0 0 12px 0;line-height:1.6;color:#2c3140;">'
+                        f'Mee passive hand (<b>{other_key.title()}</b>) janmatho vachina prathibha mariyu sanskaralanu chupisthundi, '
+                        f'mariyu mee active hand (<b>{dom_key.title()}</b>) mee krushi mariyu karma tho nirminchukuna sthitini chupisthundi. '
+                        f'Renditini polchi chusthe mee vikasam telusthundi:</p>')
+        elif is_hinglish:
             contrast = (f'<p style="margin:0 0 12px 0;line-height:1.6;color:#2c3140;">'
                         f'Aapka passive hand (<b>{other_key.title()}</b>) janma se mili pratibha aur sanskaro ko darshata hai, '
                         f'jabki aapka active hand (<b>{dom_key.title()}</b>) aapke mehnat aur karm se banayi gayi sthiti ko dikhata hai. '
@@ -874,22 +1154,41 @@ def render(
                            if r.key not in agree and r.tone != "neutral"][:4]
             cols = ""
             if only_innate:
-                inborn_lbl = "Janma Se Mila Baseline (Passive Hand: " if is_hinglish else "Inborn Potential (Passive Hand: "
+                if is_tenglish:
+                    inborn_lbl = "Janmatho Vachina Baseline (Passive Hand: "
+                elif is_hinglish:
+                    inborn_lbl = "Janma Se Mila Baseline (Passive Hand: "
+                else:
+                    inborn_lbl = "Inborn Potential (Passive Hand: "
                 cols += ('<div class="pv-col"><div class="ev-label">' + inborn_lbl +
                          f'{_e(other_key.title())})</div><ul class="pv-plain">'
                          + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign, is_active=False, lang=lang)}</li>"
                                    for r in only_innate) + "</ul></div>")
             if only_active:
-                active_lbl = "Karm Se Banaya Vikas (Active Hand: " if is_hinglish else "Cultivated Strengths (Active Hand: "
+                if is_tenglish:
+                    active_lbl = "Karma Tho Sadinchina Vikas (Active Hand: "
+                elif is_hinglish:
+                    active_lbl = "Karm Se Banaya Vikas (Active Hand: "
+                else:
+                    active_lbl = "Cultivated Strengths (Active Hand: "
                 cols += ('<div class="pv-col"><div class="ev-label">' + active_lbl +
                          f'{_e(dom_key.title())})</div><ul class="pv-plain">'
                          + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign, is_active=True, lang=lang)}</li>"
                                    for r in only_active) + "</ul></div>")
             if cols:
                 contrast += f'<div class="card pv-cols">{cols}</div>'
-        contrast_title = "Janma Pratibha vs. Swayam Nirmit Vikas" if is_hinglish else "Innate Blueprint vs. Self-Made Evolution"
-        contrast_sub = "Passive aur active hatho ka tulnatmak vishleshan." if is_hinglish else "Comparing your passive hand (inborn baseline) with your active hand (lived choices and cultivated mastery)."
-        contrast_nav = "Dono Haath" if is_hinglish else "Innate vs Made"
+        if is_tenglish:
+            contrast_title = "Janma Prathibha vs. Swayam Nirmitamaina Vikas"
+            contrast_sub = "Passive mariyu active chethula thulanathmaka vishleshana."
+            contrast_nav = "Rendu Chethulu"
+        elif is_hinglish:
+            contrast_title = "Janma Pratibha vs. Swayam Nirmit Vikas"
+            contrast_sub = "Passive aur active hatho ka tulnatmak vishleshan."
+            contrast_nav = "Dono Haath"
+        else:
+            contrast_title = "Innate Blueprint vs. Self-Made Evolution"
+            contrast_sub = "Comparing your passive hand (inborn baseline) with your active hand (lived choices and cultivated mastery)."
+            contrast_nav = "Innate vs Made"
         blocks.append(_section(
             "sec-contrast", contrast_title,
             contrast_sub,
@@ -909,10 +1208,21 @@ def render(
         behind_all = _timeline(conf, age, ahead=False, lang=lang)
         if behind_all:
             anchor_stage = behind_all.split("</div>")[0] + "</div>" if "</div>" in behind_all else behind_all
-            val_title = "Pichhla Anubhav & Validation Point" if is_hinglish else "Lived Validation Point"
-            val_sub = "Samudrika Shastra ke 7-varshiya niyam ke adhar par pushti ke liye ek mukhya milestone:" if is_hinglish else "Classical palmistry divides lines into seven-year chapters. Here is one key milestone for verification:"
-            val_note = f"Yeh anchor point aapki hand timeline ko calibrate karta hai. Poori jeevan katha aur aane wale age chapters (ages {age}+) poori reading mein unlock hote hain." if is_hinglish else f"This anchor point calibrates your hand timeline. Your complete chronological life story, lived milestones, and upcoming future age chapters (ages {age}+) are unlocked in the full reading."
-            val_nav = "Validation Point"
+            if is_tenglish:
+                val_title = "Gatha Anubhavam & Validation Point"
+                val_sub = "Samudrika Shastra 7-varshala niyamam prakaram roopondhinchina oka mukhya milestone:"
+                val_note = f"Ee anchor point mee chethi timeline ni calibrate chesthundi. Sampoorna jeevitha katha mariyu munde vache age chapters (ages {age}+) full reading lo unlock avuthayi."
+                val_nav = "Validation Point"
+            elif is_hinglish:
+                val_title = "Pichhla Anubhav & Validation Point"
+                val_sub = "Samudrika Shastra ke 7-varshiya niyam ke adhar par pushti ke liye ek mukhya milestone:"
+                val_note = f"Yeh anchor point aapki hand timeline ko calibrate karta hai. Poori jeevan katha aur aane wale age chapters (ages {age}+) poori reading mein unlock hote hain."
+                val_nav = "Validation Point"
+            else:
+                val_title = "Lived Validation Point"
+                val_sub = "Classical palmistry divides lines into seven-year chapters. Here is one key milestone for verification:"
+                val_note = f"This anchor point calibrates your hand timeline. Your complete chronological life story, lived milestones, and upcoming future age chapters (ages {age}+) are unlocked in the full reading."
+                val_nav = "Validation Point"
             blocks.append(_section(
                 "sec-behind", val_title,
                 val_sub,
@@ -922,7 +1232,44 @@ def render(
         ahead_n = len([p for p in (conf.get("predictions") or [])
                        if isinstance(p.get("age"), int) and p["age"] > age])
         
-        if is_hinglish:
+        if is_tenglish:
+            blocks.append(f"""
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Munde Vache Timeline Mariyu Future Age Windows (Ages {age}+)</div>
+  <p class="blurred">Mee active palm lines aadharamga munde vache samvatsarala mukhya turning points vishleshana.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Future timeline locked ga undi.</b> Poorthi milestones chudataniki unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Graha Parvatha Urja Profile (Mount Analysis)</div>
+  <p class="blurred">Chethi 7 mukhya graha parvathala (Guru, Shani, Surya, Budh, Kuja, Shukra, Chandra) loothaina vishleshana.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Mount analysis locked ga undi.</b> Poorthi profile kosam unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Shubha Chihnalu & Special Marks (Trishulam, Thaara, Mathsya, Chathurasram)</div>
+  <p class="blurred">Chethilo unna vishesha chihnala vishleshana mariyu jeevitham meeda vatini shubha prabhavam.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Special marks analysis locked ga undi.</b> Chihnalanu chudataniki unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Rendu Chethula Vikas (Innate vs. Self-Made)</div>
+  <p class="blurred">Janmatho vachina kismat mariyu sontha krushitho nirminchina sthiti madhya thulanathmaka vishleshana.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Hand evolution comparison locked ga undi.</b> Vikas yatra chudataniki unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">Prabhavavanthamaina Mudra Upayamulu & Dainandina Alavatlu</div>
+  <p class="blurred">Mee chethi points ni balance cheyadaniki vishesha mudralu mariyu dainandina upayamulu.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Hand remedies locked ga unnai.</b> Upayamulu chudataniki unlock cheyandi.</p>
+</div>
+
+<section class="buy" id="unlock" style="margin-top:20px;">
+  <h3>Sampoorna Palm Reading Unlock Cheyandi</h3>
+  <p>Munde vache samvatsarala roadmap, graha parvatha profile, vishesha chihnalu, jeevitha ranga verdicts mariyu mudra upayamulanu unlock cheyandi.</p>
+  <a class="cta" href="#unlock" data-unlock="1">Sampoorna Reading Unlock Cheyandi · ₹{_e(price)}</a>
+</section>""")
+        elif is_hinglish:
             blocks.append(f"""
 <div class="qa-window locked" style="margin:16px 0;">
   <div class="qa-wlabel">Aane Wala Timeline Aur Future Age Windows (Ages {age}+)</div>
@@ -1057,9 +1404,20 @@ font-size:.88rem;line-height:1.5;color:#3d4250}
     sub = f"{age} years · {dom_key}-dominant · both palms read"
     if hand_type:
         sub += f" · {hand_type} hand"
+    
+    if is_tenglish:
+        eb_txt = "Hastha Samudrika Reading · Unlocked" if paid else "Hastha Samudrika Reading"
+        hd_txt = f"{first}, mee chethilo unna rekhalu em chepthunnayo ikkada chudandi."
+    elif is_hinglish:
+        eb_txt = "Palm reading · unlocked" if paid else "Palm reading"
+        hd_txt = f"{first}, yahan dekhein aapke haath kya darsha rahe hain."
+    else:
+        eb_txt = "Palm reading · unlocked" if paid else "Palm reading"
+        hd_txt = f"{first}, here is what your hands are carrying."
+
     return RS.page(
         f"{first} — your hands",
         body + f"<style>{extra}</style>",
-        eyebrow=("Palm reading · unlocked" if paid else "Palm reading"),
-        heading=f"{first}, here is what your hands are carrying.",
+        eyebrow=eb_txt,
+        heading=hd_txt,
         sub=sub)

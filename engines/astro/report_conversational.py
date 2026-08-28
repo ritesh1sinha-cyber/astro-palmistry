@@ -1472,7 +1472,9 @@ def _build_unified_current_chapter_html(
     today = today or date.today()
     from divisional_profile import compute_chart_ashtakavarga, get_live_transit_positions
     from free_dates import LOCKED_WINDOW_PHRASE, is_past
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
 
     def when(start: Any, end: Any) -> str:
         if paid:
@@ -1481,14 +1483,20 @@ def _build_unified_current_chapter_html(
         if began and finished:
             return _fmt_when(start, end) or f"{start} → {end}"
         if began:
-            return f"from {_fmt_date(start)}" if _fmt_date(start) else ("🔒 Dated Window Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE)
-        return "🔒 Dated Window Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE
+            locked_w = "🔒 Dated Window Sampoorna Reading Lo" if is_tenglish else ("🔒 Dated Window Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE)
+            return f"from {_fmt_date(start)}" if _fmt_date(start) else locked_w
+        return "🔒 Dated Window Sampoorna Reading Lo" if is_tenglish else ("🔒 Dated Window Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE)
     
     av_res = compute_chart_ashtakavarga(pc) if pc else {}
     sav = av_res.get("sav", {})
     transits = get_live_transit_positions(today)
     
-    lagna = pc.get("meta", {}).get("lagna_sign") or (pc.get("lagna") or {}).get("sign", "Aries") if pc else "Aries"
+    raw_lagna = pc.get("lagna") if pc else ""
+    lagna = (
+        pc.get("meta", {}).get("lagna_sign")
+        or (raw_lagna if isinstance(raw_lagna, str) else (raw_lagna or {}).get("sign", "Aries"))
+        if pc else "Aries"
+    )
     from astro_precompute import SIGN_LORDS
     lagna_lord = SIGN_LORDS.get(lagna, "Mars")
     
@@ -1525,13 +1533,18 @@ def _build_unified_current_chapter_html(
     if prev_ad:
         p_lord = prev_ad.get("ad_lord")
         p_dates = when(prev_ad.get("start", ""), prev_ad.get("end", ""))
-        p_badge = "Haal Ka Anubhav / Past Window" if is_hinglish else "Recent Formative Window"
-        p_sub = f"{p_lord} Antardasha ({cur_md}–{p_lord})" if is_hinglish else f"{p_lord} Sub-Period ({cur_md}–{p_lord})"
-        p_text = (
-            "Karyakshetra ki tayyari, administrative commitments aur lambe samay ke lakshyo ke liye zameen tayyar karna."
-            if is_hinglish else
-            "Analytical groundwork, managing administrative commitments, and laying the intellectual runway for long-term objectives."
-        )
+        if is_hinglish:
+            p_badge = "Haal Ka Anubhav / Past Window"
+            p_sub = f"{p_lord} Antardasha ({cur_md}–{p_lord})"
+            p_text = "Karyakshetra ki tayyari, administrative commitments aur lambe samay ke lakshyo ke liye zameen tayyar karna."
+        elif is_tenglish:
+            p_badge = "Gathisina Anubhavam / Past Window"
+            p_sub = f"{p_lord} Antardasha ({cur_md}–{p_lord})"
+            p_text = "Karyakshetramlo tayyari, administrative badhyathalu mariyu deergha kaala lakshyala kosam moolalanu siddham cheyadam."
+        else:
+            p_badge = "Recent Formative Window"
+            p_sub = f"{p_lord} Sub-Period ({cur_md}–{p_lord})"
+            p_text = "Analytical groundwork, managing administrative commitments, and laying the intellectual runway for long-term objectives."
         chronology_items.append(
             f'<div class="chapter-step past" style="background:#fdfdfd;border:1px solid #e4ded3;border-left:4px solid #6a7080;border-radius:11px;padding:13px 15px;">'
             f'  <div class="step-badge past" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#f0f0f0;color:#6a7080;">{p_badge}</div>'
@@ -1543,13 +1556,18 @@ def _build_unified_current_chapter_html(
         )
     
     cur_dates = when(ad_start, ad_end)
-    c_badge = "Chalu Operating Chapter" if is_hinglish else "Active Operating Chapter"
-    c_sub = f"{ad_lord} Antardasha ({cur_md}–{ad_lord})" if is_hinglish else f"{ad_lord} Sub-Period ({cur_md}–{ad_lord})"
-    c_text = (
-        "<b>Aantarik Sthirta Aur Re-Alignment:</b> Ek anushasit daur jo purani rukawaton ko hatane, vyarth commitments ko chhodne aur apne professional base ko mazboot karne ke liye samarpit hai."
-        if is_hinglish else
-        "<b>Concentrated Restructuring &amp; Karmic Realignment:</b> A disciplined phase dedicated to internal consolidation, shedding unproductive commitments, and methodically fortifying your core professional baseline."
-    )
+    if is_hinglish:
+        c_badge = "Chalu Operating Chapter"
+        c_sub = f"{ad_lord} Antardasha ({cur_md}–{ad_lord})"
+        c_text = "<b>Aantarik Sthirta Aur Re-Alignment:</b> Ek anushasit daur jo purani rukawaton ko hatane, vyarth commitments ko chhodne aur apne professional base ko mazboot karne ke liye samarpit hai."
+    elif is_tenglish:
+        c_badge = "Chalu Operating Chapter"
+        c_sub = f"{ad_lord} Antardasha ({cur_md}–{ad_lord})"
+        c_text = "<b>Aantrika Sthiratha Mariyu Re-Alignment:</b> Patha avarodhalanu tholaginchadaniki, waste commitments vadiliveyadaniki mariyu professional base ni balaparachadaniki anukoolamaina phase."
+    else:
+        c_badge = "Active Operating Chapter"
+        c_sub = f"{ad_lord} Sub-Period ({cur_md}–{ad_lord})"
+        c_text = "<b>Concentrated Restructuring &amp; Karmic Realignment:</b> A disciplined phase dedicated to internal consolidation, shedding unproductive commitments, and methodically fortifying your core professional baseline."
     chronology_items.append(
         f'<div class="chapter-step active" style="background:#fffcf8;border:1px solid #e4ded3;border-left:4px solid #b57c38;border-radius:11px;padding:14px 16px;">'
         f'  <div class="step-badge active" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#fdf2e3;color:#b57c38;">{c_badge}</div>'
@@ -1563,13 +1581,18 @@ def _build_unified_current_chapter_html(
     if next_ad:
         n_lord = next_ad.get("ad_lord")
         n_dates = when(next_ad.get("start", ""), next_ad.get("end", ""))
-        n_badge = "Aane Wala Breakthrough Window" if is_hinglish else "Upcoming Breakthrough Window"
-        n_sub = f"{n_lord} Antardasha ({cur_md}–{n_lord})" if is_hinglish else f"{n_lord} Sub-Period ({cur_md}–{n_lord})"
-        n_text = (
-            "<b>Mahatvapurna Safalta Aur Vistaar:</b> Vah mukhya samay jahan pichle prayas samman, promotion aur sthirta mein badalte hain."
-            if is_hinglish else
-            "<b>Major Manifestation &amp; Elevation Catalyst:</b> The primary timing window where prior perseverance translates into public recognition, vocational promotion, and decisive material expansion."
-        )
+        if is_hinglish:
+            n_badge = "Aane Wala Breakthrough Window"
+            n_sub = f"{n_lord} Antardasha ({cur_md}–{n_lord})"
+            n_text = "<b>Mahatvapurna Safalta Aur Vistaar:</b> Vah mukhya samay jahan pichle prayas samman, promotion aur sthirta mein badalte hain."
+        elif is_tenglish:
+            n_badge = "Munde Vache Breakthrough Window"
+            n_sub = f"{n_lord} Antardasha ({cur_md}–{n_lord})"
+            n_text = "<b>Mukhya Safalatha Mariyu Vistaaram:</b> Mundu chesina prayathnalu gouravam, promotion mariyu sthiratha roopamlo phalithalani iche mukhyamaina samayam."
+        else:
+            n_badge = "Upcoming Breakthrough Window"
+            n_sub = f"{n_lord} Sub-Period ({cur_md}–{n_lord})"
+            n_text = "<b>Major Manifestation &amp; Elevation Catalyst:</b> The primary timing window where prior perseverance translates into public recognition, vocational promotion, and decisive material expansion."
         chronology_items.append(
             f'<div class="chapter-step future" style="background:#f8fbf9;border:1px solid #e4ded3;border-left:4px solid #1c6b45;border-radius:11px;padding:13px 15px;">'
             f'  <div class="step-badge future" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#e3f5ec;color:#1c6b45;">{n_badge}</div>'
@@ -1624,8 +1647,24 @@ def _build_unified_current_chapter_html(
         12: ("Kharch, Ekant Aur Aantarik Shanti", "unexpected expenses aur sleep quality"),
     }
 
-    h_domains_dict = HOUSE_DOMAINS_HINGLISH if is_hinglish else HOUSE_DOMAINS
-    domain_name, domain_desc = h_domains_dict.get(t_sat_house, ("Karyakshetra Aur Disha" if is_hinglish else "Vocational & Life Direction", "core responsibilities"))
+    HOUSE_DOMAINS_TENGLISH = {
+        1: ("Mee Swabhavam, Urja Mariyu Disha", "vyakthigatha urja mariyu aathmavishwasam"),
+        2: ("Dhanam, Podupu Mariyu Kutumba Sthiratha", "aarthika podupu mariyu kutumba samathulyatha"),
+        3: ("Dhairyam, Initiative Mariyu Sahodharulu", "vyakthigatha prayathnam mariyu team execution"),
+        4: ("Illu, Manasika Shanti Mariyu Property", "aantrika shanti mariyu domestic sthiratha"),
+        5: ("Buddhivalam, Investments Mariyu Pillalu", "creative intelligence mariyu future planning"),
+        6: ("Karyakshetramlo Chunautilu Mariyu Competitions", "workplace friction mariyu dainandina kashtam"),
+        7: ("Bhagaswamyam, Vivaham Mariyu Public Deals", "jeevithabhagswami mariyu client contracts"),
+        8: ("Maarpu, Aakasmika Chunautilu", "unpredicted changes mariyu transformation"),
+        9: ("Dharmam, Margadarshanam Mariyu Bhagyam", "higher guidance mariyu bhagyodayam"),
+        10: ("Career, Gouravam Mariyu Adhikaram", "career standing mariyu promotion recognition"),
+        11: ("Labham, Aarthika Growth Mariyu Network", "aadaayam mariyu lakshya prapti"),
+        12: ("Kharchu, Ekantam Mariyu Aantrika Shanti", "unexpected expenses mariyu nidra quality"),
+    }
+
+    h_domains_dict = HOUSE_DOMAINS_TENGLISH if is_tenglish else (HOUSE_DOMAINS_HINGLISH if is_hinglish else HOUSE_DOMAINS)
+    default_dom = ("Karyakshetram Mariyu Disha" if is_tenglish else ("Karyakshetra Aur Disha" if is_hinglish else "Vocational & Life Direction"), "core responsibilities")
+    domain_name, domain_desc = h_domains_dict.get(t_sat_house, default_dom)
     primary_tension_title = domain_name
 
     symptoms = []
@@ -1649,6 +1688,26 @@ def _build_unified_current_chapter_html(
             symptoms.append(f"{domain_name} mein anushasan aur dhairya ki aavashyakta")
         if ad_lord in ("Ketu", "Rahu", "Saturn"):
             symptoms.append(f"Chalu <b>{ad_lord} Antardasha</b> ke karan routine kaamon mein aantarik virakti mehsoos hona")
+    elif is_tenglish:
+        if t_sat_house == 10:
+            symptoms.append("Kashtaniki tagga recognition mariyu promotions lo aalasyam anipinchatam")
+            symptoms.append("Panilo administrative load peragadam mariyu seniors/authorities tho chinna friction")
+            symptoms.append("Career lo maarpu korukovadam kani correct timing clarity kosam wait cheyadam")
+        elif t_sat_house == 6:
+            symptoms.append("Daily work stress, workload mariyu chinnapati vivadhalatho thagilina thakan")
+            symptoms.append("Jeerna vyavastha leda physical stamina meeda thoda prabhav")
+        elif t_sat_house == 8:
+            symptoms.append("Achanak ga vache badlavulu leda financial stress")
+        elif t_sat_house == 4:
+            symptoms.append("Intlo konchem ashanthi leda property aalasyam")
+        elif t_sat_house == 7:
+            symptoms.append("Partnerships leda business discussions lo aalasyam")
+        elif t_sat_house == 12:
+            symptoms.append("Kharchulu peragadam mariyu nidralo thalladilladam")
+        else:
+            symptoms.append(f"{domain_name} lo anushasanam mariyu opika chala aavashyakam")
+        if ad_lord in ("Ketu", "Rahu", "Saturn"):
+            symptoms.append(f"Chalu <b>{ad_lord} Antardasha</b> valla routine panullo aantarika virakthi raavadam")
     else:
         if t_sat_house == 10:
             symptoms.append("Feeling that professional recognition and career promotions are delayed or bottlenecked despite exhausting input")
@@ -1670,7 +1729,12 @@ def _build_unified_current_chapter_html(
         if ad_lord in ("Ketu", "Rahu", "Saturn"):
             symptoms.append(f"Mental detachment and disillusionment brought by the active <b>{ad_lord} Antardasha</b>, making routine obligations feel spiritually hollow")
 
-    next_lord_name = next_ad.get("ad_lord", "agla period" if is_hinglish else "the next period") if next_ad else ("aane wala window" if is_hinglish else "upcoming window")
+    if is_hinglish:
+        next_lord_name = next_ad.get("ad_lord", "agla period") if next_ad else "aane wala window"
+    elif is_tenglish:
+        next_lord_name = next_ad.get("ad_lord", "tharuvatha period") if next_ad else "munde vache window"
+    else:
+        next_lord_name = next_ad.get("ad_lord", "the next period") if next_ad else "upcoming window"
     next_date_str = _fmt_full_month(next_ad.get("start", "")) if next_ad and next_ad.get("start") else "early 2027"
     
     if is_hinglish:
@@ -1678,24 +1742,39 @@ def _build_unified_current_chapter_html(
         avoid_until = f"{next_date_str} se pehle" if paid else "is antardasha ke pura hone tak"
         moon_aspect_note = f", Janma Rashi (Moon in {moon_sign}) par drishti" if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else ""
         sat_root = f"Shani Dev aapke <b>{t_sat_house}th house ({t_sat_sign})</b> mein transit kar rahe hain" + (f" (SAV: <b>{t_sat_sav} bindus</b>)" if paid else "") + moon_aspect_note
+    elif is_tenglish:
+        easing_when = f" ({next_date_str})" if paid else " — exact date sampoorna reading lo undi"
+        avoid_until = f"{next_date_str} kante mundu" if paid else "ee antardasha poorthi ayye varaku"
+        moon_aspect_note = f", Janma Rashi (Moon in {moon_sign}) meeda drushti" if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else ""
+        sat_root = f"Shani Bhagavan mee <b>{t_sat_house}th house ({t_sat_sign})</b> lo transit chesthunnaru" + (f" (SAV: <b>{t_sat_sav} bindus</b>)" if paid else "") + moon_aspect_note
     else:
         easing_when = f" ({next_date_str})" if paid else " — the exact handover date is in the full reading"
         avoid_until = f"before {next_date_str}" if paid else "until this sub-period hands over"
         moon_aspect_note = f", casting a direct aspect onto your Janma Rashi (Moon in {moon_sign})" if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else ""
         sat_root = f"Saturn (Shani) is transiting your <b>{t_sat_house}th house ({t_sat_sign})</b>" + (f" with an Ashtakavarga score of <b>{t_sat_sav} bindus</b> (critical threshold is 28)" if paid else "") + moon_aspect_note
 
-    root_label = "Astrological Mool Adhar:" if is_hinglish else "Astrological Root:"
-    manifest_label = "Yeh dainik jeevan mein is roop mein dikhai de sakta hai:" if is_hinglish else "How this is manifesting in your daily experience:"
-    breakthrough_label = "⏳ Rahat Aur Breakthrough Window:" if is_hinglish else "⏳ Easing &amp; Breakthrough Window:"
-    breakthrough_text = (
-        f"Yeh dasha sthiti {ad_lord} Antardasha ke pura hone aur <b>{next_lord_name} Antardasha</b> shuru hone par spasht roop se anukool ho jayegi{easing_when}."
-        if is_hinglish else
-        f"This structural bottleneck eases decisively as {ad_lord} AD completes and transitions into <b>{next_lord_name} Antardasha</b>{easing_when}."
-    )
+    if is_hinglish:
+        root_label = "Astrological Mool Adhar:"
+        manifest_label = "Yeh dainik jeevan mein is roop mein dikhai de sakta hai:"
+        breakthrough_label = "⏳ Rahat Aur Breakthrough Window:"
+        breakthrough_text = f"Yeh dasha sthiti {ad_lord} Antardasha ke pura hone aur <b>{next_lord_name} Antardasha</b> shuru hone par spasht roop se anukool ho jayegi{easing_when}."
+        sat_dasha_note = f"{cur_md}–{ad_lord} dasha ke dauran yeh bina kisi jaldbazi ke karmic consolidation ka sanket deta hai."
+    elif is_tenglish:
+        root_label = "Astrological Moola Aadharam:"
+        manifest_label = "Idi dainandina jeevitham lo ee vidhamga kanipisthundi:"
+        breakthrough_label = "⏳ Upashamanam Mariyu Breakthrough Window:"
+        breakthrough_text = f"Ee dasha sthiti {ad_lord} Antardasha poorthi ayyi <b>{next_lord_name} Antardasha</b> start ayyaka anukoolam ga maruthundi{easing_when}."
+        sat_dasha_note = f"{cur_md}–{ad_lord} dasha kaalamlo idi thondarapaatu lekunda karmic consolidation sanketham."
+    else:
+        root_label = "Astrological Root:"
+        manifest_label = "How this is manifesting in your daily experience:"
+        breakthrough_label = "⏳ Easing &amp; Breakthrough Window:"
+        breakthrough_text = f"This structural bottleneck eases decisively as {ad_lord} AD completes and transitions into <b>{next_lord_name} Antardasha</b>{easing_when}."
+        sat_dasha_note = f"During the {cur_md}–{ad_lord} dasha, this signifies patient karmic consolidation."
 
     primary_tension_body = f"""
     <p style="margin:0 0 10px;font-size:0.88rem;line-height:1.6;color:#2c3140;">
-      <b>{root_label}</b> {sat_root}. {cur_md}–{ad_lord} dasha ke dauran yeh bina kisi jaldbazi ke karmic consolidation ka sanket deta hai.
+      <b>{root_label}</b> {sat_root}. {sat_dasha_note}
     </p>
     <div style="background:#fef7f6;border-radius:8px;padding:10px 14px;margin-bottom:10px;">
       <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#9e2a1b;">{manifest_label}</b>
@@ -1709,7 +1788,8 @@ def _build_unified_current_chapter_html(
     """
 
     # 2. Protective Grace Area
-    jup_domain, jup_desc = h_domains_dict.get(t_jup_house, ("Dhan Aur Aarthik Sthirta" if is_hinglish else "Financial & Resource Base", "material resources"))
+    default_jup = ("Dhanam Mariyu Aarthika Sthiratha" if is_tenglish else ("Dhan Aur Aarthik Sthirta" if is_hinglish else "Financial & Resource Base"), "material resources")
+    jup_domain, jup_desc = h_domains_dict.get(t_jup_house, default_jup)
     protective_title = jup_domain
     jup_score = (f" (SAV: <b>{t_jup_sav} bindus</b>)" if paid else "")
     
@@ -1720,6 +1800,15 @@ def _build_unified_current_chapter_html(
         </p>
         <p style="margin:0;color:#1c6b45;">
           <b>Suraksha Kavach:</b> Yeh aapke aarthik adhar, bachat aur parivar ki suraksha ko majboot sahara deta hai. Karyakshetra mein der ke bawajood aapka mool aarthik santulan surakshit rehta hai.
+        </p>
+        """
+    elif is_tenglish:
+        protective_body = f"""
+        <p style="margin:0 0 6px;">
+          <b>Astrological Sahayam:</b> Guru (Jupiter) mee <b>{t_jup_house}th house ({t_jup_sign})</b> lo transit chesthunnaru{jup_score}.
+        </p>
+        <p style="margin:0;color:#1c6b45;">
+          <b>Rakshana Kavacham:</b> Idi mee aarthika sthiratha, podupu mariyu kutumba surakshithathaku balamaina aadharam isthundi. Career lo aalasyam unna, mee moola aarthika balam surakshithanga untundi.
         </p>
         """
     else:
@@ -1733,8 +1822,8 @@ def _build_unified_current_chapter_html(
         """
 
     # 3. Secondary Resilience & Mind Axis
-    secondary_title = "Mann Ki Shanti, Urja Aur Swasthya" if is_hinglish else "Mental Resilience, Rest & Physical Stamina"
     if is_hinglish:
+        secondary_title = "Mann Ki Shanti, Urja Aur Swasthya"
         secondary_body = f"""
         <p style="margin:0 0 6px;">
           Shani aur Ketu ke prabhav se kabhi-kabhi <b>mann mein over-analysis, neend mein bechaini ya thakan</b> mehsoos ho sakti hai.
@@ -1743,7 +1832,18 @@ def _build_unified_current_chapter_html(
           <b>Vedic Margdarshan:</b> Pachan aur swasthya ka dhyan rakhein, aur kaam mein excessive stress se bachein. Is samay ko aantarik skills sikhne ka samay maanein.
         </p>
         """
+    elif is_tenglish:
+        secondary_title = "Manasika Prasanthatha, Urja Mariyu Aarogyam"
+        secondary_body = f"""
+        <p style="margin:0 0 6px;">
+          Shani mariyu Ketu prabhavam valla <b>manasulo over-analysis, nidra thalladilladam leda thakan</b> anipinchavachu.
+        </p>
+        <p style="margin:0;color:#6b4d1b;">
+          <b>Vedic Margadarshanam:</b> Jeerna vyavastha mariyu aarogyam meeda shraddha pettandi, panilo excessive stress theesukovaddu. Ee samayanni aantarika skills nerchukune kaalam ga bhavinchandi.
+        </p>
+        """
     else:
+        secondary_title = "Mental Resilience, Rest & Physical Stamina"
         secondary_body = f"""
         <p style="margin:0 0 6px;">
           The combination of Saturn's aspect and Ketu's inward sub-period frequently triggers <b>mental over-analysis, restless sleep, and low energy reserves</b>.
@@ -1762,6 +1862,14 @@ def _build_unified_current_chapter_html(
           <li><b>Jyotishiya Nirnay:</b> Aap peeche nahi hain; aapki kundli agle <b>{next_lord_name} Antardasha</b> ke vistar ke liye zameen tayyar kar rahi hai.</li>
         </ul>
         """
+    elif is_tenglish:
+        counsel_body = f"""
+        <ul style="margin:0;padding-left:18px;font-size:0.86rem;line-height:1.58;color:#2c3140;">
+          <li style="margin-bottom:4px;"><b>Thondarapaatu Vaddu:</b> Emotional ga career marchadam, superiors tho godavalu leda high-risk speculations nunchi duranga undandi {avoid_until}.</li>
+          <li style="margin-bottom:4px;"><b>Deeni Meeda Focus Cheyandi:</b> Panulanu methodically poorthi cheyandi, skills upgrade cheyandi mariyu dhyanam/adhyathmika abhyasam cheyandi.</li>
+          <li><b>Jyotisha Theerpu:</b> Meeru venukapadi leru; mee kundali munde vache <b>{next_lord_name} Antardasha</b> vistarana kosam runway ready chesthondi.</li>
+        </ul>
+        """
     else:
         counsel_body = f"""
         <ul style="margin:0;padding-left:18px;font-size:0.86rem;line-height:1.58;color:#2c3140;">
@@ -1777,6 +1885,12 @@ def _build_unified_current_chapter_html(
             f"<b>Mahadasha Swami ({cur_md}):</b> Guruwar subah <i>Guru Gayatri Mantra</i> ka jaap karein aur gurus/buzurgo ka aashirwad lein.",
             f"<b>Shani Gochar Upay:</b> Shanivar ko pakshiyo ko paani ya anaaj dein aur Shani ke prabhav ko santulit karein.",
         ]
+    elif is_tenglish:
+        upayas = [
+            f"<b>Antardasha Swami ({ad_lord}):</b> Mangalavaram sayantram <i>Om Ketave Namah</i> 108 sarlu japam cheyandi leda adhyathmika sevalu cheyandi.",
+            f"<b>Mahadasha Swami ({cur_md}):</b> Guruwaram udayam <i>Guru Gayatri Mantram</i> japam cheyandi mariyu peddala ashirwadam theesukondi.",
+            f"<b>Shani Gochara Upayam:</b> Shanivaram pakshulaku aaharam/neellu petti Shani prabhavanni samathulyam cheyandi.",
+        ]
     else:
         upayas = [
             f"<b>Harmonize Active Sub-Lord ({ad_lord}):</b> Recite <i>Om Ketave Namah</i> 108 times on Tuesday evenings, or support spiritual education/monastic charities to clear mental static.",
@@ -1785,9 +1899,13 @@ def _build_unified_current_chapter_html(
         ]
 
     if paid:
-        upaya_items = "".join(
-            f"<li style='margin-bottom:6px;'>{u}</li>" for u in upayas)
-        u_box_head = "Is Chapter Ke Liye Targeted Astrological Upay" if is_hinglish else "Targeted Astrological Upaya for this Chapter"
+        upaya_items = "".join(f"<li style='margin-bottom:6px;'>{u}</li>" for u in upayas)
+        if is_hinglish:
+            u_box_head = "Is Chapter Ke Liye Targeted Astrological Upay"
+        elif is_tenglish:
+            u_box_head = "Ee Chapter Kosam Targeted Astrological Upayamulu"
+        else:
+            u_box_head = "Targeted Astrological Upaya for this Chapter"
         remedy_block = (
             f'<div class="chapter-upaya-box" style="background:#f9fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:16px 18px;margin-top:20px;">'
             f'  <div class="upaya-head" style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#1c6b45;margin-bottom:8px;">{u_box_head}</div>'
@@ -1795,9 +1913,18 @@ def _build_unified_current_chapter_html(
             f'</div>'
         )
     else:
-        t_upaya_lbl = "Vedic Upay:" if is_hinglish else "Targeted Vedic Upaya:"
-        t_upaya_desc = f"Specific planetary mantras, ratna vidhi aur dainik upay {ad_lord} aur {cur_md} ke liye." if is_hinglish else f"Specific planetary mantras, gemstone calibrations, and daily charitable rituals for {ad_lord} and {cur_md}."
-        t_lock_chip = "🔒 Complete Upay Aur Remedies Full Reading Mein" if is_hinglish else "🔒 Complete Upaya &amp; Remedies in Full Reading"
+        if is_hinglish:
+            t_upaya_lbl = "Vedic Upay:"
+            t_upaya_desc = f"Specific planetary mantras, ratna vidhi aur dainik upay {ad_lord} aur {cur_md} ke liye."
+            t_lock_chip = "🔒 Complete Upay Aur Remedies Full Reading Mein"
+        elif is_tenglish:
+            t_upaya_lbl = "Vedic Upayam:"
+            t_upaya_desc = f"Specific planetary mantralu, ratna dharana mariyu dainandina upayamulu {ad_lord} mariyu {cur_md} kosam."
+            t_lock_chip = "🔒 Sampoorna Upayamulu Full Reading Lo"
+        else:
+            t_upaya_lbl = "Targeted Vedic Upaya:"
+            t_upaya_desc = f"Specific planetary mantras, gemstone calibrations, and daily charitable rituals for {ad_lord} and {cur_md}."
+            t_lock_chip = "🔒 Complete Upaya &amp; Remedies in Full Reading"
         remedy_block = (
             f'<div class="lock-wrap" style="margin-top:16px;border-radius:10px;">'
             f'  <div class="lock-blur" style="padding:14px 16px;font-size:0.86rem;line-height:1.5;">'
@@ -1807,13 +1934,21 @@ def _build_unified_current_chapter_html(
             f'</div>'
         )
 
-    next_ad_title = f"{next_ad.get('ad_lord', 'Venus')} AD" if next_ad else ("Agla Badlav" if is_hinglish else "Next Breakthrough")
+    if next_ad:
+        next_ad_title = f"{next_ad.get('ad_lord', 'Venus')} AD"
+    elif is_hinglish:
+        next_ad_title = "Agla Badlav"
+    elif is_tenglish:
+        next_ad_title = "Tharuvatha Badlavu"
+    else:
+        next_ad_title = "Next Breakthrough"
+
     if next_ad and next_ad.get("start") and paid:
         next_ad_date = f"from {_fmt_full_month(next_ad.get('start', ''))}"
     elif next_ad and next_ad.get("start"):
-        next_ad_date = "🔒 Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE
+        next_ad_date = "🔒 Sampoorna Reading Lo" if is_tenglish else ("🔒 Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE)
     else:
-        next_ad_date = "Aane Wala" if is_hinglish else "Upcoming"
+        next_ad_date = "Munde Vachedi" if is_tenglish else ("Aane Wala" if is_hinglish else "Upcoming")
 
     gochar_line = (
         f"Jup in {t_jup_sign} ({t_jup_sav} SAV) · Sat in {t_sat_sign} ({t_sat_sav} SAV)"
@@ -1826,22 +1961,28 @@ def _build_unified_current_chapter_html(
     
     bindu_working = ""
     if not paid:
-        b_summary = "Is chapter ke peeche ka jyotishiya working" if is_hinglish else "The chart working behind this chapter"
-        b_text = f"Shani transiting {t_sat_sign} (SAV: {t_sat_sav} bindus). Guru in {t_jup_sign} (SAV: {t_jup_sav}). Dated handover aur upay poori reading mein shamil hain." if is_hinglish else f"Saturn transiting {t_sat_sign} scores {t_sat_sav} bindus (28 is the working threshold). Jupiter in {t_jup_sign} scores {t_jup_sav}. The dated handover and the step that helps sit in the full reading."
+        if is_hinglish:
+            b_summary = "Is chapter ke peeche ka jyotishiya working"
+            b_text = f"Shani transiting {t_sat_sign} (SAV: {t_sat_sav} bindus). Guru in {t_jup_sign} (SAV: {t_jup_sav}). Dated handover aur upay poori reading mein shamil hain."
+        elif is_tenglish:
+            b_summary = "Ee chapter venuka unna jyotisha working"
+            b_text = f"Shani transiting {t_sat_sign} (SAV: {t_sat_sav} bindus). Guru in {t_jup_sign} (SAV: {t_jup_sav}). Dated handover mariyu upayamulu sampoorna reading lo unnai."
+        else:
+            b_summary = "The chart working behind this chapter"
+            b_text = f"Saturn transiting {t_sat_sign} scores {t_sat_sav} bindus (28 is the working threshold). Jupiter in {t_jup_sign} scores {t_jup_sav}. The dated handover and the step that helps sit in the full reading."
         bindu_working = (
             f'<details style="margin-top:12px;border-top:1px solid #eeeae3;padding-top:8px;'
             f'font-size:0.78rem;color:#7a756c;line-height:1.45;">'
             f'<summary style="cursor:pointer;font-weight:600;color:#1f2430;">{b_summary}</summary>'
             f'<div style="padding-top:6px;color:#444;">{b_text}</div></details>')
 
-    ch_kicker = "CHALU JYOTISH DASHA AUR RECENT MILESTONES" if is_hinglish else "ACTIVE JYOTISH PERIOD &amp; RECENT MILESTONES"
-    ch_heading = "Aapka Vartaman Jeevan Chapter: Grah Prabhav Aur Disha" if is_hinglish else "Your Current Life Chapter: Planetary Influences &amp; Trajectory"
-    lbl_dasha = "Chalu Dasha:" if is_hinglish else "Planetary Period (Dasha):"
-    lbl_shift = "Agla Mahatvapurna Badlav:" if is_hinglish else "Major Breakthrough Shift:"
-    lbl_clocks = "Vedic Clocks:" if is_hinglish else "Multi-Clock Alignment:"
-    lbl_gochar = "Gochara Sthiti:" if is_hinglish else "Live Gochar (Transits):"
-
     if is_hinglish:
+        ch_kicker = "CHALU JYOTISH DASHA AUR RECENT MILESTONES"
+        ch_heading = "Aapka Vartaman Jeevan Chapter: Grah Prabhav Aur Disha"
+        lbl_dasha = "Chalu Dasha:"
+        lbl_shift = "Agla Mahatvapurna Badlav:"
+        lbl_clocks = "Vedic Clocks:"
+        lbl_gochar = "Gochara Sthiti:"
         astrologer_p = (
             f"Vedic Jyotish ke anusar aapki janma kundli (<b>{lagna} Lagna</b>, swami <b>{lagna_lord}</b>), "
             f"vartaman mein <b>{cur_md} (Mahadasha)</b> aur <b>{ad_lord} (Antardasha)</b> ke prabhav mein hai. "
@@ -1854,17 +1995,42 @@ def _build_unified_current_chapter_html(
         mind_badge = "🧘 Mann, Urja Aur Santulan"
         strategy_title = "Is Samay Ke Liye Vedic Astrologer Ki Strategy"
         timeline_title = "Chronological Milestones Aur Dasha Parivartan"
+    elif is_tenglish:
+        ch_kicker = "CHALU JYOTISHA DASHA MARIYU RECENT MILESTONES"
+        ch_heading = "Mee Varthamana Jeevitha Chapter: Graha Prabhavam Mariyu Disha"
+        lbl_dasha = "Chalu Dasha:"
+        lbl_shift = "Mukhya Badlavu Shift:"
+        lbl_clocks = "Vedic Clocks:"
+        lbl_gochar = "Gochara Sthiti:"
+        astrologer_p = (
+            f"Vedic Jyotishyam prakaram mee janma kundali (<b>{lagna} Lagna</b>, adhipathi <b>{lagna_lord}</b>), "
+            f"prasthutham <b>{cur_md} (Mahadasha)</b> mariyu <b>{ad_lord} (Antardasha)</b> prabhavam lo undi. "
+            f"{cur_md} dasha mukhya 16-years vikasam aadharam ga unte, {ad_lord} antardasha aantrika sthiratha, "
+            f"patha avarodhalanu tholaginchadam mariyu munde vache breakthrough kosam balamaina neev siddham chesthundi."
+        )
+        reality_title = "Lived Reality: Mukhya Chunautilu Mariyu Jyotisha Sthambhalu"
+        pressure_badge = "⚠️ Mukhya Dasha Prabhav Axis"
+        grace_badge = "🛡️ Sakriya Suraksha Mariyu Sthiratha Anchor"
+        mind_badge = "🧘 Manasu, Urja Mariyu Samathulyatha"
+        strategy_title = "Ee Samayam Kosam Vedic Astrologer Strategy"
+        timeline_title = "Chronological Milestones Mariyu Dasha Marpulu"
     else:
+        ch_kicker = "ACTIVE JYOTISH PERIOD &amp; RECENT MILESTONES"
+        ch_heading = "Your Current Life Chapter: Planetary Influences &amp; Trajectory"
+        lbl_dasha = "Planetary Period (Dasha):"
+        lbl_shift = "Major Breakthrough Shift:"
+        lbl_clocks = "Multi-Clock Alignment:"
+        lbl_gochar = "Live Gochar (Transits):"
         astrologer_p = (
             f"As a Vedic Astrologer examining your birth chart (<b>{lagna} Lagna</b> governed by <b>{lagna_lord}</b>), your life is currently operating under the dual governance of <b>{cur_md} (Mahadasha)</b> and <b>{ad_lord} (Antardasha)</b>. "
             f"While {cur_md} sets the overarching 16-year curriculum of expansion, wisdom, and vocational status, {ad_lord} acts as the immediate operating lens—directing focus toward inward restructuring, clearing legacy distractions, and establishing rock-solid foundations for the upcoming breakthrough."
         )
-        reality_title = "Lived Reality: Key Friction Point &amp; Astrological Pillars"
-        pressure_badge = "⚠️ Primary Operating Pressure Axis"
-        grace_badge = "🛡️ Active Protective Grace &amp; Solvency Anchor"
-        mind_badge = "🧘 Mind, Vitality &amp; Relational Equilibrium"
-        strategy_title = "Vedic Astrologer Operating Strategy for this Chapter"
-        timeline_title = "Chronological Milestones &amp; Sub-Period Evolution"
+        reality_title = "Lived Reality: Core Tensions &amp; Pillars"
+        pressure_badge = "⚠️ Primary Structural Pressure Axis"
+        grace_badge = "🛡️ Active Protective Grace Anchor"
+        mind_badge = "🧘 Mental Resilience, Rest &amp; Restorative Axis"
+        strategy_title = "How to Play This Chapter: Strategic Astrologer Advisory"
+        timeline_title = "Chronological Dasha Sequence &amp; Phase Transitions"
 
     return f"""
     <section class="conv-block current-block" style="margin:28px 0;">
@@ -1987,9 +2153,16 @@ def render(
     prose = _sanitize_prose_tree(prose) if isinstance(prose, dict) else {}
     cards = list(cards or [])
     first = (name or "").split()[0] if name else "You"
-    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
 
-    lagna = str((pc.get("lagna") or {}).get("sign") or "")
+    raw_lagna = pc.get("lagna")
+    lagna = str(
+        pc.get("meta", {}).get("lagna_sign", "")
+        or (raw_lagna if isinstance(raw_lagna, str) else (raw_lagna or {}).get("sign", ""))
+        or ""
+    )
     planets = pc.get("planets") or {}
     moon = planets.get("Moon") or {}
     moon_sign = str(moon.get("sign") or "")
@@ -2063,6 +2236,57 @@ def render(
     personality = _sanitize_customer_text(prose.get("personality"))
     astrological_basis = _sanitize_customer_text(prose.get("astrological_basis"))
     if astrological_basis:
+        from astro_precompute import SIGN_LORDS
+        true_lord = SIGN_LORDS.get(lagna, "")
+        SIGN_MAP_HI = {
+            "Aries": "Mesh", "Taurus": "Vrishabh", "Gemini": "Mithun", "Cancer": "Kark",
+            "Leo": "Simha", "Virgo": "Kanya", "Libra": "Tula", "Scorpio": "Vrishchik",
+            "Sagittarius": "Dhanu", "Capricorn": "Makar", "Aquarius": "Kumbh", "Pisces": "Meen"
+        }
+        SIGN_MAP_TE = {
+            "Aries": "Mesham", "Taurus": "Vrishabham", "Gemini": "Mithunam", "Cancer": "Karkatakam",
+            "Leo": "Simham", "Virgo": "Kanya", "Libra": "Tula", "Scorpio": "Vrishchikam",
+            "Sagittarius": "Dhanassu", "Capricorn": "Makaram", "Aquarius": "Kumbham", "Pisces": "Meenam"
+        }
+        PLANET_MAP_HI = {
+            "Sun": "Surya", "Moon": "Chandra", "Mars": "Mangal", "Mercury": "Budh",
+            "Jupiter": "Guru", "Venus": "Shukra", "Saturn": "Shani", "Rahu": "Rahu", "Ketu": "Ketu"
+        }
+        PLANET_MAP_TE = {
+            "Sun": "Suryudu", "Moon": "Chandrudu", "Mars": "Kujudu", "Mercury": "Budhudhu",
+            "Jupiter": "Guru", "Venus": "Shukrudu", "Saturn": "Shaniswarudu", "Rahu": "Rahu", "Ketu": "Ketu"
+        }
+        if is_hinglish and lagna:
+            tgt_lagna = SIGN_MAP_HI.get(lagna, lagna)
+            tgt_lord = PLANET_MAP_HI.get(true_lord, true_lord)
+            astrological_basis = re.sub(
+                r"(Aapka\s+Janma\s+Lagna\s+)(?:Mesh|Vrishabh|Mithun|Kark|Simha|Kanya|Tula|Vrishchik|Dhanu|Makar|Kumbh|Meen|[A-Za-z]+)(\s+hai)",
+                rf"\g<1>{tgt_lagna}\g<2>",
+                astrological_basis,
+                flags=re.I
+            )
+            astrological_basis = re.sub(
+                r"(Lagna\s+Lord\s+)(?:Mangal|Shukra|Budh|Chandra|Surya|Guru|Shani|Rahu|Ketu|[A-Za-z]+)(\s+hai)",
+                rf"\g<1>{tgt_lord}\g<2>",
+                astrological_basis,
+                flags=re.I
+            )
+        elif is_tenglish and lagna:
+            tgt_lagna = SIGN_MAP_TE.get(lagna, lagna)
+            tgt_lord = PLANET_MAP_TE.get(true_lord, true_lord)
+            astrological_basis = re.sub(
+                r"(Mee\s+Janma\s+Lagna[a-z]*\s+)(?:Mesham|Vrishabham|Mithunam|Karkatakam|Simham|Kanya|Tula|Vrishchikam|Dhanassu|Makaram|Kumbham|Meenam|[A-Za-z]+)",
+                rf"\g<1>{tgt_lagna}",
+                astrological_basis,
+                flags=re.I
+            )
+            astrological_basis = re.sub(
+                r"(Lagnaadhipathi\s+)(?:Kujudu|Shukrudu|Budhudhu|Chandrudu|Suryudu|Guru|Shaniswarudu|Rahu|Ketu|[A-Za-z]+)",
+                rf"\g<1>{tgt_lord}",
+                astrological_basis,
+                flags=re.I
+            )
+
         astrological_basis = re.sub(
             r"Saturn transiting [^.]*?until \w+ 203\d",
             "Saturn transiting your 10th house of career through early 2028, alongside the longer timing cycle running through 2031",
@@ -2076,21 +2300,18 @@ def render(
             flags=re.I,
         )
     interpretation = _sanitize_customer_text(prose.get("interpretation"))
-    # current_phase / recent_months / hardest_area_note / why_now / mind_now are
-    # still produced by the language layer and still validated, but the current
-    # chapter no longer renders them. They restated the verdict at essay length
-    # without naming a single chart factor.
     family_note = [_sanitize_customer_text(x) for x in prose.get("family_note", []) if str(x).strip()]
     areas = prose.get("areas") if isinstance(prose.get("areas"), dict) else {}
 
     family_html = ""
     if family_note:
         fam_labels_hi = ["Pita", "Mata", "Bhai-Behen", "Ghar Parivar"]
-        labels = fam_labels_hi if is_hinglish else _family_labels(len(family_note))
+        fam_labels_te = ["Thandri", "Thalli", "Sahodharulu", "Illu Kutumbam"]
+        labels = fam_labels_te if is_tenglish else (fam_labels_hi if is_hinglish else _family_labels(len(family_note)))
         limit = len(family_note) if paid else min(2, len(family_note))
         items = []
         for i, line in enumerate(family_note[:limit]):
-            label = labels[i] if i < len(labels) else ("Parivar" if is_hinglish else "Family")
+            label = labels[i] if i < len(labels) else ("Kutumbam" if is_tenglish else ("Parivar" if is_hinglish else "Family"))
             line_txt = str(line).strip()
             if is_hinglish:
                 low = line_txt.lower()
@@ -2102,6 +2323,16 @@ def render(
                     line_txt = "Bhai-beheno ke sath sambandh dynamic aur independent hain, jisme parasparik sahyog aur aadar bana rehta hai."
                 elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
                     line_txt = "Ghar aur parivar ka vatavaran bachpan se hi sthirta, shanti aur acche sanskaro ki majboot buniyad deta hai."
+            elif is_tenglish:
+                low = line_txt.lower()
+                if any(w in low for w in ("father", "paternal", "sun in", "disciplined", "duty", "traditional")):
+                    line_txt = "Thandri garu anushasanam mariyu sankalpa balanni chupistharu, kutumba sanskaralu mariyu badhyathalu mukhya sthanam vahisthayi."
+                elif any(w in low for w in ("mother", "maternal", "moon in", "anchor", "emotional", "grounding")):
+                    line_txt = "Thalli prema aantrika sthiratha, manchi sanskaralu mariyu emotional security ni isthundi."
+                elif any(w in low for w in ("sibling", "brother", "sister", "mars in", "dynamic", "ties")):
+                    line_txt = "Sahodharulatho sambandhalu dynamic mariyu independent ga unnai, paraspara gouravam untundi."
+                elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
+                    line_txt = "Illu mariyu kutumba vatavaranam chinnapatinunche sthiratha, shanti mariyu manchi viluvala balamaina neev isthundi."
             items.append(
                 f'<div class="family-item"><div class="family-label">{_e(label)}</div>'
                 f"<p>{_e(line_txt)}</p></div>"
@@ -2109,12 +2340,26 @@ def render(
         if paid or len(family_note) <= limit:
             more = ""
         else:
-            more_text = "Poori reading mein baki parivarik sambandh aur ghar ka vatavaran bhi shamil hai." if is_hinglish else "The full reading also covers the remaining family relationships and the home environment."
+            if is_hinglish:
+                more_text = "Poori reading mein baki parivarik sambandh aur ghar ka vatavaran bhi shamil hai."
+            elif is_tenglish:
+                more_text = "Sampoorna reading lo migilina kutumba sambandhalu mariyu inti vatavaranam shamil ayyi undi."
+            else:
+                more_text = "The full reading also covers the remaining family relationships and the home environment."
             more = f'<p class="sec-note">{more_text}</p>'
         
-        fam_kicker = "PARIVAR AUR GHAR" if is_hinglish else "FAMILY &amp; HOME"
-        fam_heading = "Parivar Aur Ghar Ka Prabhav" if is_hinglish else "The people and home that shaped you"
-        fam_note = "Yeh kundli adharit patterns hain, parivar ki di gayi jankari nahi." if is_hinglish else "These are chart-derived patterns, not facts we were given about your family."
+        if is_hinglish:
+            fam_kicker = "PARIVAR AUR GHAR"
+            fam_heading = "Parivar Aur Ghar Ka Prabhav"
+            fam_note = "Yeh kundli adharit patterns hain, parivar ki di gayi jankari nahi."
+        elif is_tenglish:
+            fam_kicker = "KUTUMBAM MARIYU ILLU"
+            fam_heading = "Kutumbam Mariyu Inti Prabhavam"
+            fam_note = "Ivi kundali aadhara patterns, kutumbam gurinchi icchina direct facts kaadu."
+        else:
+            fam_kicker = "FAMILY &amp; HOME"
+            fam_heading = "The people and home that shaped you"
+            fam_note = "These are chart-derived patterns, not facts we were given about your family."
 
         family_html = f"""
         <section class="conv-block family-block">
@@ -2138,13 +2383,26 @@ def render(
             basis_bits.append(f"{md_lord} mahadasha")
         if ad_lord:
             basis_bits.append(f"{ad_lord} antardasha")
-        astrological_basis = (
-            "Your reading starts with "
-            + ", ".join(basis_bits)
-            + ". These factors describe the chart's baseline and the period running through it."
-            if basis_bits
-            else "Your birth chart is the foundation of this reading."
-        )
+        if is_hinglish:
+            astrological_basis = (
+                f"Aapki reading {', '.join(basis_bits)} par aadharit hai, jo is samay aapki kundli ke mukhya governing factors hain."
+                if basis_bits
+                else "Aapki janma kundli is reading ka mool aadhar hai."
+            )
+        elif is_tenglish:
+            astrological_basis = (
+                f"Mee reading {', '.join(basis_bits)} pai aadharapadi undi, ivi mee kundali lo mukhya governing factors."
+                if basis_bits
+                else "Mee janma kundali ee reading ki moola aadharam."
+            )
+        else:
+            astrological_basis = (
+                "Your reading starts with "
+                + ", ".join(basis_bits)
+                + ". These factors describe the chart's baseline and the period running through it."
+                if basis_bits
+                else "Your birth chart is the foundation of this reading."
+            )
 
     lagna_clean = lagna or "Aries"
     lp = LAGNA_PROFILES.get(lagna_clean, LAGNA_PROFILES["Aries"])
@@ -2186,11 +2444,23 @@ def render(
 
     unlock = ""
     if not paid and footer_unlock:
+        if is_hinglish:
+            u_h3 = "Poori reading dekhein, kshetra anusar"
+            u_p = "Free reading aapka swabhav, current chapter aur chart activation dikhati hai. Full reading mein sabhi life areas ke confluence, timing aur remedies shamil hain."
+            u_btn = "Complete reading unlock karein"
+        elif is_tenglish:
+            u_h3 = "Sampoorna reading chudandi, vibhagam variga"
+            u_p = "Free reading mee swabhavam, current chapter mariyu chart activation chupisthundi. Full reading lo anni jeevitha rangala confluence, timing dates mariyu upayamulu labhisthayi."
+            u_btn = "Sampoorna reading unlock cheyandi"
+        else:
+            u_h3 = "See the full reading, area by area"
+            u_p = "The free reading shows who you are, the chapter you are in and what the chart is activating. The full reading adds the confluence, timing and practical guidance for every life area."
+            u_btn = "Unlock full reading"
         unlock = f"""
         <section class="buy" id="unlock">
-          <h3>{'Poori reading dekhein, kshetra anusar' if is_hinglish else 'See the full reading, area by area'}</h3>
-          <p>{'Free reading aapka swabhav, current chapter aur chart activation dikhati hai. Full reading mein sabhi life areas ke confluence, timing aur remedies shamil hain.' if is_hinglish else 'The free reading shows who you are, the chapter you are in and what the chart is activating. The full reading adds the confluence, timing and practical guidance for every life area.'}</p>
-          <a class="cta" href="#unlock" data-unlock="1">{'Complete reading unlock karein' if is_hinglish else 'Unlock full reading'} · ₹{_e(price)}</a>
+          <h3>{u_h3}</h3>
+          <p>{u_p}</p>
+          <a class="cta" href="#unlock" data-unlock="1">{u_btn} · ₹{_e(price)}</a>
         </section>
         """
 
@@ -2205,14 +2475,33 @@ def render(
 
     date_str = f"{today:%d %B %Y}" if today else ""
 
-    eyebrow_text = "Aapki Vedic Kundli Reading" if is_hinglish else "Your Vedic reading"
-    h1_text = f"{_e(first)}, yahan dekhein aapki kundli kya sanket de rahi hai." if is_hinglish else f"{_e(first)}, here is what your chart is saying."
-    signature_kicker = "AAPKA CHART SIGNATURE" if is_hinglish else "YOUR CHART SIGNATURE"
-    who_kicker = "AAPKA VYAKTITVA" if is_hinglish else "WHO YOU ARE"
-    who_heading = "Aapka Mool Swabhav Aur Foundational Promise" if is_hinglish else "Your foundational promise"
-    areas_kicker = "JEEVAN KE MUKHYA KSHETRA" if is_hinglish else "COMPREHENSIVE LIFE DOMAIN CONSULTATIONS"
-    areas_heading = "Aapke Jeevan Kshetra: Current Phase Aur Aane Wala Samay" if is_hinglish else "Your Life Areas: Current Phase &amp; The Road Ahead"
-    footer_text = "Aapki janma kundli ke adhar par astrological interpretation · margdarshan hetu" if is_hinglish else "Astrological interpretation from your supplied birth details · guidance, not a substitute for professional advice"
+    if is_hinglish:
+        eyebrow_text = "Aapki Vedic Kundli Reading"
+        h1_text = f"{_e(first)}, yahan dekhein aapki kundli kya sanket de rahi hai."
+        signature_kicker = "AAPKA CHART SIGNATURE"
+        who_kicker = "AAPKA VYAKTITVA"
+        who_heading = "Aapka Mool Swabhav Aur Foundational Promise"
+        areas_kicker = "JEEVAN KE MUKHYA KSHETRA"
+        areas_heading = "Aapke Jeevan Kshetra: Current Phase Aur Aane Wala Samay"
+        footer_text = "Aapki janma kundli ke adhar par astrological interpretation · margdarshan hetu"
+    elif is_tenglish:
+        eyebrow_text = "Mee Vedic Kundali Reading"
+        h1_text = f"{_e(first)}, ikkada chudandi mee kundali em chepthundo."
+        signature_kicker = "MEE CHART SIGNATURE"
+        who_kicker = "MEE VYAKTHITHVAM"
+        who_heading = "Mee Moola Swabhavam Mariyu Foundational Promise"
+        areas_kicker = "JEEVITHA MUKHYA RANGALU"
+        areas_heading = "Mee Jeevitha Rangalu: Current Phase Mariyu Munde Vache Samayam"
+        footer_text = "Mee janma kundali aadharam ga astrological interpretation · margadarshanam kosam"
+    else:
+        eyebrow_text = "Your Vedic reading"
+        h1_text = f"{_e(first)}, here is what your chart is saying."
+        signature_kicker = "YOUR CHART SIGNATURE"
+        who_kicker = "WHO YOU ARE"
+        who_heading = "Your foundational promise"
+        areas_kicker = "COMPREHENSIVE LIFE DOMAIN CONSULTATIONS"
+        areas_heading = "Your Life Areas: Current Phase &amp; The Road Ahead"
+        footer_text = "Astrological interpretation from your supplied birth details · guidance, not a substitute for professional advice"
 
     body = f"""
     <header>

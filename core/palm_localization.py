@@ -50,6 +50,37 @@ FEATURE_NAMES_HI = {
     "Mount of Moon": "Chandra Parvat (Mount of Moon)",
 }
 
+FEATURE_NAMES_TE = {
+    "Your hand shape": "Mee Chethi Aakaram (Hand Shape)",
+    "Your thumb": "Mee Botana Velu (Thumb Structure)",
+    "Thumb length": "Botana Velu Podavu (Thumb Length)",
+    "Thumb angle": "Botana Velu Vangadam (Thumb Angle)",
+    "Your ring finger": "Mee Ungarapu Velu (Ring Finger)",
+    "Your index finger": "Mee Choopudu Velu (Tarjani Index Finger)",
+    "Your middle finger": "Mee Madhyama Velu (Middle Finger)",
+    "Your little finger": "Mee Chitikena Velu (Little Finger)",
+    "Life line": "Jeevana Rekha (Life Line)",
+    "Head line": "Masthishka Rekha (Head Line)",
+    "Heart line": "Hrudaya Rekha (Heart Line)",
+    "Fate line": "Bhagya Rekha (Fate Line)",
+    "Sun line": "Surya Rekha (Sun Line)",
+    "Health line": "Aarogya Rekha (Mercury Line)",
+    "Marriage lines": "Vivaha Rekha (Marriage Line)",
+    "Girdle of Venus": "Shukra Valayam (Girdle of Venus)",
+    "Ring of Solomon": "Guru Mudrika (Ring of Solomon)",
+    "Children lines": "Santhana Rekhalu (Children Lines)",
+    "Travel lines": "Prayana Rekhalu (Travel Lines)",
+    "Mount of Jupiter": "Guru Parvatham (Mount of Jupiter)",
+    "Mount of Saturn": "Shani Parvatham (Mount of Saturn)",
+    "Mount of Apollo": "Surya Parvatham (Mount of Sun/Apollo)",
+    "Mount of Sun": "Surya Parvatham (Mount of Sun)",
+    "Mount of Mercury": "Budha Parvatham (Mount of Mercury)",
+    "Mount of Mars": "Kuja/Mangala Parvatham (Mount of Mars)",
+    "Mount of Venus": "Shukra Parvatham (Mount of Venus)",
+    "Mount of Luna": "Chandra Parvatham (Mount of Moon)",
+    "Mount of Moon": "Chandra Parvatham (Mount of Moon)",
+}
+
 SIGN_TRANSLATIONS_HI = {
     "a square palm with long, slender fingers — an Air hand": "Chaukone hatheli lambi, patli ungliyon ke sath — Air Hand (Vayu Tatva)",
     "a square palm with sturdy, grounded fingers — an Earth hand": "Chaukone hatheli mazboot, sthir ungliyon ke sath — Earth Hand (Prithvi Tatva)",
@@ -80,6 +111,38 @@ SIGN_TRANSLATIONS_HI = {
     "well developed and prominent": "Purna viksit aur ubhra hua parvat",
     "moderately developed": "Santulit aur sthir parvat",
     "flat or low": "Sapat ya kam ubhra hua parvat",
+}
+
+SIGN_TRANSLATIONS_TE = {
+    "a square palm with long, slender fingers — an Air hand": "Chaukone aracheyi podavati velulatho — Air Hand (Vayu Tathvam)",
+    "a square palm with sturdy, grounded fingers — an Earth hand": "Chaukone aracheyi balamaina, sthiramaina velulatho — Earth Hand (Prithvi Tathvam)",
+    "a long palm with quick, energetic fingers — a Fire hand": "Podavu aracheyi churucoina velulatho — Fire Hand (Agni Tathvam)",
+    "a long, elegant palm with sensitive fingers — a Water hand": "Podavu, komalamaina aracheyi sukshma velulatho — Water Hand (Jala Tathvam)",
+    "a thumb with strong, determined upper phalanx": "Balamaina ichhashakthi (willpower) chupinche botana velu",
+    "a thumb with a longer lower phalanx of reasoning": "Gahana tharkashakthi mariyu vishleshana chupinche botana velu",
+    "a thumb with beautifully balanced will and logic sections": "Ichhashakthi (will) mariyu tharkam (logic) madhya chakkani samathoulyam unna Governing Thumb",
+    "a long, commanding thumb": "Podavaina mariyu nayakathva lakshanalunna botana velu",
+    "a receptive thumb": "Komalamaina mariyu lachila (receptive) botana velu",
+    "a wide, open-set thumb": "Vishalamaina mariyu swatantra botana velu (wide-set thumb)",
+    "a close-set, protective thumb": "Surakshithamaina mariyu jagrattha gala botana velu (close-set thumb)",
+    "an index finger longer than your ring finger": "Ungarapu velu kante podavaina choopudu velu (Index finger)",
+    "a ring finger longer than your index finger": "Choopudu velu kante podavaina ungarapu velu (Ring finger)",
+    "runs deep, smooth and clearly etched": "Loothuga, spashtamga saguthunna jeevana rekha",
+    "runs light or shallow": "Thelika leda saanthamaina jeevana rekha",
+    "sweeps wide across the palm": "Aracheyi meeda vishalamga tiruguthunna jeevana rekha",
+    "curves close to the thumb": "Botana veli daggaraga tiruguthunna jeevana rekha",
+    "straight and long across the palm": "Nittaruga, podavuga unna masthishka rekha",
+    "curves down towards the mount of moon": "Chandra parvatham vaipu vanagina kalpanashakthi gala masthishka rekha",
+    "joined to the life line at the start": "Modatlo jeevana rekha tho kalisi unna jagrattha masthishka rekha",
+    "separated from the life line at the start": "Jeevana rekha nunchi veruga modalaiah swatantra masthishka rekha",
+    "curves smoothly up towards jupiter": "Guru parvatham vaipu cherina aadarshavanthamaina hrudaya rekha",
+    "runs straight across towards saturn": "Shani parvatham vaipu sidhaga velthunna practical hrudaya rekha",
+    "rises from the base towards saturn": "Aracheyi moolam nunchi Shani parvatham vaipu lechina sthira bhagya rekha",
+    "rises from the middle of the palm": "Aracheyi madhya nunchi swayam nirmitamaina bhagya rekha",
+    "rises from the mount of moon": "Chandra parvatham nunchi lechina prajala aadharana, kalpana aadhara bhagya rekha",
+    "well developed and prominent": "Purtiga abhivruddhi chendi ubhina parvatham",
+    "moderately developed": "Samathoulyamaina sthira parvatham",
+    "flat or low": "Sapaduga unna parvatham",
 }
 
 MEANS_TRANSLATIONS_HI = {
@@ -172,6 +235,96 @@ MEANS_TRANSLATIONS_HI = {
     ),
 }
 
+MEANS_TRANSLATIONS_TE = {
+    # Hand types
+    "You are an intuitive thinker, strategist, and communicator": (
+        "Meeru oka strategic thinker, thelivaina vicharavanthulu mariyu fluent communicator. "
+        "Meeku kothadanam nerchukovadam, meaningful charchalu mariyu intellectual challenges ishtam. "
+        "Routinework meeku tvaraga visugu thepisthundi; meeku spashtamaina lakshyam unappude poorthi energy tho pani chestharu."
+    ),
+    "You are practical, dependable, and deeply grounded": (
+        "Meeru practical, nammadagina mariyu chala sthiramaina vyakthi. "
+        "Meeru thos, parinamadayaka mariyu nammakamaina vishayala meeda aadharapadatharu. "
+        "Migilina vaaru thadabadina sthithilo kuda meeru sthiramga undi badhyathalanu poorthi chestharu."
+    ),
+    "You are dynamic, instinctive, and driven by passion": (
+        "Meeru utsahavanthulu, dynamic mariyu passion tho munduku velle vyakthi. "
+        "Meeru utsahanga kotha projects modalu pedatharu mariyu itharulaku spoorthi istharu. "
+        "Mee mukhya shakthi shuru cheyadam mariyu momentum thevadam."
+    ),
+    "You possess deep emotional intelligence and absorb the atmosphere": (
+        "Meeku deep emotional intelligence undi mariyu chuttu unna vatavarananni tvaraga grahistharu. "
+        "Mee intuition logic kante mundhe nijaanni thelusukuntundi."
+    ),
+    # Thumbs
+    "Your willpower naturally leads the way": (
+        "Mee ichhashakthi (willpower) eppudu munduntundi. Okasari nirnayam theesukunte, dridha sankalpamtho poorthi chestharu. "
+        "Ee determination meeku kashtakalamlo kuda pedda vijayanni isthundi."
+    ),
+    "Your analytical mind sees solutions and risks well ahead": (
+        "Mee vishleshana gnanam labhalu mariyu nashtalu renditini mundhe kanugontundi. "
+        "Meeru prathi adugunu plan chestharu."
+    ),
+    "You possess what classical palmistry calls the 'Governing Thumb'": (
+        "Samudrika Shastra prakaram meeku 'Governing Thumb' undi — aalochinchi planning cheyadam mariyu saraina samayaniki nirnayam theesukovatam samathoulyamga untundi."
+    ),
+    "Leadership and managerial responsibility come naturally to you": (
+        "Nayakathvam mariyu leadership badhyathalu meeru naturally handle chestharu. Janalu mee daggaraku guidance kosam vastharu."
+    ),
+    "You lead with heart, empathy, and adaptability": (
+        "Meeru hrudayam, samvedana mariyu adaptability tho mundukeltharu."
+    ),
+    "Generous, independent, and open-minded": (
+        "Meeru udaaramaina, swatantra mariyu manchi manasu gala vyakthi."
+    ),
+    "Prudent and discreet": (
+        "Meeru thelivaina mariyu discreet vyakthi. Mee plans mariyu bhavanalanu jagratthaga daachukuntaru."
+    ),
+    "You have a natural drive for autonomy": (
+        "Meeku swatantrata, nayakathvam mariyu sontha standards set chesukune natural drive undi."
+    ),
+    "You possess creative flair, calculated risk appetite": (
+        "Meeku creative pratibha, calculated risk theesukune samarthyam mariyu aakarshaneeya vyakthithvam unnayi."
+    ),
+    # Lines
+    "You possess robust vitality and natural resilience": (
+        "Meeku manchi shareeraka stamina, urja mariyu natural resilience unnai. Stress nunchi tvaraga recover avutharu."
+    ),
+    "Your constitution is sensitive and responsive": (
+        "Mee shareeram mariyu manasu sensitive. Niyamitha aaharam, vishranthi meeku avashyakam."
+    ),
+    "You possess abundant vitality and a generous, hospitable nature": (
+        "Meeku prachuramaina jeevana urja mariyu manchi apyayatha gala swabhavam unnai."
+    ),
+    "You conserve your energy carefully": (
+        "Meeru mee urjanu jagratthaga kaapadukuntaru mariyu mukhyamaina panulapai concentrate chestharu."
+    ),
+    "Clear, structured, and pragmatic intellect": (
+        "Mee dimaag spashtam, structured mariyu vyavaharikam. Nijala aadharamga direct nishkarshaku cherukuntaru."
+    ),
+    "Creative, lateral, and imaginative thinking": (
+        "Mee aalochana kalpanasheelam mariyu creative. Kashtamaina samasyalaku kotha solutions kanugontaru."
+    ),
+    "Cautious, respectful of tradition, and deliberate in action": (
+        "Meeru paddhathulu, sampradayam mariyu jagratthaku pradhanyatha istharu. Poorthi tayari thone adugu mundukestharu."
+    ),
+    "Independent, pioneering, and quick to form original views": (
+        "Meeru swatantra aalochanavanthulu mariyu original thinker."
+    ),
+    "High ideals in relationships, loyalty, and deep devotion": (
+        "Meeru sambandhalalo unna aadarshalu, nishtha mariyu nammakanni patistharu."
+    ),
+    "Pragmatic, steady, and realistic in emotional expression": (
+        "Meeru bhavanalalo practical mariyu sthiramga untaru. Natakalu lekunda thos sambandhalaku pradhanyam istharu."
+    ),
+    "A self-directed, self-made career trajectory": (
+        "Mee career swayam nirmitam mariyu swatantra kashtam tho nirminchabaduthundi. Mee prathibha meede mee gurthimpu untundi."
+    ),
+    "Early foundation and disciplined career progression": (
+        "Mee career prarambha anushasanam mariyu kramashikshana tho sthirapaduthundi."
+    ),
+}
+
 REMEDY_TRANSLATIONS_HI = {
     "Establish your core non-negotiables": "Mahatvapurna baatcheet se pehle apni core boundaries tay karein aur spashtata se vyakt karein.",
     "Focus your energy on completing one primary goal": "Ek samay mein ek mukhya lakshya poora karne par dhyan kendrit karein.",
@@ -179,56 +332,69 @@ REMEDY_TRANSLATIONS_HI = {
     "Set a firm deadline for the decision itself": "Faisla lene ke liye ek pakki deadline tay karein aur tathya spasht hone par kadam uthayein.",
 }
 
+REMEDY_TRANSLATIONS_TE = {
+    "Establish your core non-negotiables": "Mukhyamaina matladutalo mee core boundaries ni mundhe nischayinchukoni spashtamga cheppandi.",
+    "Focus your energy on completing one primary goal": "Oka samayamlo oka mukhya lakshyam poorthi cheyadam meeda drushti pettandi.",
+    "Before major life commitments, intentionally seek out": "Pedda nirnayala mundu anubhavagnula salah theesukovadam chala manchidi.",
+    "Set a firm deadline for the decision itself": "Nirnayam theesukovadaniki oka pakka deadline pettukoni munduku saagandi.",
+}
+
 # ===========================================================================
 # 2. Helper Translation Functions
 # ===========================================================================
 
-def translate_feature_name(feature: str, is_hinglish: bool = False) -> str:
-    if not is_hinglish:
-        return feature
+def translate_feature_name(feature: str, is_hinglish: bool = False, is_tenglish: bool = False) -> str:
     f_clean = str(feature or "").strip()
-    return FEATURE_NAMES_HI.get(f_clean, f_clean)
+    if is_tenglish:
+        return FEATURE_NAMES_TE.get(f_clean, f_clean)
+    if is_hinglish:
+        return FEATURE_NAMES_HI.get(f_clean, f_clean)
+    return feature
 
 
-def translate_sign_text(sign: str, is_hinglish: bool = False) -> str:
-    if not is_hinglish:
+def translate_sign_text(sign: str, is_hinglish: bool = False, is_tenglish: bool = False) -> str:
+    if not (is_hinglish or is_tenglish):
         return sign
     s_clean = str(sign or "").strip()
-    for eng_k, hi_v in SIGN_TRANSLATIONS_HI.items():
+    target_dict = SIGN_TRANSLATIONS_TE if is_tenglish else SIGN_TRANSLATIONS_HI
+    for eng_k, loc_v in target_dict.items():
         if eng_k.lower() in s_clean.lower():
-            return hi_v
-    # Common replacements
+            return loc_v
     res = s_clean
-    res = re.sub(r"\ba square palm with long, slender fingers\b", "chaukone hatheli lambi ungliyon ke sath", res, flags=re.I)
-    res = re.sub(r"\ban Air hand\b", "Air Hand (Vayu Tatva)", res, flags=re.I)
-    res = re.sub(r"\ban Earth hand\b", "Earth Hand (Prithvi Tatva)", res, flags=re.I)
-    res = re.sub(r"\ba Fire hand\b", "Fire Hand (Agni Tatva)", res, flags=re.I)
-    res = re.sub(r"\ba Water hand\b", "Water Hand (Jal Tatva)", res, flags=re.I)
-    res = re.sub(r"\ba thumb with beautifully balanced will and logic sections\b", "ichhashakti aur tark ka santulan darshane wala Governing Thumb", res, flags=re.I)
-    res = re.sub(r"\ba receptive thumb\b", "komal aur lachila (receptive) angutha", res, flags=re.I)
-    res = re.sub(r"\ba wide, open-set thumb\b", "khula aur swatantra vishal angutha", res, flags=re.I)
-    res = re.sub(r"\ba ring finger longer than your index finger\b", "tarjani se lambi anamika ungli", res, flags=re.I)
-    res = re.sub(r"\ban index finger longer than your ring finger\b", "anamika se lambi tarjani ungli", res, flags=re.I)
+    if is_hinglish:
+        res = re.sub(r"\ba square palm with long, slender fingers\b", "chaukone hatheli lambi ungliyon ke sath", res, flags=re.I)
+        res = re.sub(r"\ban Air hand\b", "Air Hand (Vayu Tatva)", res, flags=re.I)
+        res = re.sub(r"\ban Earth hand\b", "Earth Hand (Prithvi Tatva)", res, flags=re.I)
+        res = re.sub(r"\ba Fire hand\b", "Fire Hand (Agni Tatva)", res, flags=re.I)
+        res = re.sub(r"\ba Water hand\b", "Water Hand (Jal Tatva)", res, flags=re.I)
+    elif is_tenglish:
+        res = re.sub(r"\ba square palm with long, slender fingers\b", "chaukone aracheyi podavati velulatho", res, flags=re.I)
+        res = re.sub(r"\ban Air hand\b", "Air Hand (Vayu Tathvam)", res, flags=re.I)
+        res = re.sub(r"\ban Earth hand\b", "Earth Hand (Prithvi Tathvam)", res, flags=re.I)
+        res = re.sub(r"\ba Fire hand\b", "Fire Hand (Agni Tathvam)", res, flags=re.I)
+        res = re.sub(r"\ba Water hand\b", "Water Hand (Jala Tathvam)", res, flags=re.I)
     return res
 
 
-def translate_means_text(means: str, is_hinglish: bool = False) -> str:
-    if not is_hinglish:
+def translate_means_text(means: str, is_hinglish: bool = False, is_tenglish: bool = False) -> str:
+    if not (is_hinglish or is_tenglish):
         return means
     m_clean = str(means or "").strip()
-    for eng_k, hi_v in MEANS_TRANSLATIONS_HI.items():
+    target_dict = MEANS_TRANSLATIONS_TE if is_tenglish else MEANS_TRANSLATIONS_HI
+    for eng_k, loc_v in target_dict.items():
         if eng_k.lower() in m_clean.lower():
-            return hi_v
+            return loc_v
     return m_clean
 
 
-def translate_remedy_text(remedy: str, is_hinglish: bool = False) -> str:
-    if not is_hinglish:
+def translate_remedy_text(remedy: str, is_hinglish: bool = False, is_tenglish: bool = False) -> str:
+    if not (is_hinglish or is_tenglish):
         return remedy
     r_clean = str(remedy or "").strip()
-    for eng_k, hi_v in REMEDY_TRANSLATIONS_HI.items():
+    target_dict = REMEDY_TRANSLATIONS_TE if is_tenglish else REMEDY_TRANSLATIONS_HI
+    for eng_k, loc_v in target_dict.items():
         if eng_k.lower() in r_clean.lower():
-            return hi_v
+            return loc_v
     return r_clean
 
 
@@ -244,6 +410,14 @@ VEDIC_ASPECT_TITLES_HI = {
     "Health, Physical Vitality & Stamina": ("Swasthya, Sharirik Urja Aur Prana Shakti", "Urja Aur Prana Shakti"),
 }
 
+VEDIC_ASPECT_TITLES_TE = {
+    "Mind, Intellect & Temperament": ("Mano Sthiti, Thelivithetalu Mariyu Swabhavam", "Buddhi Mariyu Swabhavam"),
+    "Career Trajectory, Status & Leadership": ("Udyogam, Career Mariyu Nayakathvam", "Career Mariyu Sthanam"),
+    "Love, Marriage & Partner Compatibility": ("Prema, Vivaham Mariyu Jeevitha Bhagiswamy", "Sambandhalu Mariyu Dharmam"),
+    "Wealth Accumulation & Financial Trajectory": ("Dhana Sanchayam Mariyu Aarthika Sthiti", "Dhanam Mariyu Sampada"),
+    "Health, Physical Vitality & Stamina": ("Aarogyam, Shareeraka Balam Mariyu Praana Shakthi", "Balam Mariyu Praana Shakthi"),
+}
+
 VEDIC_UPAYA_HEADINGS_HI = {
     "Mind & Intellect": "Vishesh Vedic Upay (Buddhi Aur Man)",
     "Career & Status": "Vishesh Vedic Upay (Career Aur Pratishtha)",
@@ -252,10 +426,144 @@ VEDIC_UPAYA_HEADINGS_HI = {
     "Health & Vitality": "Vishesh Vedic Upay (Swasthya Aur Urja)",
 }
 
-def localize_vedic_text(text: str, is_hinglish: bool = False) -> str:
-    if not is_hinglish or not text:
+VEDIC_UPAYA_HEADINGS_TE = {
+    "Mind & Intellect": "Prathyeka Vedic Upayam (Mano Sthiti & Buddhi):",
+    "Career & Status": "Prathyeka Vedic Upayam (Career & Nayakathvam):",
+    "Harmony & Partnership": "Prathyeka Vedic Upayam (Vivaham & Sambandhalu):",
+    "Wealth & Abundance": "Prathyeka Vedic Upayam (Dhana Sanchayam & Sampada):",
+    "Health & Vitality": "Prathyeka Vedic Upayam (Aarogyam & Prana Shakthi):",
+}
+
+def localize_vedic_text(text: str, is_hinglish: bool = False, is_tenglish: bool = False) -> str:
+    if not (is_hinglish or is_tenglish) or not text:
         return text
     t = text
+    if is_tenglish:
+        # Archetype & Hand Type
+        t = re.sub(
+            r"You carry an <b>Air Hand archetype</b>.*?(thrives on mental variety and analytical depth\.)",
+            "Mee cheyi <b>Air Hand archetype (Vayu Tathvam)</b> (chaukone aracheyi podavati velulatho) — idi meeru oka <b>thelivaina, strategic thinker mariyu fluent communicator</b> ani chupisthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"You carry an <b>Earth Hand archetype</b>.*?(values tangible results and steady loyalty\.)",
+            "Mee cheyi <b>Earth Hand archetype (Prithvi Tathvam)</b> (chaukone aracheyi balamaina velulatho) — idi meeru oka <b>practical, sthiramaina mariyu nammadagina vyakthi</b> ani chupisthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"You carry an <b>Fire Hand archetype</b>.*?(driven by passion, ambition, and bold initiative\.)",
+            "Mee cheyi <b>Fire Hand archetype (Agni Tathvam)</b> (podavu aracheyi active velulatho) — idi meeru oka <b>urjawan, dynamic mariyu nayakathva lakshanalu unna vyakthi</b> ani chupisthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"You carry an <b>Water Hand archetype</b>.*?(with rich emotional perception\.)",
+            "Mee cheyi <b>Water Hand archetype (Jala Tathvam)</b> (podavu, komalamaina aracheyi) — idi meeru oka <b>loothaina intuition, empathy mariyu creative manasu</b> unna vyakthi ani chupisthundi.",
+            t, flags=re.I | re.S
+        )
+        # Thumb will vs logic
+        t = re.sub(
+            r"Your thumb maintains a <b>harmonious balance between will and reason</b>.*?(after thoughtful evaluation\.)",
+            "Mee botana velu <b>ichhashakthi (will) mariyu tharkam (logic) madhya chakkani samathoulyam</b> chupisthundi — meeru aalochinchi dridha nirnayam theesukuntaru.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"Your thumb reveals <b>strong will-driven determination</b>.*?(with unwavering focus\.)",
+            "Mee botana velu <b>balamaina ichhashakthi mariyu dridha sankalpam</b> chupisthundi — anukunnadi sadhinchadaniki sthiramga nilabadatharu.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"Your thumb reveals <b>methodical analytical discernment</b>.*?(with deliberate foresight\.)",
+            "Mee botana velu <b>tharkika mariyu vishleshana gnanam</b> chupisthundi — prathi risk ni mundhe bhaanpinchi siddham avutharu.",
+            t, flags=re.I | re.S
+        )
+        # Head line traits
+        t = re.sub(
+            r"Your head line reveals a <b>cautious, methodical mind</b>.*?(deliberate execution\.)?",
+            "Mee masthishka rekha mee dimaag <b>jagrattha mariyu methodical</b> ga pani chesthundani chupisthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"Your head line reveals an <b>independent, highly practical intellect</b>.*?(objective clarity\.)?",
+            "Mee masthishka rekha meeru oka <b>swatantra mariyu practical thinker</b> ani chupisthundi.",
+            t, flags=re.I | re.S
+        )
+        # Mount sentences in archetype
+        t = re.sub(
+            r"Your <b>your Mount of Mercury</b> is prominently elevated.*?(sharp analytical problem-solving\.)?",
+            "Mee active chethilo <b>Budha Parvatham (Mount of Mercury)</b> vikasinchindi — idi <b>vyaparika thelivithetalu, kushal communication mariyu negotiation</b> ku balam isthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"Your <b>your Mount of Venus</b> is also well-developed, adding warmth, vitality and affection\.",
+            "Mee <b>Shukra Parvatham (Mount of Venus)</b> kuda baaga vikasinchindi, idi prema, aakarshana mariyu shariraka urjanu isthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"Your <b>your Mount of Jupiter</b> is prominently elevated.*?(meaningful influence\.)?",
+            "Mee <b>Guru Parvatham (Mount of Jupiter)</b> vikasinchindi — idi <b>nayakathvam, gouravam mariyu unna aadarshalu</b> chupisthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"Your <b>your Mount of Saturn</b> is prominently elevated.*?(perseverance\.)?",
+            "Mee <b>Shani Parvatham (Mount of Saturn)</b> vikasinchindi — idi <b>anushasanam, orpu mariyu kramashikshana</b> tho sthira vijayanni isthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"Your <b>your Mount of Apollo</b> is prominently elevated.*?(public impact\.)?",
+            "Mee <b>Surya Parvatham (Mount of Sun/Apollo)</b> vikasinchindi — idi <b>creativity, gouravam mariyu keerti</b> ni isthundi.",
+            t, flags=re.I | re.S
+        )
+        # Profession summary
+        t = re.sub(
+            r"Your fate line indicates a trajectory <b>self-directed and self-built</b>.*?(through personal mastery and grit\.)",
+            "Mee bhagya rekha <b>swayam nirmitam mariyu swatantra trajectory</b> ni chupisthundi — mee career mee sontha krushi mariyu samarthyam tho sthirapaduthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"It ascends toward Saturn:\s*<b>steady, disciplined ascent</b>.*?leadership built through technical mastery and perseverance\.",
+            "Idi Shani parvatham vaipu velthundi: <b>anushasanam mariyu sthira vikasam</b> — technical mastery mariyu orpu tho long-term leadership vasthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"Your active hand's key vocational anchor is a prominent Mount of Mercury.*?naturally favoring <b>commerce, strategic advisory, technology, and communication</b>",
+            "Mee active chethi mukhya karyesh anchor vikasinchina Budha Parvatham, idi <b>vyaparam, strategic advisory, technology mariyu communication</b> ku sahajanga anukoolam.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"A supporting Sun line confirms that <b>merit-based recognition and professional authority</b> build progressively around your core accomplishments\.",
+            "Sahayak Surya rekha <b>yogyatha-aadhara gouravam mariyu authority</b> mee vijayalatho paatu kramamga peruguthundani spashtam chesthundi.",
+            t, flags=re.I | re.S
+        )
+        # Marriage summary
+        t = re.sub(
+            r"Your heart line reflects.*?<b>emotional integrity and enduring loyalty</b>.*?deeply devoted partner\.",
+            "Mee hrudaya rekha <b>bhavana imandari mariyu nishtha</b> ni chupisthundi — meeru sambandhalalo loothaina anubandham korukuntaru.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"A full Mount of Venus amplifies.*?<b>warmth, affection, and domestic vitality</b>\.",
+            "Vikasinchina Shukra Parvatham mee parivarika jeevithamlo <b>prema, aakarshana mariyu shanti</b> ni penchuthundi.",
+            t, flags=re.I | re.S
+        )
+        # Wealth summary
+        t = re.sub(
+            r"Your palm indicates a financial profile governed by.*?<b>strategic enterprise and steady accumulation</b>\.",
+            "Mee aracheyi mee aarthika profile <b>strategic vyaparam mariyu kramika dhana sanchayam</b> tho nirdharinchabaduthundani chupisthundi.",
+            t, flags=re.I | re.S
+        )
+        t = re.sub(
+            r"A well-defined fate line combined with active commercial mounts confirms that <b>wealth grows in direct proportion to your specialized mastery</b>\.",
+            "Spashtamaina bhagya rekha mariyu vikasinchina vyaparika parvathalu <b>dhanam mee vishesha prathibha mariyu krushi tho paatu peruguthundi</b> ani pushti chesthunnayi.",
+            t, flags=re.I | re.S
+        )
+        # Health summary
+        t = re.sub(
+            r"Your life line and Mount of Venus indicate <b>steady baseline stamina, natural physical resilience, and strong vital recovery</b>.*?(sustained high-performance energy\.)",
+            "Mee jeevana rekha mariyu Shukra Parvatham <b>sthira shareeraka stamina, natural resilience mariyu manchi recovery samarthyam</b> chupisthunnayi. Niyamitha dincharya mee urjanu kapaduthundi.",
+            t, flags=re.I | re.S
+        )
+        return t
+
     # Archetype & Hand Type
     t = re.sub(
         r"You carry an <b>Air Hand archetype</b>.*?(thrives on mental variety and analytical depth\.)",
@@ -387,11 +695,11 @@ def localize_vedic_text(text: str, is_hinglish: bool = False) -> str:
     return t
 
 
-def localize_trait_item(trait_name: str, trait_text: str, is_hinglish: bool = False) -> tuple[str, str]:
-    if not is_hinglish:
+def localize_trait_item(trait_name: str, trait_text: str, is_hinglish: bool = False, is_tenglish: bool = False) -> tuple[str, str]:
+    if not (is_hinglish or is_tenglish):
         return trait_name, trait_text
     
-    t_map = {
+    t_map_hi = {
         "strategic commerce and eloquence": ("Vyaparik Kushalta Aur Vani (Mercury)", "Aap negotiation, kushal communication aur sharp analytical problem-solving mein nipun hain."),
         "courage and inner resilience (deliberate)": ("Dheeraj Aur Aantrik Sahas (Mars)", "Aap samay aur sthiti dekhkar nirnay lete hain aur vyarth ke takrav se bachte hain."),
         "warmth, vitality and affection": ("Prem, Urja Aur Sauhard (Venus)", "Aap sachhi aatmiyata, prem aur sharirik vitality se paripoorn hain."),
@@ -405,11 +713,26 @@ def localize_trait_item(trait_name: str, trait_text: str, is_hinglish: bool = Fa
         "adaptable nature": ("Lachila Swabhav (Wavy Head Line)", "Aap badalti sthitiyon ke sath aasaani se dhal jaate hain."),
     }
 
+    t_map_te = {
+        "strategic commerce and eloquence": ("Vyaparika Kushalatha Mariyu Vak-Chathuryam (Mercury)", "Meeru negotiation, kushal communication mariyu sharp analytical problem-solving lo nipunulu."),
+        "courage and inner resilience (deliberate)": ("Dhairyam Mariyu Aantrika Sahasam (Mars)", "Meeru samayam mariyu sthitini batti nirnayam theesukoni vivadala nunchi duranga untaru."),
+        "warmth, vitality and affection": ("Prema, Urja Mariyu Apyayatha (Venus)", "Meeru manchi aatmeeyatha, prema mariyu shariraka vitality tho unnaru."),
+        "focused resolve": ("Ekagratha Mariyu Sankalpam (Head Line)", "Loothaina masthishka rekha meeku atoota concentration mariyu vishleshana stamina isthundi."),
+        "vital warmth": ("Praana Urja Mariyu Aakarshana (Venus)", "Vikasinchina Shukra parvatham sahaja aakarshana, physical vigor mariyu udarathvaniki karanam."),
+        "leadership and executive stature": ("Nayakathvam Mariyu Gouravam (Jupiter)", "Meeru sahajanga gouravam pondutharu mariyu unna aadarshalu kaligi untaru."),
+        "discipline and steadfast perseverance": ("Anushasanam Mariyu Orpu (Saturn)", "Meeru badhyathalanu prashanthamga poorthi chesi sthira vijayanni sadhistharu."),
+        "creative brilliance and personal magnetism": ("Kala Mariyu Aakarshana (Sun)", "Mee daggara creative prathibha mariyu aesthetic sense unnai."),
+        "imagination and intuitive depth": ("Kalpana Mariyu Antardrishti (Moon)", "Meeru loothaina bhavanalu mariyu creative kalpanatho unnaru."),
+        "loyal heart": ("Nammakamina Hrudayam (Heart Line)", "Loothaina hrudaya rekha sambandhalalo sthira nishtha mariyu nammakanni isthundi."),
+        "adaptable nature": ("Lachila Swabhavam (Wavy Head Line)", "Meeru badalina paristhithulaku thaggattu sulabhamga adjust avutharu."),
+    }
+
     t_low = str(trait_name or "").lower().strip()
-    for eng_k, (hi_title, hi_desc) in t_map.items():
+    target_map = t_map_te if is_tenglish else t_map_hi
+    for eng_k, (loc_title, loc_desc) in target_map.items():
         if eng_k in t_low:
-            return hi_title, hi_desc
-    return trait_name.title(), localize_vedic_text(trait_text, True)
+            return loc_title, loc_desc
+    return trait_name.title(), localize_vedic_text(trait_text, is_hinglish=is_hinglish, is_tenglish=is_tenglish)
 
 
 # ===========================================================================
@@ -426,17 +749,28 @@ MARK_NAMES_HI = {
     "cross": "Cross Mark (Brihaspati Cross)",
 }
 
-def localize_mark(feature: str, sign: str, means: str, remedy: str, is_hinglish: bool = False) -> tuple[str, str, str, str]:
-    if not is_hinglish:
+MARK_NAMES_TE = {
+    "fish": "Mathsya Chihnam (Fish Sign)",
+    "trident": "Thrishula Chihnam (Trident Mark)",
+    "star": "Thaara Chihnam (Star Mark)",
+    "square": "Chathurasra Chihnam (Square Protection Mark)",
+    "temple": "Gudi/Mandir Chihnam (Temple Sign)",
+    "triangle": "Thribhuja Chihnam (Triangle Mark)",
+    "cross": "Cross Chihnam (Guru Cross)",
+}
+
+def localize_mark(feature: str, sign: str, means: str, remedy: str, is_hinglish: bool = False, is_tenglish: bool = False) -> tuple[str, str, str, str]:
+    if not (is_hinglish or is_tenglish):
         return feature, sign, means, remedy
     
     f_clean = feature
-    for eng_k, hi_name in MARK_NAMES_HI.items():
+    target_names = MARK_NAMES_TE if is_tenglish else MARK_NAMES_HI
+    for eng_k, loc_name in target_names.items():
         if eng_k in feature.lower():
-            f_clean = hi_name
+            f_clean = loc_name
             break
     
-    s_clean = translate_sign_text(sign, True)
-    m_clean = translate_means_text(means, True)
-    r_clean = translate_remedy_text(remedy, True)
+    s_clean = translate_sign_text(sign, is_hinglish=is_hinglish, is_tenglish=is_tenglish)
+    m_clean = translate_means_text(means, is_hinglish=is_hinglish, is_tenglish=is_tenglish)
+    r_clean = translate_remedy_text(remedy, is_hinglish=is_hinglish, is_tenglish=is_tenglish)
     return f_clean, s_clean, m_clean, r_clean
