@@ -54,14 +54,10 @@ def test_mixed_template_keeps_chart_anchors_and_astrologer_prose():
     assert "Saturn Mahadasha" in html
     assert "Mercury Antardasha" in html
     assert "Saturn&#x27;s influence on the career axis" in html
-    # The paid card is compact: pill + Astrologer's conclusion. The first dated
-    # window opens Nov 2027, so the pill must not claim the period is running
-    # today.
-    assert "Career &amp; Profession" in html
-    assert "Astrologer's conclusion" in html
-    assert "The career promise is supported and the current period is active." in html
-    assert "not yet active" in html
-    assert "Active now" not in html
+    # Per-area cards were replaced by the divisional life-domain blocks, so the
+    # area prose no longer reaches the page. What must still hold is that no
+    # engine internals or model-written dates leak into it.
+    assert "Astrologer's conclusion" not in html
     assert "Saturn and Jupiter both support" not in html
     assert "Why this reads this way" not in html
     assert "House 10" not in html
@@ -70,6 +66,7 @@ def test_mixed_template_keeps_chart_anchors_and_astrologer_prose():
     assert "May 2024 → Oct 2026" not in html
     assert "start=" not in html
     assert "The timing engine has not supplied an exact window" not in html
+    # Timing dates are Python-owned; a month the model wrote is never printed.
     assert "March 2029" not in html
 
 
@@ -117,13 +114,11 @@ def test_engine_card_reads_canonical_promise_activation_and_windows():
             },
         },
     )
-    assert "Children" in html
-    assert "Astrologer's conclusion" in html
-    assert "The area is part of your chart&#x27;s real potential, and the current period is actively supporting it." in html
-    # The canonical result says strongly supported / strongly active, but the
-    # only featured window opens in Oct 2026 (after today), so the pill must
-    # stay "not yet active".
-    assert "not yet active" in html
+    assert 'id="sec-your-current-chapter"' in html
+    assert "You tend to act once a direction is clear." in html
+    # A canonical card that reads strongly supported and strongly active still
+    # must not put its engine internals or its raw window dates on the page.
+    assert "Astrologer's conclusion" not in html
     assert "Strongly supported" not in html
     assert "Not clearly established" not in html
     assert "31 Oct 2026" not in html
@@ -132,61 +127,31 @@ def test_engine_card_reads_canonical_promise_activation_and_windows():
     assert "March 2029" not in html
 
 
-def test_free_template_contains_family_home_and_conversion_teaser():
+def test_the_canonical_pill_reads_promise_and_activation_together():
+    """Where the per-area verdict is still decided, even though the page has
+    stopped drawing per-area cards: a window that has not opened yet cannot be
+    called active, whatever the engine's activation status says."""
     import report_conversational as R
-    from llm.schemas import CardFacts
 
-    card = CardFacts(
-        area="profession",
-        label="Career & Profession",
-        status="supported",
-        activation_status="active",
-        house=10,
-        allowed_planets=["Saturn", "Jupiter"],
-    )
-    html = R.render(
-        {
-            "lagna": {"sign": "Capricorn"},
-            "planets": {"Moon": {"sign": "Taurus", "nakshatra": "Rohini"}},
-            "vimshottari": {
-                "current_md": {"md_lord": "Saturn"},
-                "current_md_antardashas": [{"status": "current", "ad_lord": "Mercury"}],
-            },
-        },
-        name="Meera",
-        today=date(2026, 8, 13),
-        paid=True,
-        cards=[card],
-        prose={
-            "astrological_basis": "Saturn's influence on the career axis makes professional progress responsibility-driven.",
-            "interpretation": "This is a consolidation phase in which recognition follows sustained responsibility.",
-            "personality": "You tend to take important commitments seriously and prefer decisions with substance behind them.",
-            "current_phase": "Career matters are taking more weight, but the chart does not show a simple denial of progress.",
-            "areas": {
-                "profession": {
-                    "astrological_basis": "Saturn and Jupiter both support the career reading, with Saturn adding responsibility.",
-                    "interpretation": "The combination favours steady professional consolidation rather than an overnight leap.",
-                    "outlook": "The career promise is supported and the current period is active.",
-                    "timing": "The stronger stretch runs from November 2027 to February 2028.",
-                    "manifestation": "This can show through a more defined role or greater responsibility.",
-                }
-            },
+    card = SimpleNamespace(
+        area="children", label="Children", house=5, direction="support",
+        agreement="strong", planets=["Jupiter"], window="", timing_windows=[],
+        evidence=[],
+        confluence={
+            "canonical_result": {
+                "promise": {"status": "strongly_supported"},
+                "activation": {"status": "strongly_active"},
+                "direction": "support",
+                "agreement": "strong",
+                "timing": {"featured_windows": [
+                    {"start": "2026-10-31", "end": "2027-01-25", "label": "children_window"},
+                ]},
+            }
         },
     )
-    assert "Capricorn rising" in html
-    assert "Moon in Taurus" in html
-    assert "Nakshatra: Rohini" in html
-    assert "Saturn Mahadasha" in html
-    assert "Mercury Antardasha" in html
-    assert "What the chart shows" in html
-    assert "Saturn&#x27;s influence on the career axis" in html
-    assert "House 10" in html
-    assert "Birth chart: Supported" in html
-    assert "Timing: Active now" in html
-    assert "Saturn and Jupiter both support" in html
-    assert "Why this reads this way" in html
-    assert "The timing engine has not supplied an exact window" in html
-    assert "November 2027" not in html
+    pill = R._pill({}, card, date(2026, 8, 13))
+    assert "not yet active" in pill
+    assert "Active now" not in pill
 
 
 def test_free_template_contains_family_home_and_conversion_teaser():

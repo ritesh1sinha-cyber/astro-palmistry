@@ -22,7 +22,7 @@ PROMPT_VERSIONS = {
     "horary": "HORARY_PROSE_PROMPT_V1",
     "palm": "PALM_CONVERSATIONAL_PROMPT_V5",
     "chat": "CHAT_PROSE_PROMPT_V1",
-    "plain_summary": "PLAIN_SUMMARY_PROMPT_V1",
+    "plain_summary": "PLAIN_SUMMARY_PROMPT_V2",
 }
 
 PromiseStatus = Literal[
@@ -858,11 +858,15 @@ class PlainSummarySection(BaseModel):
     model_config = ConfigDict(extra="forbid")
     title: str = Field(..., min_length=4, max_length=120)
     body: str = Field(..., min_length=20, max_length=900)
+    # insight = a finding from the reading; locked = what the paid half holds;
+    # cta = the closing line the UI renders as the unlock button.
+    role: Literal["insight", "locked", "cta"] = "insight"
 
 
 class PlainSummaryProse(BaseModel):
     """Executive plain-English summary of a finished customer report."""
     model_config = ConfigDict(extra="forbid")
+    headline: str = Field(default="", max_length=180)
     sections: list[PlainSummarySection] = Field(..., min_length=1, max_length=8)
 
 

@@ -123,7 +123,14 @@ def _sample_nodes():
     ]
 
 
-def test_renderer_shows_transition_map():
+def test_the_page_is_built_from_divisional_sections_not_area_cards():
+    """The reading is one consultation, not a grid of per-area verdicts.
+
+    Per-area cards ("Work & Career" · pill · Astrologer's conclusion) were
+    replaced by the divisional life-domain blocks, and the lane chart they
+    carried never reached a customer page. This holds the page to the three
+    sections it is actually made of, so a reader cannot lose one silently.
+    """
     from report_cards import Card
     import report_conversational as RC
 
@@ -141,45 +148,21 @@ def test_renderer_shows_transition_map():
                     {"status": "current", "ad_lord": "Jupiter", "start": "2026-10-01", "end": "2029-03-01"},
                 ],
             },
-            "yogini": {
-                "full_cycle": [
-                    {"yogini": "Bhramari", "lord": "Mars", "start": "2025-01-01", "end": "2027-06-01"},
-                ],
-            },
-            "chara_dasha": {
-                "maha": [
-                    {"sign": "Aquarius", "start": "2024-01-01", "end": "2028-01-01"},
-                ],
-            },
         },
         name="Meera", paid=True, cards=[card], today=date(2026, 8, 13),
         prose={"personality": "Your chart shows an active temperament.",
-               "areas": {"career": {"astrological_basis": "Saturn and Jupiter activate the career theme.",
-               "interpretation": "The career story changes from pressure toward opportunity.",
-               "outlook": "The longer period is mixed but improves.", "timing": "Jan 2027 → Apr 2027",
-               "manifestation": "Responsibility can become visibility.",
-               "transition_note": "The important shift is from pressure into opportunity as the overlap changes.",
-               "remedy": "Show your work and follow important conversations in writing."}}},
+               "areas": {"career": {"outlook": "The longer period is mixed but improves."}}},
         remedy_html="",
     )
-    # The redesigned paid card is intentionally compact: pill, one conclusion
-    # and one remedy. The lane-chart map is no longer drawn on the card.
-    assert "Work &amp; Career" in html
-    assert "Astrologer's conclusion" in html
-    assert "The longer period is mixed but improves." in html
-    assert "Show your work and follow important conversations in writing." in html
+    for anchor in ("sec-who-you-are", "sec-your-current-chapter", "sec-life-domains"):
+        assert f'id="{anchor}"' in html, anchor
+    # The retired card furniture must not come back.
+    assert "Astrologer's conclusion" not in html
     assert "Life-area transition map" not in html
-    assert "Opening" not in html
-    assert "6 bindus" not in html
-    assert "Yogini" not in html
-    assert "Chara" not in html
-    assert "Vimshottari" not in html
     assert "When the chart gives these themes more room to move" not in html
-    # The map already dates every window, so the old timing strip is dropped.
-    assert 'class="area-timing"' not in html
 
 
-def test_timing_strip_survives_when_no_map_is_available():
+def test_a_card_without_a_transition_map_still_renders_a_page():
     from report_cards import Card
     import report_conversational as RC
 
@@ -192,14 +175,12 @@ def test_timing_strip_survives_when_no_map_is_available():
                "areas": {"career": {"outlook": "The career theme is supported.",
                                     "timing": "Jan 2027 → Apr 2027"}}},
     )
-    # No transition map, so the card still renders its consultation conclusion.
-    assert "Work &amp; Career" in html
-    assert "Astrologer's conclusion" in html
-    assert "The career theme is supported." in html
-    assert 'class="area-timing"' not in html
+    assert 'id="sec-your-current-chapter"' in html
+    assert "You act once a direction is clear." in html
 
 
-def test_transition_fact_and_dict_render_the_same_map():
+def test_transition_fact_and_dict_produce_the_same_page():
+    """A card carrying models and a card carrying dicts must not diverge."""
     import report_conversational as RC
     from llm.schemas import CardFacts, TransitionFact
 
@@ -216,14 +197,8 @@ def test_transition_fact_and_dict_render_the_same_map():
                                   "transition_note": "Pressure gives way to an opening."}}}
     html_a = RC.render(pc, name="Meera", paid=True, cards=[dict_card], prose=prose)
     html_b = RC.render(pc, name="Meera", paid=True, cards=[model_card], prose=prose)
-    # Both fact shapes render the same compact card; neither draws the map.
-    assert "Astrologer's conclusion" in html_a
-    assert "Astrologer's conclusion" in html_b
-    assert "The career theme is supported." in html_a
-    assert "The career theme is supported." in html_b
-    assert "Opening" not in html_a
-    assert "Yogini" not in html_a
-    assert "When the chart gives these themes more room to move" not in html_a
+    assert html_a == html_b
+    assert "You tend to act when a direction is clear." in html_a
 
 
 def test_window_state_calls_a_future_window_upcoming():
@@ -237,6 +212,12 @@ def test_window_state_calls_a_future_window_upcoming():
 
 
 def test_future_window_is_not_reported_as_active_now():
+    """Tested on the pill itself rather than through a page.
+
+    The engine can mark an area "active" while its only window opens years
+    out; saying "Active now" there is the one claim a reader can immediately
+    disprove. The guard lives in _pill, so that is where it is held.
+    """
     import report_conversational as RC
     from llm.schemas import CardFacts, WindowFact
 
@@ -245,17 +226,9 @@ def test_future_window_is_not_reported_as_active_now():
         activation_status="active", house=7,
         timing_windows=[WindowFact(start="2028-12-01", end="2029-03-01", label="love_window")],
     )
-    html = RC.render(
-        {"lagna": {"sign": "Aries"}, "planets": {"Moon": {"sign": "Leo"}}},
-        name="Meera", paid=True, cards=[card], today=date(2026, 8, 13),
-        prose={"personality": "You act once a direction is clear.", "areas": {}},
-    )
-    # A window that opens in Dec 2028 must be called "not yet active", never
-    # "Active now" — the pill suppresses the activation label on an upcoming
-    # window (report_conversational._pill).
-    assert "Supported but not yet active" in html
-    assert "Active now" not in html
-    assert "not yet active" in html
+    pill = RC._pill({}, card, date(2026, 8, 13))
+    assert "Supported but not yet active" in pill
+    assert "Active now" not in pill
 
 
 def test_a_weak_promise_is_never_called_promised():
@@ -267,16 +240,11 @@ def test_a_weak_promise_is_never_called_promised():
         activation_status="active", house=10,
         timing_windows=[WindowFact(start="2032-03-01", end="2032-08-01", label="career_window")],
     )
-    html = RC.render(
-        {"lagna": {"sign": "Aries"}, "planets": {"Moon": {"sign": "Leo"}}},
-        name="Meera", paid=True, cards=[card], today=date(2026, 8, 13),
-        prose={"personality": "You act once a direction is clear.", "areas": {}},
-    )
+    pill = RC._pill({}, card, date(2026, 8, 13))
     # insufficient_evidence renders as "Limited support", never "promised".
-    assert "Limited support" in html
-    assert "Promised" not in html
-    assert "Promised, not yet active" not in html
-    assert "Active now" not in html
+    assert "Limited support" in pill
+    assert "Promised" not in pill
+    assert "Active now" not in pill
 
 
 def test_a_far_off_map_says_what_happens_in_the_meantime():
@@ -352,16 +320,12 @@ def test_problem_stretch_carries_an_easing_line_and_a_step():
     assert "Feb 2027" in easing_note(hard, today=date(2026, 8, 13))
     card = Card(area="health", label="Health & Energy", direction="down",
                 headline="Health needs care", house=1, transition_map=hard)
-    html = RC.render(
-        {"lagna": {"sign": "Aries"}, "planets": {"Moon": {"sign": "Leo"}}},
-        name="Meera", paid=True, cards=[card], today=date(2026, 8, 13),
-        prose={"personality": "You act once a direction is clear.", "areas": {}},
-    )
-    # The easing date and the step survive on the compact card: the remedy line
-    # carries the "opens up from <month>" note (report_conversational._fallback_help).
-    assert "This opens up from Feb 2027" in html
-    assert "Remedy / what helps" in html
-    assert "When it eases:" not in html
+    # A hard stretch must come with the month it eases and something to do
+    # about it. Both come from _fallback_help, which the page no longer calls
+    # per area, so the pairing is checked at its source.
+    help_text = RC._fallback_help(card, "Health & Energy")
+    assert "This opens up from Feb 2027" in help_text
+    assert len(help_text.split()) > 6
 
 
 def test_question_answer_renders_the_same_transition_map():

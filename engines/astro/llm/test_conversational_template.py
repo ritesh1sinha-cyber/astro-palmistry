@@ -37,7 +37,9 @@ def test_conversational_fallback_has_required_free_fields():
     assert out["conversational"] is True
     assert "act quickly" in out["personality"]
     assert "two ways" in out["current_phase"].lower() or "patience" in out["current_phase"].lower()
-    assert "october 2026" in out["current_phase"].lower()
+    # The free overlay names the stretch, never when it ends — that date is
+    # the paid answer.
+    assert "october 2026" not in out["current_phase"].lower()
     assert out["recent_months"]
     assert "Work & Career" in out["hardest_area_note"]
     assert out["areas"] == {}  # free has no area detail
@@ -165,29 +167,44 @@ def test_free_projection_strips_area_remedies_not_personality():
     assert free.cards[0].approved_remedies == []
 
 
-def test_astro_switch_uses_classic_when_nothing_accepted():
-    """If accepted=0, the classic frozen renderer must be used."""
-    import report_conversational as RConv
-    import report_cards as RC
+def test_deterministic_prose_still_earns_the_conversational_page():
+    """The layout must not depend on the model answering.
 
-    # The switch lives in report_render.build; verify the gate condition itself.
-    llm_meta = {
-        "enabled": True,
-        "free": {"stats": {"accepted": 0}},
-        "paid": {"stats": {"accepted": 0}},
-    }
+    Nothing accepted used to mean the classic cards page, so a reading changed
+    shape the moment the model was off or failing. A complete overlay is now
+    enough, whoever wrote the sentences.
+    """
+    from report_render import _use_conversational
+
     prose = {"conversational": True, "personality": "You tend to act quickly."}
-    tier = llm_meta["paid"]
-    accepted = int((tier.get("stats") or {}).get("accepted") or 0)
-    use = (
-        bool(llm_meta.get("enabled"))
-        and accepted > 0
-        and bool(prose.get("conversational"))
-        and bool(str(prose.get("personality") or "").strip())
-    )
-    assert use is False
-    assert hasattr(RC, "render")
-    assert hasattr(RConv, "render")
+    assert _use_conversational(prose, llm_enabled=False, accepted=0) is True
+    assert _use_conversational(prose, llm_enabled=True, accepted=4) is True
+
+
+def test_an_incomplete_overlay_falls_back_to_the_classic_page():
+    """Without prose to carry it, the conversational page has nothing to say."""
+    from report_render import _use_conversational
+
+    assert _use_conversational({}, llm_enabled=True, accepted=4) is False
+    assert _use_conversational(
+        {"conversational": True, "personality": "  "},
+        llm_enabled=True, accepted=4) is False
+
+
+def test_the_flag_restores_the_accepted_only_rule():
+    """CONVERSATIONAL_WHEN_LLM_OFF=0 is the one-variable rollback."""
+    from core.config import S
+    from report_render import _use_conversational
+
+    prose = {"conversational": True, "personality": "You tend to act quickly."}
+    before = S.conversational_when_llm_off
+    S.conversational_when_llm_off = False
+    try:
+        assert _use_conversational(prose, llm_enabled=False, accepted=0) is False
+        assert _use_conversational(prose, llm_enabled=True, accepted=0) is False
+        assert _use_conversational(prose, llm_enabled=True, accepted=2) is True
+    finally:
+        S.conversational_when_llm_off = before
 
 
 def test_conversational_render_has_unlock_on_free():
@@ -209,13 +226,44 @@ def test_conversational_render_has_unlock_on_free():
     )
     assert 'data-unlock="1"' in html
     assert "YOUR CHART SIGNATURE" in html
-    assert "ABOUT YOU" in html
+    assert "WHO YOU ARE" in html
     assert "THE ROAD AHEAD" not in html  # no cards on this free render
     assert "1. CHART SIGNATURE" not in html
     assert "See the full reading, area by area" in html
 
 
-def test_palm_conversational_render_paid_areas():
+def test_free_conversational_page_shows_what_it_is_holding_back():
+    """The free view must name the locked depth and how to buy it.
+
+    The classic page has always carried the blurred paid sections and the
+    bundle offer. Readings only reached the conversational page when the model
+    answered, so nobody noticed they were missing until that page became the
+    default. A free reading that ends on a bare CTA is a worse offer.
+    """
+    from llm.fallback import conversational_fallback
+    from llm.schemas import ReportFacts
+    import report_conversational as RConv
+
+    facts = ReportFacts(
+        first_name="Meera",
+        access="free",
+        personality_traits=["You tend to act quickly when you see an opportunity."],
+        phase_tone="mixed",
+    )
+    prose = conversational_fallback(facts)
+    pc = {"lagna": {"sign": "Aries"}, "planets": {"Moon": {"sign": "Leo"}}}
+    upsell = "<section id='marker-locked'>locked depth</section>"
+
+    free = RConv.render(pc, name="Meera", paid=False, price=298, cards=[],
+                        prose=prose, footer_unlock=True, upsell_html=upsell)
+    assert "marker-locked" in free
+
+    paid = RConv.render(pc, name="Meera", paid=True, price=298, cards=[],
+                        prose=prose, footer_unlock=False, upsell_html=upsell)
+    assert "marker-locked" not in paid, "a paying reader is not sold the report again"
+
+
+def test_palm_render_carries_the_prose_inside_the_computed_spine():
     from llm.fallback import conversational_palm_fallback
     from llm.schemas import PalmAspectFacts, PalmFacts
     from core.palm_conversational import render as palm_render
@@ -250,8 +298,12 @@ def test_palm_conversational_render_paid_areas():
         "left": {},
     }
     html = palm_render(raw, name="Meera", age=30, paid=True, prose=prose)
-    # The personality paragraph now opens the section that shows the hand it
-    # was read from, rather than standing alone under "Who you are".
-    assert "The hand itself" in html
-    assert "Each part of your life" in html
-    assert "Career" in html
+    # The sections are computed from the measurements, and the prose lands
+    # inside them: the personality paragraph opens the section that shows the
+    # hand it was read from rather than standing under a heading of its own.
+    assert "Your hands, and what I traced on them" in html
+    assert "Where You Are Now, Meera" in html
+    assert "Your Core Hand Archetype &amp; Temperament" in html
+    assert "Innate Blueprint vs. Self-Made Evolution" in html
+    assert "You think better by talking things through." in html
+    assert "vitality enters a meaningful chapter" in html

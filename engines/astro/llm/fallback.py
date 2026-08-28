@@ -10,6 +10,15 @@ import re
 from typing import Any
 
 
+def _free_dates_filter(text: Any) -> str:
+    """Drop sentences a free reading may not date. Identity if unavailable."""
+    try:
+        from free_dates import strip_future_sentences
+    except Exception:                                                # noqa: BLE001
+        return str(text or "")
+    return strip_future_sentences(text)
+
+
 def _status_phrase(status: str, *, kind: str = "promise") -> str:
     s = (status or "").lower()
     if kind == "challenge":
@@ -209,9 +218,31 @@ def clip_sentences(text: Any, limit: int) -> str:
     joined = _join_within(parts, limit)
     if joined and len(joined) <= limit:
         return joined
-    if parts:
-        return parts[0]
-    return t
+    # No boundary inside the budget. Returning the sentence whole used to blow
+    # straight through the limit, which is how a 220-character slot ended up
+    # holding a 400-character run-on.
+    return _clip_one_sentence(parts[0] if parts else t, limit)
+
+
+def _clip_one_sentence(text: str, limit: int) -> str:
+    """A sentence longer than the whole budget still has to end somewhere.
+
+    Prefer the last clause boundary so what survives is a complete thought,
+    and fall back to the last whole word. Either way it closes with a full
+    stop instead of trailing off mid-line.
+    """
+    t = str(text or "").strip()
+    if len(t) <= limit:
+        return t
+    head = t[:limit]
+    for sep in ("; ", ", ", " — ", " – ", " - "):
+        cut = head.rfind(sep)
+        if cut >= limit // 2:
+            return head[:cut].rstrip(" ,;:—-") + "."
+    cut = head.rfind(" ")
+    if cut <= 0:
+        return head
+    return head[:cut].rstrip(" ,;:—-") + "."
 
 
 def clean_palm_summary(summary: Any) -> str:
@@ -382,7 +413,12 @@ def _ord(n: int) -> str:
 
 
 def _vedic_period_line(facts: Any) -> str:
-    """Name the running period the way an astrologer would, or empty."""
+    """Name the running period the way an astrologer would, or empty.
+
+    The free half names the period it is in but not when it ends: an end date
+    is the answer to "when does this change", which the page sells.
+    """
+    paid = (getattr(facts, "access", "free") or "free") == "paid"
     vc = getattr(facts, "vedic_context", None)
     if vc is None and isinstance(facts, dict):
         vc = facts.get("vedic_context")
@@ -410,7 +446,7 @@ def _vedic_period_line(facts: Any) -> str:
         line = f"You are in a {lord} mahadasha"
         if sub and sub.lower() != lord.lower():
             line += f", with {sub} running the current antardasha"
-        end = _month_year(end_raw)
+        end = _month_year(end_raw) if paid else ""
         if end:
             line += f". This stretch runs through {end}"
         bits.append(line + ".")
@@ -545,12 +581,20 @@ def conversational_fallback(facts: Any) -> dict[str, Any]:
         "This period pulls two ways at once. One part of life opens while another "
         "asks for patience. Do not read it as simply good or bad."
     ))
+    if notes and getattr(facts, "access", "free") != "paid":
+        # Engine notes carry their dates inline ("the pressure eases after
+        # October 2026"). Half a sentence reads worse than none, so a note
+        # that leans on a future date goes rather than being reworded.
+        notes = [n for n in (_free_dates_filter(n) for n in notes) if n]
     current_phase = " ".join(notes[:2]).strip() if notes else tone_line
     basis = _vedic_period_line(facts)
     if not current_phase:
         current_phase = tone_line
     if not basis:
-        phase_end_said = _month_year(phase_end)
+        # Same rule as _vedic_period_line: the free half says which stretch
+        # this is, never when it runs out.
+        phase_end_said = (_month_year(phase_end)
+                          if getattr(facts, "access", "free") == "paid" else "")
         if phase_end_said and phase_end_said.lower() not in current_phase.lower():
             current_phase += f" This stretch runs through {phase_end_said}."
 
