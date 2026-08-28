@@ -604,17 +604,17 @@ def _planetary_dynamics_block(r: dict, j: dict, vc: dict | None = None, *, lang:
     parts_html = ""
     if p_parts:
         parts_html = (
-            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('opener', '')}</p>"
-            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('link', '')}</p>"
-            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('moon', '')}</p>"
+            f"<p style='margin:0 0 0.5rem 0;'>{_e(p_parts.get('opener', ''))}</p>"
+            f"<p style='margin:0 0 0.5rem 0;'>{_e(p_parts.get('link', ''))}</p>"
+            f"<p style='margin:0 0 0.5rem 0;'>{_e(p_parts.get('moon', ''))}</p>"
         )
 
     return f"""
 <section class="section planetary-dynamics">
-  <h2>{sec_title}</h2>
+  <h2>{_e(sec_title)}</h2>
   <div class="card">
     {parts_html}
-    <p style="margin:0 0 0.6rem 0;">{agree_line}</p>
+    <p style="margin:0 0 0.6rem 0;">{_e(agree_line)}</p>
     {planets_html}
   </div>
 </section>"""

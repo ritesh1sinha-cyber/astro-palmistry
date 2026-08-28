@@ -374,7 +374,9 @@ def h_full_report(user: dict, p: dict) -> dict:
         lang=lang)
     # Card HTML used to skip the full voice pass that the long-form appendix gets.
     # Phase 1: personalise (local openings + humanise) — no cloud LLM required.
-    if str(lang or "").lower() not in ("hi_en", "hinglish", "hi", "hindi"):
+    if str(lang or "").lower() not in (
+        "hi_en", "hinglish", "hi", "hindi", "te_en", "tenglish", "te", "telugu"
+    ):
         free_html = V.personalise(free_html, ctx, "full_report")
         paid_html = V.personalise(paid_html, ctx, "full_report")
         free_html = V.translate_jargon(free_html, keep_original=False)

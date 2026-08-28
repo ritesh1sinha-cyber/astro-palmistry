@@ -499,7 +499,8 @@ AREA_TO_CONFLUENCE_DOMAIN: dict[str, str] = {
     "gemstones & remedies": "gemstones_remedies",
     "gemstone_remedies": "gemstones_remedies",
     "gemstones_remedies": "gemstones_remedies",
-    "spiritual": "gemstones_remedies",
+    "spiritual": "general_destiny",
+    "spirituality": "general_destiny",
     "general": "general_destiny",
     "general_destiny": "general_destiny",
     "something else": "general_destiny",
@@ -507,6 +508,38 @@ AREA_TO_CONFLUENCE_DOMAIN: dict[str, str] = {
     "destiny": "general_destiny",
     "future": "general_destiny",
     "out_of_domain": "out_of_domain",
+}
+
+DOMAIN_TITLES_HI: dict[str, str] = {
+    "career_profession": "Career, Rozgar Aur Padonnati",
+    "marriage_relationship": "Vivah, Rishte Aur Jeevansathi",
+    "wealth_finances": "Dhan, Sampatti Aur Aarthik Sthiti",
+    "health_vitality": "Swasthya, Arogya Aur Urja",
+    "children_progeny": "Santan, Parivar Aur Vansh",
+    "foreign_relocation": "Videsh Yatra Aur Sthan Parivartan",
+    "property_assets": "Bhoomi, Makaan Aur Sthir Sampatti",
+    "litigation_disputes": "Court, Kacheri Aur Vivad",
+    "education_learning": "Shiksha, Pratiyogita Aur Pariksha",
+    "speech_neurology": "Vaani, Speech Aur Mansik Santulan",
+    "gemstones_remedies": "Shubh Ratna Aur Vedic Upay",
+    "general_destiny": "Sampurna Jeevan Vishleshan",
+    "out_of_domain": "Jyotish Daayra Margdarshan",
+}
+
+DOMAIN_TITLES_TE: dict[str, str] = {
+    "career_profession": "Career, Udyogam Mariyu Promotion",
+    "marriage_relationship": "Vivaham, Bandhalu Mariyu Jeevithabhagswami",
+    "wealth_finances": "Dhanam, Aasthi Mariyu Aarthika Sthiti",
+    "health_vitality": "Aarogyam, Deerghayuvu Mariyu Shakthi",
+    "children_progeny": "Santhanam, Kutumbam Mariyu Pillalu",
+    "foreign_relocation": "Videsha Prayanam Mariyu Sthana Maarpu",
+    "property_assets": "Sthalam, Illu Mariyu Fixed Assets",
+    "litigation_disputes": "Court, Nyaya Vivadhalu",
+    "education_learning": "Vidya, Parikshalu Mariyu Degrees",
+    "speech_neurology": "Vaaku, Speech Mariyu Mansika Sthiratha",
+    "gemstones_remedies": "Shubha Rathnamulu Mariyu Vedic Upayamulu",
+    "general_destiny": "Sampoorna Jeevitha Vishleshana",
+    "out_of_domain": "Jyotishya Paridhi Margadarshanam",
 }
 
 # High-intent multi-word keyphrases with high weight for deterministic classification
@@ -517,7 +550,9 @@ INTENT_KEYPHRASES: dict[str, list[str]] = {
         "future prospects", "overall life", "my horoscope", "general reading",
         "kaisa rahega samay", "kaisa hoga bhavishya", "aane wala samay", "meri kundli",
         "aage kya hoga", "koi problem to nahi", "meri life kaisa", "overall destiny",
-        "upcoming phase", "upcoming years", "upcoming time", "life trajectory", "what does my chart say"
+        "upcoming phase", "upcoming years", "upcoming time", "life trajectory", "what does my chart say",
+        "spiritual growth", "spiritual path", "meditation guidance", "meditation", "moksha",
+        "guru guidance", "inner peace", "spirituality", "dharmic path", "soul purpose"
     ],
     "gemstones_remedies": [
         "which gemstone", "which stone", "gemstone will suit", "stone will suit",
@@ -583,15 +618,48 @@ INTENT_KEYPHRASES: dict[str, list[str]] = {
 }
 
 
-def is_strictly_out_of_domain(question: str) -> bool:
-    """Detect if a query is entirely non-astrological/technical/factual trivia.
+def is_general_trivia_inquiry(question: str) -> bool:
+    """Detects factual encyclopedic questions, definitions, trivia, or third-person entities."""
+    if not question:
+        return False
+    ql = question.lower().strip()
 
-    Returns True ONLY when the query does NOT match any human life inquiry,
-    house, planet, divisional chart, timing, or Vedic remedy.
-    """
+    # Explicit non-astrological entities / definition keywords
+    trivia_entities = [
+        "bitcoin", "crypto", "cryptocurrency", "ethereum", "blockchain", "dogecoin", "solana",
+        "prime minister", "president", "capital of", "speed of light", "chemical formula",
+        "chatgpt", "openai", "machine learning", "artificial intelligence", "who invented",
+        "who discovered", "who wrote", "who painted", "who is the prime minister", "who is the president",
+        "who won", "what is the capital", "capital of france", "capital of india"
+    ]
+    if any(e in ql for e in trivia_entities):
+        personal_astro = ("my", "mine", "kundli", "kundali", "chart", "horoscope", "birth chart", "in my")
+        if not any(re.search(r"\b" + re.escape(p) + r"\b", ql) for p in personal_astro):
+            return True
+
+    # Generic interrogatives without 1st/2nd person or astrological keywords
+    if re.search(r"^(?:what|who|where|when|which|how|why)\s+(?:is|are|was|were|does|did)\s+(?:the\s+|a\s+|an\s+)?", ql):
+        personal_terms = (
+            "my", "mine", "me", "i", "myself", "our", "us", "chart", "kundli", "kundali",
+            "horoscope", "dasha", "transit", "lagna", "rashi", "future", "career", "job",
+            "marriage", "marry", "spouse", "husband", "wife", "child", "children", "baby",
+            "health", "disease", "surgery", "remedy", "gemstone", "ratna", "property", "wealth",
+            "mera", "meri", "mere", "mujhe", "apna", "apni", "naa", "naku", "nenu"
+        )
+        if not any(re.search(r"\b" + re.escape(t) + r"\b", ql) for t in personal_terms):
+            return True
+
+    return False
+
+
+def is_strictly_out_of_domain(question: str) -> bool:
+    """Returns True if the question is unequivocally outside astrological consultation."""
     if not question:
         return False
     q_low = question.lower().strip()
+
+    if is_general_trivia_inquiry(question):
+        return True
 
     # 1. Astrological / personal life keywords: if ANY of these exist, it is NOT out-of-domain
     astro_life_tokens = [
@@ -617,7 +685,7 @@ def is_strictly_out_of_domain(question: str) -> bool:
         r"\b(write\s+code|debug|function|algorithm|binary\s+search|regular\s+expression|regex|git\s+push|compile)\b",
         r"\b(recipe|ingredients|bake|boil|cook\s+a|how\s+to\s+make\s+(?:cake|pasta|pizza|biryani|soup))\b",
         r"\b(fix\s+(?:a\s+|an\s+|the\s+)?(?:leaky\s+|broken\s+|flat\s+)?(?:faucet|tire|pipe|puncture|leak|printer|keyboard|wifi|router|engine|car|bike|laptop|phone))\b",
-        r"\b(capital\s+of|who\s+(?:wrote|invented|discovered|painted|directed)|speed\s+of\s+light|chemical\s+formula)\b",
+        r"\b(capital\s+of|who\s+(?:wrote|invented|discovered|painted|directed|won)|speed\s+of\s+light|chemical\s+formula)\b",
         r"\b(calculate\s+derivative|solve\s+equation|\d+\s*[\+\-\*\/]\s*\d+\s*=)\b",
         r"\b(translate\s+(?:this|word|text)\s+to|what\s+is\s+the\s+meaning\s+of\s+the\s+word\s+[\"'\w]+)\b",
     ]
@@ -1350,11 +1418,16 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
     lang_code = str(lang or "").lower()
     is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
     is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+    dom_title = (
+        DOMAIN_TITLES_HI.get(confluence.domain_key, confluence.domain_title)
+        if is_hinglish
+        else (DOMAIN_TITLES_TE.get(confluence.domain_key, confluence.domain_title) if is_tenglish else confluence.domain_title)
+    )
     
     if confluence.domain_key == "out_of_domain":
         if is_hinglish:
             return (
-                f"### Jyotishiya Vishay Margdarshan: {confluence.domain_title}\n\n"
+                f"### Jyotishiya Vishay Margdarshan: {dom_title}\n\n"
                 f"**Prashna:** *{confluence.question}*\n\n"
                 f"#### 1. Mukhya Sandesh (Scope of Astrology)\n"
                 f"Aapka yeh prashna Vedic Jyotish aur Janma Kundli ke daayre (houses, grah, dasha, life events) se alag ek general ya technical vishay par hai. "
@@ -1369,7 +1442,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
             )
         if is_tenglish:
             return (
-                f"### Jyotishya Vishaya Margadarshanam: {confluence.domain_title}\n\n"
+                f"### Jyotishya Vishaya Margadarshanam: {dom_title}\n\n"
                 f"**Prashna:** *{confluence.question}*\n\n"
                 f"#### 1. Mukhya Sandesham (Scope of Astrology)\n"
                 f"Mee ee prashna Vedic Jyotishyam mariyu Janma Kundali paridhi (bhavalu, grahalu, dasha, jeevitha ghatanalu) ki bayata unna oka general leda technical vishayam meeda undi. "
@@ -1383,7 +1456,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
                 f"• Mee jeevitha gamanamu, aane samayam, dasha phalam, career, leda graha shanti gurinchi edaina prashna unte, dayachesi adagandi."
             )
         return (
-            f"### Astrological Scope Notice: {confluence.domain_title}\n\n"
+            f"### Astrological Scope Notice: {dom_title}\n\n"
             f"**Question:** *{confluence.question}*\n\n"
             f"#### 1. Scope of Inquiry\n"
             f"Your question pertains to a topic outside the classical domain of Vedic astrology and natal chart analysis. "
@@ -1400,7 +1473,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
     if confluence.domain_key == "general_destiny":
         if is_hinglish:
             return (
-                f"### Sampurna Kundli Vishleshan: {confluence.domain_title}\n\n"
+                f"### Sampurna Kundli Vishleshan: {dom_title}\n\n"
                 f"**Prashna:** *{confluence.question}*\n\n"
                 f"#### 1. Mukhya Faisla Aur Disha (Overall Life Trajectory Verdict)\n"
                 f"{confluence.classical_verdict}\n\n"
@@ -1418,7 +1491,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
             )
         if is_tenglish:
             return (
-                f"### Sampoorna Kundali Vishleshana: {confluence.domain_title}\n\n"
+                f"### Sampoorna Kundali Vishleshana: {dom_title}\n\n"
                 f"**Prashna:** *{confluence.question}*\n\n"
                 f"#### 1. Mukhya Theerpu Mariyu Disha (Overall Life Trajectory Verdict)\n"
                 f"{confluence.classical_verdict}\n\n"
@@ -1435,7 +1508,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
                 + "\n".join(f"• {r}" for r in confluence.remedies)
             )
         return (
-            f"### Comprehensive Natal Chart Reading: {confluence.domain_title}\n\n"
+            f"### Comprehensive Natal Chart Reading: {dom_title}\n\n"
             f"**Question:** *{confluence.question}*\n\n"
             f"#### 1. Overall Life Trajectory Verdict\n{confluence.classical_verdict}\n\n"
             f"#### 2. Natal Chart Baseline & Planetary Balance\n"
@@ -1454,7 +1527,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
     if confluence.domain_key == "gemstones_remedies":
         if is_hinglish:
             return (
-                f"### Jyotishiya Ratna Salah Aur Upaya: {confluence.domain_title}\n\n"
+                f"### Jyotishiya Ratna Salah Aur Upaya: {dom_title}\n\n"
                 f"**Prashna:** *{confluence.question}*\n\n"
                 f"#### 1. Mukhya Ratna Faisla (Gemstone Recommendation Verdict)\n"
                 f"{confluence.classical_verdict}\n\n"
@@ -1471,7 +1544,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
             )
         if is_tenglish:
             return (
-                f"### Jyotishya Rathna Salaha Mariyu Upayamulu: {confluence.domain_title}\n\n"
+                f"### Jyotishya Rathna Salaha Mariyu Upayamulu: {dom_title}\n\n"
                 f"**Prashna:** *{confluence.question}*\n\n"
                 f"#### 1. Mukhya Rathna Theerpu (Gemstone Recommendation Verdict)\n"
                 f"{confluence.classical_verdict}\n\n"
@@ -1487,7 +1560,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
                 + "\n".join(f"• {r}" for r in confluence.remedies)
             )
         return (
-            f"### Astrological Gemstone Consultation: {confluence.domain_title}\n\n"
+            f"### Astrological Gemstone Consultation: {dom_title}\n\n"
             f"**Question:** *{confluence.question}*\n\n"
             f"#### 1. Classical Gemstone Verdict\n{confluence.classical_verdict}\n\n"
             f"#### 2. Planetary Foundations & Trikona House Lords\n"
@@ -1504,10 +1577,10 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
 
     if is_hinglish:
         return (
-            f"### Jyotishiya Salah: {confluence.domain_title}\n\n"
+            f"### Jyotishiya Salah: {dom_title}\n\n"
             f"**Prashna:** *{confluence.question}*\n\n"
             f"#### 1. Mukhya Jyotishiya Vishleshan\n"
-            f"Aapki kundli ke anusar, {confluence.domain_title} ke mukhya swami {confluence.primary_house_lord} {confluence.primary_lord_placement} mein sthit hain. "
+            f"Aapki kundli ke anusar, {dom_title} ke mukhya swami {confluence.primary_house_lord} {confluence.primary_lord_placement} mein sthit hain. "
             f"Yeh sthiti shuruat mein thoda vilamb ya badhao ka sanket deti hai, lekin sahi samay aane aur shubh grah gochar ke sath sthiti mein decisive sudhar aayega.\n\n"
             f"#### 2. Grah Sthiti Aur Jyotishiya Praman\n"
             f"• **Mukhya Bhav:** {confluence.primary_house}th House ({confluence.primary_house_sign}) jiske swami {confluence.primary_house_lord} hain, jo {confluence.primary_lord_placement} mein sthit hain.\n"
@@ -1523,10 +1596,10 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
         )
     if is_tenglish:
         return (
-            f"### Jyotishya Salaha: {confluence.domain_title}\n\n"
+            f"### Jyotishya Salaha: {dom_title}\n\n"
             f"**Prashna:** *{confluence.question}*\n\n"
             f"#### 1. Mukhya Jyotishya Vishleshana\n"
-            f"Mee kundali prakaram, {confluence.domain_title} mukhya adhipathi {confluence.primary_house_lord} {confluence.primary_lord_placement} lo unnaru. "
+            f"Mee kundali prakaram, {dom_title} mukhya adhipathi {confluence.primary_house_lord} {confluence.primary_lord_placement} lo unnaru. "
             f"Ee sthiti modatlo konchem aalasyam chupinchina, anukoolamaina dasha mariyu shubha graha gocharam valla sthiti decisive ga improve avuthundi.\n\n"
             f"#### 2. Graha Sthiti Mariyu Jyotishya Aadharalu\n"
             f"• **Mukhya Bhavam:** {confluence.primary_house}th House ({confluence.primary_house_sign}), adhipathi {confluence.primary_house_lord}, sthiti: {confluence.primary_lord_placement}.\n"
@@ -1541,7 +1614,7 @@ def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str 
             f"#### 5. Vedic Upayamulu Mariyu Margadarshanam\n" + "\n".join(f"• {r}" for r in confluence.remedies)
         )
     return (
-        f"### Astrological Consultation: {confluence.domain_title}\n\n"
+        f"### Astrological Consultation: {dom_title}\n\n"
         f"**Question:** *{confluence.question}*\n\n"
         f"#### 1. Classical Astrological Verdict\n{confluence.classical_verdict}\n\n"
         f"#### 2. Planetary Mechanics & Supporting Indicators\n"
@@ -1621,6 +1694,12 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     lang_code = str(lang or "").lower()
     is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
     is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+    dom_title = (
+        DOMAIN_TITLES_HI.get(confluence.domain_key, confluence.domain_title)
+        if is_hinglish
+        else (DOMAIN_TITLES_TE.get(confluence.domain_key, confluence.domain_title) if is_tenglish else confluence.domain_title)
+    )
+
     pill_color = "#8a6a1f" if not confluence.is_lord_in_dusthana else "#a3341f"
     if is_hinglish:
         pill_label = "Anukool Sanket" if not confluence.is_lord_in_dusthana else "Upay Aur Savdhani Aavashyak"
@@ -1629,10 +1708,10 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     else:
         pill_label = "Constructive Promise" if not confluence.is_lord_in_dusthana else "Requires Remedial Care"
 
-    karakas_html = "".join(f"<li style='margin-bottom:6px;'>{k}</li>" for k in confluence.karaka_findings)
-    vargas_html = "".join(f"<li style='margin-bottom:6px;'>{v}</li>" for v in confluence.varga_findings)
-    timeline_html = "".join(f"<li style='margin-bottom:6px;'>{t}</li>" for t in confluence.dasha_timeline)
-    remedies_html = "".join(f"<li style='margin-bottom:8px;padding-left:4px;'><b>•</b> {r}</li>" for r in confluence.remedies)
+    karakas_html = "".join(f"<li style='margin-bottom:6px;'>{html.escape(k)}</li>" for k in confluence.karaka_findings)
+    vargas_html = "".join(f"<li style='margin-bottom:6px;'>{html.escape(v)}</li>" for v in confluence.varga_findings)
+    timeline_html = "".join(f"<li style='margin-bottom:6px;'>{html.escape(t)}</li>" for t in confluence.dasha_timeline)
+    remedies_html = "".join(f"<li style='margin-bottom:8px;padding-left:4px;'><b>•</b> {html.escape(r)}</li>" for r in confluence.remedies)
 
     qwen_block = ""
     if paid and qwen_text:
@@ -1666,9 +1745,9 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     if paid:
         confluence_bar = (
             f'<div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:10px 14px;border-radius:8px;margin:14px 0 16px;font-size:0.86rem;line-height:1.5;color:#2c3140;">\n'
-            f'  <b>{clock_hdr}</b> {confluence.triple_dasha_confluence}<br>\n'
-            f'  <b>{av_hdr}</b> {confluence.ashtakavarga_finding}<br>\n'
-            f'  <b>{transit_hdr}</b> {confluence.transit_finding}\n'
+            f'  <b>{clock_hdr}</b> {html.escape(confluence.triple_dasha_confluence)}<br>\n'
+            f'  <b>{av_hdr}</b> {html.escape(confluence.ashtakavarga_finding)}<br>\n'
+            f'  <b>{transit_hdr}</b> {html.escape(confluence.transit_finding)}\n'
             f'</div>\n'
         )
     else:
@@ -1676,9 +1755,9 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         cleaned_clock = re.sub(r"\s*\(\d{4}-\d{2}-\d{2}[^)]*\)", "", confluence.triple_dasha_confluence)
         confluence_bar = (
             f'<div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:10px 14px;border-radius:8px;margin:14px 0 16px;font-size:0.86rem;line-height:1.5;color:#2c3140;">\n'
-            f'  <b>{clock_hdr}</b> {cleaned_clock}<br>\n'
-            f'  <b>{av_hdr}</b> {confluence.ashtakavarga_finding}<br>\n'
-            f'  <b>{transit_hdr}</b> {confluence.transit_finding}\n'
+            f'  <b>{clock_hdr}</b> {html.escape(cleaned_clock)}<br>\n'
+            f'  <b>{av_hdr}</b> {html.escape(confluence.ashtakavarga_finding)}<br>\n'
+            f'  <b>{transit_hdr}</b> {html.escape(confluence.transit_finding)}\n'
             f'</div>\n'
         )
 
@@ -1842,27 +1921,27 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     verdict_text = confluence.classical_verdict if paid else (confluence.root_cause_diagnosis or confluence.classical_verdict)
     if is_hinglish and verdict_text and "chart indicates" in verdict_text.lower():
         verdict_text = (
-            f"Aapki kundli ke anusar, {confluence.domain_title} ke mukhya swami {confluence.primary_house_lord} {confluence.primary_lord_placement} mein sthit hain. "
+            f"Aapki kundli ke anusar, {dom_title} ke mukhya swami {confluence.primary_house_lord} {confluence.primary_lord_placement} mein sthit hain. "
             f"Yeh sthiti vartaman samay mein thoda vilamb aur mehnat ka sanket deti hai. "
             f"Lekin D10/D9 chart ki sthirta aur shubh dasha aane par sthiti mein decisive aur positive sudhar dekhne ko milega."
         )
     elif is_tenglish and verdict_text and "chart indicates" in verdict_text.lower():
         verdict_text = (
-            f"Mee kundali prakaram, {confluence.domain_title} mukhya adhipathi {confluence.primary_house_lord} {confluence.primary_lord_placement} lo unnaru. "
+            f"Mee kundali prakaram, {dom_title} mukhya adhipathi {confluence.primary_house_lord} {confluence.primary_lord_placement} lo unnaru. "
             f"Ee sthiti prasthutham konchem aalasyam mariyu shrama avasaramani chupisthondi. "
             f"Ayina D10/D9 chart sthiratha mariyu shubha dasha valla sthiti lo decisive mariyu positive maarpu vasthundi."
         )
 
     if is_hinglish:
-        domain_kicker = f"Jeevan Ka Kshetra · {html.escape(confluence.domain_title)}"
+        domain_kicker = f"Jeevan Ka Kshetra · {html.escape(dom_title)}"
         heading_title = f"\"{html.escape(confluence.question)}\" Ke Liye Jyotishiya Salah"
         root_hdr = "Grah Sthiti Aur Mool Jyotishiya Vishleshan:"
     elif is_tenglish:
-        domain_kicker = f"Jeevitha Rangamu · {html.escape(confluence.domain_title)}"
+        domain_kicker = f"Jeevitha Rangamu · {html.escape(dom_title)}"
         heading_title = f"\"{html.escape(confluence.question)}\" Kosam Jyotishya Salaha"
         root_hdr = "Graha Sthiti Mariyu Moola Jyotishya Vishleshana:"
     else:
-        domain_kicker = f"Life Domain · {html.escape(confluence.domain_title)}"
+        domain_kicker = f"Life Domain · {html.escape(dom_title)}"
         heading_title = f"Consultation for \"{html.escape(confluence.question)}\""
         root_hdr = "Astrological Root Cause &amp; Situation Diagnostic:"
 

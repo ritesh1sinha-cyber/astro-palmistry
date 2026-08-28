@@ -119,6 +119,16 @@ TOPICS = (
           significators=("Mars", "Saturn", "Mercury"),
           patterns=(r"\bcourt\b", r"\blawsuit\b", r"\blegal\b", r"\bcase\b",
                     r"\bdispute\b", r"\blitigation\b", r"\bbail\b")),
+    Topic("gemstone", "Gemstone and remedies", "your gemstone and remedies",
+          houses=(1, 9, 5),
+          significators=("Jupiter", "Sun", "Venus"),
+          patterns=(r"\bgemstone\b", r"\bgemstones\b", r"\bratt?na\b", r"\brashi ratna\b",
+                    r"\bremedy\b", r"\bremedies\b", r"\bupay\b",
+                    r"\bupayam\b", r"\bmantra\b", r"\brudraksha\b", r"\bpanna\b",
+                    r"\bmanik\b", r"\bmoti\b", r"\bmoonga\b", r"\bpukhraj\b",
+                    r"\bheera\b", r"\bneelam\b", r"\bgomed\b", r"\bcat'?s eye\b",
+                    r"\blahsuniya\b"),
+          note="Gemstone and remedial guidance based on your chart's benefic lords and sensitive houses."),
 )
 
 FALLBACK = Topic("general", "Your question", "what you asked about",

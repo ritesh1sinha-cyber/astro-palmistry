@@ -170,6 +170,7 @@ def summary_for_pdf(meta: Optional[dict], *, unlocked: bool = True) -> Optional[
             return {
                 "headline": str(cand.get("headline") or "").strip(),
                 "sections": sections,
+                "language": str(m.get("language") or "en"),
             }
     return None
 
@@ -180,14 +181,31 @@ def summary_html(
     title: str = "",
     subtitle: str = "",
     standalone: bool = False,
+    language: str = "en",
 ) -> str:
     """Render a plain summary as a print-ready block, or a whole document."""
     def esc(value: Any) -> str:
         return _html.escape(str(value or "").strip())
 
+    code = str(language or "").lower().strip()
+    if code in ("hi_en", "hinglish", "hi", "hindi"):
+        eyebrow = "Aapki Reading Ka Saransh"
+        note = ("Yeh aapki reading ka mukhya saransh hai. Har bindu ki poori detail "
+                "ke liye neeche di gayi report dekhein.")
+        default_title = "Aapki Reading Ka Saransh"
+    elif code in ("te_en", "tenglish", "te", "telugu"):
+        eyebrow = "Mee Reading Saramsam"
+        note = ("Idi mee reading yokka mukhya saramsam. Prati amsham yokka poorthi "
+                "vivarala kosam kindha report chudandi.")
+        default_title = "Mee Reading Saramsam"
+    else:
+        eyebrow = "Your reading in plain language"
+        note = ("This is the crux of your reading in everyday language. The full "
+                "reading follows, with the detail behind every point.")
+        default_title = "Your reading in plain language"
     parts = [
         '<div class="gr-sum">',
-        '<p class="gr-sum-eyebrow">Your reading in plain English</p>',
+        f'<p class="gr-sum-eyebrow">{eyebrow}</p>',
     ]
     if title:
         parts.append(f"<h1>{esc(title)}</h1>")
@@ -202,20 +220,21 @@ def summary_html(
             f'<p>{esc(section.get("body"))}</p>'
             "</section>"
         )
-    parts.append(
-        '<p class="gr-sum-note">This is the crux of your reading in everyday '
-        "language. The full reading follows, with the detail behind every point.</p>"
-        if not standalone else
-        '<p class="gr-sum-note">This is the crux of your reading in everyday '
-        "language. Open the full reading for the detail behind every point.</p>"
-    )
+    if standalone:
+        if code in ("hi_en", "hinglish", "hi", "hindi"):
+            note = "Yeh aapki reading ka mukhya saransh hai. Poori detail ke liye neeche di gayi report dekhein."
+        elif code in ("te_en", "tenglish", "te", "telugu"):
+            note = "Idi mee reading yokka mukhya saramsam. Poorthi vivarala kosam neeche unna report chudandi."
+        else:
+            note = "This is the crux of your reading in everyday language. Open the full reading for the detail behind every point."
+    parts.append(f'<p class="gr-sum-note">{note}</p>')
     parts.append("</div>")
     block = "".join(parts)
     if not standalone:
         return block
     return (
-        '<!doctype html><html lang="en"><head><meta charset="utf-8"/>'
-        f"<title>{esc(title or 'Your reading in plain English')}</title>"
+        f'<!doctype html><html lang="{"en" if code not in ("hi_en", "hinglish", "hi", "hindi", "te_en", "tenglish", "te", "telugu") else code}"><head><meta charset="utf-8"/>'
+        f"<title>{esc(title or default_title)}</title>"
         f"<style>{_SUMMARY_CSS}</style></head><body>{block}</body></html>"
     )
 

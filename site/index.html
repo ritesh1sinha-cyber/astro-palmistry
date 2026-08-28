@@ -2761,7 +2761,10 @@ function extractSummaryFromActiveReading(){
   const m = READING.meta || {};
   const kind = READING.kind || m.kind || '';
   const isPalm = kind === 'palm';
-  const isHinglish = /hi_en|hinglish/i.test(m.language || (READING.language || ''));
+  const langCode = String(m.language || READING.language || '').toLowerCase();
+  const isHinglish = /hi_en|hinglish|hindi/.test(langCode);
+  const isTenglish = /te_en|tenglish|telugu/.test(langCode);
+  const copy = (hi, te, en) => isTenglish ? te : (isHinglish ? hi : en);
   const unlocked = !!(READING.unlocked || (m && m.paid) || hasFullAccess());
   const sections = [];
   const ans = m.answer || {};
@@ -2787,33 +2790,37 @@ function extractSummaryFromActiveReading(){
           }
         });
         if(shapeText){
-          sections.push({ title: isHinglish ? 'Swabhav Aur Core Temperament' : 'Personality & Core Temperament', body: shapeText.slice(0, 500) });
+          sections.push({ title: copy('Swabhav Aur Core Temperament', 'Swabhavam Mariyu Core Temperament', 'Personality & Core Temperament'), body: shapeText.slice(0, 500) });
         }
         if(thumbText){
-          sections.push({ title: isHinglish ? 'Mukhya Kshamta Aur Nirnay Shailee' : 'Innate Strengths & Decision Style', body: thumbText.slice(0, 500) });
+          sections.push({ title: copy('Mukhya Kshamta Aur Nirnay Shailee', 'Mukhya Kshamathalu Mariyu Nirnaya Shailee', 'Innate Strengths & Decision Style'), body: thumbText.slice(0, 500) });
         }
       }
     }catch(e){}
   } else if(kind === 'horary' && !unlocked){
     const horaryQuestion = q.replace(/[.?!]+$/, '');
     sections.push({
-      title: isHinglish ? 'Prashna Ka Vishleshan' : 'What the chart is examining',
-      body: isHinglish
-        ? `Aapka prashna${horaryQuestion ? ` ${horaryQuestion}` : ''} ke baare mein hai. Prashna kundli ka poora faisla report mein taiyar hai.`
-        : `Your question is${horaryQuestion ? ` about ${horaryQuestion}` : ''}. The full Western horary judgment is prepared in the report.`
+      title: copy('Prashna Ka Vishleshan', 'Prashna Vishleshana', 'What the chart is examining'),
+      body: copy(
+        `Aapka prashna${horaryQuestion ? ` ${horaryQuestion}` : ''} ke baare mein hai. Prashna kundli ka poora faisla report mein taiyar hai.`,
+        `Mee prashna${horaryQuestion ? ` ${horaryQuestion}` : ''} gurinchi. Prashna kundali yokka poorthi theerpu report lo siddham ga undi.`,
+        `Your question is${horaryQuestion ? ` about ${horaryQuestion}` : ''}. The full Western horary judgment is prepared in the report.`
+      )
     });
   } else {
     if(label){
       let body = label;
       if(!body.toLowerCase().startsWith('the chart') && !body.toLowerCase().startsWith('regarding') && !body.toLowerCase().startsWith('kundli')){
-        body = isHinglish
-          ? (q ? `${q} ke baare mein kundli darshati hai: ` : 'Kundli darshati hai: ') + label
-          : (q ? `Regarding ${q}, the chart indicates: ` : 'The chart indicates: ') + label;
+        body = copy(
+          (q ? `${q} ke baare mein kundli darshati hai: ` : 'Kundli darshati hai: ') + label,
+          (q ? `${q} gurinchi kundali chupisthondi: ` : 'Kundali chupisthondi: ') + label,
+          (q ? `Regarding ${q}, the chart indicates: ` : 'The chart indicates: ') + label
+        );
       }
       if(unlocked && bt){
-        body += isHinglish ? ` Sabse majboot samay ${bt} ke aas-paas hai.` : ` The strongest opening sits around ${bt}.`;
+        body += copy(` Sabse majboot samay ${bt} ke aas-paas hai.`, ` Mukhya anukoolamaina samayam ${bt} daggara untundi.`, ` The strongest opening sits around ${bt}.`);
       }
-      sections.push({ title: isHinglish ? 'Seedha Vishleshan' : 'Direct Assessment', body });
+      sections.push({ title: copy('Seedha Vishleshan', 'Direct Vishleshana', 'Direct Assessment'), body });
     }
   }
 
@@ -2841,7 +2848,7 @@ function extractSummaryFromActiveReading(){
       if(!doc || !doc.body) throw new Error('report frame is not ready');
       const personalHeading = Array.from(doc.querySelectorAll('h1,h2,h3,h4')).find(h=>{
         const t = (h.textContent || '').toLowerCase();
-        return /core nature|personal constitution|who your chart says|personality|constitutional baseline|aapka mool swabhav|swabhav/.test(t);
+        return /core nature|personal constitution|who your chart says|personality|constitutional baseline|aapka mool swabhav|swabhav|vyaktitva|vyaktithvam/.test(t);
       });
       personalBlock = personalHeading
         && (personalHeading.closest('section,article,.card,.conv-block') || personalHeading.parentElement);
@@ -2856,7 +2863,7 @@ function extractSummaryFromActiveReading(){
           : []);
       if(personalParas[0]){
         sections.push({
-          title: isHinglish ? 'Aapke Swabhav Aur Kundli Ke Mukhya Lakshana' : 'What your chart says about you',
+          title: copy('Aapke Swabhav Aur Kundli Ke Mukhya Lakshana', 'Mee Swabhavam Mariyu Kundali Mukhya Lakshanalu', 'What your chart says about you'),
           body: personalParas.slice(0, 2).join(' ').slice(0, 600)
         });
       }
@@ -2881,14 +2888,14 @@ function extractSummaryFromActiveReading(){
       });
       if(foundationFacts.length){
         sections.push({
-          title: isHinglish ? 'Aapki Kundli Ke Mukhya Aadhar' : 'What your key chart foundations say',
+          title: copy('Aapki Kundli Ke Mukhya Aadhar', 'Mee Kundali Mukhya Aadharalu', 'What your key chart foundations say'),
           body: foundationFacts.map(x => `${x.code} (${x.label}): ${x.body}`)
             .join(' ').slice(0, 1200)
         });
       }
       const currentHeading = Array.from(doc.querySelectorAll('h1,h2,h3,h4')).find(h=>{
         const t = (h.textContent || '').toLowerCase();
-        return /where life is putting its weight|current chapter|aapka vartaman samay|vartaman dasha/.test(t);
+        return /where life is putting its weight|current chapter|aapka vartaman samay|vartaman dasha|mee vartamana samayam|prasthutha dasha/.test(t);
       });
       currentBlock = currentHeading
         && (currentHeading.closest('section,article,.card,.conv-block') || currentHeading.parentElement);
@@ -2903,7 +2910,7 @@ function extractSummaryFromActiveReading(){
         const currentDetails = currentParas.slice(0, 2);
         if(strained && !currentDetails.includes(strained)) currentDetails.push(strained);
         sections.push({
-          title: isHinglish ? 'Aapka Vartaman Samay' : 'Where you are right now',
+          title: copy('Aapka Vartaman Samay', 'Mee Vartamana Samayam', 'Where you are right now'),
           body: currentDetails.join(' ').slice(0, 600)
         });
       }
@@ -2926,11 +2933,11 @@ function extractSummaryFromActiveReading(){
           .filter(t => t.length > 35 && !t.includes('{') && !t.includes('}') && !t.toLowerCase().includes('unlock') && !t.toLowerCase().includes('targeted vedic upaya'));
         if(paras.length >= 2){
           const titles = isPalm
-            ? (isHinglish ? ['Swabhav Aur Core Temperament', 'Mukhya Kshamta Aur Nirnay Shailee', 'Hast Rekha Vishleshan'] : ['Personality & Core Temperament', 'Innate Strengths & Decision Style', 'Palm Observations'])
-            : (isHinglish ? ['Mukhya Bindu', 'Vartaman Grah Prabhav', 'Kundli Ka Vishleshan'] : ['Key Observations', 'Current Influences', 'Astrological Context']);
+            ? (isTenglish ? ['Swabhavam Mariyu Core Temperament', 'Mukhya Kshamathalu Mariyu Nirnaya Shailee', 'Chethi Rekhala Vishleshana'] : (isHinglish ? ['Swabhav Aur Core Temperament', 'Mukhya Kshamta Aur Nirnay Shailee', 'Hast Rekha Vishleshan'] : ['Personality & Core Temperament', 'Innate Strengths & Decision Style', 'Palm Observations']))
+            : (isTenglish ? ['Mukhya Binduvalu', 'Prasthutha Graha Prabhavam', 'Kundali Vishleshana'] : (isHinglish ? ['Mukhya Bindu', 'Vartaman Grah Prabhav', 'Kundli Ka Vishleshan'] : ['Key Observations', 'Current Influences', 'Astrological Context']));
           for(let i = 0; i < Math.min(2, paras.length); i++){
             if(sections.length >= 3) break;
-            sections.push({ title: titles[sections.length] || (isHinglish ? 'Mukhya Insights' : 'Key Insights'), body: paras[i].slice(0, 450) });
+            sections.push({ title: titles[sections.length] || copy('Mukhya Insights', 'Mukhya Insights', 'Key Insights'), body: paras[i].slice(0, 450) });
           }
         }
       }
@@ -2939,35 +2946,45 @@ function extractSummaryFromActiveReading(){
 
   if(!sections.length){
     const teaser = (m.teaser || (m.freeSections||[]).join('. ')).trim();
-    if(teaser) sections.push({ title: isPalm ? (isHinglish ? 'Swabhav Aur Saransh' : 'Personality & Palm Overview') : (isHinglish ? 'Saransh' : 'Overview'), body: teaser });
+    if(teaser) sections.push({ title: isPalm ? copy('Swabhav Aur Saransh', 'Swabhavam Mariyu Saramsam', 'Personality & Palm Overview') : copy('Saransh', 'Saramsam', 'Overview'), body: teaser });
   }
 
   if(!unlocked){
     sections.push({
       role: 'locked',
-      title: isHinglish ? 'Poori Reading Unlock Karne Par Kya Milega' : (isPalm ? 'What the full reading adds' : 'What the full report adds'),
-      body: isHinglish
-        ? (isPalm
+      title: copy('Poori Reading Unlock Karne Par Kya Milega', 'Sampoorna Reading Lo Emi Untundi', isPalm ? 'What the full reading adds' : 'What the full report adds'),
+      body: copy(
+        isPalm
           ? 'Aapki poori life timeline, aane wale age chapters, har rekha aur parvat ke nishaan, aur unpar aadharit upayas taiyar hain.'
           : kind === 'horary'
             ? 'Poora Western horary faisla, dates aur timeline windows, aur vishesh grah guidance taiyar hai.'
-            : 'Vedic faisla, dated opening windows, milestone timeline aur aapki kundli ke nishchit upayas taiyar hain.')
-        : (isPalm
+            : 'Vedic faisla, dated opening windows, milestone timeline aur aapki kundli ke nishchit upayas taiyar hain.',
+        isPalm
+          ? 'Mee poorthi life timeline, mundu age chapters, prati rekha mariyu parvatha markings, vatipai aadharapadina upayamulu siddham ga unnai.'
+          : kind === 'horary'
+            ? 'Poorthi Western horary theerpu, dates, timeline windows mariyu prathyeka graha guidance siddham ga unnai.'
+            : 'Vedic theerpu, dated opening windows, milestone timeline mariyu mee kundali ki tagina upayamulu siddham ga unnai.',
+        isPalm
           ? 'Your complete life timeline, the age chapters still ahead, every line and mount marking, and the remedies drawn from them are written and waiting.'
           : kind === 'horary'
             ? 'The complete Western horary judgment, the dated opening windows and the specific guidance are written and waiting.'
-            : 'The classical verdict, the dated opening windows, the milestone timeline and the remedies chosen for your chart are written and waiting.')
+            : 'The classical verdict, the dated opening windows, the milestone timeline and the remedies chosen for your chart are written and waiting.'
+      )
     });
   } else if(!sections.length){
     sections.push({
-      title: isHinglish ? 'Saransh' : 'Overview',
-      body: isHinglish
-        ? (isPalm
+      title: copy('Saransh', 'Saramsam', 'Overview'),
+      body: copy(
+        isPalm
           ? 'Poori rekhaon, timing chapters aur margdarshan ke liye neeche di gayi hast rekha report dekhein.'
-          : 'Poori jyotishiya guidance aur vishleshan ke liye neeche di gayi report dekhein.')
-        : (isPalm
+          : 'Poori jyotishiya guidance aur vishleshan ke liye neeche di gayi report dekhein.',
+        isPalm
+          ? 'Poorthi rekhalu, timing chapters mariyu margadarshanam kosam kindha unna chethi rekha report chudandi.'
+          : 'Poorthi jyotishya guidance mariyu vishleshana kosam kindha unna report chudandi.',
+        isPalm
           ? 'Review the palm reading document below for your complete line markings, timing chapters, and life guidance.'
-          : 'Review the reading document below for the complete astrological guidance and analysis.')
+          : 'Review the reading document below for the complete astrological guidance and analysis.'
+      )
     });
   }
   return { sections, generated: 'fallback', headline: '' };
@@ -2990,7 +3007,10 @@ function summaryUnlock(){
 function openPlainSummary(){
   const m = READING.meta || {};
   const kind = READING.kind || m.kind || '';
-  const isHinglish = /hi_en|hinglish/i.test(m.language || (READING.language || ''));
+  const langCode = String(m.language || READING.language || '').toLowerCase();
+  const isHinglish = /hi_en|hinglish|hindi/.test(langCode);
+  const isTenglish = /te_en|tenglish|telugu/.test(langCode);
+  const copy = (hi, te, en) => isTenglish ? te : (isHinglish ? hi : en);
   const unlocked = !!(READING.unlocked || (m && m.paid) || (READING.link && READING.link.includes('.paid.')) || hasFullAccess());
   // Each half has its own summary, written against the half the reader can see.
   let ps = unlocked ? (m.plainSummaryPaid || m.plainSummary) : m.plainSummary;
@@ -3000,7 +3020,7 @@ function openPlainSummary(){
   const fullChart = kind === 'full_report' || kind === 'classical_report';
   const freeHorary = kind === 'horary' && !unlocked;
   const storedHasPersonality = stored && fullChart
-    && ps.sections.some(s => /personality|about you|who your chart|temperament|swabhav/i.test(
+    && ps.sections.some(s => /personality|about you|who your chart|temperament|swabhav|vyaktitva|vyaktithvam/i.test(
       s.title || ''));
   if(!stored || freeHorary || (!unlocked && fullChart && !storedHasPersonality)){
     const extracted = extractSummaryFromActiveReading();
@@ -3012,7 +3032,7 @@ function openPlainSummary(){
     }
   }
   if(!ps || !Array.isArray(ps.sections) || !ps.sections.length){
-    toast(isHinglish ? 'Is report ka saransh abhi uplabdh nahi hai' : 'Summary not available for this report yet');
+    toast(copy('Is report ka saransh abhi uplabdh nahi hai', 'Ee report yokka saramsam ippudu andubatlo ledu', 'Summary not available for this report yet'));
     return;
   }
 
@@ -3052,44 +3072,46 @@ function openPlainSummary(){
       const bullets = lockedItems.length
         ? `<ul class="ps-list">${lockedItems.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`
         : '';
-      parts.push(`<section class="ps-sec ps-locked"><h4>${esc(s.title || (isHinglish ? 'Poori Report Unlock Karne Par Kya Milega' : 'What the full report adds'))}</h4>`
+      parts.push(`<section class="ps-sec ps-locked"><h4>${esc(s.title || copy('Poori Report Unlock Karne Par Kya Milega', 'Sampoorna Report Unlock Chesinappudu Emi Untundi', 'What the full report adds'))}</h4>`
         + `<p>${esc(s.body||'')}</p>${bullets}</section>`);
       return;
     }
-    parts.push(`<section class="ps-sec"><h4>${esc(s.title || (isHinglish ? 'Saransh' : 'Overview'))}</h4>`
+    parts.push(`<section class="ps-sec"><h4>${esc(s.title || copy('Saransh', 'Saramsam', 'Overview'))}</h4>`
       + `<p>${esc(s.body||'')}</p></section>`);
   });
 
   if(unlocked){
-    parts.push(`<p class="ps-foot">${isHinglish ? 'Yeh aapki kundli ka mukhya saransh hai. Poori detail ke liye neeche report dekhein.' : 'This is the crux of your reading in everyday language. Scroll the report below for the full detail.'}</p>`);
+    parts.push(`<p class="ps-foot">${copy('Yeh aapki kundli ka mukhya saransh hai. Poori detail ke liye neeche report dekhein.', 'Idi mee kundali yokka mukhya saramsam. Poorthi vivarala kosam kindha report chudandi.', 'This is the crux of your reading in everyday language. Scroll the report below for the full detail.')}</p>`);
     // Only a saved report can be exported — a guest reading has nothing to fetch.
     const rid = READING.reportId
              || (typeof ASTRO !== 'undefined' ? ASTRO.lastReportId : '') || '';
     if(rid && stored){
       parts.push(`<div class="ps-dl">`
         + `<button class="btn btn-ghost btn-sm" type="button" onclick="downloadSummaryPdf('${esc(rid)}')">`
-        + `${isHinglish ? 'Saransh PDF' : 'Summary PDF'}</button>`
+        + `${copy('Saransh PDF', 'Saramsam PDF', 'Summary PDF')}</button>`
         + `<button class="btn btn-ghost btn-sm" type="button" onclick="downloadReportPdf('${esc(rid)}')">`
-        + `${isHinglish ? 'Saransh + Poori Report' : 'Summary + full report'}</button></div>`);
+        + `${copy('Saransh + Poori Report', 'Saramsam + Sampoorna Report', 'Summary + full report')}</button></div>`);
     }
   } else {
     const item = summaryPayItem(kind);
     const sub = item === 'subscription';
     const price = money(CONFIG.astroPrices[item] ?? CONFIG.price ?? 298);
-    const title = (cta && cta.title) || (sub ? (isHinglish ? 'Full Daily Access Ke Liye Subscribe Karein' : 'Subscribe for full daily access') : (isHinglish ? 'Poora Vishleshan Unlock Karein' : 'Unlock the full reading'));
+    const title = (cta && cta.title) || (sub ? copy('Full Daily Access Ke Liye Subscribe Karein', 'Full Daily Access Kosam Subscribe Cheyandi', 'Subscribe for full daily access') : copy('Poora Vishleshan Unlock Karein', 'Sampoorna Vishleshana Unlock Cheyandi', 'Unlock the full reading'));
     const line = (cta && cta.body)
-      || (isHinglish
-        ? 'Poori report unlock karein aur sabhi timeline windows, vishleshan aur upay turant prapt karein. Yeh aapke account mein hamesha rahegi.'
-        : 'Unlock the full report and everything above opens straight away — the dated windows, the area-by-area verdicts and the remedies chosen for your chart. It stays in your account.');
+      || copy(
+        'Poori report unlock karein aur sabhi timeline windows, vishleshan aur upay turant prapt karein. Yeh aapke account mein hamesha rahegi.',
+        'Sampoorna report unlock cheyandi; anni timeline windows, vishleshana mariyu upayamulu ventane kanipisthayi. Idi mee account lo eppudu untundi.',
+        'Unlock the full report and everything above opens straight away — the dated windows, the area-by-area verdicts and the remedies chosen for your chart. It stays in your account.'
+      );
     parts.push(`<section class="ps-cta"><h4>${esc(title)}</h4><p>${esc(line)}</p>`
       + `<button class="btn btn-gold ps-buy" type="button" onclick="summaryUnlock()">`
-      + (sub ? (isHinglish ? `Subscribe Karein · ${price}/mahina` : `Subscribe · ${price}/month`) : (isHinglish ? `Abhi Unlock Karein · ${price}` : `Unlock now · ${price}`))
+      + (sub ? copy(`Subscribe Karein · ${price}/mahina`, `Subscribe Cheyandi · ${price}/nelaku`, `Subscribe · ${price}/month`) : copy(`Abhi Unlock Karein · ${price}`, `Ippude Unlock Cheyandi · ${price}`, `Unlock now · ${price}`))
       + `</button></section>`);
   }
 
   const sheetTitle = unlocked
-    ? (isHinglish ? 'Aapki Reading Ka Saransh' : 'Your reading in plain English')
-    : (isHinglish ? 'Aapki Free Reading Ka Saransh' : 'Your free reading in plain English');
+    ? copy('Aapki Reading Ka Saransh', 'Mee Reading Saramsam', 'Your reading in plain language')
+    : copy('Aapki Free Reading Ka Saransh', 'Mee Free Reading Saramsam', 'Your free reading in plain language');
   openSheet(sheetTitle, `<div class="ps-wrap">${parts.join('')}</div>`);
 }
 

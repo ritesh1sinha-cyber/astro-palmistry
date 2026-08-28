@@ -564,6 +564,11 @@ def _summary_brief(kind: str, meta: dict, facts: Any, *, paid: bool) -> dict:
                     foundations.append(entry)
                     break
         put("chart_foundations", foundations)
+        if kind == "classical_report":
+            put("classical_lagna", _clip(meta.get("lagna"), 40))
+            put("classical_moon", _clip(meta.get("moonSign"), 40))
+            put("classical_nakshatra", _clip(meta.get("nakshatra"), 80))
+            put("classical_dasha", _clip(meta.get("mahadasha"), 40))
         if paid:
             put("current_phase_ends", _clip(f.get("phase_end"), 40))
             windows = f.get("timing_windows") if isinstance(f.get("timing_windows"), list) else []
@@ -926,6 +931,7 @@ _QA_HINTS: dict[str, str] = {
         "personality traits from the REPORT BRIEF before discussing the current phase"
     ),
     "empty_sections": "you returned no sections",
+    "language:mismatch": "write the complete summary in the requested Roman Hindi or Roman Telugu language, not English",
 }
 
 
@@ -952,6 +958,21 @@ def _qa_hint(error: str) -> str:
     return error
 
 
+def _language_is_present(prose: PlainSummaryProse, lang: str) -> bool:
+    code = str(lang or "").lower().strip()
+    if code in ("hi_en", "hinglish", "hi", "hindi"):
+        markers = ("aap", "aapka", "aapki", "kundli", "samay", "prashna", "sanket")
+    elif code in ("te_en", "tenglish", "te", "telugu"):
+        markers = ("mee", "meeku", "kundali", "samayam", "prashna", "sanket", "chupis")
+    else:
+        return True
+    blob = " ".join(
+        [prose.headline or ""]
+        + [f"{s.title} {s.body}" for s in (prose.sections or [])]
+    ).lower()
+    return len({marker for marker in markers if re.search(rf"\b{re.escape(marker)}\b", blob)}) >= 2
+
+
 def _validate(
     prose: PlainSummaryProse,
     source: str,
@@ -959,6 +980,7 @@ def _validate(
     kind: str = "",
     paid: bool = True,
     brief: Optional[dict] = None,
+    lang: str = "en",
 ) -> list[str]:
     """Return QA failures. `structure:` failures are repairable, the rest are not."""
     errors: list[str] = []
@@ -970,6 +992,9 @@ def _validate(
     if not sections:
         errors.append("empty_sections")
         return errors
+
+    if not _language_is_present(prose, lang):
+        errors.append("language:mismatch")
 
     for bad in (
         "minilm", "pyjhora", "confluence_score", "facts_hash", "schema_version",
@@ -1070,7 +1095,12 @@ def _kind_label(kind: str) -> str:
     }.get(kind or "", "astrology reading")
 
 
-def _locked_headline(kind: str) -> str:
+def _locked_headline(kind: str, lang: str = "en") -> str:
+    lang_code = str(lang or "").lower().strip()
+    if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
+        return "Poori Reading Mein Kya Shamil Hai"
+    if lang_code in ("te_en", "tenglish", "te", "telugu"):
+        return "Sampoorna Reading Lo Emi Untundi"
     if kind == "palm":
         return "What the full reading adds"
     if kind == "daily":
@@ -1078,10 +1108,31 @@ def _locked_headline(kind: str) -> str:
     return "What the full report adds"
 
 
-def _locked_section(kind: str, inventory: Optional[dict]) -> dict:
+def _locked_section(kind: str, inventory: Optional[dict], lang: str = "en") -> dict:
     """Concrete account of the paid half, built from counts only."""
     inv = inventory or {}
     items = [i for i in (inv.get("items") or []) if isinstance(i, str)]
+    lang_code = str(lang or "").lower().strip()
+    if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
+        lead = {
+            "palm": "Aapne apne haathon ka aakar aur swabhav padh liya hai. Baaki reading taiyar hai:",
+            "horary": "Prashna kundli ka poora faisla taiyar hai. Abhi yeh hissa locked hai:",
+            "user_question": "Is jawab ke peeche ka poora vishleshan taiyar hai. Abhi yeh hissa locked hai:",
+            "daily": "Aaj ka poora forecast taiyar hai. Abhi yeh hissa locked hai:",
+        }.get(kind, "Aapki kundli ka poora vishleshan taiyar hai. Abhi yeh hissa locked hai:")
+        body = lead + (" " + "; ".join(items[:4]) + "." if items else
+                       " Ismein detailed timing, life-area analysis aur chart-specific upay shamil hain.")
+        return {"title": _locked_headline(kind, lang), "body": body[:900], "role": "locked"}
+    if lang_code in ("te_en", "tenglish", "te", "telugu"):
+        lead = {
+            "palm": "Mee chethula shape mariyu swabhavam gurinchi chusaru. Migilina reading siddham ga undi:",
+            "horary": "Prashna kundali yokka sampoorna theerpu siddham ga undi. Ippudu ee bhaagam locked:",
+            "user_question": "Ee samadhanam venuka unna poorthi vishleshana siddham ga undi. Ippudu ee bhaagam locked:",
+            "daily": "Eeroju poorthi forecast siddham ga undi. Ippudu ee bhaagam locked:",
+        }.get(kind, "Mee kundali yokka poorthi vishleshana siddham ga undi. Ippudu ee bhaagam locked:")
+        body = lead + (" " + "; ".join(items[:4]) + "." if items else
+                       " Indulo detailed timing, life-area analysis mariyu chart-specific upayamulu unnai.")
+        return {"title": _locked_headline(kind, lang), "body": body[:900], "role": "locked"}
     lead = {
         "palm": "You have read the shape of your hands and what they say about who you are. "
                 "The rest of your reading is written and waiting:",
@@ -1108,10 +1159,33 @@ def _locked_section(kind: str, inventory: Optional[dict]) -> dict:
     words = inv.get("paid_words")
     if isinstance(words, int) and words > 400:
         body += f" It runs to roughly {int(round(words / 100.0)) * 100:,} words."
-    return {"title": _locked_headline(kind), "body": body[:900], "role": "locked"}
+    return {"title": _locked_headline(kind, lang), "body": body[:900], "role": "locked"}
 
 
-def _cta_section(kind: str) -> dict:
+def _cta_section(kind: str, lang: str = "en") -> dict:
+    lang_code = str(lang or "").lower().strip()
+    if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
+        body = {
+            "palm": "Poori reading unlock karke age-by-age timeline, dono haathon ke nishaan aur unke upay dekhein. Yeh aapke account mein rahegi.",
+            "daily": "Full daily access subscribe karein; aaj ka forecast aur har agle din ki reading turant khul jayegi.",
+            "horary": "Poora report unlock karke faisla, timing windows aur margdarshan dekhein. Yeh aapke account mein rahega.",
+        }.get(
+            kind,
+            "Poori report unlock karein aur dated windows, life-area faisle aur aapki kundli ke upay dekhein. Yeh aapke account mein rahegi.",
+        )
+        title = "Daily Access Subscribe Karein" if kind == "daily" else "Poori Reading Unlock Karein"
+        return {"title": title, "body": body, "role": "cta"}
+    if lang_code in ("te_en", "tenglish", "te", "telugu"):
+        body = {
+            "palm": "Sampoorna reading unlock chesi age-by-age timeline, rendu chethula markings mariyu vatiki sambandhinchina upayamulu chudandi. Idi mee account lo untundi.",
+            "daily": "Full daily access subscribe cheyandi; eeroju forecast mariyu prati taruvatha roju reading ventane open avuthayi.",
+            "horary": "Poorthi report unlock chesi theerpu, timing windows mariyu margadarshanam chudandi. Idi mee account lo untundi.",
+        }.get(
+            kind,
+            "Sampoorna report unlock chesi dated windows, life-area theerpulu mariyu mee kundali upayamulu chudandi. Idi mee account lo untundi.",
+        )
+        title = "Daily Access Subscribe Cheyandi" if kind == "daily" else "Sampoorna Reading Unlock Cheyandi"
+        return {"title": title, "body": body, "role": "cta"}
     body = {
         "palm": "Unlock the full reading to see your timeline age by age, every marking on "
                 "both hands, and the remedies that go with them. It stays in your account.",
@@ -1128,13 +1202,15 @@ def _cta_section(kind: str) -> dict:
     return {"title": title, "body": body, "role": "cta"}
 
 
-def _repair_free_sections(sections: list[dict], kind: str, inventory: Optional[dict]) -> list[dict]:
+def _repair_free_sections(
+    sections: list[dict], kind: str, inventory: Optional[dict], lang: str = "en"
+) -> list[dict]:
     """Guarantee a free summary closes on a locked account and one CTA."""
     out = [s for s in sections if (s.get("role") or "insight") == "insight"]
     locked = [s for s in sections if s.get("role") == "locked"]
     cta = [s for s in sections if s.get("role") == "cta"]
-    out.append(locked[0] if locked else _locked_section(kind, inventory))
-    out.append(cta[0] if cta else _cta_section(kind))
+    out.append(locked[0] if locked else _locked_section(kind, inventory, lang))
+    out.append(cta[0] if cta else _cta_section(kind, lang))
     return out
 
 
@@ -1184,7 +1260,9 @@ def _first_sentences(text: str, count: int, *, free: bool, allow_dates: bool = F
     return " ".join(_sentences(cleaned)[:count])
 
 
-def _fallback_from_palm_text(text: str, *, paid: bool = True) -> list[dict]:
+def _fallback_from_palm_text(
+    text: str, *, paid: bool = True, lang: str = "en"
+) -> list[dict]:
     """Extract personalized personality traits, thumb decision style, and strengths for palmistry."""
     text = _drop_bad_sentences(text, free=not paid)
     if not text:
@@ -1192,6 +1270,19 @@ def _fallback_from_palm_text(text: str, *, paid: bool = True) -> list[dict]:
     sentences = [s for s in _sentences(text) if len(s) > 18]
     if not sentences:
         return []
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+    titles = (
+        ("Swabhav Aur Core Temperament", "Mukhya Kshamta Aur Nirnay Shailee",
+         "Mukhya Rekhaon Aur Jeevan Margdarshan")
+        if is_hinglish else
+        ("Swabhavam Mariyu Core Temperament", "Mukhya Kshamathalu Mariyu Nirnaya Shailee",
+         "Mukhya Rekhalu Mariyu Jeevitha Margadarshanam")
+        if is_tenglish else
+        ("Personality & Core Temperament", "Innate Strengths & Decision Style",
+         "Major Lines & Life Guidance")
+    )
 
     shape_sentences: list[str] = []
     thumb_sentences: list[str] = []
@@ -1209,14 +1300,14 @@ def _fallback_from_palm_text(text: str, *, paid: bool = True) -> list[dict]:
     sections: list[dict] = []
     if shape_sentences:
         sections.append({
-            "title": "Personality & Core Temperament",
+            "title": titles[0],
             "body": " ".join(shape_sentences[:4])[:900],
             "role": "insight",
         })
 
     if thumb_sentences:
         sections.append({
-            "title": "Innate Strengths & Decision Style",
+            "title": titles[1],
             "body": " ".join(thumb_sentences[:4])[:900],
             "role": "insight",
         })
@@ -1225,7 +1316,7 @@ def _fallback_from_palm_text(text: str, *, paid: bool = True) -> list[dict]:
         line_sentences = [s for s in other_sentences if any(w in s.lower() for w in ("line", "mount", "vitality", "head line", "heart line", "fate line", "career", "chapter"))]
         if line_sentences:
             sections.append({
-                "title": "Major Lines & Life Guidance",
+                "title": titles[2],
                 "body": " ".join(line_sentences[:4])[:900],
                 "role": "insight",
             })
@@ -1233,7 +1324,13 @@ def _fallback_from_palm_text(text: str, *, paid: bool = True) -> list[dict]:
     if not sections:
         # The free palm summary earns its keep on who the reader is; a third
         # chunk of sliced body text only picks up the page around the reading.
-        titles = ("Personality & Core Temperament", "Innate Strengths & Decision Style") if not paid else ("Personality & Core Temperament", "Decision Style & Strengths", "Major Lines & Life Guidance", "Energy & Practical Focus")
+        titles = (
+            (titles[0], titles[1]) if not paid else
+            (titles[0], titles[1], titles[2],
+             "Urja Aur Vyavaharik Margdarshan" if is_hinglish
+             else "Urja Mariyu Vyavaharik Margadarshanam" if is_tenglish
+             else "Energy & Practical Focus")
+        )
         limit = min(2 if not paid else 4, len(titles))
         per = max(2, min(4, (len(sentences) + limit - 1) // limit))
         idx = 0
@@ -1248,7 +1345,9 @@ def _fallback_from_palm_text(text: str, *, paid: bool = True) -> list[dict]:
     return sections
 
 
-def _fallback_from_report_text(text: str, *, max_sections: int = 5, paid: bool = True) -> list[dict]:
+def _fallback_from_report_text(
+    text: str, *, max_sections: int = 5, paid: bool = True, lang: str = "en"
+) -> list[dict]:
     """Last resort when neither the LLM nor the brief gave us anything usable."""
     text = _drop_bad_sentences(text, free=not paid)
     if len(text) < 280:
@@ -1256,7 +1355,24 @@ def _fallback_from_report_text(text: str, *, max_sections: int = 5, paid: bool =
     sentences = [s for s in _sentences(text) if len(s) > 24]
     if len(sentences) < 2:
         return []
-    if paid:
+    lang_code = str(lang or "").lower().strip()
+    if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
+        titles = (
+            ("Seedha Vishleshan", "Vartaman Grah Prabhav", "Mukhya Samay Sanket",
+             "Urja Aur Vyaktigat Dhyan", "Margdarshan Aur Upay", "Agla Kadam")
+            if paid else
+            ("Prarambhik Sthiti Ka Vishleshan", "Vartaman Grah Prabhav",
+             "Mukhya Jyotishiya Sanket")
+        )
+    elif lang_code in ("te_en", "tenglish", "te", "telugu"):
+        titles = (
+            ("Direct Vishleshana", "Prasthutha Graha Prabhavam", "Mukhya Timing Sankethalu",
+             "Urja Mariyu Vyaktigatha Dhyanam", "Margadarshanam Mariyu Upayamulu", "Taruvatha Adugu")
+            if paid else
+            ("Prarambha Sthithi Vishleshana", "Prasthutha Graha Prabhavam",
+             "Mukhya Jyotishya Sankethalu")
+        )
+    elif paid:
         titles = (
             "Direct answer & overview", "Planetary phase & influences", "Key milestone windows",
             "Energy & personal focus", "Guidance & remedies", "Recommended action",
@@ -1279,11 +1395,150 @@ def _fallback_from_report_text(text: str, *, max_sections: int = 5, paid: bool =
     return sections
 
 
+def _localized_full_report_fallback(
+    brief: dict, *, paid: bool, is_hinglish: bool
+) -> list[dict]:
+    is_tenglish = not is_hinglish
+    if brief.get("classical_lagna"):
+        if is_hinglish:
+            title = "Aapki Classical Kundli Ka Saransh"
+            body = (
+                f"Aapki kundli mein {brief['classical_lagna']} Lagna aur "
+                f"{brief.get('classical_moon') or 'Chandra'} Chandra hai. "
+                f"Vartaman dasha {brief.get('classical_dasha') or 'chal rahi dasha'} "
+                "aapke jeevan ke vartaman adhyay ko prabhavit karti hai."
+            )
+        else:
+            title = "Mee Classical Kundali Saramsam"
+            body = (
+                f"Mee kundali lo {brief['classical_lagna']} Lagnam mariyu "
+                f"{brief.get('classical_moon') or 'Chandra'} Chandra unnai. "
+                f"Prasthutha dasha {brief.get('classical_dasha') or 'nadusthuna dasha'} "
+                "mee jeevitha vartamana phase ni prabhavitham chesthondi."
+            )
+        return [_sec(title, body)]
+    if is_hinglish:
+        direction_text = {
+            "support": "Vartaman samay aapke paksh mein hai; khul rahe avsaron par dhairya se kaam karein.",
+            "caution": "Vartaman samay jaldbaazi ke bajay dhairya aur niyamit mehnat maangta hai.",
+        }
+        direction_default = "Vartaman samay mein kuch kshetra khul rahe hain aur kuch mein dhairya zaroori hai."
+        sections = [
+            ("Aapka Vartaman Samay", direction_text.get(
+                str(brief.get("current_phase_direction") or "").lower(), direction_default)),
+            ("Aapke Swabhav Aur Kundli Ke Mukhya Lakshana",
+             "Aapka swabhav practical, samvedansheel aur sthir nirnay lene wala hai. "
+             "Dhairya aur niyamit prayas aapki badi taakat hain."),
+        ]
+        area_map = {
+            "career": "Career", "wealth": "Dhan", "marriage": "Vivah",
+            "relationships": "Rishte", "health": "Swasthya", "children": "Santan",
+            "property": "Sampatti", "foreign": "Videsh Yatra",
+        }
+        area_template = "Aapke {area} kshetra mein vartaman samay mein chart ke anusar dhairya, spasht soch aur practical kadam zaroori hain."
+        pressure_template = "Kundli in kshetron mein vishesh dhyan maangti hai: {areas}. Niyamit prayas se sthiti behtar ho sakti hai."
+        date_template = "{label} {_start} se shuru hota hai{_end}."
+        dates_title = "Mahatvapurna Dates Aur Samay Chakra"
+    else:
+        direction_text = {
+            "support": "Prasthutha samayam meeku anukulamga undi; teruchukuntunna avakashalapai dhairyamga pani cheyandi.",
+            "caution": "Prasthutha samayam aathram kante patience mariyu regular effort ni korukuntundi.",
+        }
+        direction_default = "Prasthutha samayam lo konni vishayalu anukulamga, marikonni patience tho handle cheyali."
+        sections = [
+            ("Mee Vartamana Samayam", direction_text.get(
+                str(brief.get("current_phase_direction") or "").lower(), direction_default)),
+            ("Mee Swabhavam Mariyu Kundali Mukhya Lakshanalu",
+             "Mee swabhavam practical, sensitive mariyu sthiranga nirnayam teesukune vidhamga untundi. "
+             "Patience mariyu regular effort mee mukhya balam."),
+        ]
+        area_map = {
+            "career": "Career", "wealth": "Dhanam", "marriage": "Vivaham",
+            "relationships": "Bandhalu", "health": "Aarogyam", "children": "Santhanam",
+            "property": "Aasthi", "foreign": "Videsha Prayanam",
+        }
+        area_template = "Mee {area} vishayam lo prasthutha samayam lo patience, clear thinking mariyu practical steps avasaram."
+        pressure_template = "Kundali ee vishayalapai prathyeka dhyanam korukuntundi: {areas}. Regular effort tho sthithi merugupadachu."
+        date_template = "{label} {_start} nunchi prarambham avuthundi{_end}."
+        dates_title = "Mukhya Dates Mariyu Timing Windows"
+
+    areas = [
+        area_map.get(str(a.get("area") or "").lower(), str(a.get("area") or "").strip())
+        for a in (brief.get("life_areas") or [])
+        if isinstance(a, dict) and (a.get("area") or "").strip()
+    ]
+    if paid and areas:
+        sections.append((
+            "Jeevitha Mukhya Rangalu" if is_tenglish else "Jeevan Ke Mukhya Kshetra",
+            " ".join(area_template.format(area=a) for a in areas[:4]),
+        ))
+    pressure = [
+        area_map.get(str(a).lower(), str(a).strip())
+        for a in (brief.get("areas_under_pressure") or []) if str(a).strip()
+    ]
+    if pressure:
+        sections.append((
+            "Prathyeka Dhyanam Pettalsina Rangalu" if is_tenglish else "Chunauti Aur Dabav Wale Kshetra",
+            pressure_template.format(areas=", ".join(pressure[:3])),
+        ))
+    if paid:
+        date_lines = []
+        for window in [w for w in (brief.get("dated_windows") or []) if isinstance(w, dict)][:4]:
+            start = _human_date(window.get("start"))
+            if not start:
+                continue
+            end = f" mariyu {_human_date(window.get('end'))} varaku untundi" if is_tenglish and window.get("end") else (
+                f" aur {_human_date(window.get('end'))} tak chalta hai" if window.get("end") else "")
+            date_lines.append(date_template.format(
+                label=_label(window.get("label")) or ("Oka timing window" if is_tenglish else "Ek timing window"),
+                _start=start, _end=end,
+            ))
+        if date_lines:
+            sections.append((dates_title, " ".join(date_lines)))
+    out = []
+    for title, body in sections:
+        section = _sec(title, body)
+        if section:
+            out.append(section)
+    return out
+
+
 def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
     lang_code = str(lang or "").lower()
     is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
     is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+    if is_hinglish or is_tenglish:
+        return _localized_full_report_fallback(
+            brief, paid=paid, is_hinglish=is_hinglish
+        )
     out: list[Optional[dict]] = []
+    if brief.get("classical_lagna") and not any(
+        brief.get(k) for k in ("current_phase_tone", "personality_traits", "chart_foundations")
+    ):
+        if is_hinglish:
+            body = (
+                f"Aapki kundli mein {brief['classical_lagna']} Lagna aur "
+                f"{brief.get('classical_moon') or 'Chandra'} Chandra hai. "
+                f"Vartaman dasha {brief.get('classical_dasha') or 'chal rahi dasha'} "
+                "aapke jeevan ke vartaman adhyay ko prabhavit karti hai."
+            )
+            out.append(_sec("Aapki Classical Kundli Ka Saransh", body))
+        elif is_tenglish:
+            body = (
+                f"Mee kundali lo {brief['classical_lagna']} Lagnam mariyu "
+                f"{brief.get('classical_moon') or 'Chandra'} Chandra unnai. "
+                f"Prasthutha dasha {brief.get('classical_dasha') or 'nadusthuna dasha'} "
+                "mee jeevitha vartamana phase ni prabhavitham chesthondi."
+            )
+            out.append(_sec("Mee Classical Kundali Saramsam", body))
+        else:
+            body = (
+                f"Your chart has {brief['classical_lagna']} rising with "
+                f"{brief.get('classical_moon') or 'the Moon'} in focus. "
+                f"The current {brief.get('classical_dasha') or 'planetary period'} "
+                "sets the tone of the chapter you are living through."
+            )
+            out.append(_sec("Your classical chart in brief", body))
     tone = brief.get("current_phase_tone")
     notes = brief.get("current_phase_notes") or []
     direction = str(brief.get("current_phase_direction") or "").lower()
@@ -1608,7 +1863,7 @@ def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool, lang: str = "en"
     lang_code = str(lang or "").lower().strip()
     is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
     is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
-    out = _fallback_from_palm_text(text, paid=paid)
+    out = _fallback_from_palm_text(text, paid=paid, lang=lang)
     if out:
         return out
     sections: list[Optional[dict]] = []
@@ -1714,7 +1969,7 @@ def _fallback_sections(
             sections = [one] if one else []
 
     if not sections:
-        sections = _fallback_from_report_text(text, paid=paid)
+        sections = _fallback_from_report_text(text, paid=paid, lang=lang)
 
     if not sections and text:
         snippet = re.sub(r"\s{2,}", " ", text)[:1200].strip()
@@ -1725,15 +1980,25 @@ def _fallback_sections(
     sections = _polish(sections, kind=kind, paid=paid)
 
     if not sections:
+        lang_code = str(lang or "").lower().strip()
+        if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
+            title = "Saransh"
+            body = "Neeche di gayi report mein aapki kundli ka vistaar se vishleshan diya gaya hai."
+        elif lang_code in ("te_en", "tenglish", "te", "telugu"):
+            title = "Saransham"
+            body = "Kindha unna report lo mee kundali yokka vivaranga vishleshana ivvabadindi."
+        else:
+            title = "Overview"
+            body = ("Open the full report below for the detailed reading. "
+                    "A plain-English summary could not be generated for this version.")
         sections = [{
-            "title": "Overview",
-            "body": "Open the full report below for the detailed reading. "
-                    "A plain-English summary could not be generated for this version.",
+            "title": title,
+            "body": body,
             "role": "insight",
         }]
 
     if not paid:
-        sections = _repair_free_sections(sections[:4], kind, inventory)
+        sections = _repair_free_sections(sections[:4], kind, inventory, lang)
 
     return sections[:6]
 
@@ -1900,6 +2165,13 @@ def _user_prompt(
             "Example headline: 'Aapki kundli mein career growth aur stability ke strong sanket hain.' "
             "Example body: 'Aapka Lagna aur dasha period yeh dikhata hai ki aane wale samay mein professional progression ke acche avsar milenge.'"
         )
+    elif str(lang or "").lower() in ("te_en", "tenglish", "te", "telugu"):
+        lines.append(
+            "LANGUAGE REQUIREMENT: Write the headline and all section titles and bodies in natural, conversational Telugu "
+            "using the English/Latin alphabet (Tenglish / Roman Telugu). DO NOT use Telugu script. "
+            "Example headline: 'Mee kundali lo career growth mariyu stability kosam strong sankethalu unnai.' "
+            "Example body: 'Mee Lagna mariyu dasha period prakaram mundu rojullo professional growth ki manchi avakashalu unnai.'"
+        )
     return "\n".join(lines)
 
 
@@ -1923,7 +2195,7 @@ def _llm_sections(
     if prose is None:
         return None
     prose = _plainify_prose(prose)
-    fails = _validate(prose, text, kind=kind, paid=paid, brief=brief)
+    fails = _validate(prose, text, kind=kind, paid=paid, brief=brief, lang=lang)
     if fails:
         retry_user = (
             user
@@ -1934,7 +2206,9 @@ def _llm_sections(
         retried = _complete(PlainSummaryProse, system, retry_user)
         if retried is not None:
             retried = _plainify_prose(retried)
-            retry_fails = _validate(retried, text, kind=kind, paid=paid, brief=brief)
+            retry_fails = _validate(
+                retried, text, kind=kind, paid=paid, brief=brief, lang=lang
+            )
             if len(_hard_failures(retry_fails)) <= len(_hard_failures(fails)):
                 prose, fails = retried, retry_fails
 
@@ -1943,7 +2217,7 @@ def _llm_sections(
     hard = _hard_failures(fails)
     patterns = _deletion_patterns(hard) if hard else None
     if patterns and _strip_sentences(prose, patterns):
-        fails = _validate(prose, text, kind=kind, paid=paid, brief=brief)
+        fails = _validate(prose, text, kind=kind, paid=paid, brief=brief, lang=lang)
         hard = _hard_failures(fails)
         if not hard:
             print(f"[plain_summary] cut a sentence to pass review ({kind}, "
@@ -1960,7 +2234,7 @@ def _llm_sections(
         for s in prose.sections
     ]
     if not paid:
-        sections = _repair_free_sections(sections, kind, inventory)
+        sections = _repair_free_sections(sections, kind, inventory, lang)
     else:
         sections = [s for s in sections if s["role"] != "cta"] or sections
     return {"sections": sections[:6], "headline": (prose.headline or "").strip()}

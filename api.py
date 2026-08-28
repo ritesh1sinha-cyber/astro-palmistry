@@ -575,6 +575,7 @@ def report_pdf(rid: str, summary: bool = True, user: dict = Depends(current_user
                 brief,
                 title=report_title(rep.get("kind") or "", rep.get("meta") or {}),
                 subtitle=str(rep.get("created_at") or "")[:10],
+                language=str(brief.get("language") or (rep.get("meta") or {}).get("language") or "en"),
             ))
     return _pdf_response(_pdf_bytes(html), _pdf_name(rep))
 
@@ -598,6 +599,7 @@ def report_summary_pdf(rid: str, user: dict = Depends(current_user)):
         title=report_title(rep.get("kind") or "", rep.get("meta") or {}),
         subtitle=str(rep.get("created_at") or "")[:10],
         standalone=True,
+        language=str(brief.get("language") or (rep.get("meta") or {}).get("language") or "en"),
     )
     return _pdf_response(_pdf_bytes(doc), _pdf_name(rep, "-summary"))
 
@@ -1132,7 +1134,7 @@ async def payment_webhook(request: Request):
         billing.refund(order["public_id"])
         return {"ok": True, "refunded": True}
 
-    if event not in ("payment.captured", "order.paid"):
+    if event and event not in ("payment.captured", "order.paid"):
         return {"ok": True, "ignored": event}
 
     pay_id = _dig(payload, "payload", "payment", "entity", "id") or ""

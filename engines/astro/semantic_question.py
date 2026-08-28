@@ -367,6 +367,18 @@ def _keyword_topic(q: str) -> str:
         # Avoid recursion if we patch detect_topic — call keyword body directly
         from horary_precompute import TOPIC_KEYWORDS
         ql = q.lower()
+
+        # Check gemstone / remedy keywords first
+        gemstone_kws = (
+            "gemstone", "gemstones", "ratna", "rashi ratna", "stone to wear",
+            "which stone", "suitable stone", "wear a stone", "wear gemstone",
+            "panna", "manik", "moti", "moonga", "pukhraj", "heera", "neelam",
+            "gomed", "lahsuniya", "cats eye", "cat's eye", "remedy", "remedies",
+            "upay", "upayam", "mantra", "rudraksha", "yantra", "puja", "pariharam"
+        )
+        if any(kw in ql for kw in gemstone_kws):
+            return "gemstone"
+
         priority = ["disease_cure", "disease", "children", "marriage", "career",
                     "health", "finance", "travel", "education", "litigation"]
         for topic in priority:

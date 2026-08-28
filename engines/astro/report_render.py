@@ -802,7 +802,13 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     free_body = _voice_polish(render_confluence_card_html(conf, paid=False, qwen_text="", lang=lang))
     paid_body = _voice_polish(render_confluence_card_html(conf, paid=True, qwen_text=qwen_consultation, lang=lang))
 
-    title = f"Your Question — {question[:60]}"
+    lang_code = str(lang or "").lower().strip()
+    if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
+        title = f"Aapka Prashna — {question[:60]}"
+    elif lang_code in ("te_en", "tenglish", "te", "telugu"):
+        title = f"Mee Prashna — {question[:60]}"
+    else:
+        title = f"Your Question — {question[:60]}"
     free = RS.page(title, _scrub(free_body))
     paid = RS.page(title, _scrub(paid_body))
 
