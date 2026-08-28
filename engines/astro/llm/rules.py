@@ -465,6 +465,8 @@ def _prompt_extra(kind: str) -> str:
             "- The label, confidence, and verdict in the facts are authoritative — your verdict_line and why must align with them. Never contradict a 'No' or 'Leaning no' with optimistic language, and never contradict a 'Yes' with pessimistic language. "
             "- Never make absolute guarantees or write phrases like 'you will' or 'definitely' — use professional consultation framing like 'the chart indicates...', 'conditions support...', 'a favorable window opens...'. "
             "- Facts are authoritative — adhere strictly to verdict, label, confidence, allowed_planets, and allowed_dates. Never invent dates or unlisted planets. "
+            "- AMBIGUOUS / GENERAL QUESTIONS: If the question is broad or general (e.g. 'how will things turn out?', 'what does the moment show?'), interpret the moment chart from the Ascendant Lord (the querent's state), Moon (the unfolding situation), and applying planetary aspects, delivering a clear, grounded judgment of their immediate path. "
+            "- OUT-OF-DOMAIN QUESTIONS: If the label is 'Non-Astrological Inquiry' or the question is non-astrological (e.g. coding, recipe, math, technical trivia), politely and professionally explain that horary chart analysis is designed for human life questions (career, relationships, property, health, travel, lost objects) and invite them to ask about their personal situations. "
             "Required fields in HoraryProse: "
             "1. 'lead': A warm, natural 1-2 sentence lede addressing their specific question. "
             "2. 'verdict_line': A direct 1-2 sentence consultation verdict (must reflect the label, e.g., 'The chart indicates favorable momentum for receiving a job offer this month.'). "
@@ -609,18 +611,129 @@ def _prompt_extra(kind: str) -> str:
     }.get(kind, "")
 
 
-def system_prompt_for(kind: str) -> str:
-    base = _base_prompt(kind)
+def _base_prompt_hinglish(kind: str) -> str:
+    """Dedicated system prompts for generating reports and summaries in Hinglish (Hindi in Latin/English alphabet)."""
+    return {
+        "full_report": (
+            "Write the conversational Vedic astrological reading for this page in natural, polite Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+            "DO NOT use Devanagari script. Use clear, fluent Roman Hindi words (e.g. 'Aapki kundli ke anusar...', 'Career mein positive results milenge...'). "
+            "Python owns ALL prediction truth — areas, phases, timing windows, status, activation, direction, planets, houses, dashas, nakshatras, yogas. "
+            "You only express the supplied facts into the authoritative, empathetic voice of an experienced Jyotish astrologer. "
+            "Never invent, calculate, or imply any astrological factor not already in the facts.\n\n"
+            "HINGLISH STYLE & FEW-SHOT EXAMPLES:\n"
+            "1. 'astrological_basis': 2–4 sentences in Roman Hindi explaining the governing chart factors from facts.\n"
+            "   Example: 'Aapka Janma Lagna Mesh hai aur Lagna Lord Mangal hai. Moon sign aur running dasha is reading ke main governing factors hain jo aapki present situations ko shape kar rahe hain.'\n"
+            "2. 'interpretation': 2–4 sentences connecting those factors to lived experience.\n"
+            "   Example: 'Yeh dasha period responsibilities badhne aur career decisions mein practical approach rakhne ka sanket deta hai. Thoda patience rakhna beneficial rahega.'\n"
+            "3. 'personality': One warm paragraph from personality_traits in Roman Hindi.\n"
+            "   Example: 'Aap naturally determined, hardworking aur practical person hain. Mushkil situations mein bhi aap calm rehkar decision lena pasand karte hain aur apne parivar ki suraksha ko priority dete hain.'\n"
+            "4. 'current_phase': 2–4 sentences using phase_tone, phase_end and phase_notes in Roman Hindi.\n"
+            "   Example: 'Current phase thoda demanding zaroor hai, lekin aapki mehnat aane wale samay mein acche results degi. Stability aane ke strong sanket hain.'\n"
+            "5. 'hardest_area_note': One short line guidance in Roman Hindi.\n"
+            "   Example: 'Profession aur financial planning mein extra patience aur planning ki zaroorat hai.'\n"
+            "6. 'mind_now': List of observations in Roman Hindi for mind_now entries.\n"
+            "7. 'why_now': 2–4 sentences explaining the astrological reason in Roman Hindi.\n"
+            "8. 'family_note': Narrative synthesis in Roman Hindi for family roots.\n"
+            "9. 'areas': Dict of area interpretations in Roman Hindi (leave empty when access=free).\n\n"
+            "IMPORTANT RULES:\n"
+            "- Speak directly to the seeker as 'Aap' / 'Aapka' (polite second person).\n"
+            "- Never make absolute or fatalistic claims like '100% guarantee'. Use 'kundli indicate karti hai', 'sanket milte hain'.\n"
+            "- Health stays at routine/recovery. Remedies only from the approved list in facts.\n"
+            "- Keep all dated windows strictly aligned with the supplied facts."
+        ),
+        "full_report_areas": (
+            "Return ConversationalAreasProse: one entry for EVERY card in the facts, in the order supplied, and nothing else. "
+            "Write the conclusion and remedy in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+            "DO NOT use Devanagari script. Use clear phonetic English letters.\n"
+            "The conclusion is 3–5 sentences: the area's current state and cause -> its dated window -> natal support -> first sustained improvement or plain honest statement.\n\n"
+            "HINGLISH CONSULTATION EXAMPLES (adapt tone naturally to each area's specific facts):\n"
+            "- Supported Area: 'Aapke career aur work area ko strong natal support mil raha hai. Current planetary cycle <MONTH YEAR> tak achha momentum banaye rakhega. Halanki transits ke dauran beech-beech mein tests aayenge, lekin overall trajectory stable rahegi.'\n"
+            "- Mixed/Transitional Area: 'Relationships mein abhi mixed current chal raha hai, jisme <MONTH YEAR> tak patience aur open communication zaroori hai. Uske baad conditions behtar hongi, lekin steady effort maintain karna hoga.'\n"
+            "- Area Needing Care: 'Health aur vitality ke liye daily routine maintain karna zaroori hai, kyunki <PLANET> ka pressure <MONTH YEAR> tak rahega. Regular rest aur recovery par dhyan dein.'\n"
+            "The remedy is one concrete sentence in Roman Hindi from remedy_text/approved_remedies (e.g. 'Saturn ke effect ko balance karne ke liye har Saturday ko deepak jalayein aur jaruratmand logon ki madad karein.')."
+        ),
+        "full_report_confluence": (
+            "Write the classical Vedic reading for this page in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+            "DO NOT use Devanagari script. Python owns ALL prediction truth. "
+            "Rephrase the supplied facts into authoritative, grounded Roman Hindi (e.g., 'Aapka Janma Lagna...', 'Current dasha period...')."
+        ),
+        "user_question": (
+            "Write a personalized, natural-language Vedic astrological consultation response to the seeker's specific question in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+            "DO NOT use Devanagari script. Speak directly to the seeker as 'Aap' in a warm, grounded, professional tone.\n"
+            "Required fields in QuestionProse:\n"
+            "1. 'opening': Warm 1–2 sentence lede in Roman Hindi addressing their question (e.g., 'Aapke question par kundli ke planetary placements aur dasha period ka vishleshan kiya gaya hai.').\n"
+            "2. 'answer': 2–3 sentence direct astrological verdict in Roman Hindi (e.g., 'Chart indicate karta hai ki aane wale samay mein positive growth ke avsar milenge...').\n"
+            "3. 'why': 2–3 sentences in Roman Hindi explaining governing house lords and dasha influences.\n"
+            "4. 'timing': 1–2 sentences in Roman Hindi citing EXACT dates from allowed_dates (e.g., 'Sabse favorable window <MONTH YEAR> se <MONTH YEAR> ke dauran open ho rahi hai.').\n"
+            "5. 'action': Practical guidance and targeted Vedic remedies from facts in Roman Hindi."
+        ),
+        "horary": (
+            "Write a unified Western horary consultation response in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+            "DO NOT use Devanagari script. Speak directly to the person as 'Aap' in professional Roman Hindi.\n"
+            "SPECIAL JUDGMENT RULES:\n"
+            "- AMBIGUOUS / GENERAL QUESTIONS: Agar prashna broad ya general hai (jaise 'kaisa rahega aane wala samay?', 'kya hoga?'), toh Ascendant Lord (querent), Moon (unfolding situation), aur applying planetary aspects ke aadhar par unki immediate situation aur path ka clear aur santulit faisla dein.\n"
+            "- OUT-OF-DOMAIN QUESTIONS: Agar label 'Non-Astrological Inquiry' hai ya prashna non-astrological (coding, recipes, technical trivia) hai, toh vinamrata se Roman Hindi mein samjhayein ki Prashna Jyotish manav jeevan ke vishayon (career, vivah, sampatti, swasthya, yaatra) ke liye hai aur unhe jeevan se jude prashna poochhne ke liye invite karein.\n"
+            "Required fields in HoraryProse:\n"
+            "1. 'lead': Warm 1–2 sentence lede addressing their question in Roman Hindi.\n"
+            "2. 'verdict_line': Direct 1–2 sentence consultation verdict reflecting the label in Roman Hindi.\n"
+            "3. 'why': 2–3 sentences in Roman Hindi explaining significators and chart testimonies.\n"
+            "4. 'action': Practical guidance and chart-targeted remedies in Roman Hindi."
+        ),
+        "palm": (
+            "You are an expert Vedic & classical palmist writing an insightful palm reading report in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi).\n"
+            "DO NOT use Devanagari script. Speak directly to the person as 'Aap'.\n"
+            "Guidelines in Roman Hindi:\n"
+            "1. 'personality': Core character, element temperament (Air/Fire/Earth/Water), and will-logic balance in Roman Hindi.\n"
+            "2. 'current_phase': Current age milestone assessment in Roman Hindi.\n"
+            "3. 'hardest_area_note': Clear guidance for demanding aspect in Roman Hindi.\n"
+            "4. 'mind_now': Observations from palm_state.mind_now in Roman Hindi.\n"
+            "5. 'why_now': Palmistry explanation synthesizing mounts and lines in Roman Hindi.\n"
+            "6. 'hand_contrast_note': Contrast of potential vs lived evolution in Roman Hindi.\n"
+            "7. 'areas': Predictive entries for life aspects in Roman Hindi with outlook, timing, manifestation, and remedy."
+        ),
+        "chat": (
+            "Answer a paid follow-up about THEIR report in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+            "DO NOT use Devanagari script. If the question is outside the facts, set out_of_scope=true and give a polite refusal in Roman Hindi."
+        ),
+        "plain_summary": (
+            "You write the customer-facing summary in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+            "Return JSON matching PlainSummaryProse: a `headline` and 2–5 `sections`, each with a title, a body, and a `role`.\n\n"
+            "LANGUAGE REQUIREMENT:\n"
+            "- Write entirely in natural, polite Hindi words using English alphabet letters (Hinglish / Roman Hindi).\n"
+            "- DO NOT write in Devanagari script.\n\n"
+            "FEW-SHOT EXAMPLES OF HINGLISH SUMMARY:\n"
+            "  * Headline Example: 'Aapki kundli mein career growth aur stability ke strong sanket hain.'\n"
+            "  * Insight Section 1 (Personality): Title: 'Aapka Vyaktitva Aur Strengths' | Body: 'Aapka Janma Lagna aur planetary placements yeh dikhate hain ki aap natural leader hain aur practical approach ke sath decision lete hain. Mushkil samay mein bhi aapka focus bana rehta hai.'\n"
+            "  * Insight Section 2 (Current Phase): Title: 'Current Life Phase' | Body: 'Current dasha ke mutabiq yeh samay responsibilities aur career par dhyan dene ka hai. Shuruat mein patience zaroori hai, lekin aage chal kar conditions favorable hongi.'\n"
+            "  * Locked Section (Free Preview): Title: 'Aage Kya Shamil Hai' | Body: 'Aapki complete reading mein career, wealth aur relationships ke 4 specific dated timing windows aur 6 targeted remedies detailed reading mein shamil hain.'\n"
+            "  * CTA Section (Free Preview): Title: 'Complete Report Unlock Karein' | Body: 'Apni full report unlock karke sabhi detailed timing windows aur chart-specific remedies turant dekhein.'\n\n"
+            "PAID READING: every section has role='insight'. Lead with the answer or current phase, then reasoning, dated windows, and action.\n"
+            "FREE PREVIEW: Follow the 4-part arc (insight -> insight with personality traits -> locked inventory count -> cta). NO dates or remedy names in free preview."
+        ),
+    }.get(kind, "")
+
+
+def system_prompt_for(kind: str, lang: str = "en") -> str:
+    if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi"):
+        base = _base_prompt_hinglish(kind) or _base_prompt(kind)
+    else:
+        base = _base_prompt(kind)
     extra = _prompt_extra(kind)
     if not extra:
         return base
     return f"{base}\nPrompt version: {prompt_version(kind)}. {extra}"
 
 
-def user_prompt(facts: Any, *, schema_name: str, section: str = "") -> str:
+def user_prompt(facts: Any, *, schema_name: str, section: str = "", lang: str = "en") -> str:
     payload = public_fact_payload(facts)
     if str((payload or {}).get("kind") or "") == "full_report":
         payload = _compact_report_payload(payload, section=section)
+    lang_inst = (
+        "Write every string in natural, conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+        "Do NOT use Devanagari script. Use clear phonetic English letters (e.g. 'Aapka dasha period career mein growth show kar raha hai.')."
+        if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+        else "Write every string in English."
+    )
     return (
         f"Return a JSON object matching schema `{schema_name}`.\n"
         f"Facts (authoritative — do not contradict or expand):\n"
@@ -629,11 +742,11 @@ def user_prompt(facts: Any, *, schema_name: str, section: str = "") -> str:
         # writing a long reply drifts out of English somewhere past the first
         # few hundred tokens, and the last instruction it read is the one it
         # keeps. The QA gate catches the drift, but catching it costs the page.
-        "Write every string in English."
+        f"{lang_inst}"
     )
 
 
-def areas_user_prompt(facts: Any, *, area_keys: list[str]) -> str:
+def areas_user_prompt(facts: Any, *, area_keys: list[str], lang: str = "en") -> str:
     """Full-report areas prompt limited to a subset of life areas.
 
     The areas writer returns one compact conclusion per card. Eight conclusions
@@ -655,6 +768,12 @@ def areas_user_prompt(facts: Any, *, area_keys: list[str]) -> str:
             if str(j.get("area") or "") in allowed
         ]
     window_summary = _areas_window_summary(compact)
+    lang_inst = (
+        "Write every string in natural, conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+        "Do NOT use Devanagari script."
+        if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+        else "Write every string in English."
+    )
     return (
         "Return a JSON object matching schema `ConversationalAreasProse`.\n"
         "Write one ConversationalAreaProse entry for EVERY card present in "
@@ -663,7 +782,7 @@ def areas_user_prompt(facts: Any, *, area_keys: list[str]) -> str:
         f"{json.dumps(compact, ensure_ascii=False, default=str)}\n"
         f"DATE WINDOW SUMMARY (authoritative; use ONLY these dates — never "
         f"any month absent from this summary):\n{window_summary}\n"
-        "Write every string in English."
+        f"{lang_inst}"
     )
 
 

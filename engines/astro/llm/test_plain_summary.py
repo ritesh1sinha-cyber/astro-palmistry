@@ -871,3 +871,81 @@ def test_prepend_summary_survives_a_fragment_without_head_or_body():
     assert "SUM" in out and "Loose fragment" in out
     assert out.index("SUM") < out.index("Loose fragment")
     assert "page-break-after" in out
+
+
+def test_hinglish_prompts_and_system_prompts():
+    from engines.astro.llm.rules import system_prompt_for, user_prompt, areas_user_prompt
+
+    # Default English
+    sys_en = system_prompt_for("full_report", lang="en")
+    assert "experienced Vedic astrologer" in sys_en
+    assert "Hinglish" not in sys_en
+
+    # Hinglish
+    sys_hi = system_prompt_for("full_report", lang="hi_en")
+    assert "DO NOT use Devanagari script" in sys_hi
+    assert "Hinglish" in sys_hi
+    assert "astrological_basis" in sys_hi
+
+    # Plain summary Hinglish
+    sys_sum_hi = system_prompt_for("plain_summary", lang="hi_en")
+    assert "DO NOT write in Devanagari script" in sys_sum_hi
+    assert "Headline Example" in sys_sum_hi
+
+    # User prompt with Hinglish
+    u_prompt = user_prompt({"kind": "full_report", "test": 123}, schema_name="ConversationalProse", lang="hi_en")
+    assert "Hinglish / Roman Hindi" in u_prompt
+    assert "Do NOT use Devanagari script" in u_prompt
+
+    # Areas prompt with Hinglish
+    a_prompt = areas_user_prompt({"kind": "full_report", "cards": []}, area_keys=[], lang="hi_en")
+    assert "Hinglish / Roman Hindi" in a_prompt
+
+
+def test_build_plain_summary_with_hinglish_language(monkeypatch):
+    import engines.astro.llm.summary as sm
+    llm_client = pytest.importorskip("core.llm_client")
+    monkeypatch.setattr(sm, "_enabled", lambda: True)
+
+    captured = {}
+
+    def fake_complete(schema, system, user, **kwargs):
+        captured["system"] = system
+        captured["user"] = user
+        return schema(
+            headline="Aapki kundli mein career growth ke acche sanket hain.",
+            sections=[
+                {
+                    "title": "Vyaktitva Aur Strengths",
+                    "body": "Aap naturally determined aur focused vyakti hain.",
+                    "role": "insight",
+                },
+                {
+                    "title": "Aage Kya Shamil Hai",
+                    "body": "Aapki complete reading mein 4 specific dated timing windows shamil hain.",
+                    "role": "locked",
+                },
+                {
+                    "title": "Complete Report Unlock Karein",
+                    "body": "Apni full reading turant unlock karein.",
+                    "role": "cta",
+                },
+            ],
+        )
+
+    llm_client.set_stub(fake_complete)
+    try:
+        out = sm.build_plain_summary(
+            kind="full_report",
+            html="<p>This is a visible test reading for the client.</p>",
+            meta={"language": "hi_en"},
+            paid=False,
+        )
+    finally:
+        llm_client.clear_stub()
+
+    assert "Hinglish / Roman Hindi" in captured["system"]
+    assert "Hinglish / Roman Hindi" in captured["user"]
+    assert out["generated"] == "llm"
+    assert "Aapki kundli" in out["headline"]
+    assert len(out["sections"]) == 3

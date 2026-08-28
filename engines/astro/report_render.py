@@ -297,7 +297,7 @@ def _appendix_block(html: str, *, summary: str) -> str:
 def full_report(pc: dict, *, name: str = "", question: str = "",
                 today: Optional[date] = None, price: int = 298,
                 bundle_price: int = 298, lat: float = 0.0, lon: float = 0.0,
-                tz: float = 5.5, daily: Any = None) -> tuple:
+                tz: float = 5.5, daily: Any = None, lang: str = "en") -> tuple:
     """Present read, who you are, your past, the cards, timing, remedies.
 
     Order is deliberate and it is the commercial argument as much as the
@@ -314,7 +314,7 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
         return _full_report_inner(
             pc, name=name, question=question, today=today, price=price,
             bundle_price=bundle_price, lat=lat, lon=lon, tz=tz, daily=daily,
-            first=first)
+            first=first, lang=lang)
     finally:
         DE.end()
 
@@ -322,7 +322,7 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
 def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                        today: date, price: int = 298, bundle_price: int = 298,
                        lat: float = 0.0, lon: float = 0.0, tz: float = 5.5,
-                       daily: Any = None, first: str = "") -> tuple:
+                       daily: Any = None, first: str = "", lang: str = "en") -> tuple:
     present_block = None
     try:
         import present_read as PR
@@ -416,8 +416,8 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
         # Generate Free and Paid prose from their own access projections.
         # Never reuse Paid prose on Free: the Paid facts contain exact dates,
         # detailed evidence and remedies that the Free model must never see.
-        free_llm = humanize("full_report", free_facts, access="free")
-        paid_llm = humanize("full_report", paid_facts, access="paid")
+        free_llm = humanize("full_report", free_facts, access="free", lang=lang)
+        paid_llm = humanize("full_report", paid_facts, access="paid", lang=lang)
         free_prose_overlay = free_llm.get("overlay") or {}
         paid_prose_overlay = paid_llm.get("overlay") or {}
         llm_meta = {
@@ -570,9 +570,10 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 pc, name=name, price=price, today=today, paid=paid,
                 cards=fact_cards or shared_cards, prose=prose,
                 footer_unlock=(not paid),
-                remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price),
+                remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price, lang=lang),
                 upsell_html=upsell,
-                analysis=(paid_facts if paid else free_facts))
+                analysis=(paid_facts if paid else free_facts),
+                lang=lang)
             return _post_render_guard(_scrub(body, allowed_dates=_allowed_dates(paid)))
 
         # Frozen non-LLM / classic path — untouched when conversational is used.
@@ -583,7 +584,7 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 present_html = PR.render(present_block, paid=paid)
             except Exception as exc:                                 # noqa: BLE001
                 print(f"[report_render] present render failed: {exc}", flush=True)
-        remedy = _safe(_remedy, pc, name=first, paid=paid, price=price)
+        remedy = _safe(_remedy, pc, name=first, paid=paid, price=price, lang=lang)
         if paid:
             dashboard_html = _safe(_promise_dashboard, shared_cards)
             tail = dashboard_html + timing_html + remedy
@@ -608,6 +609,7 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
         # LLM stats: the two answers used to drift apart.
         "design": designs.get(True, "cards-v2"),
         "freeDesign": designs.get(False, "cards-v2"),
+        "language": lang,
         "price": price, "bundlePrice": bundle_price,
         "llm": llm_meta,
         # Internal only — _save_report pops this into object storage as facts.json
@@ -636,15 +638,11 @@ def _promise_dashboard(cards: list) -> str:
 
 
 def _remedy(pc: dict, *, name: str = "", paid: bool = False,
-            price: int = 298) -> str:
+            price: int = 298, lang: str = "en") -> str:
     import remedy_block as RB
     return RB.render(
-        RB.build(pc, domain="", name=name), paid=paid, price=price,
-        lede="For the areas that need more care, the traditional approach is to "
-             "support them through practical habits, mantra, charity and — where "
-             "appropriate — gemstones. Some charts also indicate that a commonly "
-             "recommended stone may not be suitable. That distinction is included "
-             "here because gemstones should be considered from the individual chart.")
+        RB.build(pc, domain="", name=name, lang=lang), paid=paid, price=price,
+        lang=lang)
 
 
 def _locked_preview(*, price: int, n_areas: int, n_windows: int,
@@ -713,7 +711,8 @@ def _bundle(bundle_price: int) -> str:
 def horary(*, question: str, verdicts: dict, western_judgment: dict,
            asked: str, name: str = "", horary_price: int = 298,
            full_report_price: int = 298,
-           vedic_customer: Optional[dict] = None) -> tuple:
+           vedic_customer: Optional[dict] = None,
+           lang: str = "en") -> tuple:
     from horary_answer import build_answer_html, reconcile
     prose_overlay: dict = {}
     llm_meta: dict = {"enabled": False}
@@ -726,11 +725,12 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
             question=question, verdicts=verdicts,
             summary=summary_preview, name=name, access="paid",
             western_judgment=western_judgment,
-            vedic_customer=vedic_customer)
+            vedic_customer=vedic_customer,
+            language=lang)
         hfacts_free = project_for_access(hfacts_paid, "free")
         facts_payload = public_fact_payload(hfacts_paid)
-        free_llm = humanize("horary", hfacts_free, access="free")
-        paid_llm = humanize("horary", hfacts_paid, access="paid")
+        free_llm = humanize("horary", hfacts_free, access="free", lang=lang)
+        paid_llm = humanize("horary", hfacts_paid, access="paid", lang=lang)
         prose_overlay = {
             "free": free_llm.get("overlay") or {},
             "paid": paid_llm.get("overlay") or {},
@@ -749,7 +749,7 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
     common = dict(question=question, verdicts=verdicts,
                   western_judgment=western_judgment, asked=asked, name=name,
                   horary_price=horary_price, full_report_price=full_report_price,
-                  vedic_customer=vedic_customer)
+                  vedic_customer=vedic_customer, lang=lang)
     free_body, _ = build_answer_html(**common, paid=False,
                                      prose=(prose_overlay.get("free", {})
                                             if isinstance(prose_overlay, dict) else {}))
@@ -761,12 +761,12 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
     # when it was asked. Passing them again printed the question twice.
     # Voice polish strips machinery (python paths, MiniLM, rebuild notes) and
     # keeps the tone consistent with every other customer report.
-    free = RS.page(f"Your question — {question[:60]}",
-                   _scrub(_voice_polish(free_body)))
-    paid = RS.page(f"Your question — {question[:60]}",
-                   _scrub(_voice_polish(paid_body)))
+    title = f"Aapka Prashna — {question[:60]}" if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi") else f"Your question — {question[:60]}"
+    free = RS.page(title, _scrub(_voice_polish(free_body)))
+    paid = RS.page(title, _scrub(_voice_polish(paid_body)))
     meta = {"design": "cards-v2", "answer": answer, "question": question,
             "asked": asked, "price": horary_price,
+            "language": lang,
             "llm": llm_meta,
             "_facts": facts_payload,
             "freeSections": ["Question & moment chart context",
@@ -785,7 +785,7 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
 def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
                   price: int = 298, lat: float = 0.0, lon: float = 0.0,
                   tz: float = 5.5, today: Optional[date] = None,
-                  area: str = "") -> tuple:
+                  area: str = "", lang: str = "en") -> tuple:
     """Renders comprehensive, unified Vedic Consultation report for ANY life question."""
     today = today or date.today()
     first = (name or "").split()[0] if name else ""
@@ -797,10 +797,10 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     )
 
     conf = analyze_question_confluence(pc, question, domain_override=area, route=route)
-    qwen_consultation = synthesize_with_qwen(conf)
+    qwen_consultation = synthesize_with_qwen(conf, lang=lang)
 
-    free_body = _voice_polish(render_confluence_card_html(conf, paid=False, qwen_text=""))
-    paid_body = _voice_polish(render_confluence_card_html(conf, paid=True, qwen_text=qwen_consultation))
+    free_body = _voice_polish(render_confluence_card_html(conf, paid=False, qwen_text="", lang=lang))
+    paid_body = _voice_polish(render_confluence_card_html(conf, paid=True, qwen_text=qwen_consultation, lang=lang))
 
     title = f"Your Question — {question[:60]}"
     free = RS.page(title, _scrub(free_body))
@@ -808,6 +808,7 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
 
     meta = {
         "design": "cards-v2",
+        "language": lang,
         "answer": {
             "label": conf.classical_verdict[:80],
             "confidence": "high",

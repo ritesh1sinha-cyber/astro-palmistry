@@ -1166,8 +1166,12 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
         <button class="pill" type="button" role="radio" aria-checked="false" aria-label="Gender: Other" data-val="other">Other</button>
        </div>
       </div>
-      <div class="field"><label for="fDom">Dominant hand <span style="color:#a3341f" aria-hidden="true">*</span></label>
-       <select class="inp" id="fDom" aria-required="true"><option value="right">Right handed</option><option value="left">Left handed</option></select></div>
+      <div class="grid g2" style="gap:10px">
+       <div class="field"><label for="fDom">Dominant hand <span style="color:#a3341f" aria-hidden="true">*</span></label>
+        <select class="inp" id="fDom" aria-required="true"><option value="right">Right handed</option><option value="left">Left handed</option></select></div>
+       <div class="field"><label for="fLang">Report language</label>
+        <select class="inp" id="fLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option></select></div>
+      </div>
      </div>
     </div>
    </fieldset>
@@ -1199,10 +1203,22 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
     </div>
    </div>
    <div class="card" style="margin-top:18px">
-    <div class="grid g2" style="align-items:center">
-     <div><b style="font-size:15px">Tips for a clean read</b>
-      <p class="hint" style="margin-top:8px">Bright, even daylight · palm flat and fully open · fingers slightly apart · fill the frame · avoid harsh shadow across the lines.</p></div>
+    <div class="grid g2" style="align-items:center;gap:16px">
+     <div>
+      <b style="font-size:15px">Tips for a clean read</b>
+      <p class="hint" style="margin-top:8px">Bright, even daylight · palm flat and fully open · fingers slightly apart · fill the frame · avoid harsh shadow across the lines.</p>
+      <div style="margin-top:10px">
+       <button type="button" class="btn-line" onclick="editDetails()" style="font-size:13px">← Edit personal details</button>
+      </div>
+     </div>
      <div style="text-align:right">
+      <div class="field" style="text-align:left;margin-bottom:12px">
+       <label for="pLang" style="font-size:13px;font-weight:600">Report language</label>
+       <select class="inp" id="pLang" onchange="syncPalmReportLang(this.value)">
+        <option value="en">English (Default)</option>
+        <option value="hi_en">Hindi (Hinglish)</option>
+       </select>
+      </div>
       <button class="btn btn-gold btn-block" id="submitBtn" onclick="submitReading()" disabled>Reveal my reading</button>
       <p class="hint" style="text-align:center">Both palms required · Takes ~1 minute</p>
      </div>
@@ -1299,7 +1315,10 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
     <div>
      <div class="field placeholder-field"><label for="aPlace">Birth place</label><input class="inp" id="aPlace" placeholder="Start typing a city…" autocomplete="off"><div class="err">Required</div>
       <p class="placenote" id="aPlaceNote">We fill coordinates from the city you pick.</p></div>
-     <div class="field"><label for="aGender">Gender</label><select class="inp" id="aGender"><option value="0">Male</option><option value="1">Female</option></select></div>
+     <div class="grid g2" style="gap:10px">
+       <div class="field"><label for="aGender">Gender</label><select class="inp" id="aGender"><option value="0">Male</option><option value="1">Female</option></select></div>
+       <div class="field"><label for="aLang">Report language</label><select class="inp" id="aLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option></select></div>
+      </div>
      <p class="hint"><button type="button" class="btn-line" id="toggleCoords" onclick="toggleAstroCoords()">Enter coordinates manually</button></p>
      <div class="coords-adv" id="astroCoords">
       <div class="grid g2" style="gap:10px">
@@ -1404,9 +1423,13 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
       <option value="health">Health</option>
       <option value="travel">Foreign travel / relocation</option>
       <option value="legal">Legal / court matter</option>
+      <option value="gemstone">Gemstones &amp; Remedies</option>
       <option value="general">Something else</option>
      </select>
      <p class="hint" style="margin-top:8px">Pick the area first — we read it together with your wording so the answer stays on the right houses.</p>
+    </div>
+    <div class="field" style="margin-top:14px"><label for="hLang">Report language</label>
+     <select class="inp" id="hLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option></select>
     </div>
     <div class="field" style="margin-top:14px"><label for="hQ">Your question</label>
      <input class="inp" id="hQ" placeholder="Will I get the promotion this year?"><div class="err">Required</div></div>
@@ -1444,6 +1467,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
       <option value="health">Health</option>
       <option value="travel">Foreign travel / relocation</option>
       <option value="legal">Legal / court matter</option>
+      <option value="gemstone">Gemstones &amp; Remedies</option>
       <option value="general">Something else</option>
      </select>
      <p class="hint" style="margin-top:8px">The area keeps the reading on the right houses; your question fills in the detail.</p>
@@ -2736,6 +2760,7 @@ function extractSummaryFromActiveReading(){
   const m = READING.meta || {};
   const kind = READING.kind || m.kind || '';
   const isPalm = kind === 'palm';
+  const isHinglish = /hi_en|hinglish/i.test(m.language || (READING.language || ''));
   const unlocked = !!(READING.unlocked || (m && m.paid) || hasFullAccess());
   const sections = [];
   const ans = m.answer || {};
@@ -2761,28 +2786,33 @@ function extractSummaryFromActiveReading(){
           }
         });
         if(shapeText){
-          sections.push({ title: 'Personality & Core Temperament', body: shapeText.slice(0, 500) });
+          sections.push({ title: isHinglish ? 'Swabhav Aur Core Temperament' : 'Personality & Core Temperament', body: shapeText.slice(0, 500) });
         }
         if(thumbText){
-          sections.push({ title: 'Innate Strengths & Decision Style', body: thumbText.slice(0, 500) });
+          sections.push({ title: isHinglish ? 'Mukhya Kshamta Aur Nirnay Shailee' : 'Innate Strengths & Decision Style', body: thumbText.slice(0, 500) });
         }
       }
     }catch(e){}
   } else if(kind === 'horary' && !unlocked){
     const horaryQuestion = q.replace(/[.?!]+$/, '');
     sections.push({
-      title: 'What the chart is examining',
-      body: `Your question is${horaryQuestion ? ` about ${horaryQuestion}` : ''}. `
-        + 'The full Western horary judgment is prepared in the report.'
+      title: isHinglish ? 'Prashna Ka Vishleshan' : 'What the chart is examining',
+      body: isHinglish
+        ? `Aapka prashna${horaryQuestion ? ` ${horaryQuestion}` : ''} ke baare mein hai. Prashna kundli ka poora faisla report mein taiyar hai.`
+        : `Your question is${horaryQuestion ? ` about ${horaryQuestion}` : ''}. The full Western horary judgment is prepared in the report.`
     });
   } else {
     if(label){
       let body = label;
-      if(!body.toLowerCase().startsWith('the chart') && !body.toLowerCase().startsWith('regarding')){
-        body = (q ? `Regarding ${q}, the chart indicates: ` : 'The chart indicates: ') + label;
+      if(!body.toLowerCase().startsWith('the chart') && !body.toLowerCase().startsWith('regarding') && !body.toLowerCase().startsWith('kundli')){
+        body = isHinglish
+          ? (q ? `${q} ke baare mein kundli darshati hai: ` : 'Kundli darshati hai: ') + label
+          : (q ? `Regarding ${q}, the chart indicates: ` : 'The chart indicates: ') + label;
       }
-      if(unlocked && bt) body += ` The strongest opening sits around ${bt}.`;
-      sections.push({ title: 'Direct Assessment', body });
+      if(unlocked && bt){
+        body += isHinglish ? ` Sabse majboot samay ${bt} ke aas-paas hai.` : ` The strongest opening sits around ${bt}.`;
+      }
+      sections.push({ title: isHinglish ? 'Seedha Vishleshan' : 'Direct Assessment', body });
     }
   }
 
@@ -2810,7 +2840,7 @@ function extractSummaryFromActiveReading(){
       if(!doc || !doc.body) throw new Error('report frame is not ready');
       const personalHeading = Array.from(doc.querySelectorAll('h1,h2,h3,h4')).find(h=>{
         const t = (h.textContent || '').toLowerCase();
-        return /core nature|personal constitution|who your chart says|personality|constitutional baseline/.test(t);
+        return /core nature|personal constitution|who your chart says|personality|constitutional baseline|aapka mool swabhav|swabhav/.test(t);
       });
       personalBlock = personalHeading
         && (personalHeading.closest('section,article,.card,.conv-block') || personalHeading.parentElement);
@@ -2825,7 +2855,7 @@ function extractSummaryFromActiveReading(){
           : []);
       if(personalParas[0]){
         sections.push({
-          title: 'What your chart says about you',
+          title: isHinglish ? 'Aapke Swabhav Aur Kundli Ke Mukhya Lakshana' : 'What your chart says about you',
           body: personalParas.slice(0, 2).join(' ').slice(0, 600)
         });
       }
@@ -2850,14 +2880,14 @@ function extractSummaryFromActiveReading(){
       });
       if(foundationFacts.length){
         sections.push({
-          title: 'What your key chart foundations say',
+          title: isHinglish ? 'Aapki Kundli Ke Mukhya Aadhar' : 'What your key chart foundations say',
           body: foundationFacts.map(x => `${x.code} (${x.label}): ${x.body}`)
             .join(' ').slice(0, 1200)
         });
       }
       const currentHeading = Array.from(doc.querySelectorAll('h1,h2,h3,h4')).find(h=>{
         const t = (h.textContent || '').toLowerCase();
-        return /where life is putting its weight|current chapter/.test(t);
+        return /where life is putting its weight|current chapter|aapka vartaman samay|vartaman dasha/.test(t);
       });
       currentBlock = currentHeading
         && (currentHeading.closest('section,article,.card,.conv-block') || currentHeading.parentElement);
@@ -2868,11 +2898,11 @@ function extractSummaryFromActiveReading(){
         : [];
       if(currentParas.length){
         const strained = currentParas.find(t =>
-          /hardest|strained|under pressure|needs care/i.test(t));
+          /hardest|strained|under pressure|needs care|dabav|chunauti/i.test(t));
         const currentDetails = currentParas.slice(0, 2);
         if(strained && !currentDetails.includes(strained)) currentDetails.push(strained);
         sections.push({
-          title: 'Where you are right now',
+          title: isHinglish ? 'Aapka Vartaman Samay' : 'Where you are right now',
           body: currentDetails.join(' ').slice(0, 600)
         });
       }
@@ -2895,11 +2925,11 @@ function extractSummaryFromActiveReading(){
           .filter(t => t.length > 35 && !t.includes('{') && !t.includes('}') && !t.toLowerCase().includes('unlock') && !t.toLowerCase().includes('targeted vedic upaya'));
         if(paras.length >= 2){
           const titles = isPalm
-            ? ['Personality & Core Temperament', 'Innate Strengths & Decision Style', 'Palm Observations']
-            : ['Key Observations', 'Current Influences', 'Astrological Context'];
+            ? (isHinglish ? ['Swabhav Aur Core Temperament', 'Mukhya Kshamta Aur Nirnay Shailee', 'Hast Rekha Vishleshan'] : ['Personality & Core Temperament', 'Innate Strengths & Decision Style', 'Palm Observations'])
+            : (isHinglish ? ['Mukhya Bindu', 'Vartaman Grah Prabhav', 'Kundli Ka Vishleshan'] : ['Key Observations', 'Current Influences', 'Astrological Context']);
           for(let i = 0; i < Math.min(2, paras.length); i++){
             if(sections.length >= 3) break;
-            sections.push({ title: titles[sections.length] || 'Key Insights', body: paras[i].slice(0, 450) });
+            sections.push({ title: titles[sections.length] || (isHinglish ? 'Mukhya Insights' : 'Key Insights'), body: paras[i].slice(0, 450) });
           }
         }
       }
@@ -2908,25 +2938,35 @@ function extractSummaryFromActiveReading(){
 
   if(!sections.length){
     const teaser = (m.teaser || (m.freeSections||[]).join('. ')).trim();
-    if(teaser) sections.push({ title: isPalm ? 'Personality & Palm Overview' : 'Overview', body: teaser });
+    if(teaser) sections.push({ title: isPalm ? (isHinglish ? 'Swabhav Aur Saransh' : 'Personality & Palm Overview') : (isHinglish ? 'Saransh' : 'Overview'), body: teaser });
   }
 
   if(!unlocked){
     sections.push({
       role: 'locked',
-      title: isPalm ? 'What the full reading adds' : 'What the full report adds',
-      body: isPalm
-        ? 'Your complete life timeline, the age chapters still ahead, every line and mount marking, and the remedies drawn from them are written and waiting.'
-        : kind === 'horary'
-          ? 'The complete Western horary judgment, the dated opening windows and the specific guidance are written and waiting.'
-        : 'The classical verdict, the dated opening windows, the milestone timeline and the remedies chosen for your chart are written and waiting.'
+      title: isHinglish ? 'Poori Reading Unlock Karne Par Kya Milega' : (isPalm ? 'What the full reading adds' : 'What the full report adds'),
+      body: isHinglish
+        ? (isPalm
+          ? 'Aapki poori life timeline, aane wale age chapters, har rekha aur parvat ke nishaan, aur unpar aadharit upayas taiyar hain.'
+          : kind === 'horary'
+            ? 'Poora Western horary faisla, dates aur timeline windows, aur vishesh grah guidance taiyar hai.'
+            : 'Vedic faisla, dated opening windows, milestone timeline aur aapki kundli ke nishchit upayas taiyar hain.')
+        : (isPalm
+          ? 'Your complete life timeline, the age chapters still ahead, every line and mount marking, and the remedies drawn from them are written and waiting.'
+          : kind === 'horary'
+            ? 'The complete Western horary judgment, the dated opening windows and the specific guidance are written and waiting.'
+            : 'The classical verdict, the dated opening windows, the milestone timeline and the remedies chosen for your chart are written and waiting.')
     });
   } else if(!sections.length){
     sections.push({
-      title: 'Overview',
-      body: isPalm
-        ? 'Review the palm reading document below for your complete line markings, timing chapters, and life guidance.'
-        : 'Review the reading document below for the complete astrological guidance and analysis.'
+      title: isHinglish ? 'Saransh' : 'Overview',
+      body: isHinglish
+        ? (isPalm
+          ? 'Poori rekhaon, timing chapters aur margdarshan ke liye neeche di gayi hast rekha report dekhein.'
+          : 'Poori jyotishiya guidance aur vishleshan ke liye neeche di gayi report dekhein.')
+        : (isPalm
+          ? 'Review the palm reading document below for your complete line markings, timing chapters, and life guidance.'
+          : 'Review the reading document below for the complete astrological guidance and analysis.')
     });
   }
   return { sections, generated: 'fallback', headline: '' };
@@ -2949,6 +2989,7 @@ function summaryUnlock(){
 function openPlainSummary(){
   const m = READING.meta || {};
   const kind = READING.kind || m.kind || '';
+  const isHinglish = /hi_en|hinglish/i.test(m.language || (READING.language || ''));
   const unlocked = !!(READING.unlocked || (m && m.paid) || (READING.link && READING.link.includes('.paid.')) || hasFullAccess());
   // Each half has its own summary, written against the half the reader can see.
   let ps = unlocked ? (m.plainSummaryPaid || m.plainSummary) : m.plainSummary;
@@ -2958,7 +2999,7 @@ function openPlainSummary(){
   const fullChart = kind === 'full_report' || kind === 'classical_report';
   const freeHorary = kind === 'horary' && !unlocked;
   const storedHasPersonality = stored && fullChart
-    && ps.sections.some(s => /personality|about you|who your chart|temperament/i.test(
+    && ps.sections.some(s => /personality|about you|who your chart|temperament|swabhav/i.test(
       s.title || ''));
   if(!stored || freeHorary || (!unlocked && fullChart && !storedHasPersonality)){
     const extracted = extractSummaryFromActiveReading();
@@ -2970,7 +3011,7 @@ function openPlainSummary(){
     }
   }
   if(!ps || !Array.isArray(ps.sections) || !ps.sections.length){
-    toast('Summary not available for this report yet');
+    toast(isHinglish ? 'Is report ka saransh abhi uplabdh nahi hai' : 'Summary not available for this report yet');
     return;
   }
 
@@ -3010,43 +3051,45 @@ function openPlainSummary(){
       const bullets = lockedItems.length
         ? `<ul class="ps-list">${lockedItems.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`
         : '';
-      parts.push(`<section class="ps-sec ps-locked"><h4>${esc(s.title||'What the full report adds')}</h4>`
+      parts.push(`<section class="ps-sec ps-locked"><h4>${esc(s.title || (isHinglish ? 'Poori Report Unlock Karne Par Kya Milega' : 'What the full report adds'))}</h4>`
         + `<p>${esc(s.body||'')}</p>${bullets}</section>`);
       return;
     }
-    parts.push(`<section class="ps-sec"><h4>${esc(s.title||'Overview')}</h4>`
+    parts.push(`<section class="ps-sec"><h4>${esc(s.title || (isHinglish ? 'Saransh' : 'Overview'))}</h4>`
       + `<p>${esc(s.body||'')}</p></section>`);
   });
 
   if(unlocked){
-    parts.push(`<p class="ps-foot">This is the crux of your reading in everyday language. `
-      + `Scroll the report below for the full detail.</p>`);
+    parts.push(`<p class="ps-foot">${isHinglish ? 'Yeh aapki kundli ka mukhya saransh hai. Poori detail ke liye neeche report dekhein.' : 'This is the crux of your reading in everyday language. Scroll the report below for the full detail.'}</p>`);
     // Only a saved report can be exported — a guest reading has nothing to fetch.
     const rid = READING.reportId
              || (typeof ASTRO !== 'undefined' ? ASTRO.lastReportId : '') || '';
     if(rid && stored){
       parts.push(`<div class="ps-dl">`
         + `<button class="btn btn-ghost btn-sm" type="button" onclick="downloadSummaryPdf('${esc(rid)}')">`
-        + `Summary PDF</button>`
+        + `${isHinglish ? 'Saransh PDF' : 'Summary PDF'}</button>`
         + `<button class="btn btn-ghost btn-sm" type="button" onclick="downloadReportPdf('${esc(rid)}')">`
-        + `Summary + full report</button></div>`);
+        + `${isHinglish ? 'Saransh + Poori Report' : 'Summary + full report'}</button></div>`);
     }
   } else {
     const item = summaryPayItem(kind);
     const sub = item === 'subscription';
     const price = money(CONFIG.astroPrices[item] ?? CONFIG.price ?? 298);
-    const title = (cta && cta.title) || (sub ? 'Subscribe for full daily access' : 'Unlock the full reading');
+    const title = (cta && cta.title) || (sub ? (isHinglish ? 'Full Daily Access Ke Liye Subscribe Karein' : 'Subscribe for full daily access') : (isHinglish ? 'Poora Vishleshan Unlock Karein' : 'Unlock the full reading'));
     const line = (cta && cta.body)
-      || 'Unlock the full report and everything above opens straight away — the dated windows, '
-       + 'the area-by-area verdicts and the remedies chosen for your chart. It stays in your account.';
+      || (isHinglish
+        ? 'Poori report unlock karein aur sabhi timeline windows, vishleshan aur upay turant prapt karein. Yeh aapke account mein hamesha rahegi.'
+        : 'Unlock the full report and everything above opens straight away — the dated windows, the area-by-area verdicts and the remedies chosen for your chart. It stays in your account.');
     parts.push(`<section class="ps-cta"><h4>${esc(title)}</h4><p>${esc(line)}</p>`
       + `<button class="btn btn-gold ps-buy" type="button" onclick="summaryUnlock()">`
-      + (sub ? `Subscribe · ${price}/month` : `Unlock now · ${price}`)
+      + (sub ? (isHinglish ? `Subscribe Karein · ${price}/mahina` : `Subscribe · ${price}/month`) : (isHinglish ? `Abhi Unlock Karein · ${price}` : `Unlock now · ${price}`))
       + `</button></section>`);
   }
 
-  openSheet(unlocked ? 'Your reading in plain English' : 'Your free reading in plain English',
-    `<div class="ps-wrap">${parts.join('')}</div>`);
+  const sheetTitle = unlocked
+    ? (isHinglish ? 'Aapki Reading Ka Saransh' : 'Your reading in plain English')
+    : (isHinglish ? 'Aapki Free Reading Ka Saransh' : 'Your free reading in plain English');
+  openSheet(sheetTitle, `<div class="ps-wrap">${parts.join('')}</div>`);
 }
 
 function openReading(o){
@@ -4076,9 +4119,43 @@ function syncFlow(){
   $('#s-queue').style.display   = busy ? '' : 'none';
   if(!busy) $('#s-queue').innerHTML='';
   $('#s-result').style.display  = step===4 ? '' : 'none';
-  $$('#stepper i').forEach(el=>{ const n=+el.dataset.s;
-    el.className = n<step ? 'done' : n===step ? 'now' : ''; });
+  $$('#stepper i').forEach(el=>{
+    const n=+el.dataset.s;
+    el.className = n<step ? 'done' : n===step ? 'now' : '';
+    if(S.user && (n===2 || n===3)){
+      el.style.cursor = 'pointer';
+      el.onclick = ()=>{
+        if(n===2) editDetails();
+        else if(n===3 && S.details){
+          S.step = 3;
+          $('#s-auth').style.display = 'none';
+          $('#s-details').style.display = 'none';
+          $('#s-hands').style.display = '';
+          if($('#pLang') && S.details.language) $('#pLang').value = S.details.language;
+        }
+      };
+    }
+  });
+  if(S.details){
+    const lang = S.details.language || 'en';
+    if($('#fLang')) $('#fLang').value = lang;
+    if($('#pLang')) $('#pLang').value = lang;
+  }
   if(step===2 && S.details) fillDetails();
+}
+function editDetails(){
+  S.step = 2;
+  $('#s-auth').style.display = 'none';
+  $('#s-details').style.display = '';
+  $('#s-hands').style.display = 'none';
+  fillDetails();
+}
+function syncPalmReportLang(val){
+  if(!S.details) S.details = {};
+  S.details.language = val;
+  if($('#fLang')) $('#fLang').value = val;
+  if($('#pLang')) $('#pLang').value = val;
+  save();
 }
 function ageFromDob(iso){
   if(!iso) return 0;
@@ -4094,6 +4171,9 @@ function fillDetails(){
   $('#fName').value = (n && n !== 'Seeker') ? n : '';
   $('#fAge').value = S.details.age || '';
   $('#fDom').value=S.details.dominant||'right';
+  const lang = S.details.language || 'en';
+  if($('#fLang')) $('#fLang').value = lang;
+  if($('#pLang')) $('#pLang').value = lang;
   $$('#genderPills .pill').forEach(p=>p.setAttribute('aria-pressed', p.dataset.val===S.details.gender));
 }
 $$('#genderPills .pill').forEach(p=>p.onclick=()=>{
@@ -4108,9 +4188,12 @@ function saveDetails(){
   let ok=true;
   ok = bad('#fAge', !(age>=1 && age<=120)) && ok;
   if(!ok) return toast('Please enter your age (1–120)');
+  const lang = ($('#fLang') && $('#fLang').value) || ($('#pLang') && $('#pLang').value) || 'en';
   S.details={ name: name || 'Seeker', age,
               gender: g ? g.dataset.val : 'other',
-              dominant:$('#fDom').value };
+              dominant:$('#fDom').value,
+              language: lang };
+  if($('#pLang')) $('#pLang').value = lang;
   save(); syncFlow();
   toast('Saved — now your palms');
 }
@@ -4264,9 +4347,12 @@ async function submitReading(){
   const b=$('#submitBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Submitting…';
   try{
     const turnstileToken = await getTurnstileToken('Confirm you\'re human before we run your palm reading.');
+    const lang = ($('#pLang') && $('#pLang').value) || ($('#fLang') && $('#fLang').value) || (S.details && S.details.language) || 'en';
+    if(S.details) S.details.language = lang;
     const payload={ userId:S.user.id, email:S.user.email, name:S.details.name,
       gender:S.details.gender, age:S.details.age,
       dominant:S.details.dominant,
+      language: lang,
       leftHand:S.imgs.left, rightHand:S.imgs.right };
     const job = MOCK ? mockEnqueue() : await api('/api/job',{method:'POST',
       body:JSON.stringify({kind:'palm', payload, turnstileToken})});
@@ -5230,7 +5316,8 @@ function captureAstroBirth(){
   const g = id => { const el=$(id); return el ? (el.value||'').trim() : ''; };
   return {
     name:g('#aName'), dob:g('#aDob'), tob:g('#aTob'), place:g('#aPlace'),
-    lat:g('#aLat'), lon:g('#aLon'), tz:g('#aTz')||'5.5', gender:g('#aGender')||'0'
+    lat:g('#aLat'), lon:g('#aLon'), tz:g('#aTz')||'5.5', gender:g('#aGender')||'0',
+    language:g('#aLang')||'en'
   };
 }
 function applyFields(map){
@@ -5254,7 +5341,8 @@ function applyAstroBirth(b){
   if(!b) return;
   applyFields({
     '#aName':b.name, '#aDob':b.dob, '#aTob':b.tob, '#aPlace':b.place,
-    '#aLat':b.lat, '#aLon':b.lon, '#aTz':b.tz, '#aGender':b.gender
+    '#aLat':b.lat, '#aLon':b.lon, '#aTz':b.tz, '#aGender':b.gender,
+    '#aLang':b.language || 'en'
   });
 }
 function clearAstroBirthForm(){
@@ -5394,9 +5482,11 @@ function birthPayload(){
   if(!ok){ toast('Please complete the highlighted birth details'); return null; }
   S.astroBirth = captureAstroBirth(); save();
   _birthForcedOpen = false;   // details are confirmed good — collapse on return
+  const lang = ($('#aLang') ? $('#aLang').value : 'en') || 'en';
   return { name:v('#aName'), dob:v('#aDob'), tob:v('#aTob'), place:v('#aPlace'),
            lat:parseFloat(lat), lon:parseFloat(lon),
-           tz:parseFloat($('#aTz').value||'5.5'), gender:parseInt($('#aGender').value,10) };
+           tz:parseFloat($('#aTz').value||'5.5'), gender:parseInt($('#aGender').value,10),
+           language: lang };
 }
 function userQuestionPayload(){
   const base = birthPayload();
@@ -5420,7 +5510,8 @@ function horaryPayload(){
   S.horaryPlace = captureHoraryPlace(); save();
   const now=new Date(), pad=n=>String(n).padStart(2,'0');
   const area = ($('#hArea')?$('#hArea').value:'').trim();
-  return { question:q, area: area,
+  const lang = ($('#hLang') ? $('#hLang').value : ($('#aLang') ? $('#aLang').value : 'en')) || 'en';
+  return { question:q, area: area, language: lang,
     qDate: `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`,
     qTime: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
     location: place,

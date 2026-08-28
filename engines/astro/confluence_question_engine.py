@@ -240,6 +240,71 @@ DOMAINS_CONFIG = {
             "Saturn": "Karaka of Court Delays, Karmic Judgment, and Endurance under Trial",
             "Sun": "Karaka of Judge, Government Authority, and Sovereign Justice",
         }
+    },
+    "gemstones_remedies": {
+        "title": "Gemstone Recommendations, Remedial Upayas & Functional Benefics",
+        "primary_house": 1,
+        "supporting_houses": [5, 9, 11],
+        "karakas": ["Jupiter", "Sun", "Moon", "Mars", "Venus", "Mercury", "Saturn"],
+        "vargas": ["D1", "D9", "D20"],
+        "keywords": [
+            "gemstone", "gem", "stone", "ratna", "gemstones", "stones", "wear stone", "wear gemstone",
+            "which stone", "which gemstone", "suit me", "lucky stone", "lucky gemstone", "birthstone",
+            "ring", "pendant", "rudraksha", "remedy", "remedies", "upaya", "mantra", "puja", "chant",
+            "panna", "emerald", "manik", "ruby", "moti", "pearl", "pukhraj", "yellow sapphire",
+            "neelam", "blue sapphire", "heera", "diamond", "coral", "moonga", "gomed", "hessonite",
+            "catseye", "lehsunia", "opal", "gemstone advice", "ratna dharan"
+        ],
+        "dusthana_implications": {
+            1: "1st Lord (Lagna Lord) is the foundational Life Stone: wearing its gem strengthens overall constitution, vitality, and aura.",
+            5: "5th Lord rules intellect and Purva Punya: its gemstone enhances cognitive clarity, career luck, and decision-making.",
+            9: "9th Lord rules Bhagya (Destiny and Divine Grace): its gemstone activates higher fortune and spiritual protection.",
+            6: "Dusthana Lords (6th/8th/12th) must strictly NOT be enhanced with gemstones unless they are simultaneously the Lagna Lord.",
+            8: "8th Lord gemstone is strictly forbidden as it can aggravate vulnerabilities and sudden obstacles.",
+            12: "12th Lord gemstone is avoided to prevent expenditure surges and energy dissipation.",
+        },
+        "karaka_roles": {
+            "Jupiter": "Karaka of Higher Wisdom, Divine Grace, and Yellow Sapphire (Pukhraj)",
+            "Sun": "Karaka of Soul Vitality, Executive Authority, and Ruby (Manikya)",
+            "Moon": "Karaka of Mental Peace, Emotional Balance, and Natural Pearl (Moti)",
+            "Mars": "Karaka of Courage, Vital Stamina, and Red Coral (Moonga)",
+            "Mercury": "Karaka of Intellect, Analytical Clarity, and Emerald (Panna)",
+            "Venus": "Karaka of Refinement, Material Prosperity, and Diamond/Opal (Heera)",
+            "Saturn": "Karaka of Discipline, Long-term Endurance, and Blue Sapphire (Neelam)",
+        }
+    },
+    "general_destiny": {
+        "title": "Overall Life Trajectory, Destiny & Operating Dasha Period",
+        "primary_house": 1,
+        "supporting_houses": [9, 10, 11],
+        "karakas": ["Sun", "Jupiter", "Saturn", "Moon"],
+        "vargas": ["D1", "D9", "D10"],
+        "keywords": [
+            "future", "life", "destiny", "ahead", "upcoming", "time", "period", "phase",
+            "kaisa", "samay", "bhavishya", "aage", "overall", "general", "horoscope", "kundli",
+            "overview", "prospects", "years", "months", "path", "direction", "focus", "outcome"
+        ],
+        "dusthana_implications": {
+            1: "1st Lord in Kendra/Trikona creates powerful static resilience across all life chapters.",
+            9: "9th Lord (Bhagya) acts as the guardian angel protecting the overall life trajectory.",
+            10: "10th Lord (Karma) defines professional legacy and active public manifestation.",
+        },
+        "karaka_roles": {
+            "Sun": "Universal Karaka of Soul Purpose, Vitality, and Core Identity",
+            "Jupiter": "Universal Karaka of Divine Grace, Dharma, and Wisdom",
+            "Saturn": "Universal Karaka of Karmic Lessons, Pacing, and Long-Term Maturity",
+            "Moon": "Universal Karaka of Mind, Emotional Wellbeing, and Daily Experience",
+        }
+    },
+    "out_of_domain": {
+        "title": "General & Non-Astrological Inquiry",
+        "primary_house": 1,
+        "supporting_houses": [9, 10, 5],
+        "karakas": ["Jupiter", "Mercury", "Sun"],
+        "vargas": ["D1", "D9"],
+        "keywords": [],
+        "dusthana_implications": {},
+        "karaka_roles": {}
     }
 }
 
@@ -426,10 +491,45 @@ AREA_TO_CONFLUENCE_DOMAIN: dict[str, str] = {
     "speech": "speech_neurology",
     "neurology": "speech_neurology",
     "neuro": "speech_neurology",
+    "gemstone": "gemstones_remedies",
+    "gemstones": "gemstones_remedies",
+    "remedy": "gemstones_remedies",
+    "remedies": "gemstones_remedies",
+    "gemstones / remedies": "gemstones_remedies",
+    "gemstones & remedies": "gemstones_remedies",
+    "gemstone_remedies": "gemstones_remedies",
+    "gemstones_remedies": "gemstones_remedies",
+    "spiritual": "gemstones_remedies",
+    "general": "general_destiny",
+    "general_destiny": "general_destiny",
+    "something else": "general_destiny",
+    "general / something else": "general_destiny",
+    "destiny": "general_destiny",
+    "future": "general_destiny",
+    "out_of_domain": "out_of_domain",
 }
 
 # High-intent multi-word keyphrases with high weight for deterministic classification
 INTENT_KEYPHRASES: dict[str, list[str]] = {
+    "general_destiny": [
+        "what does my future hold", "tell me about my future", "how is my future",
+        "how will things be", "how will my life be", "what is ahead for me", "life ahead",
+        "future prospects", "overall life", "my horoscope", "general reading",
+        "kaisa rahega samay", "kaisa hoga bhavishya", "aane wala samay", "meri kundli",
+        "aage kya hoga", "koi problem to nahi", "meri life kaisa", "overall destiny",
+        "upcoming phase", "upcoming years", "upcoming time", "life trajectory", "what does my chart say"
+    ],
+    "gemstones_remedies": [
+        "which gemstone", "which stone", "gemstone will suit", "stone will suit",
+        "gemstone suit", "stone suit", "gemstones suit", "stones suit",
+        "what gemstone", "what stone", "gemstone for me", "stone for me",
+        "gemstone should i wear", "stone should i wear", "wear gemstone", "wear stone",
+        "lucky gemstone", "lucky stone", "gemstone recommendation", "which ratna",
+        "ratna dharan", "gemstone advice", "which gemstone to wear", "which stone to wear",
+        "gemstone to wear", "stone to wear", "suit me", "suitable gemstone", "suitable stone",
+        "gemstone guidance", "gemstone consultation", "gemstones for me", "stones for me",
+        "rudraksha", "wear rudraksha", "vedic remedy", "gemstone suit me", "stone suit me"
+    ],
     "foreign_relocation": [
         "move abroad", "moving abroad", "settle abroad", "settling abroad", "settle overseas",
         "go abroad", "going abroad", "relocate abroad", "relocating abroad", "shift abroad",
@@ -443,6 +543,7 @@ INTENT_KEYPHRASES: dict[str, list[str]] = {
     ],
     "property_assets": [
         "buy property", "buy house", "buy flat", "buy land", "buy apartment", "buy plot",
+        "buy a house", "buy a flat", "buy a property", "buy a home", "buy an apartment",
         "purchase property", "purchase house", "purchase flat", "purchase home", "purchase land",
         "purchase apartment", "purchase the apartment", "purchase an apartment", "purchase a flat", "purchase a house",
         "build house", "construct house", "property dispute", "real estate investment", "apartment in",
@@ -482,6 +583,51 @@ INTENT_KEYPHRASES: dict[str, list[str]] = {
 }
 
 
+def is_strictly_out_of_domain(question: str) -> bool:
+    """Detect if a query is entirely non-astrological/technical/factual trivia.
+
+    Returns True ONLY when the query does NOT match any human life inquiry,
+    house, planet, divisional chart, timing, or Vedic remedy.
+    """
+    if not question:
+        return False
+    q_low = question.lower().strip()
+
+    # 1. Astrological / personal life keywords: if ANY of these exist, it is NOT out-of-domain
+    astro_life_tokens = [
+        "astrology", "astrological", "horoscope", "kundli", "kundali", "chart", "birth", "dasha", "transit",
+        "gochar", "nakshatra", "graha", "planet", "lagna", "ascendant", "rashi", "bhav", "bhava", "house",
+        "life", "future", "destiny", "career", "job", "work", "business", "promotion", "money", "wealth",
+        "finance", "salary", "debt", "loan", "property", "marriage", "marry", "wedding", "husband", "wife",
+        "spouse", "partner", "love", "relationship", "divorce", "child", "children", "baby", "pregnancy",
+        "conceive", "education", "study", "exam", "health", "disease", "illness", "surgery", "recovery",
+        "travel", "foreign", "abroad", "visa", "pr", "relocation", "court", "case", "legal", "enemy",
+        "speech", "gemstone", "stone", "ratna", "rudraksha", "remedy", "upaya", "mantra", "puja", "chant",
+        "luck", "fortune", "bhagya", "year", "years", "month", "months", "timing", "when", "will i", "how will",
+        "kaisa", "samay", "aage", "bhavishya", "meri", "mera", "mere", "mujhe", "apna", "apni", "shubh",
+        "problem", "trouble", "solution", "prospect", "prospects", "ahead", "focus", "direction"
+    ]
+    for tok in astro_life_tokens:
+        if re.search(r"\b" + re.escape(tok) + r"\b", q_low):
+            return False
+
+    # 2. Distinct non-astrological technical/trivia patterns
+    non_astro_patterns = [
+        r"\b(python|javascript|java|c\+\+|html|css|sql|docker|kubernetes|api|backend|frontend|react|fastapi|django)\b",
+        r"\b(write\s+code|debug|function|algorithm|binary\s+search|regular\s+expression|regex|git\s+push|compile)\b",
+        r"\b(recipe|ingredients|bake|boil|cook\s+a|how\s+to\s+make\s+(?:cake|pasta|pizza|biryani|soup))\b",
+        r"\b(fix\s+(?:a\s+|an\s+|the\s+)?(?:leaky\s+|broken\s+|flat\s+)?(?:faucet|tire|pipe|puncture|leak|printer|keyboard|wifi|router|engine|car|bike|laptop|phone))\b",
+        r"\b(capital\s+of|who\s+(?:wrote|invented|discovered|painted|directed)|speed\s+of\s+light|chemical\s+formula)\b",
+        r"\b(calculate\s+derivative|solve\s+equation|\d+\s*[\+\-\*\/]\s*\d+\s*=)\b",
+        r"\b(translate\s+(?:this|word|text)\s+to|what\s+is\s+the\s+meaning\s+of\s+the\s+word\s+[\"'\w]+)\b",
+    ]
+    for pat in non_astro_patterns:
+        if re.search(pat, q_low):
+            return True
+
+    return False
+
+
 def detect_domain(question: str, route: Any = None, area: str = "") -> str:
     """Classifies user question into the most accurate astrological domain."""
     # 1. If explicit area provided by user dropdown, use direct mapping
@@ -492,7 +638,11 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
 
     q_lower = (question or "").lower().strip()
 
-    # 2. Phrase-level high intent scoring (e.g. "move abroad", "win court case", "buy house")
+    # 2. Check if question is strictly non-astrological/technical trivia
+    if is_strictly_out_of_domain(question):
+        return "out_of_domain"
+
+    # 3. Phrase-level high intent scoring (e.g. "move abroad", "win court case", "buy house")
     phrase_scores: dict[str, int] = {}
     for d_key, phrases in INTENT_KEYPHRASES.items():
         for phrase in phrases:
@@ -501,45 +651,47 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
     if phrase_scores:
         return max(phrase_scores, key=phrase_scores.get)
 
-    # 3. If semantic route provided, check its topic first (more specific), then domain
+    # 4. If semantic route provided, check its topic first (more specific), then domain
     if route is not None:
         r_topic = getattr(route, "topic", "")
-        if r_topic and r_topic != "general":
+        if r_topic and r_topic not in ("general", "general_destiny"):
             mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r_topic.lower().strip())
             if mapped:
                 return mapped
         r_domain = getattr(route, "domain", "")
-        if r_domain:
+        if r_domain and r_domain != "general":
             mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r_domain.lower().strip())
             if mapped:
                 return mapped
 
-    # 4. Try running semantic_question directly if question is non-empty
+    # 5. Try running semantic_question directly if question is non-empty
     if q_lower:
         try:
             import semantic_question as SQ
             r = SQ.route(question, area="")
             if r:
-                if r.topic and r.topic != "general":
+                if r.topic and r.topic not in ("general", "general_destiny"):
                     mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r.topic.lower().strip())
                     if mapped:
                         return mapped
-                if r.domain:
+                if r.domain and r.domain != "general":
                     mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r.domain.lower().strip())
                     if mapped and (r.method == "minilm" or r.domain_score >= 0.25):
                         return mapped
         except Exception:
             pass
 
-    # 5. Keyword scoring
+    # 6. Keyword scoring
     scores: dict[str, int] = {}
     for d_key, d_cfg in DOMAINS_CONFIG.items():
+        if d_key in ("out_of_domain", "general_destiny"):
+            continue
         for kw in d_cfg["keywords"]:
             if re.search(r"\b" + re.escape(kw) + r"\b", q_lower):
                 scores[d_key] = scores.get(d_key, 0) + 1
 
     if not scores:
-        return "career_profession"
+        return "general_destiny"
 
     return max(scores, key=scores.get)
 
@@ -852,7 +1004,110 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
     triple_dasha_confluence = " · ".join(triple_dasha_parts)
 
     # 10. Classical Verdict & Root Cause Diagnostic
-    if is_in_dusthana:
+    if domain_key == "gemstones_remedies":
+        try:
+            from gemstone_remedy import build_remedy_report
+            gem_report = build_remedy_report(pc, question=question, domain="gemstone")
+        except Exception:
+            gem_report = {}
+
+        primary_wear = gem_report.get("primary_wear") or []
+        avoid_list = gem_report.get("avoid") or []
+        mantra_list = gem_report.get("mantra_only") or []
+
+        rec_gems = []
+        rec_names = []
+        for g in primary_wear:
+            gem_info = g.get("gem") or {}
+            planet = g.get("planet", "")
+            if isinstance(gem_info, dict):
+                gem_name = gem_info.get("gem", "")
+                sub_gem = gem_info.get("sub", "")
+                metal = gem_info.get("metal", "Gold or Silver")
+                finger = gem_info.get("finger", "Ring or Index finger")
+                day = gem_info.get("day", "Auspicious day")
+            else:
+                gem_name = str(gem_info)
+                sub_gem = ""
+                metal = "Gold or Silver"
+                finger = "Ring or Index finger"
+                day = "Auspicious day"
+            if gem_name:
+                rec_names.append(gem_name)
+            sub_str = f" (Sub-gem: {sub_gem})" if sub_gem else ""
+            rec_gems.append(f"Suitable Gemstone for {planet}: Wear **{gem_name}**{sub_str} set in {metal} on the {finger} on {day} morning during Shukla Paksha.")
+
+        forbidden_gems = []
+        for a in avoid_list:
+            p = a.get("planet", "")
+            gem_info = a.get("gem") or {}
+            gname = gem_info.get("gem", "") if isinstance(gem_info, dict) else str(gem_info)
+            gname_str = f"{gname} " if gname else ""
+            r_reasons = "; ".join(a.get("reasons", []))
+            forbidden_gems.append(f"STRICTLY AVOID {gname_str}({p}): {r_reasons or 'Dusthana/Afflicted ruler for your Ascendant'}.")
+
+        if rec_gems:
+            root_cause_diagnosis = (
+                f"For your {lagna_sign} Ascendant, gemstone recommendation is governed by the functional benefic Trikona houses (1st, 5th, 9th). "
+                f"Your primary Life Stone is ruled by Lagna Lord {lagna_lord} ({prim_sign}), which directly strengthens your constitutional vitality, "
+                f"clarity, and protection. Secondary gems align with your supportive period rulers. "
+                f"Gemstones for Dusthana (6th, 8th, 12th) lords must strictly be avoided to prevent magnifying obstacles."
+            )
+            verdict = (
+                f"Based on your {lagna_sign} Lagna and planetary positions, the most auspicious and suitable gemstone(s) for you are: "
+                f"{', '.join(rec_names)}. Wearing these in the recommended metal and finger during favorable dasha alignments will channel maximum positive energy."
+            )
+        else:
+            root_cause_diagnosis = (
+                f"For your {lagna_sign} Lagna, direct gemstone wear requires caution during the current operating period. "
+                f"Planetary mantras and charitable seva offer safe, non-invasive remedial balance."
+            )
+            verdict = (
+                f"A direct primary gemstone is not recommended right now. Chanting root mantras and performing targeted charitable upayas "
+                f"is the most effective, safe path for your chart at this stage."
+            )
+
+        remedies = []
+        if rec_gems:
+            remedies.extend(rec_gems[:3])
+        if forbidden_gems:
+            remedies.extend(forbidden_gems[:2])
+        if not remedies:
+            remedies.append(f"Chant Lagna Lord ({lagna_lord}) Root Mantra daily to strengthen overall planetary shield.")
+    elif domain_key == "out_of_domain":
+        root_cause_diagnosis = (
+            f"This specific question falls outside the purview of classical Vedic astrology and natal chart interpretation. "
+            f"Vedic Jyotish is an empirical, time-honored science designed to illuminate human life dimensions — "
+            f"including physical vitality, vocational trajectory, relationships, family lineage, material prosperity, and planetary timing. "
+            f"Non-astrological technical, coding, trivia, or factual inquiries operate independently of natal planetary positions."
+        )
+        verdict = (
+            f"Your question pertains to a non-astrological topic outside natal chart analysis. "
+            f"We encourage you to ask any question regarding your life direction, career, relationships, health, wealth, "
+            f"or planetary periods (dashas), and your chart will reveal deep, classical guidance."
+        )
+        remedies = [
+            f"Daily spiritual grounding: Chant the Gayatri Mantra or Lagna Lord ({lagna_lord}) Root Mantra for mental clarity and overall life alignment.",
+            f"Feel free to ask a focused question regarding your personal life journey, career milestones, relationships, or planetary remedies."
+        ]
+    elif domain_key == "general_destiny":
+        root_cause_diagnosis = (
+            f"Your chart indicates an active, evolving life chapter anchored by Janma Lagna {lagna_sign} (governed by {lagna_lord}) "
+            f"and Moon in {moon_sign} under {moon_nak}. Current life developments and inner pacing are guided by your running {current_dasha_str} period. "
+            f"House 1 holds {prim_b} SAV Bindus, establishing a firm constitutional baseline, while ongoing Gochar transits "
+            f"guide the progressive unfoldment of your static potential."
+        )
+        verdict = (
+            f"Overall life prospects remain structurally supported under your {lagna_sign} Lagna. "
+            f"The ongoing operating period emphasizes focused foundation building, leading into the decisive "
+            f"{breakthrough_period_str} as your primary classical catalyst for expansion and milestone realization."
+        )
+        remedies = []
+        if cfg["karakas"]:
+            top_k = cfg["karakas"][0]
+            remedies.append(f"Strengthen Natural Karaka ({top_k}): Chant the {top_k} Gayatri Mantra or perform charitable seva (e.g. Surya Arghya for Sun, Jal Abhishek for Moon).")
+        remedies.append(f"Energize Lagna Lord ({lagna_lord}): Daily spiritual grounding, meditation, and chanting the Lagna lord's root mantra to fortify overall constitutional resilience.")
+    elif is_in_dusthana:
         root_cause_diagnosis = (
             f"The chart indicates genuine classical vulnerability in {cfg['title']} due to primary ruler {prim_lord} occupying "
             f"the {lord_h}th Dusthana ({lord_sign}) and key natural significators facing specific afflictions in foundational divisional charts (D9/D30). "
@@ -864,6 +1119,12 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
             f"{root_cause_diagnosis} With targeted planetary remedies, favorable Ashtakavarga support, "
             f"and supportive planetary transits, the upcoming {breakthrough_period_str} acts as the primary classical catalyst for decisive breakthroughs."
         )
+        remedies = []
+        remedies.append(f"Harmonize Obstructing Planet ({prim_lord}): Offer targeted donations or planetary prayers on {prim_lord}'s day to neutralize 8th/6th house friction.")
+        if cfg["karakas"]:
+            top_k = cfg["karakas"][0]
+            remedies.append(f"Strengthen Natural Karaka ({top_k}): Chant the {top_k} Gayatri Mantra or perform charitable seva (e.g. green fodder to cows for Mercury, Surya Arghya for Sun, Jal Abhishek for Moon).")
+        remedies.append(f"Energize Lagna Lord ({lagna_lord}): Daily spiritual grounding, meditation, and chanting the Lagna lord's root mantra to fortify overall constitutional resilience.")
     else:
         root_cause_diagnosis = (
             f"The chart shows constructive underlying potential for {cfg['title']} anchored by {prim_lord} in the {lord_h}th house ({lord_dig.replace('_', ' ')}). "
@@ -873,15 +1134,11 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
         verdict = (
             f"{root_cause_diagnosis} The upcoming {breakthrough_period_str} provides the active window for material realization."
         )
-
-    # 11. Targeted Remedial Guidance
-    remedies = []
-    if is_in_dusthana:
-        remedies.append(f"Harmonize Obstructing Planet ({prim_lord}): Offer targeted donations or planetary prayers on {prim_lord}'s day to neutralize 8th/6th house friction.")
-    if cfg["karakas"]:
-        top_k = cfg["karakas"][0]
-        remedies.append(f"Strengthen Natural Karaka ({top_k}): Chant the {top_k} Gayatri Mantra or perform charitable seva (e.g. green fodder to cows for Mercury, Surya Arghya for Sun, Jal Abhishek for Moon).")
-    remedies.append(f"Energize Lagna Lord ({lagna_lord}): Daily spiritual grounding, meditation, and chanting the Lagna lord's root mantra to fortify overall constitutional resilience.")
+        remedies = []
+        if cfg["karakas"]:
+            top_k = cfg["karakas"][0]
+            remedies.append(f"Strengthen Natural Karaka ({top_k}): Chant the {top_k} Gayatri Mantra or perform charitable seva (e.g. green fodder to cows for Mercury, Surya Arghya for Sun, Jal Abhishek for Moon).")
+        remedies.append(f"Energize Lagna Lord ({lagna_lord}): Daily spiritual grounding, meditation, and chanting the Lagna lord's root mantra to fortify overall constitutional resilience.")
 
     return QuestionConfluenceReport(
         question=question,
@@ -923,24 +1180,67 @@ class QuestionConsultationOutput(BaseModel):
     remedial_actions: str = Field(description="Step-by-step practical and spiritual remedies for immediate and long-term relief.")
 
 
-def synthesize_with_qwen(confluence: QuestionConfluenceReport) -> str:
+def synthesize_with_qwen(confluence: QuestionConfluenceReport, lang: str = "en") -> str:
     """Prompts Qwen LLM using the structured confluence payload to produce an authoritative consultation response."""
     if not _llm_allowed():
-        return _deterministic_consultation(confluence)
+        return _deterministic_consultation(confluence, lang=lang)
     try:
         from core.llm_client import _get_client, complete_model
         from core.config import S
         
-        system_prompt = (
-            "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
-            "and deeply insightful consultation reading for the seeker's specific life problem. "
-            "You have been provided with rigorous, verified classical confluence facts (Houses, Lords, Dignities, "
-            "Natural Karakas, Divisional Charts D9/D30, Sarvashtakavarga SAV Bindu strength, Live Planetary Transits Gochar, "
-            "Triple Dashas Vimshottari + Jaimini Chara + Yogini, and Vedic Upaya). "
-            "Write a beautifully articulated, structured consultation response in clear, fluent English that directly answers the question, "
-            "explains the exact astrological mechanics clearly, provides the precise timing milestone, and details actionable remedies. "
-            "DO NOT use raw JSON keys or robotic phrasing. Speak directly to the seeker as an experienced astrologer."
-        )
+        is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+        if is_hinglish:
+            system_prompt = (
+                "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
+                "and deeply insightful consultation reading for the seeker's question. "
+                "Write the entire consultation response in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
+                "DO NOT use Devanagari script. Use clear, fluent Roman Hindi words (e.g. 'Aapki kundli ke anusar...', 'Breakthrough period...', 'Grahon ki sthiti...'). "
+                "You have been provided with rigorous, verified classical confluence facts (Houses, Lords, Dignities, "
+                "Natural Karakas, Divisional Charts D9/D30, Sarvashtakavarga SAV Bindu strength, Live Planetary Transits Gochar, "
+                "Triple Dashas Vimshottari + Jaimini Chara + Yogini, and Vedic Upaya). "
+                "Speak directly to the seeker as 'Aap' like an experienced astrologer.\n\n"
+                "SPECIAL JUDGMENT RULES:\n"
+                "1. AMBIGUOUS / BROAD QUESTIONS: If the question is broad, general, or ambiguous (e.g. 'what is in store for my future?', 'kaisa rahega aane wala samay?'), "
+                "synthesize the Lagna, running Dasha chronology, SAV strength, and transit Gochar to deliver a comprehensive, deeply insightful reading on their overall life trajectory, key focus areas, and timing windows.\n"
+                "2. OUT-OF-DOMAIN QUESTIONS: If the question is entirely outside the scope of human life and Vedic astrology (e.g. coding, technical trivia, recipes, hardware repair), "
+                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite the seeker to ask about their personal life path or chart guidance."
+            )
+            instructions_text = """INSTRUCTIONS:
+Write a comprehensive, professional Vedic consultation response in natural conversational Hindi using English letters (Hinglish / Roman Hindi) containing:
+1. DIRECT ASTROLOGICAL VERDICT: Direct, honest answer in Roman Hindi addressing whether the chart indicates the issue and its nature. (If out-of-domain, explain politely).
+2. CORE PLANETARY MECHANICS: Detailed explanation in Roman Hindi of the primary house, lord placement, natural karakas, Ashtakavarga SAV support, and D9/D30 confirmations in clear, natural language.
+3. TIMELINE & KEY MILESTONE: Clear breakdown in Roman Hindi of the past origin, current active phase, and exact upcoming breakthrough window (citing dasha + transit dates).
+4. ACTIONABLE REMEDIAL GUIDANCE: Step-by-step practical and Vedic remedies (mantras, daan, puja) in Roman Hindi for immediate and long-term relief.
+
+FEW-SHOT HINGLISH EXAMPLES:
+- Verdict: "Aapke question ke mutabiq, kundli yeh darshati hai ki current phase thoda testing zaroor hai, lekin upcoming transit se conditions mein decisive improvement aayega."
+- Mechanics: "Aapka Janma Lagna aur primary house lord achhi sthiti mein hain, jisse long-term results favorable rahenge."
+- Timing: "Sabse important milestone aur breakthrough window October 2026 se shuru ho raha hai."
+- Remedy: "Surya Dev ko regular jal arpit karein aur Gayatri Mantra ka daily 108 baar jaap karein."
+"""
+        else:
+            system_prompt = (
+                "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
+                "and deeply insightful consultation reading for the seeker's question. "
+                "You have been provided with rigorous, verified classical confluence facts (Houses, Lords, Dignities, "
+                "Natural Karakas, Divisional Charts D9/D30, Sarvashtakavarga SAV Bindu strength, Live Planetary Transits Gochar, "
+                "Triple Dashas Vimshottari + Jaimini Chara + Yogini, and Vedic Upaya). "
+                "Write a beautifully articulated, structured consultation response in clear, fluent English that directly answers the question, "
+                "explains the exact astrological mechanics clearly, provides the precise timing milestone, and details actionable remedies. "
+                "DO NOT use raw JSON keys or robotic phrasing. Speak directly to the seeker as an experienced astrologer.\n\n"
+                "SPECIAL JUDGMENT RULES:\n"
+                "1. AMBIGUOUS / BROAD QUESTIONS: If the question is broad, general, or ambiguous (e.g. 'what does my future hold?', 'how will things be?'), "
+                "synthesize the Lagna, running Dasha chronology, SAV strength, and transit Gochar to deliver a comprehensive, deeply insightful reading on their overall life trajectory, key focus areas, and timing windows.\n"
+                "2. OUT-OF-DOMAIN QUESTIONS: If the question is entirely outside the scope of human life and Vedic astrology (e.g. coding, technical trivia, recipes, hardware repair), "
+                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite the seeker to ask about their personal life path or chart guidance."
+            )
+            instructions_text = """INSTRUCTIONS:
+Write a comprehensive, professional Vedic consultation response containing:
+1. DIRECT ASTROLOGICAL VERDICT: Direct, honest answer addressing whether the chart indicates the issue and its nature. (If out-of-domain, explain politely).
+2. CORE PLANETARY MECHANICS: Detailed explanation of the primary house, lord in 8th/Dusthana, natural karakas, Ashtakavarga SAV support, and D9/D30 divisional confirmations in natural, user-understandable language.
+3. TIMELINE & KEY MILESTONE: Clear breakdown of the past origin, current active phase, and the exact upcoming breakthrough window (citing dasha + transit confluence) where conditions decisively improve.
+4. ACTIONABLE REMEDIAL GUIDANCE: Step-by-step practical and spiritual remedies for immediate and long-term relief.
+"""
 
         user_content = f"""
 CLIENT QUESTION: "{confluence.question}"
@@ -970,12 +1270,7 @@ VERIFIED ASTROLOGICAL CONFLUENCE FACTS:
 11. Targeted Vedic Remedies (Upaya):
 {chr(10).join('   • ' + r for r in confluence.remedies)}
 
-INSTRUCTIONS:
-Write a comprehensive, professional Vedic consultation response containing:
-1. DIRECT ASTROLOGICAL VERDICT: Direct, honest answer addressing whether the chart indicates the issue and its nature.
-2. CORE PLANETARY MECHANICS: Detailed explanation of the primary house, lord in 8th/Dusthana, natural karakas, Ashtakavarga SAV support, and D9/D30 divisional confirmations in natural, user-understandable language.
-3. TIMELINE & KEY MILESTONE: Clear breakdown of the past origin, current active phase, and the exact upcoming breakthrough window (citing dasha + transit confluence) where conditions decisively improve.
-4. ACTIONABLE REMEDIAL GUIDANCE: Step-by-step practical and spiritual remedies for immediate and long-term relief.
+{instructions_text}
 """
 
         from openai import OpenAI
@@ -1000,7 +1295,7 @@ Write a comprehensive, professional Vedic consultation response containing:
     except Exception as exc:
         print(f"[confluence_question_engine] Qwen call failed: {exc}", flush=True)
 
-    return _deterministic_consultation(confluence)
+    return _deterministic_consultation(confluence, lang=lang)
 
 
 def _llm_allowed(kind: str = "user_question") -> bool:
@@ -1019,8 +1314,130 @@ def _llm_allowed(kind: str = "user_question") -> bool:
         return False
 
 
-def _deterministic_consultation(confluence: QuestionConfluenceReport) -> str:
+def _deterministic_consultation(confluence: QuestionConfluenceReport, lang: str = "en") -> str:
     """The same consultation written from the facts, with no model involved."""
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    
+    if confluence.domain_key == "out_of_domain":
+        if is_hinglish:
+            return (
+                f"### Jyotishiya Vishay Margdarshan: {confluence.domain_title}\n\n"
+                f"**Prashna:** *{confluence.question}*\n\n"
+                f"#### 1. Mukhya Sandesh (Scope of Astrology)\n"
+                f"Aapka yeh prashna Vedic Jyotish aur Janma Kundli ke daayre (houses, grah, dasha, life events) se alag ek general ya technical vishay par hai. "
+                f"Jyotish parampara aapke jeevan ke mukhya kshetron — jaise career, swasthya, vivah, dhan, santan, yaatra, aur grah upayon par sateek margdarshan pradan karti hai.\n\n"
+                f"#### 2. Kundli Ka Mool Swaroop\n"
+                f"• **Janma Lagna:** {confluence.lagna} (Lagna Swami: {confluence.lagna_lord})\n"
+                f"• **Chalu Dasha:** {confluence.current_dasha}\n"
+                f"• **Gochar Sthiti:** {confluence.transit_finding}\n\n"
+                f"#### 3. Agla Kadam Aur Salah\n"
+                f"• Is specific non-astrological inquiry ke liye relevant domain resources ka upyog karein.\n"
+                f"• Yadi aapke jeevan ke kisi pehlu, aane wale samay, dasha fal, career, ya grah shanti ke baare mein koi prashna ho, toh kripya bejhijhak poochhein."
+            )
+        return (
+            f"### Astrological Scope Notice: {confluence.domain_title}\n\n"
+            f"**Question:** *{confluence.question}*\n\n"
+            f"#### 1. Scope of Inquiry\n"
+            f"Your question pertains to a topic outside the classical domain of Vedic astrology and natal chart analysis. "
+            f"Vedic Jyotish specializes in human life dimensions — including career, vitality, marriage, finances, family lineage, and planetary periods (dashas).\n\n"
+            f"#### 2. Natal Chart Foundation\n"
+            f"• **Janma Lagna:** {confluence.lagna} (Ascendant Lord: {confluence.lagna_lord})\n"
+            f"• **Operating Dasha:** {confluence.current_dasha}\n"
+            f"• **Transit Context:** {confluence.transit_finding}\n\n"
+            f"#### 3. Recommended Next Step\n"
+            f"• For non-astrological technical or factual matters, please refer to specialized domains.\n"
+            f"• Feel free to ask any question regarding your personal life journey, career trajectory, relationships, health, or spiritual remedies."
+        )
+
+    if confluence.domain_key == "general_destiny":
+        if is_hinglish:
+            return (
+                f"### Sampurna Kundli Vishleshan: {confluence.domain_title}\n\n"
+                f"**Prashna:** *{confluence.question}*\n\n"
+                f"#### 1. Mukhya Faisla Aur Disha (Overall Life Trajectory Verdict)\n"
+                f"{confluence.classical_verdict}\n\n"
+                f"#### 2. Kundli Ka Mool Aadhar Aur Grah Bal\n"
+                f"• **Lagna Aur Lagnesh:** {confluence.lagna} Lagna jiske swami {confluence.lagna_lord} {confluence.primary_lord_placement} mein sthit hain.\n"
+                f"• **Ashtakavarga (SAV) Bal:** {confluence.ashtakavarga_finding}\n"
+                f"• **Gochar Grah Sthiti:** {confluence.transit_finding}\n"
+                f"• **D9 Varga Pushti:** " + "; ".join(confluence.varga_findings[:2]) + "\n\n"
+                f"#### 3. Chalu Dasha Timeline Aur Aane Wala Shubh Samay\n"
+                f"• **Active Triple Dasha:** {confluence.triple_dasha_confluence}\n"
+                f"• **Current Operating Period:** {confluence.current_dasha}\n"
+                f"• **Mukhya Breakthrough Window:** **{confluence.breakthrough_period}**\n\n"
+                f"#### 4. Dainik Margdarshan Aur Upaya\n"
+                + "\n".join(f"• {r}" for r in confluence.remedies)
+            )
+        return (
+            f"### Comprehensive Natal Chart Reading: {confluence.domain_title}\n\n"
+            f"**Question:** *{confluence.question}*\n\n"
+            f"#### 1. Overall Life Trajectory Verdict\n{confluence.classical_verdict}\n\n"
+            f"#### 2. Natal Chart Baseline & Planetary Balance\n"
+            f"• **Ascendant & Core Vitality:** {confluence.lagna} Lagna governed by {confluence.lagna_lord} seated in {confluence.primary_lord_placement}.\n"
+            f"• **Ashtakavarga (SAV) Strength:** {confluence.ashtakavarga_finding}\n"
+            f"• **Live Planetary Transits (Gochar):** {confluence.transit_finding}\n"
+            f"• **Divisional Cross-Check:** " + "; ".join(confluence.varga_findings[:2]) + "\n\n"
+            f"#### 3. Operating Dasha Timeline & Major Milestones\n"
+            f"• **Active Triple Dasha:** {confluence.triple_dasha_confluence}\n"
+            f"• **Current Operating Period:** {confluence.current_dasha}\n"
+            f"• **Key Breakthrough Window:** **{confluence.breakthrough_period}**\n\n"
+            f"#### 4. Actionable Guidance & Remedial Upaya\n"
+            + "\n".join(f"• {r}" for r in confluence.remedies)
+        )
+
+    if confluence.domain_key == "gemstones_remedies":
+        if is_hinglish:
+            return (
+                f"### Jyotishiya Ratna Salah Aur Upaya: {confluence.domain_title}\n\n"
+                f"**Prashna:** *{confluence.question}*\n\n"
+                f"#### 1. Mukhya Ratna Faisla (Gemstone Recommendation Verdict)\n"
+                f"{confluence.classical_verdict}\n\n"
+                f"#### 2. Kundli Ka Aadhar Aur Grah Sthiti\n"
+                f"• **Lagna Aur Lagnesh:** {confluence.lagna} Lagna jiske swami {confluence.lagna_lord} hain ({confluence.primary_lord_placement}). Yeh aapka mukhya Life Stone nirdharit karta hai.\n"
+                f"• **Trikona Grah Bal:** 1st, 5th, aur 9th bhav ke swami functional benefics hain, jinki urja ratna dharan se badhai ja sakti hai.\n"
+                f"• **Grah Gochar (Transits):** {confluence.transit_finding}\n"
+                f"• **Ashtakavarga SAV Bal:** {confluence.ashtakavarga_finding}\n\n"
+                f"#### 3. Chalu Dasha Aur Timing Alignment\n"
+                f"• **Active Dasha:** {confluence.current_dasha} ({confluence.triple_dasha_confluence})\n"
+                f"• **Prabhavi Daur:** {confluence.breakthrough_period}\n\n"
+                f"#### 4. Shubh Ratna, Niyam Aur Savdhani (Actionable Gemstone Protocol)\n"
+                + "\n".join(f"• {r}" for r in confluence.remedies)
+            )
+        return (
+            f"### Astrological Gemstone Consultation: {confluence.domain_title}\n\n"
+            f"**Question:** *{confluence.question}*\n\n"
+            f"#### 1. Classical Gemstone Verdict\n{confluence.classical_verdict}\n\n"
+            f"#### 2. Planetary Foundations & Trikona House Lords\n"
+            f"• **Ascendant & Life Ruler:** {confluence.lagna} Lagna governed by {confluence.lagna_lord} seated in {confluence.primary_lord_placement}. This establishes your core Life Gemstone.\n"
+            f"• **Benefic Trikona Alignment:** Houses 1, 5, and 9 provide auspicious gemstone resonance; Dusthana (6/8/12) lords are strictly barred from gemstone wear.\n"
+            f"• **Ashtakavarga (SAV) Strength:** {confluence.ashtakavarga_finding}\n"
+            f"• **Live Gochar (Transits):** {confluence.transit_finding}\n\n"
+            f"#### 3. Operating Dasha & Timing Context\n"
+            f"• **Active Triple Dasha:** {confluence.triple_dasha_confluence}\n"
+            f"• **Current Period:** {confluence.current_dasha}\n\n"
+            f"#### 4. Recommended Gemstones & Wearing Protocols\n"
+            + "\n".join(f"• {r}" for r in confluence.remedies)
+        )
+
+    if is_hinglish:
+        return (
+            f"### Jyotishiya Salah: {confluence.domain_title}\n\n"
+            f"**Prashna:** *{confluence.question}*\n\n"
+            f"#### 1. Mukhya Jyotishiya Vishleshan\n"
+            f"Aapki kundli ke anusar, {confluence.domain_title} ke mukhya swami {confluence.primary_house_lord} {confluence.primary_lord_placement} mein sthit hain. "
+            f"Yeh sthiti shuruat mein thoda vilamb ya badhao ka sanket deti hai, lekin sahi samay aane aur shubh grah gochar ke sath sthiti mein decisive sudhar aayega.\n\n"
+            f"#### 2. Grah Sthiti Aur Jyotishiya Praman\n"
+            f"• **Mukhya Bhav:** {confluence.primary_house}th House ({confluence.primary_house_sign}) jiske swami {confluence.primary_house_lord} hain, jo {confluence.primary_lord_placement} mein sthit hain.\n"
+            f"• **Ashtakavarga Bal:** {confluence.ashtakavarga_finding}\n"
+            f"• **Grah Gochar (Transits):** {confluence.transit_finding}\n"
+            f"• **Karak Grah:**\n" + "\n".join(f"  - {f}" for f in confluence.karaka_findings) + "\n\n"
+            f"#### 3. D9 Aur D30 Varga Pushti\n" + "\n".join(f"• {f}" for f in confluence.varga_findings) + "\n\n"
+            f"#### 4. Dasha Timeline Aur Mukhya Breakthrough Window\n"
+            f"• **Chalu Dasha Alignment:** {confluence.triple_dasha_confluence}\n"
+            f"• **Current Period:** {confluence.current_dasha}\n"
+            f"• **Mukhya Breakthrough Samay:** **{confluence.breakthrough_period}**\n\n"
+            f"#### 5. Vedic Upay Aur Margdarshan\n" + "\n".join(f"• {r}" for r in confluence.remedies)
+        )
     return (
         f"### Astrological Consultation: {confluence.domain_title}\n\n"
         f"**Question:** *{confluence.question}*\n\n"
@@ -1095,12 +1512,16 @@ def _format_consultation_markdown(md_text: str) -> str:
     return "\n".join(html_lines)
 
 
-def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: bool = True, qwen_text: str = "") -> str:
+def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: bool = True, qwen_text: str = "", lang: str = "en") -> str:
     """Renders the comprehensive Vedic Astrological Consultation document in clean HTML."""
     import html
 
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     pill_color = "#8a6a1f" if not confluence.is_lord_in_dusthana else "#a3341f"
-    pill_label = "Constructive Promise" if not confluence.is_lord_in_dusthana else "Requires Remedial Care"
+    if is_hinglish:
+        pill_label = "Anukool Sanket" if not confluence.is_lord_in_dusthana else "Upay Aur Savdhani Aavashyak"
+    else:
+        pill_label = "Constructive Promise" if not confluence.is_lord_in_dusthana else "Requires Remedial Care"
 
     karakas_html = "".join(f"<li style='margin-bottom:6px;'>{k}</li>" for k in confluence.karaka_findings)
     vargas_html = "".join(f"<li style='margin-bottom:6px;'>{v}</li>" for v in confluence.varga_findings)
@@ -1110,19 +1531,24 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     qwen_block = ""
     if paid and qwen_text:
         formatted_qwen = _format_consultation_markdown(qwen_text)
+        synth_hdr = "Vedic Jyotish Consultation Synthesis" if is_hinglish else "Jyotish Consultation Synthesis"
         qwen_block = (
             f'<article class="card qwen-consultation-card" style="background:#fff;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:20px 22px;margin:18px 0;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
-            f'  <div style="font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">Jyotish Consultation Synthesis</div>\n'
+            f'  <div style="font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">{synth_hdr}</div>\n'
             f'  {formatted_qwen}\n'
             f'</article>\n'
         )
 
+    clock_hdr = "Chalu Dasha Aur Grah Alignment:" if is_hinglish else "Active Multi-Clock Alignment:"
+    av_hdr = "Ashtakavarga Bal:" if is_hinglish else "Ashtakavarga Strength:"
+    transit_hdr = "Grah Gochar (Transits):" if is_hinglish else "Planetary Transits (Gochar):"
+
     if paid:
         confluence_bar = (
             f'<div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:10px 14px;border-radius:8px;margin:14px 0 16px;font-size:0.86rem;line-height:1.5;color:#2c3140;">\n'
-            f'  <b>Active Multi-Clock Alignment:</b> {confluence.triple_dasha_confluence}<br>\n'
-            f'  <b>Ashtakavarga Strength:</b> {confluence.ashtakavarga_finding}<br>\n'
-            f'  <b>Planetary Transits (Gochar):</b> {confluence.transit_finding}\n'
+            f'  <b>{clock_hdr}</b> {confluence.triple_dasha_confluence}<br>\n'
+            f'  <b>{av_hdr}</b> {confluence.ashtakavarga_finding}<br>\n'
+            f'  <b>{transit_hdr}</b> {confluence.transit_finding}\n'
             f'</div>\n'
         )
     else:
@@ -1130,22 +1556,23 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         cleaned_clock = re.sub(r"\s*\(\d{4}-\d{2}-\d{2}[^)]*\)", "", confluence.triple_dasha_confluence)
         confluence_bar = (
             f'<div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:10px 14px;border-radius:8px;margin:14px 0 16px;font-size:0.86rem;line-height:1.5;color:#2c3140;">\n'
-            f'  <b>Active Multi-Clock Alignment:</b> {cleaned_clock}<br>\n'
-            f'  <b>Ashtakavarga Strength:</b> {confluence.ashtakavarga_finding}<br>\n'
-            f'  <b>Planetary Transits (Gochar):</b> {confluence.transit_finding}\n'
+            f'  <b>{clock_hdr}</b> {cleaned_clock}<br>\n'
+            f'  <b>{av_hdr}</b> {confluence.ashtakavarga_finding}<br>\n'
+            f'  <b>{transit_hdr}</b> {confluence.transit_finding}\n'
             f'</div>\n'
         )
 
+    proof_title = "🔍 Jyotishiya Praman Aur Kundli Ganana (View Details)" if is_hinglish else "🔍 View Astrological Technical Proof &amp; Divisional Chart Working"
     proof_collapsible = (
         f'<details class="astro-proof-details" style="background:#fcfbf8;border:1px solid #e8e4dc;border-radius:10px;padding:12px 16px;margin:16px 0;">\n'
         f'  <summary style="cursor:pointer;font-size:0.82rem;font-weight:700;color:#7a4b18;outline:none;">\n'
-        f'    🔍 View Astrological Technical Proof &amp; Divisional Chart Working\n'
+        f'    {proof_title}\n'
         f'  </summary>\n'
         f'  <div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee8dc;font-size:0.86rem;line-height:1.55;color:#333;">\n'
         f'    <ul style="margin:0;padding-left:18px;">\n'
         f'      <li style="margin-bottom:4px;"><b>Primary Governing House ({confluence.primary_house}th):</b> {html.escape(confluence.dusthana_finding)}</li>\n'
-        f'      <li style="margin-bottom:4px;"><b>Ashtakavarga Strength:</b> {html.escape(confluence.ashtakavarga_finding)}</li>\n'
-        f'      <li style="margin-bottom:4px;"><b>Planetary Transits (Gochar):</b> {html.escape(confluence.transit_finding)}</li>\n'
+        f'      <li style="margin-bottom:4px;"><b>{av_hdr}</b> {html.escape(confluence.ashtakavarga_finding)}</li>\n'
+        f'      <li style="margin-bottom:4px;"><b>{transit_hdr}</b> {html.escape(confluence.transit_finding)}</li>\n'
         f'      {karakas_html}\n'
         f'      {vargas_html}\n'
         f'    </ul>\n'
@@ -1154,12 +1581,18 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     )
 
     if paid:
+        timing_hdr = "Dasha Timeline Aur Mukhya Badlav" if is_hinglish else "Dasha Timeline &amp; Key Turning Points"
+        running_hdr = "Chalu Dasha Period:" if is_hinglish else "Active Running Period:"
+        breakthrough_hdr = "Mukhya Breakthrough Window:" if is_hinglish else "Major Breakthrough Window:"
+        remedy_hdr = "Vedic Upay Aur Dainik Margdarshan" if is_hinglish else "Targeted Vedic Upaya (Actionable Remedies)"
+        remedy_p = "Grah shanti aur prabhavi upayo se chunautiyon ko santulit kiya ja sakta hai:" if is_hinglish else "Practical steps and planetary mantras designed to neutralize obstructive friction and energize your key functional rulers:"
+
         timing_section = (
             f'<article class="card timing-card" style="background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
-            f'  <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:8px;">Dasha Timeline &amp; Key Turning Points</div>\n'
+            f'  <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:8px;">{timing_hdr}</div>\n'
             f'  <div style="background:#fcfbf8;border-left:3px solid #b57c38;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:0.86rem;color:#2c3140;">\n'
-            f'    <b>Active Running Period:</b> {html.escape(confluence.current_dasha)}<br>\n'
-            f'    <b>Major Breakthrough Window:</b> <span style="color:#b57c38;font-weight:700;">{html.escape(confluence.breakthrough_period)}</span>\n'
+            f'    <b>{running_hdr}</b> {html.escape(confluence.current_dasha)}<br>\n'
+            f'    <b>{breakthrough_hdr}</b> <span style="color:#b57c38;font-weight:700;">{html.escape(confluence.breakthrough_period)}</span>\n'
             f'  </div>\n'
             f'  <ul style="margin:0 0 0 18px;padding:0;font-size:0.84rem;line-height:1.5;color:#555;">\n'
             f'    {timeline_html}\n'
@@ -1168,8 +1601,8 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         )
         remedy_section = (
             f'<article class="card remedy-card" style="background:#f9fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:18px 20px;margin-top:18px;">\n'
-            f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#1c6b45;margin-bottom:8px;">Targeted Vedic Upaya (Actionable Remedies)</div>\n'
-            f'  <p style="font-size:0.86rem;color:#444;margin:0 0 10px;line-height:1.45;">Practical steps and planetary mantras designed to neutralize obstructive friction and energize your key functional rulers:</p>\n'
+            f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#1c6b45;margin-bottom:8px;">{remedy_hdr}</div>\n'
+            f'  <p style="font-size:0.86rem;color:#444;margin:0 0 10px;line-height:1.45;">{remedy_p}</p>\n'
             f'  <ul style="list-style:none;margin:0;padding:0;font-size:0.88rem;line-height:1.55;color:#2c3140;">\n'
             f'    {remedies_html}\n'
             f'  </ul>\n'
@@ -1177,51 +1610,92 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         )
         unlock_cta_box = ""
     else:
-        timing_section = (
-            f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
-            f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
-            f'    <b>Active Turning Point &amp; Timing Windows:</b> Specific month and year when this situation shifts, breakthrough windows, and Dasha milestone dates.\n'
-            f'  </div>\n'
-            f'  <div class="lock-over" data-unlock="1">\n'
-            f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Unlock Breakthrough Dates &amp; Milestone Timeline</span>\n'
-            f'  </div>\n'
-            f'</div>\n'
-        )
-        remedy_section = (
-            f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
-            f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
-            f'    <b>Targeted Vedic Upaya:</b> Specific planetary mantras, gemstone calibrations, and daily charitable rituals to resolve this challenge.\n'
-            f'  </div>\n'
-            f'  <div class="lock-over" data-unlock="1">\n'
-            f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Complete Upaya &amp; Remedies in Full Reading</span>\n'
-            f'  </div>\n'
-            f'</div>\n'
-        )
-        unlock_cta_box = (
-            f'<div class="buy" style="margin:20px 0;background:linear-gradient(135deg,#1f2430 0%,#141720 100%);border:1px solid #c9a227;border-radius:14px;padding:22px 20px;text-align:center;color:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.12);">\n'
-            f'  <div style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#d9a544;font-weight:700;margin-bottom:6px;">Complete Astrological Reading Available</div>\n'
-            f'  <h3 style="font-family:Georgia,serif;font-size:1.2rem;color:#fbf6e4;margin:0 0 8px;font-weight:600;">Unlock Breakthrough Dates, Full Timeline &amp; Upaya Remedies</h3>\n'
-            f'  <p style="font-size:0.85rem;color:#b8bdcc;margin:0 auto 16px;max-width:540px;line-height:1.5;">Get the complete multi-technique synthesis: exact milestone dates, active Dasha turning points, custom planetary mantras, and actionable remedies.</p>\n'
-            f'  <a class="cta" href="#unlock" data-unlock="1" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#e8b75b 0%,#c9a227 100%);color:#16181d;font-weight:700;font-size:0.95rem;padding:13px 28px;border-radius:99px;text-decoration:none;box-shadow:0 4px 14px rgba(201,162,39,0.35);width:100%;max-width:320px;margin:0 auto;">🔒 Unlock Full Consultation — ₹298</a>\n'
-            f'  <div style="font-size:0.74rem;color:#8c93a6;margin-top:10px;">Instant Access · 100% Secure Checkout</div>\n'
-            f'</div>\n'
-        )
+        if is_hinglish:
+            timing_section = (
+                f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
+                f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
+                f'    <b>Mukhya Badlav Aur Timing Windows:</b> Sthiti badalne ka specific mahina aur saal, breakthrough windows aur Dasha milestones.\n'
+                f'  </div>\n'
+                f'  <div class="lock-over" data-unlock="1">\n'
+                f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Breakthrough Dates Aur Timeline Unlock Karein</span>\n'
+                f'  </div>\n'
+                f'</div>\n'
+            )
+            remedy_section = (
+                f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
+                f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
+                f'    <b>Vedic Upay Aur Remedies:</b> Grah mantras, daan vidhi aur daily rituals is prashna ke samadhan ke liye.\n'
+                f'  </div>\n'
+                f'  <div class="lock-over" data-unlock="1">\n'
+                f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Poori Upay Aur Remedies Unlock Karein</span>\n'
+                f'  </div>\n'
+                f'</div>\n'
+            )
+            unlock_cta_box = (
+                f'<div class="buy" style="margin:20px 0;background:linear-gradient(135deg,#1f2430 0%,#141720 100%);border:1px solid #c9a227;border-radius:14px;padding:22px 20px;text-align:center;color:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.12);">\n'
+                f'  <div style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#d9a544;font-weight:700;margin-bottom:6px;">Poori Astrological Consultation Available</div>\n'
+                f'  <h3 style="font-family:Georgia,serif;font-size:1.2rem;color:#fbf6e4;margin:0 0 8px;font-weight:600;">Breakthrough Dates, Full Timeline &amp; Upaya Remedies Unlock Karein</h3>\n'
+                f'  <p style="font-size:0.85rem;color:#b8bdcc;margin:0 auto 16px;max-width:540px;line-height:1.5;">Exact milestone dates, active Dasha turning points aur custom planetary remedies ke sath poori consultation dekhein.</p>\n'
+                f'  <a class="cta" href="#unlock" data-unlock="1" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#e8b75b 0%,#c9a227 100%);color:#16181d;font-weight:700;font-size:0.95rem;padding:13px 28px;border-radius:99px;text-decoration:none;box-shadow:0 4px 14px rgba(201,162,39,0.35);width:100%;max-width:320px;margin:0 auto;">🔒 Poori Consultation Unlock Karein — ₹298</a>\n'
+                f'  <div style="font-size:0.74rem;color:#8c93a6;margin-top:10px;">Instant Access · 100% Secure Checkout</div>\n'
+                f'</div>\n'
+            )
+        else:
+            timing_section = (
+                f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
+                f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
+                f'    <b>Active Turning Point &amp; Timing Windows:</b> Specific month and year when this situation shifts, breakthrough windows, and Dasha milestone dates.\n'
+                f'  </div>\n'
+                f'  <div class="lock-over" data-unlock="1">\n'
+                f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Unlock Breakthrough Dates &amp; Milestone Timeline</span>\n'
+                f'  </div>\n'
+                f'</div>\n'
+            )
+            remedy_section = (
+                f'<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" style="margin:16px 0;border-radius:12px;cursor:pointer;">\n'
+                f'  <div class="lock-blur" style="padding:16px 20px;font-size:0.88rem;line-height:1.55;">\n'
+                f'    <b>Targeted Vedic Upaya:</b> Specific planetary mantras, gemstone calibrations, and daily charitable rituals to resolve this challenge.\n'
+                f'  </div>\n'
+                f'  <div class="lock-over" data-unlock="1">\n'
+                f'    <span class="lock-chip" data-unlock="1" style="font-size:0.72rem;padding:7px 18px;cursor:pointer;">🔒 Complete Upaya &amp; Remedies in Full Reading</span>\n'
+                f'  </div>\n'
+                f'</div>\n'
+            )
+            unlock_cta_box = (
+                f'<div class="buy" style="margin:20px 0;background:linear-gradient(135deg,#1f2430 0%,#141720 100%);border:1px solid #c9a227;border-radius:14px;padding:22px 20px;text-align:center;color:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.12);">\n'
+                f'  <div style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#d9a544;font-weight:700;margin-bottom:6px;">Complete Astrological Reading Available</div>\n'
+                f'  <h3 style="font-family:Georgia,serif;font-size:1.2rem;color:#fbf6e4;margin:0 0 8px;font-weight:600;">Unlock Breakthrough Dates, Full Timeline &amp; Upaya Remedies</h3>\n'
+                f'  <p style="font-size:0.85rem;color:#b8bdcc;margin:0 auto 16px;max-width:540px;line-height:1.5;">Get the complete multi-technique synthesis: exact milestone dates, active Dasha turning points, custom planetary mantras, and actionable remedies.</p>\n'
+                f'  <a class="cta" href="#unlock" data-unlock="1" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#e8b75b 0%,#c9a227 100%);color:#16181d;font-weight:700;font-size:0.95rem;padding:13px 28px;border-radius:99px;text-decoration:none;box-shadow:0 4px 14px rgba(201,162,39,0.35);width:100%;max-width:320px;margin:0 auto;">🔒 Unlock Full Consultation — ₹298</a>\n'
+                f'  <div style="font-size:0.74rem;color:#8c93a6;margin-top:10px;">Instant Access · 100% Secure Checkout</div>\n'
+                f'</div>\n'
+            )
 
     verdict_text = confluence.classical_verdict if paid else (confluence.root_cause_diagnosis or confluence.classical_verdict)
+    if is_hinglish and verdict_text and "chart indicates" in verdict_text.lower():
+        verdict_text = (
+            f"Aapki kundli ke anusar, {confluence.domain_title} ke mukhya swami {confluence.primary_house_lord} {confluence.primary_lord_placement} mein sthit hain. "
+            f"Yeh sthiti vartaman samay mein thoda vilamb aur mehnat ka sanket deti hai. "
+            f"Lekin D10/D9 chart ki sthirta aur shubh dasha aane par sthiti mein decisive aur positive sudhar dekhne ko milega."
+        )
+
+    domain_kicker = f"Jeevan Ka Kshetra · {html.escape(confluence.domain_title)}" if is_hinglish else f"Life Domain · {html.escape(confluence.domain_title)}"
+    heading_title = f"\"{html.escape(confluence.question)}\" Ke Liye Jyotishiya Salah" if is_hinglish else f"Consultation for \"{html.escape(confluence.question)}\""
+    root_hdr = "Grah Sthiti Aur Mool Jyotishiya Vishleshan:" if is_hinglish else "Astrological Root Cause &amp; Situation Diagnostic:"
 
     return (
         f'<div class="confluence-consultation-wrap" style="margin:10px 0 24px;">\n'
         f'  <article class="card headline-card" style="border-left:4px solid {pill_color};background:#fff;border-radius:12px;padding:18px 22px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
         f'    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">\n'
-        f'      <span style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#6a7080;">Life Domain · {html.escape(confluence.domain_title)}</span>\n'
+        f'      <span style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#6a7080;">{domain_kicker}</span>\n'
         f'      <span class="pill" style="font-size:0.68rem;font-weight:700;padding:3px 10px;border-radius:99px;background:#fbf6e4;color:{pill_color};">{pill_label}</span>\n'
         f'    </div>\n'
-        f'    <h2 style="font-family:Georgia,serif;font-size:1.3rem;margin:4px 0 8px;color:#1f2430;font-weight:600;line-height:1.35;">Consultation for "{html.escape(confluence.question)}"</h2>\n'
+        f'    <h2 style="font-family:Georgia,serif;font-size:1.3rem;margin:4px 0 8px;color:#1f2430;font-weight:600;line-height:1.35;">{heading_title}</h2>\n'
         f'    <p style="font-size:0.84rem;color:#6a7080;margin:0 0 12px;">\n'
         f'      <b>Janma Lagna:</b> {html.escape(confluence.lagna)} (Lord: {html.escape(confluence.lagna_lord)}) &nbsp;|&nbsp; <b>Moon Sign:</b> {html.escape(confluence.moon_sign)} ({html.escape(confluence.moon_nakshatra)})\n'
         f'    </p>\n'
         f'    <div style="background:#fffcfb;border-left:4px solid {pill_color};padding:12px 14px;border-radius:8px;margin-top:10px;">\n'
-        f'      <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#9e2a1b;">Astrological Root Cause &amp; Situation Diagnostic:</b>\n'
+        f'      <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#9e2a1b;">{root_hdr}</b>\n'
         f'      <p style="font-size:0.91rem;line-height:1.6;color:#2c3140;margin:6px 0 0;">\n'
         f'        {html.escape(verdict_text)}\n'
         f'      </p>\n'

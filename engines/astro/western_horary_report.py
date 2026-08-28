@@ -576,6 +576,19 @@ def judge(data: dict, question: str, quesited_house: int) -> dict:
     result_lean = "YES" if score >= 0.6 else ("NO" if score <= -0.6 else "MIXED")
     precedent = R.match_book_case(conditions, result_lean)
 
+    parsed_q = R.parse_question(question)
+    is_ood = bool(parsed_q.get("out_of_domain"))
+    if is_ood:
+        verdict = "Out of Scope / Non-Horary Query"
+        conf = "low"
+        score = 0.0
+        reasons = [
+            "This question falls outside the scope of classical Horary (Prashna) astrology. "
+            "Horary chart reading answers specific human life questions regarding career, relationships, "
+            "property, legal matters, travel, health recovery, and timing."
+        ]
+        timing = []
+
     return {
         "is_day": is_day, "asc_sign": asc_sign, "asc_lord": asc_lord, "asc_ed": asc_ed,
         "asc_deg": asc_deg, "early_asc": early_asc, "late_asc": late_asc,
@@ -590,6 +603,8 @@ def judge(data: dict, question: str, quesited_house: int) -> dict:
         "verdict": verdict, "confidence": conf, "score": round(score, 2),
         "reasons": reasons, "timing": timing, "precedent": precedent,
         "planets_in_1st": [p for p in planets if planets[p]["house"] == 1],
+        "out_of_domain": is_ood,
+        "label": "Non-Astrological Inquiry" if is_ood else ("Yes" if score >= 0.45 else ("Leaning yes" if score >= 0.15 else ("Genuinely open" if score > -0.15 else ("Leaning no" if score > -0.45 else "No")))),
     }
 
 

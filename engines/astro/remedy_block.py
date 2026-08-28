@@ -49,6 +49,18 @@ PRACTICAL = {
     "Ketu": "Loosen your grip for a fortnight. This one moves when you stop forcing it.",
 }
 
+PRACTICAL_HINGLISH = {
+    "Sun": "Faisla lene wale senior authority person se direct baat karein.",
+    "Moon": "Pehle apni neend aur ghar ki routine ko protect karein — aapka mood aur decision making dono isi par depend karte hain.",
+    "Mars": "Ek mahine ke liye kisi bhi tarah ke vivaad ya escalation se bachein aur doosre paksh ko pehle kadam uthane dein.",
+    "Mercury": "Mahatvapurna baaton ko likh kar rakhein aur bhejne se pehle dobara padhein.",
+    "Jupiter": "Kisi anubhavi ya varishth vyakti se margdarshan lein. Yeh sthiti prayas ke sath sahi sahyog se khulti hai.",
+    "Venus": "Kisi anurodh ya baat ko aage badhane se pehle sambandho mein aapsi samajh ko theek karein.",
+    "Saturn": "Boring lekin zaroori kaam pehle poora karein. Shani keval adhure kaamon mein rukawat dalte hain.",
+    "Rahu": "Jo cheez bohot aasan ya convenient lage, uski pehle achhe se pushti karein.",
+    "Ketu": "Thode samay ke liye cheezon ko zabardasti karna band karein; yeh tab aage badhti hain jab aap pressure kam karte hain.",
+}
+
 STAGE_PRACTICAL: dict[str, dict[str, str]] = {
     "Sun": {
         "child": "Show consistent effort on something you care about and ask a teacher or parent for feedback.",
@@ -105,14 +117,11 @@ WEAR_LABEL = {
     "avoid": ("Do not wear this stone", "down"),
 }
 
-_DIGNITY_PLAIN = {
-    "exalted": "very strong",
-    "moolatrikona": "on its best ground",
-    "own_sign": "in its own sign",
-    "friendly_sign": "comfortably placed",
-    "neutral_sign": "neither strong nor weak",
-    "enemy_sign": "under strain",
-    "debilitated": "very weak",
+WEAR_LABEL_HINGLISH = {
+    "recommended": ("Aapki kundli ke liye anukool", "up"),
+    "test_required": ("Keval trial wear ke liye", "trial"),
+    "mantra_only": ("Yeh ratna na pehnein. Iski jagah mantra ka upyog karein", "down"),
+    "avoid": ("Yeh ratna bilkul na pehnein", "down"),
 }
 
 
@@ -126,7 +135,8 @@ def _e(t: Any) -> str:
 
 
 def build(pc: dict, *, domain: str = "", question: str = "",
-          name: str = "", question_scoped: bool = False) -> dict:
+          name: str = "", question_scoped: bool = False,
+          lang: str = "en") -> dict:
     """Gemstone safety plus the practical action, for one chart."""
     try:
         from gemstone_remedy import build_remedy_report
@@ -141,7 +151,6 @@ def build(pc: dict, *, domain: str = "", question: str = "",
     avoid = list(rep.get("avoid") or [])
 
     # Chart-level "start here" tip follows the running period lord.
-    # Per-area cards must NOT reuse this — see area_report.classical_area_remedy.
     dasha = rep.get("dasha") or {}
     lord = dasha.get("ad_lord") or dasha.get("md_lord") or ""
     try:
@@ -149,14 +158,21 @@ def build(pc: dict, *, domain: str = "", question: str = "",
         band = _ab(pc)
     except Exception:  # noqa: BLE001
         band = "adult"
+    
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    practical_txt = PRACTICAL_HINGLISH.get(lord, "") if is_hinglish else practical_remedy(lord, band)
+    if not practical_txt:
+        practical_txt = practical_remedy(lord, band)
+
     return {"wear": wear, "mantra_only": mantra_only, "avoid": avoid,
             "practical_planet": lord,
-            "practical": practical_remedy(lord, band),
+            "practical": practical_txt,
             "lagna_lord": rep.get("lagna_lord", ""),
-            "ok": bool(rep.get("ok", True))}
+            "ok": bool(rep.get("ok", True)),
+            "lang": lang}
 
 
-def _free_avoid_reason(item: dict) -> str:
+def _free_avoid_reason(item: dict, is_hinglish: bool = False) -> str:
     """Human Free-report language for gemstone refusals (no house/lord jargon)."""
     snap = item.get("snap") or {}
     planet = (snap.get("planet") or item.get("planet")
@@ -167,6 +183,17 @@ def _free_avoid_reason(item: dict) -> str:
     except (TypeError, ValueError):
         house = 0
     joined = " ".join(str(r) for r in (item.get("reasons") or [])).lower()
+
+    if is_hinglish:
+        if house in (6, 8, 12) or "pressure house" in joined:
+            return f"{planet} aapki kundli ke sensitive bhav se jude hain, isliye yeh ratna pehanna varjit hai."
+        if "overheat" in joined or "strong malefic" in joined:
+            return f"{planet} aapki kundli mein pehle se forceful hain; yeh ratna pehanne se unka prabhav ugra ho sakta hai."
+        if "debilitat" in joined or dig == "debilitated":
+            return f"{planet} kundli mein kamzor sthiti mein hain, isliye ratna ki jagah mantra aur daan adhik surakshit hain."
+        if planet in ("Rahu", "Ketu") or "not advised unless" in joined:
+            return f"Yeh {planet}-sambandhit ratna bina anukool dasha ke pehanna uchit nahi hai."
+        return f"Aapki kundli mein {planet} ki sthiti ke anusar yeh ratna pehanna anukool nahi hai."
 
     if house in (6, 8, 12) or "pressure house" in joined:
         return (f"{planet} is strongly connected with a sensitive area of your "
@@ -187,16 +214,19 @@ def _free_avoid_reason(item: dict) -> str:
             f"recommended for you.")
 
 
-def _stone_row(item: dict, *, paid: bool = False) -> str:
+def _stone_row(item: dict, *, paid: bool = False, is_hinglish: bool = False) -> str:
     gem = item.get("gem") or {}
     verdict = str(item.get("verdict") or "")
-    label, tone = WEAR_LABEL.get(verdict, ("Check with an astrologer", "mixed"))
+    labels_dict = WEAR_LABEL_HINGLISH if is_hinglish else WEAR_LABEL
+    label, tone = labels_dict.get(verdict, ("Jyotish paramarsh aavashyak" if is_hinglish else "Check with an astrologer", "mixed"))
     reasons = item.get("reasons") or []
     snap = item.get("snap") or {}
     detail = ""
     if verdict in ("recommended", "test_required"):
-        detail = (f"Metal: {_e(gem.get('metal'))} · Finger: {_e(gem.get('finger'))} · "
-                  f"Start day: {_e(gem.get('day'))}")
+        if is_hinglish:
+            detail = f"Dhaatu: {_e(gem.get('metal'))} · Ungli: {_e(gem.get('finger'))} · Shuru Din: {_e(gem.get('day'))}"
+        else:
+            detail = f"Metal: {_e(gem.get('metal'))} · Finger: {_e(gem.get('finger'))} · Start day: {_e(gem.get('day'))}"
     why = ""
     role_html = ""
     if paid:
@@ -206,16 +236,13 @@ def _stone_row(item: dict, *, paid: bool = False) -> str:
                 from gemstone_remedy import _customer_role_label
                 role_bits.append(_customer_role_label(str(item.get("role"))))
             except Exception:
-                role_bits.append("Relevant chart indicator")
-        # Never expose the internal house/dignity snapshot. The customer only
-        # needs the semantic planetary role; the canonical evidence layer owns
-        # the technical chart mechanics.
+                role_bits.append("Kundli Indicator" if is_hinglish else "Relevant chart indicator")
         if snap.get("planet") and not role_bits:
-            role_bits.append(f"{snap.get('planet')} is relevant to this remedy")
+            role_bits.append(f"{snap.get('planet')} is relevant" if not is_hinglish else f"{snap.get('planet')} is upay se sambandhit hain")
         if role_bits:
             role_html = f'<div class="stone-role">{_e(". ".join(role_bits))}</div>'
         if reasons:
-            why_label = "Why"
+            why_label = "Karan" if is_hinglish else "Why"
             reason_text = str(reasons[0])
             try:
                 from qa_checks.customer_text_sanitizer import sanitize_customer_text
@@ -227,12 +254,15 @@ def _stone_row(item: dict, *, paid: bool = False) -> str:
             why = (f'<div class="stone-why"><b>{why_label}:</b> '
                    f'{_e(reason_text)}</div>')
     else:
-        # Free refusals: keep the verdict, drop lord/house mechanics.
+        # Free refusals
         if verdict in ("avoid", "mantra_only") or reasons:
-            why = f'<div class="stone-why">{_e(_free_avoid_reason(item))}</div>'
-    alt_label = "Daily strengthening mantra & offering"
-    if verdict in ("avoid", "mantra_only"):
-        alt_label = "Immediate relief (Mantra & charity)"
+            why = f'<div class="stone-why">{_e(_free_avoid_reason(item, is_hinglish=is_hinglish))}</div>'
+    
+    if is_hinglish:
+        alt_label = "Mantra Aur Daan" if verdict in ("avoid", "mantra_only") else "Dainik Mantra Aur Puja"
+    else:
+        alt_label = "Immediate relief (Mantra & charity)" if verdict in ("avoid", "mantra_only") else "Daily strengthening mantra & offering"
+    
     return f"""
   <li class="stone {tone}" data-verdict="{tone}">
     <div class="stone-top">
@@ -248,63 +278,72 @@ def _stone_row(item: dict, *, paid: bool = False) -> str:
 
 
 def _stones_group(items: list, *, tone: str, label: str,
-                  paid: bool = False) -> str:
+                  paid: bool = False, is_hinglish: bool = False) -> str:
     if not items:
         return ""
     return f"""
   <div class="stones-group {tone}">
     <div class="stones-group-label">{_e(label)}</div>
-    <ul class="stones">{''.join(_stone_row(st, paid=paid) for st in items)}</ul>
+    <ul class="stones">{''.join(_stone_row(st, paid=paid, is_hinglish=is_hinglish) for st in items)}</ul>
   </div>"""
 
 
 def render(block: dict, *, paid: bool = False, price: int = 0,
-           heading: str = "What you can actually do about it",
-           lede: str = "") -> str:
-    """Remedies are paid. The refusals are free, and they do the selling.
-
-    Operator's call and it is the sharper play: telling someone which stone is
-    *wrong* for them costs us nothing and proves we are not just moving
-    inventory. Every jeweller in the country will sell a Gemini a yellow
-    sapphire; being the one who says "not you, not this stone, and here is the
-    classical reason" is the whole trust argument in one paragraph.
-
-    So the free view shows only the avoid list. The stones that would help, the
-    metal, the finger, the day to begin, and the practical action all sit behind
-    the paywall.
-
-    Wear / do items are always in a green block; avoid / do-not-wear items in a
-    red block — never interleaved in one list.
-    """
+           heading: str = "",
+           lede: str = "",
+           lang: str = "en") -> str:
     if not block:
         return ""
     avoid = block.get("avoid") or []
     mantra_only = block.get("mantra_only") or []
     wear = block.get("wear") or []
     practical = block.get("practical")
+    is_hinglish = str(lang or block.get("lang") or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+
+    if not heading:
+        heading = "Aapke Liye Upay Aur Rashi Ratna" if is_hinglish else "What you can actually do about it"
+    if not lede:
+        if is_hinglish:
+            lede = "Jin kshetron mein savdhani ki aavashyakta hai, wahan dainik vyavaharik aadat, mantra, daan aur anukool ratna se sahyog liya jata hai. Jo ratna varjit hain unhe pehanna mana hota hai."
+        else:
+            lede = ("For the areas that need more care, the traditional approach is to "
+                    "support them through practical habits, mantra, charity and — where "
+                    "appropriate — gemstones.")
 
     if paid:
         do_block = ""
         if practical:
+            do_lbl = "Dainik Vyavaharik Upay · Sabse Pehle Karein" if is_hinglish else "Do this first · no belief required"
             do_block = f"""
   <div class="remedy-do">
-    <div class="remedy-do-label">Do this first · no belief required</div>
+    <div class="remedy-do-label">{do_lbl}</div>
     <p>{_e(practical)}</p>
   </div>"""
         safe = [w for w in wear if str(w.get("verdict") or "") == "recommended"]
         trial = [w for w in wear if str(w.get("verdict") or "") == "test_required"]
-        # Any other wear verdicts (defensive) stay with safe list styling.
         other = [w for w in wear
                  if str(w.get("verdict") or "") not in ("recommended", "test_required")]
+        
+        w_lbl = "Anukool Grah · Shubh Rashi Ratna Aur Grah Bal" if is_hinglish else "Supporting planets · Auspicious gemstone & strengthening"
+        t_lbl = "Secondary Grah Sahyog · Pehle Trial Wear Karein" if is_hinglish else "Secondary planetary support · Trial wear first"
+        a_lbl = "Varjit Grah · Turant Rahat (Mantra Aur Daan)" if is_hinglish else "Obstructing & friction planets · Immediate relief (mantra & charity)"
+
         wear_group = _stones_group(
-            safe + other, tone="up", paid=True,
-            label="Supporting planets · Auspicious gemstone & strengthening")
+            safe + other, tone="up", paid=True, is_hinglish=is_hinglish,
+            label=w_lbl)
         trial_group = _stones_group(
-            trial, tone="trial", paid=True,
-            label="Secondary planetary support · Trial wear first")
+            trial, tone="trial", paid=True, is_hinglish=is_hinglish,
+            label=t_lbl)
         avoid_group = _stones_group(
-            list(mantra_only) + list(avoid), tone="down", paid=True,
-            label="Obstructing & friction planets · Immediate relief (mantra & charity)")
+            list(mantra_only) + list(avoid), tone="down", paid=True, is_hinglish=is_hinglish,
+            label=a_lbl)
+        
+        fine_text = (
+            "Upay kundli ki sthiti ko zabardasti badalne ke liye nahi balki sahi samay par uchit disha aur sakaratmak urja pane ke liye hote hain."
+            if is_hinglish else
+            "A remedy is not a lever that overrides the chart. It works the way preparation works — it changes what you are ready for when the timing turns. If you choose a trial approach, follow the specific trial period shown for that stone before deciding whether to continue."
+        )
+
         return f"""
 <section class="remedy-card">
   <div class="ev-label">{_e(heading)}</div>
@@ -313,10 +352,7 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
   {wear_group}
   {trial_group}
   {avoid_group}
-  <p class="fine">A remedy is not a lever that overrides the chart. It works the
-  way preparation works — it changes what you are ready for when the timing
-  turns. If you choose a trial approach, follow the specific trial period
-  shown for that stone before deciding whether to continue.</p>
+  <p class="fine">{fine_text}</p>
 </section>"""
 
     # --- free view: refusals only ------------------------------------------
@@ -324,8 +360,14 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
     helpful_count = len(wear)
 
     if not refused:
-        # Nothing is contraindicated, which is itself worth saying.
-        body = f"""
+        if is_hinglish:
+            body = f"""
+  <p class="remedy-lede">Aapki kundli mein kisi bhi rashi ratna se koi hani nahi hai — yeh shubh sanket hai.</p>
+  <div class="remedy-locked">
+    <b>{helpful_count} ratna aapki kundli ke liye anukool hain</b>, dhaatu, ungli, pehanne ka din aur zaroori vyavaharik kadam full reading mein shamil hain.
+  </div>"""
+        else:
+            body = f"""
   <p class="remedy-lede">Nothing in your chart is actively harmed by a
   gemstone — which is less common than you would think, and good news.</p>
   <div class="remedy-locked">
@@ -334,10 +376,20 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
     practical steps that matter more than any of them.
   </div>"""
     else:
-        body = f"""
+        if is_hinglish:
+            body = f"""
+  <p class="remedy-lede">Ratna pehanne se pehle, yeh dekhein ki aapki kundli ke anusar kya varjit hai.</p>
+  {_stones_group(refused, tone="down", paid=False, is_hinglish=is_hinglish,
+                 label="Yeh ratna na pehnein · aapki kundli se spasht hai")}
+  <div class="remedy-locked">
+    <b>Hum yeh hissa isliye dikha rahe hain kyunki kya nahi pehanna chahiye yeh janna utna hi zaroori hai.</b>
+    {helpful_count} ratna aapki kundli ke anukool hain — metal, ungli, din, mantra aur daan ke sath poori reading mein uplabdh hain.
+  </div>"""
+        else:
+            body = f"""
   <p class="remedy-lede">Before we suggest anything to wear, here is what your
   chart says to avoid.</p>
-  {_stones_group(refused, tone="down", paid=False,
+  {_stones_group(refused, tone="down", paid=False, is_hinglish=is_hinglish,
                  label="Do not wear · already clear from your chart")}
   <div class="remedy-locked">
     <b>We are showing this part for free because knowing what not to use is
@@ -348,10 +400,12 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
     matters more than any stone.
   </div>"""
 
+    free_ev_label = "Rashi Ratna — Kya Na Pehnein (Nishulk)" if is_hinglish else "Gemstones — what is wrong for you, free"
+    free_fine = "Rashi ratna hamesha vyaktigat kundli ke adhar par lena chahiye, keval rashi ke adhar par nahi." if is_hinglish else "A gemstone should be considered from your individual chart, not simply from your zodiac sign."
+
     return f"""
 <section class="remedy-card">
-  <div class="ev-label">Gemstones — what is wrong for you, free</div>
+  <div class="ev-label">{free_ev_label}</div>
   {body}
-  <p class="fine">A gemstone should be considered from your individual chart,
-  not simply from your zodiac sign.</p>
+  <p class="fine">{free_fine}</p>
 </section>"""

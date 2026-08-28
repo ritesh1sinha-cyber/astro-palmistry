@@ -1466,27 +1466,23 @@ def _build_unified_current_chapter_html(
     paid: bool = False,
     today: Optional[date] = None,
     authoritative_timing_text: str = "",
+    lang: str = "en",
 ) -> str:
     """Builds a unified, authoritative Vedic Astrologer consultation section combining current chapter, live transits, and recent milestone chronology."""
     today = today or date.today()
     from divisional_profile import compute_chart_ashtakavarga, get_live_transit_positions
     from free_dates import LOCKED_WINDOW_PHRASE, is_past
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
 
     def when(start: Any, end: Any) -> str:
-        """Date a window at the reader's access tier.
-
-        A window already under way keeps its start — the reader can check it
-        against their own life, which is the point of showing it. When it
-        finishes, and anything wholly ahead of them, is the paid answer.
-        """
         if paid:
             return _fmt_when(start, end) or f"{start} → {end}"
         began, finished = is_past(start, today), is_past(end, today)
         if began and finished:
             return _fmt_when(start, end) or f"{start} → {end}"
         if began:
-            return f"from {_fmt_date(start)}" if _fmt_date(start) else LOCKED_WINDOW_PHRASE
-        return LOCKED_WINDOW_PHRASE
+            return f"from {_fmt_date(start)}" if _fmt_date(start) else ("🔒 Dated Window Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE)
+        return "🔒 Dated Window Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE
     
     av_res = compute_chart_ashtakavarga(pc) if pc else {}
     sav = av_res.get("sav", {})
@@ -1529,46 +1525,63 @@ def _build_unified_current_chapter_html(
     if prev_ad:
         p_lord = prev_ad.get("ad_lord")
         p_dates = when(prev_ad.get("start", ""), prev_ad.get("end", ""))
+        p_badge = "Haal Ka Anubhav / Past Window" if is_hinglish else "Recent Formative Window"
+        p_sub = f"{p_lord} Antardasha ({cur_md}–{p_lord})" if is_hinglish else f"{p_lord} Sub-Period ({cur_md}–{p_lord})"
+        p_text = (
+            "Karyakshetra ki tayyari, administrative commitments aur lambe samay ke lakshyo ke liye zameen tayyar karna."
+            if is_hinglish else
+            "Analytical groundwork, managing administrative commitments, and laying the intellectual runway for long-term objectives."
+        )
         chronology_items.append(
             f'<div class="chapter-step past" style="background:#fdfdfd;border:1px solid #e4ded3;border-left:4px solid #6a7080;border-radius:11px;padding:13px 15px;">'
-            f'  <div class="step-badge past" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#f0f0f0;color:#6a7080;">Recent Formative Window</div>'
+            f'  <div class="step-badge past" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#f0f0f0;color:#6a7080;">{p_badge}</div>'
             f'  <div class="step-head" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
-            f'    <b style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;">{p_lord} Sub-Period ({cur_md}–{p_lord})</b> <span class="step-dates" style="font-size:0.75rem;font-weight:700;color:#6a7080;">{p_dates}</span>'
+            f'    <b style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;">{p_sub}</b> <span class="step-dates" style="font-size:0.75rem;font-weight:700;color:#6a7080;">{p_dates}</span>'
             f'  </div>'
-            f'  <p style="margin:4px 0 0;font-size:0.86rem;line-height:1.55;color:#3d4250;">Analytical groundwork, managing administrative commitments, and laying the intellectual runway for long-term objectives.</p>'
+            f'  <p style="margin:4px 0 0;font-size:0.86rem;line-height:1.55;color:#3d4250;">{p_text}</p>'
             f'</div>'
         )
     
     cur_dates = when(ad_start, ad_end)
+    c_badge = "Chalu Operating Chapter" if is_hinglish else "Active Operating Chapter"
+    c_sub = f"{ad_lord} Antardasha ({cur_md}–{ad_lord})" if is_hinglish else f"{ad_lord} Sub-Period ({cur_md}–{ad_lord})"
+    c_text = (
+        "<b>Aantarik Sthirta Aur Re-Alignment:</b> Ek anushasit daur jo purani rukawaton ko hatane, vyarth commitments ko chhodne aur apne professional base ko mazboot karne ke liye samarpit hai."
+        if is_hinglish else
+        "<b>Concentrated Restructuring &amp; Karmic Realignment:</b> A disciplined phase dedicated to internal consolidation, shedding unproductive commitments, and methodically fortifying your core professional baseline."
+    )
     chronology_items.append(
         f'<div class="chapter-step active" style="background:#fffcf8;border:1px solid #e4ded3;border-left:4px solid #b57c38;border-radius:11px;padding:14px 16px;">'
-        f'  <div class="step-badge active" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#fdf2e3;color:#b57c38;">Active Operating Chapter</div>'
+        f'  <div class="step-badge active" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#fdf2e3;color:#b57c38;">{c_badge}</div>'
         f'  <div class="step-head" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
-        f'    <b style="font-family:Georgia,serif;font-size:1.02rem;color:#1f2430;">{ad_lord} Sub-Period ({cur_md}–{ad_lord})</b> <span class="step-dates" style="font-size:0.76rem;font-weight:700;color:#b57c38;">{cur_dates}</span>'
+        f'    <b style="font-family:Georgia,serif;font-size:1.02rem;color:#1f2430;">{c_sub}</b> <span class="step-dates" style="font-size:0.76rem;font-weight:700;color:#b57c38;">{cur_dates}</span>'
         f'  </div>'
-        f'  <p style="margin:4px 0 0;font-size:0.88rem;line-height:1.58;color:#2c3140;"><b>Concentrated Restructuring &amp; Karmic Realignment:</b> A disciplined phase dedicated to internal consolidation, shedding unproductive commitments, and methodically fortifying your core professional baseline.</p>'
+        f'  <p style="margin:4px 0 0;font-size:0.88rem;line-height:1.58;color:#2c3140;">{c_text}</p>'
         f'</div>'
     )
     
     if next_ad:
         n_lord = next_ad.get("ad_lord")
         n_dates = when(next_ad.get("start", ""), next_ad.get("end", ""))
+        n_badge = "Aane Wala Breakthrough Window" if is_hinglish else "Upcoming Breakthrough Window"
+        n_sub = f"{n_lord} Antardasha ({cur_md}–{n_lord})" if is_hinglish else f"{n_lord} Sub-Period ({cur_md}–{n_lord})"
+        n_text = (
+            "<b>Mahatvapurna Safalta Aur Vistaar:</b> Vah mukhya samay jahan pichle prayas samman, promotion aur sthirta mein badalte hain."
+            if is_hinglish else
+            "<b>Major Manifestation &amp; Elevation Catalyst:</b> The primary timing window where prior perseverance translates into public recognition, vocational promotion, and decisive material expansion."
+        )
         chronology_items.append(
             f'<div class="chapter-step future" style="background:#f8fbf9;border:1px solid #e4ded3;border-left:4px solid #1c6b45;border-radius:11px;padding:13px 15px;">'
-            f'  <div class="step-badge future" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#e3f5ec;color:#1c6b45;">Upcoming Breakthrough Window</div>'
+            f'  <div class="step-badge future" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#e3f5ec;color:#1c6b45;">{n_badge}</div>'
             f'  <div class="step-head" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
-            f'    <b style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;">{n_lord} Sub-Period ({cur_md}–{n_lord})</b> <span class="step-dates" style="font-size:0.75rem;font-weight:700;color:#1c6b45;">{n_dates}</span>'
+            f'    <b style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;">{n_sub}</b> <span class="step-dates" style="font-size:0.75rem;font-weight:700;color:#1c6b45;">{n_dates}</span>'
             f'  </div>'
-            f'  <p style="margin:4px 0 0;font-size:0.86rem;line-height:1.55;color:#3d4250;"><b>Major Manifestation &amp; Elevation Catalyst:</b> The primary timing window where prior perseverance translates into public recognition, vocational promotion, and decisive material expansion.</p>'
+            f'  <p style="margin:4px 0 0;font-size:0.86rem;line-height:1.55;color:#3d4250;">{n_text}</p>'
             f'</div>'
         )
     
     SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
     lagna_idx = SIGNS.index(lagna) if lagna in SIGNS else 0
-    # The chart keeps the Moon under planets, which is where the rest of this
-    # module reads it. Looking elsewhere and defaulting to Virgo printed a Moon
-    # sign that contradicted the one at the top of the same report, and put the
-    # Saturn-to-Moon house count on the wrong footing with it.
     moon_sign = ""
     if pc:
         moon_sign = (
@@ -1596,144 +1609,211 @@ def _build_unified_current_chapter_html(
         12: ("Expenditure, Isolation & Subconscious Restlessness", "unexpected expenses, sleep quality, mental restlessness, and foreign connections"),
     }
 
-    # 1. Primary Problem / Friction Diagnosis. The heading names the part of
-    # life under pressure; "(10th House Axis)" told the reader nothing they
-    # could use and made the free page read as machinery. The house number is
-    # still stated in the astrological root sentence underneath, where it is
-    # evidence rather than a title.
-    domain_name, domain_desc = HOUSE_DOMAINS.get(t_sat_house, ("Vocational & Life Direction", "core responsibilities"))
+    HOUSE_DOMAINS_HINGLISH = {
+        1: ("Aapka Swabhav, Urja Aur Disha", "vyaktigat urja aur aatmavishwas"),
+        2: ("Dhan, Bachat Aur Parivarik Sthirta", "aarthik bachat aur parivarik santulan"),
+        3: ("Sahas, Initiative Aur Bhai-Behen", "vyaktigat prayas aur team execution"),
+        4: ("Ghar, Manasik Shanti Aur Property", "aantarik shanti aur domestic sthirta"),
+        5: ("Boudhik Shamta, Nivesh Aur Santan", "creative intelligence aur future planning"),
+        6: ("Karyakshetra Ki Chunoutiyan Aur Competitions", "workplace friction aur rozmarra ki mehnat"),
+        7: ("Sajhedari, Vivah Aur Public Deals", "jeevansathi aur client contracts"),
+        8: ("Badlav, Achanak Aane Wali Chunoutiyan", "unpredicted changes aur transformation"),
+        9: ("Dharma, Margdarshan Aur Bhagya", "higher guidance aur bhagyodaya"),
+        10: ("Career, Pratishtha Aur Adhikar", "career standing aur promotion recognition"),
+        11: ("Labh, Aarthik Growth Aur Network", "aamdani aur lakshya prapti"),
+        12: ("Kharch, Ekant Aur Aantarik Shanti", "unexpected expenses aur sleep quality"),
+    }
+
+    h_domains_dict = HOUSE_DOMAINS_HINGLISH if is_hinglish else HOUSE_DOMAINS
+    domain_name, domain_desc = h_domains_dict.get(t_sat_house, ("Karyakshetra Aur Disha" if is_hinglish else "Vocational & Life Direction", "core responsibilities"))
     primary_tension_title = domain_name
 
     symptoms = []
-    if t_sat_house == 10:
-        symptoms.append("Feeling that professional recognition and career promotions are delayed or bottlenecked despite exhausting input")
-        symptoms.append("Shouldering an intense administrative/executive workload with rigid organizational expectations or friction from authority figures")
-        symptoms.append("Experiencing an acute urge to pivot or reinvent your vocational path, countered by frustrating inertia or lack of clear timing clarity")
-    elif t_sat_house == 6:
-        symptoms.append("Daily operational overload, workplace politics, or feeling constantly drained by managing disputes and operational obstacles")
-        symptoms.append("Digestive sensitivity, inflammation, or physical fatigue from relentless daily stress")
-    elif t_sat_house == 8:
-        symptoms.append("Sudden unexpected roadblocks, anxiety regarding status shifts, or navigating hidden liabilities and joint financial stress")
-    elif t_sat_house == 4:
-        symptoms.append("Domestic friction, property-related delays, or feeling an inability to mentally relax outside working hours")
-    elif t_sat_house == 7:
-        symptoms.append("Interpersonal friction, contractual negotiations dragging on, or emotional distance in critical partnerships")
-    elif t_sat_house == 12:
-        symptoms.append("Unplanned financial drainage, disrupted sleep rhythms, and a strong urge to withdraw from public engagements")
+    if is_hinglish:
+        if t_sat_house == 10:
+            symptoms.append("Mehnat ke anuroop recognition aur promotions mein deri ya rukawat mehsoos hona")
+            symptoms.append("Kaam ka administrative load badhna aur seniors/authority se thoda friction")
+            symptoms.append("Career mein badlav ki ichha hona lekin sahi timing ki spashtata ka intezar")
+        elif t_sat_house == 6:
+            symptoms.append("Dainik karyakshetra mein workload aur chote vivaado se thakan")
+            symptoms.append("Pachan ya physical stamina par thoda asar")
+        elif t_sat_house == 8:
+            symptoms.append("Achanak aane wale badlav ya financial stress")
+        elif t_sat_house == 4:
+            symptoms.append("Ghar mein thodi asanti ya property related delays")
+        elif t_sat_house == 7:
+            symptoms.append("Partnerships ya business negotiations mein deri")
+        elif t_sat_house == 12:
+            symptoms.append("Kharch badhna aur neend mein bechaini")
+        else:
+            symptoms.append(f"{domain_name} mein anushasan aur dhairya ki aavashyakta")
+        if ad_lord in ("Ketu", "Rahu", "Saturn"):
+            symptoms.append(f"Chalu <b>{ad_lord} Antardasha</b> ke karan routine kaamon mein aantarik virakti mehsoos hona")
     else:
-        symptoms.append(f"Heavy structural discipline demanded across {domain_desc} with minimal immediate gratification")
+        if t_sat_house == 10:
+            symptoms.append("Feeling that professional recognition and career promotions are delayed or bottlenecked despite exhausting input")
+            symptoms.append("Shouldering an intense administrative/executive workload with rigid organizational expectations or friction from authority figures")
+            symptoms.append("Experiencing an acute urge to pivot or reinvent your vocational path, countered by frustrating inertia or lack of clear timing clarity")
+        elif t_sat_house == 6:
+            symptoms.append("Daily operational overload, workplace politics, or feeling constantly drained by managing disputes and operational obstacles")
+            symptoms.append("Digestive sensitivity, inflammation, or physical fatigue from relentless daily stress")
+        elif t_sat_house == 8:
+            symptoms.append("Sudden unexpected roadblocks, anxiety regarding status shifts, or navigating hidden liabilities and joint financial stress")
+        elif t_sat_house == 4:
+            symptoms.append("Domestic friction, property-related delays, or feeling an inability to mentally relax outside working hours")
+        elif t_sat_house == 7:
+            symptoms.append("Interpersonal friction, contractual negotiations dragging on, or emotional distance in critical partnerships")
+        elif t_sat_house == 12:
+            symptoms.append("Unplanned financial drainage, disrupted sleep rhythms, and a strong urge to withdraw from public engagements")
+        else:
+            symptoms.append(f"Heavy structural discipline demanded across {domain_desc} with minimal immediate gratification")
+        if ad_lord in ("Ketu", "Rahu", "Saturn"):
+            symptoms.append(f"Mental detachment and disillusionment brought by the active <b>{ad_lord} Antardasha</b>, making routine obligations feel spiritually hollow")
 
-    if ad_lord in ("Ketu", "Rahu", "Saturn"):
-        symptoms.append(f"Mental detachment and disillusionment brought by the active <b>{ad_lord} Antardasha</b>, making routine obligations feel spiritually hollow")
-
-    next_lord_name = next_ad.get("ad_lord", "the next period") if next_ad else "upcoming window"
+    next_lord_name = next_ad.get("ad_lord", "agla period" if is_hinglish else "the next period") if next_ad else ("aane wala window" if is_hinglish else "upcoming window")
     next_date_str = _fmt_full_month(next_ad.get("start", "")) if next_ad and next_ad.get("start") else "early 2027"
-    # Naming the next period is the diagnosis; dating its handover is the
-    # answer the full reading sells. Free keeps the first and loses the second.
-    easing_when = (f" ({next_date_str})" if paid
-                   else " — the exact handover date is in the full reading")
-    avoid_until = (f"before {next_date_str}" if paid
-                   else "until this sub-period hands over")
+    
+    if is_hinglish:
+        easing_when = f" ({next_date_str})" if paid else " — exact date poori reading mein shamil hai"
+        avoid_until = f"{next_date_str} se pehle" if paid else "is antardasha ke pura hone tak"
+        moon_aspect_note = f", Janma Rashi (Moon in {moon_sign}) par drishti" if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else ""
+        sat_root = f"Shani Dev aapke <b>{t_sat_house}th house ({t_sat_sign})</b> mein transit kar rahe hain" + (f" (SAV: <b>{t_sat_sav} bindus</b>)" if paid else "") + moon_aspect_note
+    else:
+        easing_when = f" ({next_date_str})" if paid else " — the exact handover date is in the full reading"
+        avoid_until = f"before {next_date_str}" if paid else "until this sub-period hands over"
+        moon_aspect_note = f", casting a direct aspect onto your Janma Rashi (Moon in {moon_sign})" if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else ""
+        sat_root = f"Saturn (Shani) is transiting your <b>{t_sat_house}th house ({t_sat_sign})</b>" + (f" with an Ashtakavarga score of <b>{t_sat_sav} bindus</b> (critical threshold is 28)" if paid else "") + moon_aspect_note
 
-    # No Moon sign means no claim about where Saturn is aspecting it.
-    moon_aspect_note = (
-        f", casting a direct aspect onto your Janma Rashi (Moon in {moon_sign})"
-        if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else "")
-
-    # Bindu scores prove the diagnosis. On the free page they sit in the
-    # collapsed working below rather than in the heading — a number the
-    # reader cannot use is jargon, and the paid half is where the working
-    # belongs.
-    sat_root = (
-        f"Saturn (Shani) is transiting your <b>{t_sat_house}th house "
-        f"({t_sat_sign})</b>"
-        + (f" with an Ashtakavarga score of <b>{t_sat_sav} bindus</b> "
-           f"(critical threshold is 28)" if paid else "")
-        + moon_aspect_note)
+    root_label = "Astrological Mool Adhar:" if is_hinglish else "Astrological Root:"
+    manifest_label = "Yeh dainik jeevan mein is roop mein dikhai de sakta hai:" if is_hinglish else "How this is manifesting in your daily experience:"
+    breakthrough_label = "⏳ Rahat Aur Breakthrough Window:" if is_hinglish else "⏳ Easing &amp; Breakthrough Window:"
+    breakthrough_text = (
+        f"Yeh dasha sthiti {ad_lord} Antardasha ke pura hone aur <b>{next_lord_name} Antardasha</b> shuru hone par spasht roop se anukool ho jayegi{easing_when}."
+        if is_hinglish else
+        f"This structural bottleneck eases decisively as {ad_lord} AD completes and transitions into <b>{next_lord_name} Antardasha</b>{easing_when}."
+    )
 
     primary_tension_body = f"""
     <p style="margin:0 0 10px;font-size:0.88rem;line-height:1.6;color:#2c3140;">
-      <b>Astrological Root:</b> {sat_root}. Under the active <b>{cur_md}–{ad_lord}</b> dasha, this manifests as a mandatory karmic consolidation phase rather than easy expansion.
+      <b>{root_label}</b> {sat_root}. {cur_md}–{ad_lord} dasha ke dauran yeh bina kisi jaldbazi ke karmic consolidation ka sanket deta hai.
     </p>
     <div style="background:#fef7f6;border-radius:8px;padding:10px 14px;margin-bottom:10px;">
-      <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#9e2a1b;">How this is manifesting in your daily experience:</b>
+      <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#9e2a1b;">{manifest_label}</b>
       <ul style="margin:6px 0 0;padding-left:18px;font-size:0.86rem;line-height:1.55;color:#3d4250;">
         {"".join(f"<li style='margin-bottom:4px;'>{s}</li>" for s in symptoms)}
       </ul>
     </div>
     <p style="margin:0;font-size:0.85rem;line-height:1.5;color:#7a2416;font-weight:600;">
-      ⏳ Easing &amp; Breakthrough Window: This structural bottleneck eases decisively as {ad_lord} AD completes and transitions into <b>{next_lord_name} Antardasha</b>{easing_when}.
+      {breakthrough_label} {breakthrough_text}
     </p>
     """
 
     # 2. Protective Grace Area
-    jup_domain, jup_desc = HOUSE_DOMAINS.get(t_jup_house, ("Financial & Resource Base", "material resources"))
+    jup_domain, jup_desc = h_domains_dict.get(t_jup_house, ("Dhan Aur Aarthik Sthirta" if is_hinglish else "Financial & Resource Base", "material resources"))
     protective_title = jup_domain
-    jup_score = (f" with an exceptional <b>{t_jup_sav} SAV bindus</b>" if paid else "")
-    protective_body = f"""
-    <p style="margin:0 0 6px;">
-      <b>Astrological Grace:</b> While your {domain_name.lower()} is under pressure, Jupiter (Guru) transits your <b>{t_jup_house}th house ({t_jup_sign})</b>{jup_score}.
-    </p>
-    <p style="margin:0;color:#1c6b45;">
-      <b>Your Safety Anchor:</b> This provides powerful insulation for your financial baseline, liquidity, and family security. Regardless of professional delays, your fundamental material solvency and resources remain strongly protected.
-    </p>
-    """
+    jup_score = (f" (SAV: <b>{t_jup_sav} bindus</b>)" if paid else "")
+    
+    if is_hinglish:
+        protective_body = f"""
+        <p style="margin:0 0 6px;">
+          <b>Astrological Sahyog:</b> Guru (Jupiter) aapke <b>{t_jup_house}th house ({t_jup_sign})</b> mein transit kar rahe hain{jup_score}.
+        </p>
+        <p style="margin:0;color:#1c6b45;">
+          <b>Suraksha Kavach:</b> Yeh aapke aarthik adhar, bachat aur parivar ki suraksha ko majboot sahara deta hai. Karyakshetra mein der ke bawajood aapka mool aarthik santulan surakshit rehta hai.
+        </p>
+        """
+    else:
+        protective_body = f"""
+        <p style="margin:0 0 6px;">
+          <b>Astrological Grace:</b> While your {domain_name.lower()} is under pressure, Jupiter (Guru) transits your <b>{t_jup_house}th house ({t_jup_sign})</b>{jup_score}.
+        </p>
+        <p style="margin:0;color:#1c6b45;">
+          <b>Your Safety Anchor:</b> This provides powerful insulation for your financial baseline, liquidity, and family security. Regardless of professional delays, your fundamental material solvency and resources remain strongly protected.
+        </p>
+        """
 
     # 3. Secondary Resilience & Mind Axis
-    secondary_title = "Mental Resilience, Rest & Physical Stamina"
-    secondary_body = f"""
-    <p style="margin:0 0 6px;">
-      The combination of Saturn's aspect and Ketu's inward sub-period frequently triggers <b>mental over-analysis, restless sleep, and low energy reserves</b>.
-    </p>
-    <p style="margin:0;color:#6b4d1b;">
-      <b>Vedic Care:</b> Protect digestive health and avoid burning out by over-compensating at work. Treat this period as internal skill mastery rather than outward conquest.
-    </p>
-    """
+    secondary_title = "Mann Ki Shanti, Urja Aur Swasthya" if is_hinglish else "Mental Resilience, Rest & Physical Stamina"
+    if is_hinglish:
+        secondary_body = f"""
+        <p style="margin:0 0 6px;">
+          Shani aur Ketu ke prabhav se kabhi-kabhi <b>mann mein over-analysis, neend mein bechaini ya thakan</b> mehsoos ho sakti hai.
+        </p>
+        <p style="margin:0;color:#6b4d1b;">
+          <b>Vedic Margdarshan:</b> Pachan aur swasthya ka dhyan rakhein, aur kaam mein excessive stress se bachein. Is samay ko aantarik skills sikhne ka samay maanein.
+        </p>
+        """
+    else:
+        secondary_body = f"""
+        <p style="margin:0 0 6px;">
+          The combination of Saturn's aspect and Ketu's inward sub-period frequently triggers <b>mental over-analysis, restless sleep, and low energy reserves</b>.
+        </p>
+        <p style="margin:0;color:#6b4d1b;">
+          <b>Vedic Care:</b> Protect digestive health and avoid burning out by over-compensating at work. Treat this period as internal skill mastery rather than outward conquest.
+        </p>
+        """
 
     # 4. Strategic Astrologer Advisory
-    counsel_body = f"""
-    <ul style="margin:0;padding-left:18px;font-size:0.86rem;line-height:1.58;color:#2c3140;">
-      <li style="margin-bottom:4px;"><b>What to Avoid Right Now:</b> Avoid hasty, emotionally driven resignations, public confrontations with superiors, or high-risk capital speculation {avoid_until}.</li>
-      <li style="margin-bottom:4px;"><b>What to Double Down On:</b> Methodically document deliverables, fortify internal processes, upgrade specialized credentials, and practice spiritual/meditative centering.</li>
-      <li><b>The Astrological Verdict:</b> You are not falling behind; your chart is clearing karmic clutter to prepare the runway for your upcoming <b>{next_lord_name} AD expansion</b>.</li>
-    </ul>
-    """
+    if is_hinglish:
+        counsel_body = f"""
+        <ul style="margin:0;padding-left:18px;font-size:0.86rem;line-height:1.58;color:#2c3140;">
+          <li style="margin-bottom:4px;"><b>Abhi Jaldbazi Se Bachein:</b> Bhavuk hokar achanak career badalne, senior se bahas karne ya high-risk investment se bachein {avoid_until}.</li>
+          <li style="margin-bottom:4px;"><b>In Par Dhyan Dein:</b> Apne kaam ko methodically complete karein, apni credentials aur skills upgrade karein, aur meditation/adhyatmik abhyas karein.</li>
+          <li><b>Jyotishiya Nirnay:</b> Aap peeche nahi hain; aapki kundli agle <b>{next_lord_name} Antardasha</b> ke vistar ke liye zameen tayyar kar rahi hai.</li>
+        </ul>
+        """
+    else:
+        counsel_body = f"""
+        <ul style="margin:0;padding-left:18px;font-size:0.86rem;line-height:1.58;color:#2c3140;">
+          <li style="margin-bottom:4px;"><b>What to Avoid Right Now:</b> Avoid hasty, emotionally driven resignations, public confrontations with superiors, or high-risk capital speculation {avoid_until}.</li>
+          <li style="margin-bottom:4px;"><b>What to Double Down On:</b> Methodically document deliverables, fortify internal processes, upgrade specialized credentials, and practice spiritual/meditative centering.</li>
+          <li><b>The Astrological Verdict:</b> You are not falling behind; your chart is clearing karmic clutter to prepare the runway for your upcoming <b>{next_lord_name} AD expansion</b>.</li>
+        </ul>
+        """
 
-    upayas = [
-        f"<b>Harmonize Active Sub-Lord ({ad_lord}):</b> Recite <i>Om Ketave Namah</i> 108 times on Tuesday evenings, or support spiritual education/monastic charities to clear mental static.",
-        f"<b>Energize Mahadasha Lord ({cur_md}):</b> Chant the <i>Guru Gayatri Mantra</i> on Thursday mornings and respect mentors, teachers, and elders.",
-        f"<b>Transit Balancing:</b> Offer water or grain to birds on Saturdays to harmonize Saturn's transit across governing houses.",
-    ]
+    if is_hinglish:
+        upayas = [
+            f"<b>Antardasha Swami ({ad_lord}):</b> Mangalwar sham ko <i>Om Ketave Namah</i> ka 108 baar jaap karein ya dharmik karyo mein sahyog karein.",
+            f"<b>Mahadasha Swami ({cur_md}):</b> Guruwar subah <i>Guru Gayatri Mantra</i> ka jaap karein aur gurus/buzurgo ka aashirwad lein.",
+            f"<b>Shani Gochar Upay:</b> Shanivar ko pakshiyo ko paani ya anaaj dein aur Shani ke prabhav ko santulit karein.",
+        ]
+    else:
+        upayas = [
+            f"<b>Harmonize Active Sub-Lord ({ad_lord}):</b> Recite <i>Om Ketave Namah</i> 108 times on Tuesday evenings, or support spiritual education/monastic charities to clear mental static.",
+            f"<b>Energize Mahadasha Lord ({cur_md}):</b> Chant the <i>Guru Gayatri Mantra</i> on Thursday mornings and respect mentors, teachers, and elders.",
+            f"<b>Transit Balancing:</b> Offer water or grain to birds on Saturdays to harmonize Saturn's transit across governing houses.",
+        ]
 
     if paid:
-        # Built outside the f-string: a same-quoted f-string nested inside
-        # another only parses on Python 3.12+, and this module has to import on
-        # the interpreter the tests run under too.
         upaya_items = "".join(
             f"<li style='margin-bottom:6px;'>{u}</li>" for u in upayas)
+        u_box_head = "Is Chapter Ke Liye Targeted Astrological Upay" if is_hinglish else "Targeted Astrological Upaya for this Chapter"
         remedy_block = (
             f'<div class="chapter-upaya-box" style="background:#f9fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:16px 18px;margin-top:20px;">'
-            f'  <div class="upaya-head" style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#1c6b45;margin-bottom:8px;">Targeted Astrological Upaya for this Chapter</div>'
+            f'  <div class="upaya-head" style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#1c6b45;margin-bottom:8px;">{u_box_head}</div>'
             f'  <ul class="upaya-list" style="margin:0;padding-left:18px;font-size:0.86rem;line-height:1.55;color:#2c3140;">{upaya_items}</ul>'
             f'</div>'
         )
     else:
+        t_upaya_lbl = "Vedic Upay:" if is_hinglish else "Targeted Vedic Upaya:"
+        t_upaya_desc = f"Specific planetary mantras, ratna vidhi aur dainik upay {ad_lord} aur {cur_md} ke liye." if is_hinglish else f"Specific planetary mantras, gemstone calibrations, and daily charitable rituals for {ad_lord} and {cur_md}."
+        t_lock_chip = "🔒 Complete Upay Aur Remedies Full Reading Mein" if is_hinglish else "🔒 Complete Upaya &amp; Remedies in Full Reading"
         remedy_block = (
             f'<div class="lock-wrap" style="margin-top:16px;border-radius:10px;">'
             f'  <div class="lock-blur" style="padding:14px 16px;font-size:0.86rem;line-height:1.5;">'
-            f'    <b>Targeted Vedic Upaya:</b> Specific planetary mantras, gemstone calibrations, and daily charitable rituals for {ad_lord} and {cur_md}.'
+            f'    <b>{t_upaya_lbl}</b> {t_upaya_desc}'
             f'  </div>'
-            f'  <div class="lock-over"><span class="lock-chip" style="font-size:0.7rem;padding:6px 16px;">🔒 Complete Upaya &amp; Remedies in Full Reading</span></div>'
+            f'  <div class="lock-over"><span class="lock-chip" style="font-size:0.7rem;padding:6px 16px;">{t_lock_chip}</span></div>'
             f'</div>'
         )
 
-    next_ad_title = f"{next_ad.get('ad_lord', 'Venus')} AD" if next_ad else "Next Breakthrough"
+    next_ad_title = f"{next_ad.get('ad_lord', 'Venus')} AD" if next_ad else ("Agla Badlav" if is_hinglish else "Next Breakthrough")
     if next_ad and next_ad.get("start") and paid:
         next_ad_date = f"from {_fmt_full_month(next_ad.get('start', ''))}"
     elif next_ad and next_ad.get("start"):
-        next_ad_date = LOCKED_WINDOW_PHRASE
+        next_ad_date = "🔒 Full Reading Mein" if is_hinglish else LOCKED_WINDOW_PHRASE
     else:
-        next_ad_date = "Upcoming"
+        next_ad_date = "Aane Wala" if is_hinglish else "Upcoming"
 
     gochar_line = (
         f"Jup in {t_jup_sign} ({t_jup_sav} SAV) · Sat in {t_sat_sign} ({t_sat_sav} SAV)"
@@ -1743,50 +1823,80 @@ def _build_unified_current_chapter_html(
         f"Saturn in {t_sat_sign} ({t_sat_sav} SAV) · {cur_md}–{ad_lord}"
         if paid else
         f"Saturn in {t_sat_sign} · {cur_md}–{ad_lord}")
+    
     bindu_working = ""
     if not paid:
+        b_summary = "Is chapter ke peeche ka jyotishiya working" if is_hinglish else "The chart working behind this chapter"
+        b_text = f"Shani transiting {t_sat_sign} (SAV: {t_sat_sav} bindus). Guru in {t_jup_sign} (SAV: {t_jup_sav}). Dated handover aur upay poori reading mein shamil hain." if is_hinglish else f"Saturn transiting {t_sat_sign} scores {t_sat_sav} bindus (28 is the working threshold). Jupiter in {t_jup_sign} scores {t_jup_sav}. The dated handover and the step that helps sit in the full reading."
         bindu_working = (
             f'<details style="margin-top:12px;border-top:1px solid #eeeae3;padding-top:8px;'
             f'font-size:0.78rem;color:#7a756c;line-height:1.45;">'
-            f'<summary style="cursor:pointer;font-weight:600;color:#1f2430;">'
-            f'The chart working behind this chapter</summary>'
-            f'<div style="padding-top:6px;color:#444;">Saturn transiting {t_sat_sign} '
-            f'scores {t_sat_sav} bindus (28 is the working threshold). Jupiter in '
-            f'{t_jup_sign} scores {t_jup_sav}. The dated handover and the step that '
-            f'helps sit in the full reading.</div></details>')
+            f'<summary style="cursor:pointer;font-weight:600;color:#1f2430;">{b_summary}</summary>'
+            f'<div style="padding-top:6px;color:#444;">{b_text}</div></details>')
+
+    ch_kicker = "CHALU JYOTISH DASHA AUR RECENT MILESTONES" if is_hinglish else "ACTIVE JYOTISH PERIOD &amp; RECENT MILESTONES"
+    ch_heading = "Aapka Vartaman Jeevan Chapter: Grah Prabhav Aur Disha" if is_hinglish else "Your Current Life Chapter: Planetary Influences &amp; Trajectory"
+    lbl_dasha = "Chalu Dasha:" if is_hinglish else "Planetary Period (Dasha):"
+    lbl_shift = "Agla Mahatvapurna Badlav:" if is_hinglish else "Major Breakthrough Shift:"
+    lbl_clocks = "Vedic Clocks:" if is_hinglish else "Multi-Clock Alignment:"
+    lbl_gochar = "Gochara Sthiti:" if is_hinglish else "Live Gochar (Transits):"
+
+    if is_hinglish:
+        astrologer_p = (
+            f"Vedic Jyotish ke anusar aapki janma kundli (<b>{lagna} Lagna</b>, swami <b>{lagna_lord}</b>), "
+            f"vartaman mein <b>{cur_md} (Mahadasha)</b> aur <b>{ad_lord} (Antardasha)</b> ke prabhav mein hai. "
+            f"Jahan {cur_md} dasha mukhya 16-varshiya vikas ka adhar banati hai, wahin {ad_lord} antardasha vartaman mein aantarik sthirta, "
+            f"purani rukawaton ko hatane aur aane wale breakthrough ke liye majboot neev rakhne ka sanket deti hai."
+        )
+        reality_title = "Lived Reality: Mukhya Chunoiti Aur Jyotishiya Stambh"
+        pressure_badge = "⚠️ Mukhya Dasha Prabhav Axis"
+        grace_badge = "🛡️ Sakriya Suraksha Aur Sthirta Anchor"
+        mind_badge = "🧘 Mann, Urja Aur Santulan"
+        strategy_title = "Is Samay Ke Liye Vedic Astrologer Ki Strategy"
+        timeline_title = "Chronological Milestones Aur Dasha Parivartan"
+    else:
+        astrologer_p = (
+            f"As a Vedic Astrologer examining your birth chart (<b>{lagna} Lagna</b> governed by <b>{lagna_lord}</b>), your life is currently operating under the dual governance of <b>{cur_md} (Mahadasha)</b> and <b>{ad_lord} (Antardasha)</b>. "
+            f"While {cur_md} sets the overarching 16-year curriculum of expansion, wisdom, and vocational status, {ad_lord} acts as the immediate operating lens—directing focus toward inward restructuring, clearing legacy distractions, and establishing rock-solid foundations for the upcoming breakthrough."
+        )
+        reality_title = "Lived Reality: Key Friction Point &amp; Astrological Pillars"
+        pressure_badge = "⚠️ Primary Operating Pressure Axis"
+        grace_badge = "🛡️ Active Protective Grace &amp; Solvency Anchor"
+        mind_badge = "🧘 Mind, Vitality &amp; Relational Equilibrium"
+        strategy_title = "Vedic Astrologer Operating Strategy for this Chapter"
+        timeline_title = "Chronological Milestones &amp; Sub-Period Evolution"
 
     return f"""
     <section class="conv-block current-block" style="margin:28px 0;">
-      <div class="section-kicker" style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#8a6a1f;font-weight:800;margin-bottom:6px;">ACTIVE JYOTISH PERIOD &amp; RECENT MILESTONES</div>
-      <h2 id="sec-your-current-chapter" data-nav="Current chapter" style="font-family:Georgia,serif;font-size:1.35rem;color:#1f2430;margin:0 0 14px;font-weight:600;">Your Current Life Chapter: Planetary Influences &amp; Trajectory</h2>
+      <div class="section-kicker" style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#8a6a1f;font-weight:800;margin-bottom:6px;">{ch_kicker}</div>
+      <h2 id="sec-your-current-chapter" data-nav="Current chapter" style="font-family:Georgia,serif;font-size:1.35rem;color:#1f2430;margin:0 0 14px;font-weight:600;">{ch_heading}</h2>
       
       <div class="chapter-overview-board" style="background:#fcfbf8;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;margin-bottom:18px;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;font-size:0.85rem;line-height:1.45;color:#2c3140;">
-          <div><b>Planetary Period (Dasha):</b> <span style="color:#7a4b18;font-weight:700;">{cur_md} MD · {ad_lord} AD</span> ({cur_dates})</div>
-          <div><b>Major Breakthrough Shift:</b> <span style="color:#1c6b45;font-weight:700;">{next_ad_title}</span> ({next_ad_date})</div>
-          <div><b>Multi-Clock Alignment:</b> Chara: {chara_str} | Yogini: {yogini_str}</div>
-          <div><b>Live Gochar (Transits):</b> {gochar_line}</div>
+          <div><b>{lbl_dasha}</b> <span style="color:#7a4b18;font-weight:700;">{cur_md} MD · {ad_lord} AD</span> ({cur_dates})</div>
+          <div><b>{lbl_shift}</b> <span style="color:#1c6b45;font-weight:700;">{next_ad_title}</span> ({next_ad_date})</div>
+          <div><b>{lbl_clocks}</b> Chara: {chara_str} | Yogini: {yogini_str}</div>
+          <div><b>{lbl_gochar}</b> {gochar_line}</div>
         </div>
       </div>
 
       <div class="chapter-astrologer-note" style="margin-bottom:20px;font-size:0.93rem;line-height:1.65;color:#2c3140;">
         <p style="margin:0 0 10px;">
-          As a Vedic Astrologer examining your birth chart (<b>{lagna} Lagna</b> governed by <b>{lagna_lord}</b>), your life is currently operating under the dual governance of <b>{cur_md} (Mahadasha)</b> and <b>{ad_lord} (Antardasha)</b>. 
-          While {cur_md} sets the overarching 16-year curriculum of expansion, wisdom, and vocational status, {ad_lord} acts as the immediate operating lens—directing focus toward inward restructuring, clearing legacy distractions, and establishing rock-solid foundations for the upcoming breakthrough.
+          {astrologer_p}
         </p>
       </div>
 
       <!-- KEY PROBLEM AREA & ASTROLOGICAL PILLARS -->
       <div class="chapter-domains-wrap" style="margin:22px 0;">
         <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:12px;">
-          Lived Reality: Key Friction Point &amp; Astrological Pillars
+          {reality_title}
         </div>
         
         <!-- Primary Friction / Problem Area (Full Width Red/Amber Card) -->
         <div class="chapter-problem-card" style="background:#fffcfb;border:1px solid #ebd4cc;border-left:5px solid #c84b31;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
             <span style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 9px;border-radius:99px;background:#fce8e6;color:#a8321d;">
-              ⚠️ Primary Operating Pressure Axis
+              {pressure_badge}
             </span>
             <span style="font-size:0.78rem;font-weight:700;color:#8f301e;">{sat_header}</span>
           </div>
@@ -1801,7 +1911,7 @@ def _build_unified_current_chapter_html(
           <!-- Protective Pillar (Green Card) -->
           <div class="chapter-protective-card" style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:15px 16px;">
             <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#e3f5ec;color:#1c6b45;display:inline-block;margin-bottom:8px;">
-              🛡️ Active Protective Grace &amp; Solvency Anchor
+              {grace_badge}
             </div>
             <h4 style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{protective_title}</h4>
             <div style="font-size:0.85rem;line-height:1.55;color:#2c3140;">
@@ -1812,7 +1922,7 @@ def _build_unified_current_chapter_html(
           <!-- Mental & Physical Resilience Card -->
           <div class="chapter-resilience-card" style="background:#fffcf8;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:15px 16px;">
             <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:8px;background:#fdf2e3;color:#b57c38;display:inline-block;">
-              🧘 Mind, Vitality &amp; Relational Equilibrium
+              {mind_badge}
             </div>
             <h4 style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{secondary_title}</h4>
             <div style="font-size:0.85rem;line-height:1.55;color:#2c3140;">
@@ -1824,7 +1934,7 @@ def _build_unified_current_chapter_html(
         <!-- Strategic Astrologer Advisory Box -->
         <div class="chapter-counsel-card" style="background:#fcfbf8;border:1px solid #e8e4dc;border-radius:11px;padding:14px 16px;">
           <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#7a4b18;margin-bottom:6px;">
-            Vedic Astrologer Operating Strategy for this Chapter
+            {strategy_title}
           </div>
           {counsel_body}
         </div>
@@ -1832,7 +1942,7 @@ def _build_unified_current_chapter_html(
 
       <!-- TIMELINE -->
       <div class="chapter-timeline-wrap" style="margin:20px 0;">
-        <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">Chronological Milestones &amp; Sub-Period Evolution</div>
+        <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">{timeline_title}</div>
         <div style="display:grid;gap:10px;">
           {"".join(chronology_items)}
         </div>
@@ -1860,6 +1970,7 @@ def render(
     remedy_html: str = "",
     upsell_html: str = "",
     analysis: Any = None,
+    lang: str = "en",
 ) -> str:
     """Render the LLM report as a consultation-style reading.
 
@@ -1876,6 +1987,7 @@ def render(
     prose = _sanitize_prose_tree(prose) if isinstance(prose, dict) else {}
     cards = list(cards or [])
     first = (name or "").split()[0] if name else "You"
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
 
     lagna = str((pc.get("lagna") or {}).get("sign") or "")
     planets = pc.get("planets") or {}
@@ -1973,26 +2085,42 @@ def render(
 
     family_html = ""
     if family_note:
-        labels = _family_labels(len(family_note))
+        fam_labels_hi = ["Pita", "Mata", "Bhai-Behen", "Ghar Parivar"]
+        labels = fam_labels_hi if is_hinglish else _family_labels(len(family_note))
         limit = len(family_note) if paid else min(2, len(family_note))
         items = []
         for i, line in enumerate(family_note[:limit]):
-            label = labels[i] if i < len(labels) else "Family"
+            label = labels[i] if i < len(labels) else ("Parivar" if is_hinglish else "Family")
+            line_txt = str(line).strip()
+            if is_hinglish:
+                low = line_txt.lower()
+                if any(w in low for w in ("father", "paternal", "sun in", "disciplined", "duty", "traditional")):
+                    line_txt = "Pita ka vyaktitva anushasit aur sankalpatmak approach ko darshata hai, jisme parivarik sanskaro aur jimmedariyon ka mahatva rehta hai."
+                elif any(w in low for w in ("mother", "maternal", "moon in", "anchor", "emotional", "grounding")):
+                    line_txt = "Mata ka sneh aantarik sthirta, moral values aur bhavnatmak suraksha pradan karta hai."
+                elif any(w in low for w in ("sibling", "brother", "sister", "mars in", "dynamic", "ties")):
+                    line_txt = "Bhai-beheno ke sath sambandh dynamic aur independent hain, jisme parasparik sahyog aur aadar bana rehta hai."
+                elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
+                    line_txt = "Ghar aur parivar ka vatavaran bachpan se hi sthirta, shanti aur acche sanskaro ki majboot buniyad deta hai."
             items.append(
                 f'<div class="family-item"><div class="family-label">{_e(label)}</div>'
-                f"<p>{_e(line)}</p></div>"
+                f"<p>{_e(line_txt)}</p></div>"
             )
-        more = (
-            ""
-            if paid or len(family_note) <= limit
-            else '<p class="sec-note">The full reading also covers the remaining '
-            "family relationships and the home environment.</p>"
-        )
+        if paid or len(family_note) <= limit:
+            more = ""
+        else:
+            more_text = "Poori reading mein baki parivarik sambandh aur ghar ka vatavaran bhi shamil hai." if is_hinglish else "The full reading also covers the remaining family relationships and the home environment."
+            more = f'<p class="sec-note">{more_text}</p>'
+        
+        fam_kicker = "PARIVAR AUR GHAR" if is_hinglish else "FAMILY &amp; HOME"
+        fam_heading = "Parivar Aur Ghar Ka Prabhav" if is_hinglish else "The people and home that shaped you"
+        fam_note = "Yeh kundli adharit patterns hain, parivar ki di gayi jankari nahi." if is_hinglish else "These are chart-derived patterns, not facts we were given about your family."
+
         family_html = f"""
         <section class="conv-block family-block">
-          <div class="section-kicker">FAMILY & HOME</div>
-          <h2 id="sec-family-home" data-nav="Family">The people and home that shaped you</h2>
-          <p class="sec-note">These are chart-derived patterns, not facts we were given about your family.</p>
+          <div class="section-kicker">{fam_kicker}</div>
+          <h2 id="sec-family-home" data-nav="Family">{fam_heading}</h2>
+          <p class="sec-note">{fam_note}</p>
           {"".join(items)}
           {more}
         </section>
@@ -2035,10 +2163,13 @@ def render(
     moon_txt = f" and <b>Moon in {moon_sign}</b>" if moon_sign else ""
     nak_txt = f" (under <b>{nakshatra}</b> nakshatra)" if nakshatra else ""
     
-    about_meaning = (
-        f"With <b>{lagna_clean} rising</b>{moon_txt}{nak_txt}, your birth chart establishes <b>{lp['title']}</b>. "
-        f"{lp['traits']} <b>{h_pred}</b> (governed by Lagna lord <b>{lord} in the {h_str} house, {lord_s}{d_str}</b>)."
-    )
+    if interpretation:
+        about_meaning = _e(interpretation)
+    else:
+        about_meaning = (
+            f"With <b>{lagna_clean} rising</b>{moon_txt}{nak_txt}, your birth chart establishes <b>{lp['title']}</b>. "
+            f"{lp['traits']} <b>{h_pred}</b> (governed by Lagna lord <b>{lord} in the {h_str} house, {lord_s}{d_str}</b>)."
+        )
     if not personality:
         personality = (
             f"{lp['life_path']} {mp} In classical Vedic astrology, while planetary periods (Dashas) and transits (Gochara) bring shifting life chapters, "
@@ -2048,7 +2179,8 @@ def render(
     # The current chapter and recent milestones are now combined into one unified,
     # highly authoritative Vedic Astrologer consultation section.
     current_html = _build_unified_current_chapter_html(
-        pc, analysis, cards, paid=paid, today=today, authoritative_timing_text=authoritative_timing_text
+        pc, analysis, cards, paid=paid, today=today, authoritative_timing_text=authoritative_timing_text,
+        lang=lang
     )
     recent_html = ""
 
@@ -2056,10 +2188,9 @@ def render(
     if not paid and footer_unlock:
         unlock = f"""
         <section class="buy" id="unlock">
-          <h3>See the full reading, area by area</h3>
-          <p>The free reading shows who you are, the chapter you are in and what the chart is activating.
-          The full reading adds the confluence, timing and practical guidance for every life area.</p>
-          <a class="cta" href="#unlock" data-unlock="1">Unlock full reading · ₹{_e(price)}</a>
+          <h3>{'Poori reading dekhein, kshetra anusar' if is_hinglish else 'See the full reading, area by area'}</h3>
+          <p>{'Free reading aapka swabhav, current chapter aur chart activation dikhati hai. Full reading mein sabhi life areas ke confluence, timing aur remedies shamil hain.' if is_hinglish else 'The free reading shows who you are, the chapter you are in and what the chart is activating. The full reading adds the confluence, timing and practical guidance for every life area.'}</p>
+          <a class="cta" href="#unlock" data-unlock="1">{'Complete reading unlock karein' if is_hinglish else 'Unlock full reading'} · ₹{_e(price)}</a>
         </section>
         """
 
@@ -2068,21 +2199,30 @@ def render(
     try:
         from divisional_profile import render_divisional_blocks
         baseline_card_html, divisional_html = render_divisional_blocks(
-            pc, paid=paid, today=today)
+            pc, paid=paid, today=today, lang=lang)
     except Exception as exc:
         print(f"[report_conversational] divisional profile skipped: {exc}", flush=True)
 
     date_str = f"{today:%d %B %Y}" if today else ""
 
+    eyebrow_text = "Aapki Vedic Kundli Reading" if is_hinglish else "Your Vedic reading"
+    h1_text = f"{_e(first)}, yahan dekhein aapki kundli kya sanket de rahi hai." if is_hinglish else f"{_e(first)}, here is what your chart is saying."
+    signature_kicker = "AAPKA CHART SIGNATURE" if is_hinglish else "YOUR CHART SIGNATURE"
+    who_kicker = "AAPKA VYAKTITVA" if is_hinglish else "WHO YOU ARE"
+    who_heading = "Aapka Mool Swabhav Aur Foundational Promise" if is_hinglish else "Your foundational promise"
+    areas_kicker = "JEEVAN KE MUKHYA KSHETRA" if is_hinglish else "COMPREHENSIVE LIFE DOMAIN CONSULTATIONS"
+    areas_heading = "Aapke Jeevan Kshetra: Current Phase Aur Aane Wala Samay" if is_hinglish else "Your Life Areas: Current Phase &amp; The Road Ahead"
+    footer_text = "Aapki janma kundli ke adhar par astrological interpretation · margdarshan hetu" if is_hinglish else "Astrological interpretation from your supplied birth details · guidance, not a substitute for professional advice"
+
     body = f"""
     <header>
-      <div class="eyebrow">Your Vedic reading</div>
-      <h1>{_e(first)}, here is what your chart is saying.</h1>
+      <div class="eyebrow">{eyebrow_text}</div>
+      <h1>{h1_text}</h1>
       <div class="chartline">{_e(chart_line)} · read {_e(date_str)}</div>
     </header>
 
     <section class="hero">
-      <div class="section-kicker hero-kicker">YOUR CHART SIGNATURE</div>
+      <div class="section-kicker hero-kicker">{signature_kicker}</div>
       <div class="chart-signature">
         {"".join(f'<span class="chart-chip">{_e(x)}</span>' for x in chips)}
       </div>
@@ -2090,10 +2230,10 @@ def render(
     </section>
 
     <section class="conv-block who-you-are-block">
-      <div class="section-kicker">WHO YOU ARE</div>
-      <h2 id="sec-who-you-are" data-nav="Who you are">Your foundational promise</h2>
+      <div class="section-kicker">{who_kicker}</div>
+      <h2 id="sec-who-you-are" data-nav="Who you are">{who_heading}</h2>
       <p class="lead-reading"><span class="ev-label">Constitutional Baseline</span> {about_meaning}</p>
-      {f'<p style="margin:12px 0 14px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{personality}</p>' if personality and personality != about_meaning else ""}
+      {f'<p style="margin:12px 0 14px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{_e(personality)}</p>' if personality and personality != about_meaning else ""}
       {baseline_card_html}
     </section>
 
@@ -2102,8 +2242,8 @@ def render(
     {recent_html}
 
     <section class="conv-block life-domains-block">
-      <div class="section-kicker">COMPREHENSIVE LIFE DOMAIN CONSULTATIONS</div>
-      <h2 id="sec-life-domains" data-nav="Your life areas">Your Life Areas: Current Phase &amp; The Road Ahead</h2>
+      <div class="section-kicker">{areas_kicker}</div>
+      <h2 id="sec-life-domains" data-nav="Your life areas">{areas_heading}</h2>
       {divisional_html}
     </section>
 
@@ -2111,7 +2251,7 @@ def render(
     {upsell_html if not paid else ""}
     {unlock}
 
-    <footer>Astrological interpretation from your supplied birth details · guidance, not a substitute for professional advice</footer>
+    <footer>{footer_text}</footer>
     """
 
     html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>

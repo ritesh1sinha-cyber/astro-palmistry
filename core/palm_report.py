@@ -562,7 +562,8 @@ def _teaser(n_areas: int, n_ahead: int, n_points: int, *, special_marks_allowed:
 
 
 def build_palm_html_reading(raw: dict, p: dict, *,
-                            price: int = 499) -> Tuple[str, str, dict]:
+                            price: int = 499,
+                            lang: str = "en") -> Tuple[str, str, dict]:
     """
     Build free/paid HTML for one palm reading.
 
@@ -577,6 +578,7 @@ def build_palm_html_reading(raw: dict, p: dict, *,
     req = _Req(p)
     age = req.age
     name = req.name or "Seeker"
+    lang = str(lang or p.get("language") or "en")
 
     conf = raw.get("confluence") or {}
     dom_key = conf.get("dominant_hand") or req.dominant
@@ -623,11 +625,11 @@ def build_palm_html_reading(raw: dict, p: dict, *,
         elif age < 25:
             age_band = "young_adult"
         pfacts_paid = build_palm_facts(
-            raw, name=name, access="paid", age_band=age_band, age_years=age)
+            raw, name=name, access="paid", age_band=age_band, age_years=age, language=lang)
         pfacts_free = project_for_access(pfacts_paid, "free")
         facts_payload = public_fact_payload(pfacts_paid)
-        free_llm = humanize("palm", pfacts_free, access="free")
-        paid_llm = humanize("palm", pfacts_paid, access="paid")
+        free_llm = humanize("palm", pfacts_free, access="free", lang=lang)
+        paid_llm = humanize("palm", pfacts_paid, access="paid", lang=lang)
         prose_overlay = {
             "free": free_llm.get("overlay") or {},
             "paid": paid_llm.get("overlay") or {},
@@ -652,7 +654,7 @@ def build_palm_html_reading(raw: dict, p: dict, *,
                  if isinstance(prose_overlay, dict) else {})
         if not isinstance(prose, dict):
             prose = {}
-        return PConv.render(raw, paid=paid, prose=prose, **common)
+        return PConv.render(raw, paid=paid, prose=prose, lang=lang, **common)
 
     free_html = _scrub_palm_html(_render_palm(False))
     paid_html = _scrub_palm_html(_render_palm(True))

@@ -598,13 +598,14 @@ actually goes, independently of the lines crossing them.</p>
 <div class="card"><ul class="palm-list">{rows}</ul></div>"""
 
 
-def _remedies(dom: dict, conf: dict, *, paid: bool = False) -> str:
+def _remedies(dom: dict, conf: dict, *, paid: bool = False, lang: str = "en") -> str:
     """Do / don't — only corpus / coded mark rules (see palm_api.palm_remedies)."""
     try:
         from palm_api.palm_remedies import build_palm_remedies, format_remedy_line
     except Exception:  # noqa: BLE001
         return ""
 
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     feats = dom.get("features") if (isinstance(dom, dict) and "features" in dom) else dom
     feats = feats if isinstance(feats, dict) else {}
     quality = feats.get("quality") or {}
@@ -651,30 +652,42 @@ Planetary mantras, sacred mudras, gemstones, and Vedic daan rituals are in the f
     donts = [r for r in items if r.bucket == "dont"]
 
     def _render_list(rem_list: list[Any]) -> str:
+        ctx_label = "Vistrut Sandarbh" if is_hinglish else "Context"
         return "".join(
             f'<li class="stone up"><div class="stone-detail">{r.action}</div>'
-            f'<p class="fine" style="margin:4px 0 0 0;color:#5a554c;"><b>Context:</b> {_e(r.reason)}</p></li>'
+            f'<p class="fine" style="margin:4px 0 0 0;color:#5a554c;"><b>{ctx_label}:</b> {_e(r.reason)}</p></li>'
             for r in rem_list
         )
 
-    mudra_html = f'''<div class="stones-group up"><div class="stones-group-label">&#129330; Sacred Hast Mudras (Pranic Nerve Channel Activation)</div><ul class="stones">{_render_list(mudras)}</ul></div>''' if mudras else ''
-    mantra_html = f'''<div class="stones-group up"><div class="stones-group-label">&#128330; Planetary Beej Mantras & Chanting</div><ul class="stones">{_render_list(mantras)}</ul></div>''' if mantras else ''
-    gem_html = f'''<div class="stones-group up"><div class="stones-group-label">&#128142; Gemstones, Setting Metals & Finger Alignment</div><ul class="stones">{_render_list(gems)}</ul></div>''' if gems else ''
-    daan_html = f'''<div class="stones-group up"><div class="stones-group-label">&#127793; Vedic Daan & Seva Rituals</div><ul class="stones">{_render_list(daans)}</ul></div>''' if daans else ''
+    mudra_lbl = "Hast Mudrayen (Pranic Urja Santulan)" if is_hinglish else "Sacred Hast Mudras (Pranic Nerve Channel Activation)"
+    mantra_lbl = "Grah Beej Mantra & Jaap" if is_hinglish else "Planetary Beej Mantras & Chanting"
+    gem_lbl = "Rashi Ratna Aur Dhaatu Nirdharan" if is_hinglish else "Gemstones, Setting Metals & Finger Alignment"
+    daan_lbl = "Vedic Daan Aur Seva" if is_hinglish else "Vedic Daan & Seva Rituals"
+    habits_lbl = "Jyotishiya Dainik Aadatein" if is_hinglish else "Astrological Lifestyle Habits"
+
+    mudra_html = f'''<div class="stones-group up"><div class="stones-group-label">&#129330; {mudra_lbl}</div><ul class="stones">{_render_list(mudras)}</ul></div>''' if mudras else ''
+    mantra_html = f'''<div class="stones-group up"><div class="stones-group-label">&#128330; {mantra_lbl}</div><ul class="stones">{_render_list(mantras)}</ul></div>''' if mantras else ''
+    gem_html = f'''<div class="stones-group up"><div class="stones-group-label">&#128142; {gem_lbl}</div><ul class="stones">{_render_list(gems)}</ul></div>''' if gems else ''
+    daan_html = f'''<div class="stones-group up"><div class="stones-group-label">&#127793; {daan_lbl}</div><ul class="stones">{_render_list(daans)}</ul></div>''' if daans else ''
     habits_html = ""
     if dos or donts:
-        habits_html = f'''<div class="stones-group up"><div class="stones-group-label">&#9757; Astrological Lifestyle Habits</div><ul class="stones">{_render_list(dos + donts)}</ul></div>'''
+        habits_html = f'''<div class="stones-group up"><div class="stones-group-label">&#9757; {habits_lbl}</div><ul class="stones">{_render_list(dos + donts)}</ul></div>'''
+
+    rem_title = "Prabhavi Hast Samudrika & Jyotishiya Upay" if is_hinglish else "Authentic Astrological & Palmistry Upayas"
+    rem_sub = "Yeh Hast Samudrika aur Vedic upayas aapke hatho ke parvat aur rekhayein ke anusar taiyar kiye gaye hain." if is_hinglish else "These classical Hast Samudrika and Vedic Jyotish upayas are aligned directly with the planetary mount elevations, finger proportions, and line trajectories measured in your hands."
+    rem_fine = "Samudrika Shastra parampara. Mudraon ka abhyas shant vatavaran mein 10-15 minute karein. Mantra jaap pratah ya sandhya kal purva/uttar disha ki taraf mukh karke karein." if is_hinglish else "Classical Hast Samudrika tradition. Practice sacred mudras in a relaxed posture for 10–15 minutes daily. Mantras are ideally chanted during morning or evening twilight (Sandhya) facing East or North."
+    nav_lbl = "Vedic Upay" if is_hinglish else "Remedies"
 
     return f"""
 <section class="remedy-card">
-  <h3 class="sec" data-nav="Remedies">Authentic Astrological & Palmistry Upayas</h3>
-  <p class="sec-note">These classical Hast Samudrika and Vedic Jyotish upayas are aligned directly with the planetary mount elevations, finger proportions, and line trajectories measured in your hands.</p>
+  <h3 class="sec" data-nav="{nav_lbl}">{rem_title}</h3>
+  <p class="sec-note">{rem_sub}</p>
   {mudra_html}
   {mantra_html}
   {gem_html}
   {daan_html}
   {habits_html}
-  <p class="fine">Classical Hast Samudrika tradition. Practice sacred mudras in a relaxed posture for 10–15 minutes daily. Mantras are ideally chanted during morning or evening twilight (Sandhya) facing East or North.</p>
+  <p class="fine">{rem_fine}</p>
 </section>"""
 
 

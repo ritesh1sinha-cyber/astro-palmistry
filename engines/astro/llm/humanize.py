@@ -92,9 +92,9 @@ def _model_name() -> str:
     return str(getattr(S, "llm_model", "") or "") if S else ""
 
 
-def _cache_key(facts: Any, kind: str, access: str) -> str:
+def _cache_key(facts: Any, kind: str, access: str, lang: str = "en") -> str:
     fh = getattr(facts, "facts_hash", "") or facts_cache_key(facts)
-    return f"{fh}:{prompt_version(kind)}:{_model_name()}:{kind}:{access}"
+    return f"{fh}:{prompt_version(kind)}:{_model_name()}:{kind}:{access}:{lang}"
 
 
 def _cache_get(key: str) -> Optional[dict]:
@@ -297,7 +297,7 @@ def _conversational_palm_overlay(
 # ---------------------------------------------------------------------------
 # Per-tab humanizers
 # ---------------------------------------------------------------------------
-def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
+def _humanize_report(facts: ReportFacts, lang: str = "en") -> tuple[dict, dict, bool, int]:
     """Generate grounded prose from deterministic analytical facts.
 
     Qwen writes language only. Paid uses two small calls (opening/current chapter
@@ -315,8 +315,8 @@ def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
 
     prose, retries, errs = _complete_validated(
         ConversationalProse,
-        system_prompt_for("full_report"),
-        user_prompt(facts, schema_name="ConversationalProse", section="page")
+        system_prompt_for("full_report", lang=lang),
+        user_prompt(facts, schema_name="ConversationalProse", section="page", lang=lang)
         + (
             "\nWrite in the voice of a practising Vedic astrologer. astrological_basis must name the supplied chart factors and briefly explain their astrological significance; interpretation must connect those factors to lived experience rather than philosophy. current_phase must be 2–4 sentences using "
             "phase_tone, phase_end and phase_notes — never a single word like "
@@ -346,7 +346,7 @@ def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
 
     # Free must never carry paid area detail even if the model returns it.
     overlay = _conversational_overlay(prose, access=access)
-    overlay["areas"] = _humanize_report_areas(facts, stats) if paid else {}
+    overlay["areas"] = _humanize_report_areas(facts, stats, lang=lang) if paid else {}
     # Per-slot QA. One bad life area must not discard the whole page: drop the
     # offending slot and let deterministic fact prose fill it.
     overlay, kept, dropped = _screen_conversational_slots(overlay, facts, stats)
@@ -364,7 +364,7 @@ def _humanize_report(facts: ReportFacts) -> tuple[dict, dict, bool, int]:
     return overlay, stats, dropped > 0 and kept == 0, retries
 
 
-def _humanize_report_areas(facts: Any, stats: dict[str, Any]) -> dict[str, Any]:
+def _humanize_report_areas(facts: Any, stats: dict[str, Any], lang: str = "en") -> dict[str, Any]:
     """The paid life-area passages, asked for on their own card facts.
 
     A failure here is not a failed page: the merge step fills every missing
@@ -393,8 +393,8 @@ def _humanize_report_areas(facts: Any, stats: dict[str, Any]) -> dict[str, Any]:
         chunk_keys = card_areas[start:start + chunk_size]
         prose, _retries, errs = _complete_validated(
             ConversationalAreasProse,
-            system_prompt_for("full_report_areas"),
-            areas_user_prompt(facts, area_keys=chunk_keys),
+            system_prompt_for("full_report_areas", lang=lang),
+            areas_user_prompt(facts, area_keys=chunk_keys, lang=lang),
             facts,
             validate_prose_against_facts,
             keep_last_on_failure=True,
@@ -647,12 +647,12 @@ def _merge_conversational_facts(
     return out
 
 
-def _humanize_question(facts: QuestionFacts) -> tuple[dict, dict, bool, int]:
+def _humanize_question(facts: QuestionFacts, lang: str = "en") -> tuple[dict, dict, bool, int]:
     stats = {"accepted": 0, "rejected": 0, "errors": 0}
     prose, retries, errs = _complete_validated(
         QuestionProse,
-        system_prompt_for("user_question"),
-        user_prompt(facts, schema_name="QuestionProse"),
+        system_prompt_for("user_question", lang=lang),
+        user_prompt(facts, schema_name="QuestionProse", lang=lang),
         facts,
         validate_question_prose,
     )
@@ -668,12 +668,12 @@ def _humanize_question(facts: QuestionFacts) -> tuple[dict, dict, bool, int]:
     }, stats, False, retries
 
 
-def _humanize_horary(facts: HoraryFacts) -> tuple[dict, dict, bool, int]:
+def _humanize_horary(facts: HoraryFacts, lang: str = "en") -> tuple[dict, dict, bool, int]:
     stats = {"accepted": 0, "rejected": 0, "errors": 0}
     prose, retries, errs = _complete_validated(
         HoraryProse,
-        system_prompt_for("horary"),
-        user_prompt(facts, schema_name="HoraryProse"),
+        system_prompt_for("horary", lang=lang),
+        user_prompt(facts, schema_name="HoraryProse", lang=lang),
         facts,
         validate_horary_prose,
     )
@@ -689,7 +689,7 @@ def _humanize_horary(facts: HoraryFacts) -> tuple[dict, dict, bool, int]:
     }, stats, False, retries
 
 
-def _humanize_palm(facts: PalmFacts) -> tuple[dict, dict, bool, int]:
+def _humanize_palm(facts: PalmFacts, lang: str = "en") -> tuple[dict, dict, bool, int]:
     """One ConversationalPalmProse call for the whole palm page."""
     stats = {"accepted": 0, "rejected": 0, "errors": 0, "rejection_reasons": {}}
     access = str(getattr(facts, "access", "free") or "free")
@@ -701,8 +701,8 @@ def _humanize_palm(facts: PalmFacts) -> tuple[dict, dict, bool, int]:
 
     prose, retries, errs = _complete_validated(
         ConversationalPalmProse,
-        system_prompt_for("palm"),
-        user_prompt(facts, schema_name="ConversationalPalmProse")
+        system_prompt_for("palm", lang=lang),
+        user_prompt(facts, schema_name="ConversationalPalmProse", lang=lang)
         + (
             "\nWrite full sentences. current_phase must combine life_stage_note "
             "with the demanding aspect. mind_now needs one hedged line per "
@@ -918,7 +918,7 @@ def _deterministic_overlay(kind: str, facts: Any) -> dict[str, Any]:
     return {}
 
 
-def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
+def humanize(kind: str, facts: Any, *, access: str = "free", lang: str = "") -> dict:
     """Public entry. Returns overlay + stats + run meta (never for customer HTML).
 
     The overlay is always deterministic prose at worst — never empty — so a
@@ -927,6 +927,7 @@ def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
     """
     kind = (kind or "").strip()
     access_n = "paid" if access == "paid" else "free"
+    lang_n = str(lang or getattr(facts, "language", "") or getattr(facts, "lang", "") or "en").strip()
     meta = LlmRunMeta(
         enabled=False,
         model_name=_model_name(),
@@ -972,7 +973,7 @@ def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
     meta.enabled = True
 
     meta.facts_hash = getattr(facts, "facts_hash", "") or facts_cache_key(facts)
-    cache_key = _cache_key(facts, kind, access_n)
+    cache_key = _cache_key(facts, kind, access_n, lang=lang_n)
     cached = _cache_get(cache_key)
     if cached and isinstance(cached, dict) and "overlay" in cached:
         cached = dict(cached)
@@ -989,13 +990,13 @@ def humanize(kind: str, facts: Any, *, access: str = "free") -> dict:
     retries = 0
     try:
         if kind == "full_report" and isinstance(facts, ReportFacts):
-            overlay, stats, fallback_used, retries = _humanize_report(facts)
+            overlay, stats, fallback_used, retries = _humanize_report(facts, lang=lang_n)
         elif kind == "user_question" and isinstance(facts, QuestionFacts):
-            overlay, stats, fallback_used, retries = _humanize_question(facts)
+            overlay, stats, fallback_used, retries = _humanize_question(facts, lang=lang_n)
         elif kind == "horary" and isinstance(facts, HoraryFacts):
-            overlay, stats, fallback_used, retries = _humanize_horary(facts)
+            overlay, stats, fallback_used, retries = _humanize_horary(facts, lang=lang_n)
         elif kind == "palm" and isinstance(facts, PalmFacts):
-            overlay, stats, fallback_used, retries = _humanize_palm(facts)
+            overlay, stats, fallback_used, retries = _humanize_palm(facts, lang=lang_n)
         else:
             print(f"[llm] unknown kind/facts: {kind}/{type(facts)}", flush=True)
             return out

@@ -45,6 +45,8 @@ def precompute_for(chart: dict) -> dict:
     """Cached ephemeris pass. This is what makes 1 lakh users affordable."""
     cached = precompute_get(chart["chart_hash"])
     if cached:
+        if chart.get("person_name"):
+            cached.setdefault("meta", {})["client"] = chart["person_name"]
         return cached
     from astro_precompute import resolve_precompute
     pc = resolve_precompute(
@@ -92,9 +94,11 @@ def _save_report(user_id: str, chart_id: Optional[str], kind: str,
         if str(eng) not in sys.path:
             sys.path.insert(0, str(eng))
         from llm.summary import attach_plain_summary
+        lang = str(meta.get("language") or "en")
         meta = attach_plain_summary(
             meta, kind=kind, free_html=free_html or "",
             paid_html=paid_html or "", paid=bool(paid), facts=facts,
+            lang=lang,
         )
     except Exception as exc:  # noqa: BLE001
         print(f"[handlers] plain summary skipped: {exc}", flush=True)
@@ -198,9 +202,10 @@ def h_palm(user: dict, p: dict) -> dict:
         # (build_palm_reading) is kept in palm_report.py but no longer served.
         from .palm_report import build_palm_html_reading
         price = S.price("palm_full") // 100
+        lang = str(p.get("language") or "en")
         free_html, paid_html, meta = build_palm_html_reading(
-            raw_result, p, price=price)
-        meta = {**meta, "overlays": overlays, "price": price}
+            raw_result, p, price=price, lang=lang)
+        meta = {**meta, "overlays": overlays, "price": price, "language": lang}
         paid = entitled(user["id"], "palm_full")
         saved = _save_report(user["id"], None, "palm",
                              free_html, paid_html, meta, paid)
@@ -359,18 +364,21 @@ def h_full_report(user: dict, p: dict) -> dict:
     # a document by headings would either give away the timing or hide the
     # headlines, and it broke whenever a heading was renamed.
     import report_render as RD
+    lang = str(p.get("language") or (_payload or {}).get("language") or "en")
     free_html, paid_html, meta = RD.full_report(
         pc, name=chart.get("person_name") or "Seeker",
         price=S.price("full_report") // 100,
         bundle_price=S.price("bundle_all") // 100,
         lat=float(chart["lat"]), lon=float(chart["lon"]),
-        tz=float(chart["tz_offset"]))
+        tz=float(chart["tz_offset"]),
+        lang=lang)
     # Card HTML used to skip the full voice pass that the long-form appendix gets.
     # Phase 1: personalise (local openings + humanise) — no cloud LLM required.
-    free_html = V.personalise(free_html, ctx, "full_report")
-    paid_html = V.personalise(paid_html, ctx, "full_report")
-    free_html = V.translate_jargon(free_html, keep_original=False)
-    paid_html = V.translate_jargon(paid_html, keep_original=False)
+    if str(lang or "").lower() not in ("hi_en", "hinglish", "hi", "hindi"):
+        free_html = V.personalise(free_html, ctx, "full_report")
+        paid_html = V.personalise(paid_html, ctx, "full_report")
+        free_html = V.translate_jargon(free_html, keep_original=False)
+        paid_html = V.translate_jargon(paid_html, keep_original=False)
 
     # The long-form lane document is kept as a clearly-labeled technical
     # appendix, separated from customer prose by a heading and collapsed by
@@ -393,6 +401,7 @@ def h_full_report(user: dict, p: dict) -> dict:
                      "failed": list(((lanes or {}).get("failed") or {}).keys())}
     meta["semantic_mode"] = (_payload or {}).get("semantic_mode", "")
     paid = entitled(user["id"], "full_report", chart["id"])
+    meta["language"] = lang
     saved = _save_report(user["id"], chart["id"], "full_report",
                          free_html, paid_html, meta, paid)
     saved["chartId"] = chart["id"]
@@ -434,6 +443,7 @@ def h_classical_report(user: dict, p: dict) -> dict:
     )
 
     paid = entitled(user["id"], "classical_report", chart["id"])
+    meta["language"] = p.get("language") or "en"
     saved = _save_report(user["id"], chart["id"], "classical_report",
                          free_html, paid_html, meta, paid)
     saved["chartId"] = chart["id"]
@@ -452,27 +462,24 @@ def h_horary(user: dict, p: dict) -> dict:
     try:
         import semantic_question as SQ
         area = SQ.normalize_area(p.get("area") or "")
-        routed = SQ.route(p.get("question") or "", area=area)
-        print(f"[horary] semantic route method={routed.method} "
-              f"house={routed.primary_house} domain={routed.domain} "
-              f"topic={routed.topic} area={area or '-'} "
-              f"h_sc={routed.house_score:.2f}", flush=True)
     except Exception as exc:  # noqa: BLE001
-        print(f"[horary] semantic route skipped: {exc}", flush=True)
-        area = (p.get("area") or "").strip().lower()
+        print(f"[horary] area normalize skipped: {exc}", flush=True)
 
-    htmls, verdicts = {}, {}
-    western_judgment: dict = {}
-    vedic_customer: dict = {}
-    # Vedic Prashna / KP / Jamakkol parked — Western horary only for now.
+    # Vedic vs Western: the user can tick "I am also a Vedic customer" or the
+    # system can detect it from their past reports.
+    vedic_customer = bool(p.get("vedicCustomer"))
+
+    htmls = {}
+    verdicts = {}
+    western_judgment = None
     try:
         from western_horary_report import generate_western_horary_html as wgen
         qh = None
         if area:
             try:
-                import semantic_question as SQ
-                qh = SQ.AREA_TO_HOUSE.get(area)
-            except Exception:                                         # noqa: BLE001
+                from horary_answer import _AREA_TO_HOUSE
+                qh = _AREA_TO_HOUSE.get(area)
+            except Exception:
                 qh = None
         h, j = wgen(p["question"], p["qDate"], p["qTime"],
                     p.get("location", "New Delhi"), quesited_house=qh)
@@ -494,15 +501,17 @@ def h_horary(user: dict, p: dict) -> dict:
 
     import report_render as RD
     horary_price = S.price("horary") // 100
+    lang = str(p.get("language") or "en")
     free_html, paid_html, hmeta = RD.horary(
         question=p["question"], verdicts=verdicts,
         western_judgment=western_judgment, asked=ctx["asked"],
         name=user.get("name") or "",
         horary_price=horary_price,
         full_report_price=S.price("full_report") // 100,
-        vedic_customer=vedic_customer)
+        vedic_customer=vedic_customer,
+        lang=lang)
 
-    meta = {**hmeta, "verdicts": verdicts, "price": horary_price}
+    meta = {**hmeta, "verdicts": verdicts, "price": horary_price, "language": lang}
     saved = _save_report(user["id"], None, "horary", free_html, paid_html,
                          meta, paid)
     saved["price"] = meta["price"]
@@ -541,6 +550,7 @@ def h_user_question(user: dict, p: dict) -> dict:
     import deep_evidence as DE
     import report_render as RD
     uq_price = S.price("user_question") // 100
+    lang = str(p.get("language") or "en")
     DE.begin(pc, lat=float(chart["lat"]), lon=float(chart["lon"]),
              tz=float(chart["tz_offset"]))
     try:
@@ -549,11 +559,13 @@ def h_user_question(user: dict, p: dict) -> dict:
             name=chart.get("person_name") or "",
             price=uq_price,
             lat=float(chart["lat"]), lon=float(chart["lon"]),
-            tz=float(chart["tz_offset"]))
+            tz=float(chart["tz_offset"]),
+            lang=lang)
     finally:
         DE.end()
 
     paid = entitled(user["id"], "user_question", chart["id"])
+    meta["language"] = lang
     saved = _save_report(user["id"], chart["id"], "user_question",
                          free_html, paid_html, meta, paid)
     saved["chartId"] = chart["id"]

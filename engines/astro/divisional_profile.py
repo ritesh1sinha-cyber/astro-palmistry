@@ -135,6 +135,69 @@ VARGA_META: dict[str, dict[str, str]] = {
     },
 }
 
+VARGA_META_HINGLISH: dict[str, dict[str, str]] = {
+    "D1": {
+        "name": "Janm Kundli (D1)",
+        "governs": "Mool Swabhav Aur Sharirik Urja",
+        "nav": "Aapka vyaktitva aur urja",
+        "desc": "Aapka mool vyaktitva, physical vitality aur jeevan ka general orientation.",
+    },
+    "D2": {
+        "name": "Dhan Varga (D2 · Hora)",
+        "governs": "Dhan, Bachat Aur Aarthik Sthirta",
+        "nav": "Dhan aur aarthik sthiti",
+        "desc": "Dhan sanchay, asset building aur liquid resources ki sthirta.",
+    },
+    "D3": {
+        "name": "Sahas, Bhai-Behen (D3 · Drekkana)",
+        "governs": "Bhai-Behen, Sahas Aur Initiative",
+        "nav": "Bhai-behen aur sahas",
+        "desc": "Aapka sahas, dainik initiative, bhai-beheno se sambandh aur execution drive.",
+    },
+    "D4": {
+        "name": "Sampatti, Nivas (D4 · Chaturthamsha)",
+        "governs": "Ghar, Zameen, Vahan Aur Sthirta",
+        "nav": "Ghar aur sampatti",
+        "desc": "Property ownership, ghar ki sthirta aur sthan parivartan ke yog.",
+    },
+    "D7": {
+        "name": "Santan Varga (D7 · Saptamsha)",
+        "governs": "Santan, Parivar Aur Bhavishya",
+        "nav": "Santan aur parivar",
+        "desc": "Santan sukh, parivarik vistar aur legacy.",
+    },
+    "D9": {
+        "name": "Vivah Aur Navamsha (D9)",
+        "governs": "Jeevansathi, Vivah Aur Aantrik Vikas",
+        "nav": "Vivah aur jeevansathi",
+        "desc": "Aapka aadhyaatmik vikas, jeevansathi compatibility aur vaivahik sukh.",
+    },
+    "D10": {
+        "name": "Career Aur Karyakshetra (D10 · Dasamsha)",
+        "governs": "Career Growth, Pratishtha Aur Samman",
+        "nav": "Career aur pratishtha",
+        "desc": "Aapka professional karma, public recognition, authority aur career trajectory.",
+    },
+    "D12": {
+        "name": "Vansh Aur Mata-Pita (D12 · Dwadashamsha)",
+        "governs": "Mata-Pita Aur Vansh Ka Aashirwad",
+        "nav": "Mata-pita aur vansh",
+        "desc": "Parivarik jadh, mata-pita ka sahyog aur sanskar.",
+    },
+    "D24": {
+        "name": "Uchha Shiksha (D24 · Chaturvimshamsha)",
+        "governs": "Shiksha, Memory Aur Boudhik Shamta",
+        "nav": "Shiksha aur gyan",
+        "desc": "Uchha shiksha, analytical skills aur gyan astitva.",
+    },
+    "D30": {
+        "name": "Swasthya Aur Immunity (D30 & D27)",
+        "governs": "Sharirik Stamina Aur Swasthya Savdhani",
+        "nav": "Swasthya aur stamina",
+        "desc": "Sharirik immunity, sensitive health patterns aur mushkilo se ubharne ki shakti.",
+    },
+}
+
 PLANET_REMEDIES: dict[str, dict[str, str]] = {
     "Sun": {
         "strengthen": "Offer fresh water to the morning sun daily (Surya Arghya) with a calm mind; nurture respect for elders and father figures.",
@@ -405,8 +468,10 @@ def _build_domain_specific_timeline(
     curr_ad_end: str,
     adulthood_md: str,
     adulthood_start_yr: int,
+    lang: str = "en",
 ) -> str:
     """Builds distinct, domain-specific multi-clock confluence timeline guidance (Vimshottari + Jaimini Chara + Yogini Antardashas + Transits)."""
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     is_child = current_age < 18
     this_yr = date.today().year
     t_now = date.today()
@@ -564,7 +629,10 @@ def _build_domain_specific_timeline(
     # Multi-Clock Status Line
     chara_str = f" · Chara Dasha: <b>{chara_m_sign}{f'-{chara_a_sign}' if chara_a_sign else ''}</b>" if chara_m_sign else ""
     yog_str = f" · Yogini: <b>{yog_display}</b>" if yog_display else ""
-    active_clocks = f"<b>Active Multi-Clock Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> (until {curr_ad_end_fmt}){chara_str}{yog_str}."
+    if is_hinglish:
+        active_clocks = f"<b>Chalu Dasha Aur Grah Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> ({curr_ad_end_fmt} tak){chara_str}{yog_str}."
+    else:
+        active_clocks = f"<b>Active Multi-Clock Alignment:</b> Vimshottari <b>{curr_md}-{curr_ad_lord}</b> (until {curr_ad_end_fmt}){chara_str}{yog_str}."
 
     # Compute Ashtakavarga SAV & BAV Data for Chart
     av_data = compute_chart_ashtakavarga(pc)
@@ -847,12 +915,12 @@ def _determine_marriage_profile(
     elif key_ruler in ("Mars", "Saturn"):
         partner_nature = "pragmatic, hardworking, disciplined, loyal, and action-oriented"
         partner_realm = "engineering, operations, finance, real estate, or administrative governance"
-        dynamics = "practical life building, enduring loyalty, and steady long-term stability"
+        dynamics = "practical life building, enduring loyalty, and steady"
 
     return partner_nature, partner_realm, dynamics
 
 
-def build_divisional_insights(pc: dict) -> list[DivisionalInsight]:
+def build_divisional_insights(pc: dict, lang: str = "en") -> list[DivisionalInsight]:
     """Generates warm, highly specific, predictive observations for all 9 key vargas with collapsible proof and domain-specific dasha timing."""
     this_yr = date.today().year
 
@@ -910,10 +978,10 @@ def build_divisional_insights(pc: dict) -> list[DivisionalInsight]:
     curr_ad_list = vim.get("current_md_antardashas", [])
     curr_ad_name = ""
     curr_ad_end = ""
-    for ad in curr_ad_list:
-        if ad.get("status") == "current" or ad.get("is_current"):
-            curr_ad_name = ad.get("ad_lord") or ad.get("antardasha") or ""
-            raw_end = str(ad.get("end") or "")
+    for a in curr_ad_list:
+        if a.get("status") == "current":
+            curr_ad_name = a.get("ad_lord", "")
+            raw_end = a.get("end", "")
             curr_ad_end = _format_month_year(raw_end)
             break
 
@@ -935,8 +1003,11 @@ def build_divisional_insights(pc: dict) -> list[DivisionalInsight]:
     if not adulthood_md:
         adulthood_md = "Jupiter"
 
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    v_meta_dict = VARGA_META_HINGLISH if is_hinglish else VARGA_META
+
     for code in codes:
-        meta = VARGA_META.get(code, {})
+        meta = v_meta_dict.get(code, {})
         v_lagna = _get_varga_lagna(pc, code)
         if not v_lagna:
             continue
@@ -987,6 +1058,7 @@ def build_divisional_insights(pc: dict) -> list[DivisionalInsight]:
             curr_ad_end=curr_ad_end,
             adulthood_md=adulthood_md,
             adulthood_start_yr=adulthood_start_yr,
+            lang=lang,
         )
 
         headline, prediction, remedy = _interpret_varga_concrete(
@@ -1012,6 +1084,7 @@ def build_divisional_insights(pc: dict) -> list[DivisionalInsight]:
             d1_h5_lord_house=d1_h5_lord_house,
             amk=amk,
             dk=dk,
+            lang=lang,
         )
 
         # Build collapsible technical proof string
@@ -1074,10 +1147,12 @@ def _interpret_varga_concrete(
     d1_h5_lord_house: int,
     amk: str,
     dk: str,
+    lang: str = "en",
 ) -> tuple[str, str, str]:
     """Generates rich, highly specific, practical life interpretations for each divisional chart."""
     div_dict = pc.get("divisional", {})
     d1_planets = pc.get("planets", {})
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
 
     reading_parts: list[str] = []
     remedy_planet = lord
@@ -1085,234 +1160,302 @@ def _interpret_varga_concrete(
     remedy_reason = f"To Harmonize {lord}"
 
     if code == "D1":
-        headline = f"Core Nature & Personal Vitality ({v_lagna} Rising)"
-        reading_parts.append(
-            f"Your foundational birth chart shows a thoughtful, perceptive, and adaptable nature (<b>{v_lagna} Rising</b>). "
-            f"With your Moon in <b>{moon_sign} under {nakshatra}</b>, you have an alert mind that quickly absorbs ideas and notices subtle nuances around you."
-        )
-        if lord_house in DUSTHANA:
+        if is_hinglish:
+            headline = f"Mool Swabhav Aur Vyaktigat Urja ({v_lagna} Rising)"
             reading_parts.append(
-                f"Because your ruling planet (<b>{lord}</b>) is placed in the {ORDINALS.get(lord_house, '8th')} house, your journey builds deep resilience, research capability, and inner patience over time rather than instant outer results."
+                f"Aapki janma kundli ek gambhir, samajhdar aur vyavaharik vyaktitva (<b>{v_lagna} Rising</b>) darshati hai. "
+                f"Moon in <b>{moon_sign} under {nakshatra}</b> ke sath, aapka alert mind har cheez ko jaldi samajhta hai."
             )
-            remedy_type = "dusthana"
-            remedy_reason = f"To Support Your Ruling Planet ({lord})"
+            if lord_house in DUSTHANA:
+                reading_parts.append(
+                    f"Aapka lagnesh (<b>{lord}</b>) {ORDINALS.get(lord_house, '8th')} bhav mein sthit hone ke karan, aapki safalta aantarik patience aur deep research se banti hai."
+                )
+                remedy_type = "dusthana"
+                remedy_reason = f"To Support Your Ruling Planet ({lord})"
+            else:
+                reading_parts.append(
+                    f"Aapka lagnesh (<b>{lord}</b>) {ORDINALS.get(lord_house, '1st')} bhav mein sthit hokar aapko physical stamina, aatmavishwas aur svatantrata pradan karta hai."
+                )
         else:
+            headline = f"Core Nature & Personal Vitality ({v_lagna} Rising)"
             reading_parts.append(
-                f"Your ruling planet (<b>{lord}</b>) sits comfortably in the {ORDINALS.get(lord_house, '1st')} house, giving you steady physical vitality, natural independence, and self-confidence."
+                f"Your foundational birth chart shows a thoughtful, perceptive, and adaptable nature (<b>{v_lagna} Rising</b>). "
+                f"With your Moon in <b>{moon_sign} under {nakshatra}</b>, you have an alert mind that quickly absorbs ideas and notices subtle nuances around you."
             )
+            if lord_house in DUSTHANA:
+                reading_parts.append(
+                    f"Because your ruling planet (<b>{lord}</b>) is placed in the {ORDINALS.get(lord_house, '8th')} house, your journey builds deep resilience, research capability, and inner patience over time rather than instant outer results."
+                )
+                remedy_type = "dusthana"
+                remedy_reason = f"To Support Your Ruling Planet ({lord})"
+            else:
+                reading_parts.append(
+                    f"Your ruling planet (<b>{lord}</b>) sits comfortably in the {ORDINALS.get(lord_house, '1st')} house, giving you steady physical vitality, natural independence, and self-confidence."
+                )
 
     elif code == "D2":
-        headline = f"Wealth, Savings & Financial Stability (Hora)"
-        hora_nature = "strategic asset accumulation and compounding investments"
-        if v_lagna in ("Leo", "Aries", "Sagittarius", "Gemini", "Libra", "Aquarius"):
-            hora_nature = "active enterprise, self-made initiatives, leadership authority, and bold professional ventures"
-        else:
-            hora_nature = "resource preservation, liquid savings, real estate assets, and steady wealth compounding"
-
-        reading_parts.append(
-            f"This division maps your money instincts, asset retention, and long-term capital stability. "
-            f"Your chart indicates that wealth compounds most reliably through <b>{hora_nature}</b> rather than speculative shortcuts."
-        )
-        if strong_planets:
+        if is_hinglish:
+            headline = f"Dhan, Bachat Aur Aarthik Sthirta (Hora · D2)"
             reading_parts.append(
-                f"With favorable planetary backing ({', '.join(strong_planets)}) in this division, your capacity to hold resources, manage liquidity, and secure family independence strengthens steadily across your career years."
+                f"Yeh varga aapki aarthik sthirta, dhan bachat aur asset accumulation ko darshata hai. "
+                f"Aapki kundli sanket deti hai ki dhan bina kisi short-cut ke vyavasthit roop se compound hota hai."
             )
+            if strong_planets:
+                reading_parts.append(
+                    f"Kundli mein shubh grah ({', '.join(strong_planets)}) ke sahyog se aapki financial holding capacity aur bachat samay ke sath majboot hoti hai."
+                )
+        else:
+            headline = f"Wealth, Savings & Financial Stability (Hora)"
+            hora_nature = "strategic asset accumulation and compounding investments"
+            if v_lagna in ("Leo", "Aries", "Sagittarius", "Gemini", "Libra", "Aquarius"):
+                hora_nature = "active enterprise, self-made initiatives, leadership authority, and bold professional ventures"
+            else:
+                hora_nature = "resource preservation, liquid savings, real estate assets, and steady wealth compounding"
+
+            reading_parts.append(
+                f"This division maps your money instincts, asset retention, and long-term capital stability. "
+                f"Your chart indicates that wealth compounds most reliably through <b>{hora_nature}</b> rather than speculative shortcuts."
+            )
+            if strong_planets:
+                reading_parts.append(
+                    f"With favorable planetary backing ({', '.join(strong_planets)}) in this division, your capacity to hold resources, manage liquidity, and secure family independence strengthens steadily across your career years."
+                )
         remedy_planet = "Jupiter"
         remedy_reason = "To Boost Wealth & Prosperity (Guru Upaya)"
 
     elif code == "D3":
-        headline = f"Courage, Siblings & Everyday Initiative (Drekkana)"
+        if is_hinglish:
+            headline = f"Sahas, Initiative Aur Bhai-Behen (Drekkana · D3)"
+            reading_parts.append(
+                f"Drekkana chart (D3) <b>vyaktigat sahas (*Parakrama*), bhai-behen sambandh (*Bhratru*) aur dainik initiative</b> ko darshata hai. "
+                f"Aapke andar kisi bhi karya ko shuru karne aur use poora karne ka dridh sankalp hai."
+            )
+        else:
+            headline = f"Courage, Siblings & Everyday Initiative (Drekkana)"
+            courage_str = "You possess strong natural courage, decisive execution, and the ability to take self-directed initiative on ambitious goals."
+            if lord_house in (3, 6, 10, 11):
+                courage_str = "Your chart confirms powerful upachaya drive (*Parakrama*), indicating that your determination and ability to overcome resistance grow stronger with every challenge."
+            elif lord_house in DUSTHANA:
+                courage_str = "Your personal enterprise develops through thoughtful strategy, research, and patient effort rather than hasty actions."
 
-        # 1. Courage & Enterprise (Parakrama)
-        courage_str = "You possess strong natural courage, decisive execution, and the ability to take self-directed initiative on ambitious goals."
-        if lord_house in (3, 6, 10, 11):
-            courage_str = "Your chart confirms powerful upachaya drive (*Parakrama*), indicating that your determination and ability to overcome resistance grow stronger with every challenge."
-        elif lord_house in DUSTHANA:
-            courage_str = "Your personal enterprise develops through thoughtful strategy, research, and patient effort rather than hasty actions."
+            sibling_str = "The Drekkana chart confirms supportive co-born relationships, mutual affection with siblings, and a collaborative spirit when working alongside close peers."
+            if d1_h2_lord_house in (3, 9, 11, 1, 5) or "Mars" in [sp.split()[0] for sp in strong_planets]:
+                sibling_str = "Governed by strong 3rd house indicators, your relationship with siblings brings mutual backing, shared family pride, and strong loyalty."
+            elif d1_h2_lord_house in DUSTHANA:
+                sibling_str = "Your chart favors cultivating independent self-reliance while maintaining respectful, mature communication with siblings and peers."
 
-        # 2. Sibling Dynamics (Bhratru)
-        sibling_str = "The Drekkana chart confirms supportive co-born relationships, mutual affection with siblings, and a collaborative spirit when working alongside close peers."
-        if d1_h2_lord_house in (3, 9, 11, 1, 5) or "Mars" in [sp.split()[0] for sp in strong_planets]:
-            sibling_str = "Governed by strong 3rd house indicators, your relationship with siblings brings mutual backing, shared family pride, and strong loyalty."
-        elif d1_h2_lord_house in DUSTHANA:
-            sibling_str = "Your chart favors cultivating independent self-reliance while maintaining respectful, mature communication with siblings and peers."
+            motor_str = "You possess good physical coordination, manual dexterity, and the active stamina to carry projects through to completion."
+            if "Saturn" in [tp.split()[0] for tp in trik_planets] or "Rahu" in [tp.split()[0] for tp in trik_planets]:
+                motor_str = "Physical pacing and manual stamina benefit from steady warmups, regular physical exercise, and avoiding erratic overexertion."
 
-        # 3. Motor Skills & Physical Coordination
-        motor_str = "You possess good physical coordination, manual dexterity, and the active stamina to carry projects through to completion."
-        if "Saturn" in [tp.split()[0] for tp in trik_planets] or "Rahu" in [tp.split()[0] for tp in trik_planets]:
-            motor_str = "Physical pacing and manual stamina benefit from steady warmups, regular physical exercise, and avoiding erratic overexertion."
-
-        reading_parts.extend([
-            f"The Drekkana division (D3) classically maps <b>personal courage (*Parakrama*), sibling relationships (*Bhratru*), everyday enterprise, and physical motor coordination</b>.",
-            courage_str,
-            sibling_str,
-            motor_str
-        ])
+            reading_parts.extend([
+                f"The Drekkana division (D3) classically maps <b>personal courage (*Parakrama*), sibling relationships (*Bhratru*), everyday enterprise, and physical motor coordination</b>.",
+                courage_str,
+                sibling_str,
+                motor_str
+            ])
         remedy_planet = "Mars"
         remedy_reason = "To Boost Initiative & Courage (Mangal Upaya)"
 
     elif code == "D4":
-        headline = f"Home, Land, Vehicles & Relocation (Chaturthamsha · D4)"
-        
-        # 1. Real Estate & Domestic Sanctuary
-        reading_parts.append(
-            "The Chaturthamsha division (D4) classically maps <b>domestic peace (*Griha Sukha*), fixed property, land acquisition, conveyances (*Vahana*), and geographical relocation / foreign settlement (*Videsh Vasa*)</b>. "
-            "Your chart confirms a solid foundational promise for acquiring residential real estate, comfortable conveyances, and establishing an enduring personal sanctuary in adulthood."
-        )
-        if strong_planets:
+        if is_hinglish:
+            headline = f"Ghar, Sampatti, Vahan Aur Sthirta (Chaturthamsha · D4)"
             reading_parts.append(
-                f"<br><br><b>Property & Asset Fortification:</b> Well-placed indicators ({', '.join(strong_planets)}) in D4 support significant land appreciation, smooth property transactions, and domestic comfort."
-            )
-
-        # 2. Relocation & Foreign Travel / Settlement Analysis
-        d1_h4_lord = SIGN_LORDS.get(house_sign(d1_lagna, 4), "") if d1_lagna else ""
-        d1_h4_lord_house = d1_planets.get(d1_h4_lord, {}).get("house", 0) if d1_h4_lord else 0
-        d1_h9_lord = SIGN_LORDS.get(house_sign(d1_lagna, 9), "") if d1_lagna else ""
-        d1_h9_lord_house = d1_planets.get(d1_h9_lord, {}).get("house", 0) if d1_h9_lord else 0
-        d1_h12_lord = SIGN_LORDS.get(house_sign(d1_lagna, 12), "") if d1_lagna else ""
-        d1_h12_lord_house = d1_planets.get(d1_h12_lord, {}).get("house", 0) if d1_h12_lord else 0
-        rahu_h = d1_planets.get("Rahu", {}).get("house", 0)
-        moon_h = d1_planets.get("Moon", {}).get("house", 0)
-        moon_s = d1_planets.get("Moon", {}).get("sign", "")
-
-        MOVABLE = {"Aries", "Cancer", "Libra", "Capricorn"}
-        WATERY = {"Cancer", "Scorpio", "Pisces"}
-
-        has_foreign_settlement = (
-            d1_h4_lord_house in (9, 12, 8, 3) or
-            d1_h12_lord_house in (4, 9, 1) or
-            rahu_h in (9, 12, 7, 4) or
-            (d1_h4_lord_house in (1, 10) and d1_h12_lord_house in (10, 11))
-        )
-        has_frequent_travel = (
-            d1_h9_lord_house in (9, 10, 12, 1, 3) or
-            moon_h in (3, 7, 9, 12) or
-            moon_s in (MOVABLE | WATERY) or
-            rahu_h in (3, 11)
-        )
-
-        if has_foreign_settlement:
-            reading_parts.append(
-                f"<br><br><b>Geographical Relocation & Foreign Settlement Potential:</b> "
-                f"Strong classical connections between 4th house roots and 9th/12th house indicators confirm <b>favorable promise for living away from your birthplace, multi-city living, or foreign settlement</b>. "
-                f"Your fortune expands significantly when engaging with distant markets, international projects, or establishing residency across regions during supportive dasha phases."
-            )
-        elif has_frequent_travel:
-            reading_parts.append(
-                f"<br><br><b>Travel, Mobility & Professional Expansion:</b> "
-                f"Active 9th and 3rd house indicators indicate frequent long-distance travel, dynamic mobility, and business/educational journeys. "
-                f"Your chart favors maintaining a stable domestic base while undertaking purposeful international or inter-city travel."
+                "Chaturthamsha (D4) <b>manasik shanti (*Griha Sukha*), fixed property, bhumi labh aur videsh ya sthan parivartan</b> ko darshata hai. "
+                "Aapki kundli mein aage chal kar sthayi nivas aur residential property banane ke anukool yog hain."
             )
         else:
+            headline = f"Home, Land, Vehicles & Relocation (Chaturthamsha · D4)"
             reading_parts.append(
-                f"<br><br><b>Home Foundation & Asset Anchoring:</b> "
-                f"Your chart reflects deep rootedness in your native region with strong domestic peace. "
-                f"Property acquisitions bring maximum stability when invested in well-established residential locations."
+                "The Chaturthamsha division (D4) classically maps <b>domestic peace (*Griha Sukha*), fixed property, land acquisition, conveyances (*Vahana*), and geographical relocation / foreign settlement (*Videsh Vasa*)</b>. "
+                "Your chart confirms a solid foundational promise for acquiring residential real estate, comfortable conveyances, and establishing an enduring personal sanctuary in adulthood."
             )
+            if strong_planets:
+                reading_parts.append(
+                    f"<br><br><b>Property & Asset Fortification:</b> Well-placed indicators ({', '.join(strong_planets)}) in D4 support significant land appreciation, smooth property transactions, and domestic comfort."
+                )
+
+            d1_h4_lord = SIGN_LORDS.get(house_sign(d1_lagna, 4), "") if d1_lagna else ""
+            d1_h4_lord_house = d1_planets.get(d1_h4_lord, {}).get("house", 0) if d1_h4_lord else 0
+            d1_h9_lord = SIGN_LORDS.get(house_sign(d1_lagna, 9), "") if d1_lagna else ""
+            d1_h9_lord_house = d1_planets.get(d1_h9_lord, {}).get("house", 0) if d1_h9_lord else 0
+            d1_h12_lord = SIGN_LORDS.get(house_sign(d1_lagna, 12), "") if d1_lagna else ""
+            d1_h12_lord_house = d1_planets.get(d1_h12_lord, {}).get("house", 0) if d1_h12_lord else 0
+            rahu_h = d1_planets.get("Rahu", {}).get("house", 0)
+            moon_h = d1_planets.get("Moon", {}).get("house", 0)
+            moon_s = d1_planets.get("Moon", {}).get("sign", "")
+
+            MOVABLE = {"Aries", "Cancer", "Libra", "Capricorn"}
+            WATERY = {"Cancer", "Scorpio", "Pisces"}
+
+            has_foreign_settlement = (
+                d1_h4_lord_house in (9, 12, 8, 3) or
+                d1_h12_lord_house in (4, 9, 1) or
+                rahu_h in (9, 12, 7, 4) or
+                (d1_h4_lord_house in (1, 10) and d1_h12_lord_house in (10, 11))
+            )
+            has_frequent_travel = (
+                d1_h9_lord_house in (9, 10, 12, 1, 3) or
+                moon_h in (3, 7, 9, 12) or
+                moon_s in (MOVABLE | WATERY) or
+                rahu_h in (3, 11)
+            )
+
+            if has_foreign_settlement:
+                reading_parts.append(
+                    f"<br><br><b>Geographical Relocation & Foreign Settlement Potential:</b> "
+                    f"Strong classical connections between 4th house roots and 9th/12th house indicators confirm <b>favorable promise for living away from your birthplace, multi-city living, or foreign settlement</b>. "
+                    f"Your fortune expands significantly when engaging with distant markets, international projects, or establishing residency across regions during supportive dasha phases."
+                )
+            elif has_frequent_travel:
+                reading_parts.append(
+                    f"<br><br><b>Travel, Mobility & Professional Expansion:</b> "
+                    f"Active 9th and 3rd house indicators indicate frequent long-distance travel, dynamic mobility, and business/educational journeys. "
+                    f"Your chart favors maintaining a stable domestic base while undertaking purposeful international or inter-city travel."
+                )
+            else:
+                reading_parts.append(
+                    f"<br><br><b>Home Foundation & Asset Anchoring:</b> "
+                    f"Your chart reflects deep rootedness in your native region with strong domestic peace. "
+                    f"Property acquisitions bring maximum stability when invested in well-established residential locations."
+                )
 
         remedy_planet = "Mars"
         remedy_reason = "To Energize Land & Property Assets (Bhoomi Upaya)"
 
     elif code == "D7":
-        headline = f"Children, Family Lineage & Progeny (Saptamsha)"
-        d7_moon = div_dict.get("D7", {}).get("Moon", "")
-        d7_jup = div_dict.get("D7", {}).get("Jupiter", "")
-        d7_ven = div_dict.get("D7", {}).get("Venus", "")
-
-        d7_strong_list = []
-        if d7_moon in ("Cancer", "Taurus"):
-            d7_strong_list.append(f"Moon in {d7_moon}")
-        if d7_jup in ("Sagittarius", "Pisces", "Cancer"):
-            d7_strong_list.append(f"Jupiter in {d7_jup}")
-        if d7_ven in ("Taurus", "Libra", "Pisces"):
-            d7_strong_list.append(f"Venus in {d7_ven}")
-        if "own_sign" in lord_dig or "exalted" in lord_dig:
-            d7_strong_list.append(f"{lord} in {lord_sign} ({lord_dig.replace('_', ' ').title()})")
-
-        if d7_strong_list:
-            guardians_str = f"The key guardians of progeny ({', '.join(d7_strong_list)}) are deeply fortified in this chart."
+        if is_hinglish:
+            headline = f"Santan, Parivar Aur Vansh (Saptamsha · D7)"
             reading_parts.append(
-                f"This division reveals an <b>exceptionally fertile, blessed, and strong foundational promise for children and family continuation</b>. "
-                f"{guardians_str} "
-                f"Classical confirmation affirms joyful, healthy children and family happiness that unfolds naturally after marriage in adulthood."
+                f"Yeh varga santan sukh, parivarik vistar aur vansh vriddhi ka sanket deta hai. "
+                f"Kundli mein santan se santushti, sneh aur parivarik anand ke shubh sanket hain."
             )
         else:
-            reading_parts.append(
-                f"This chart confirms supportive potential for children and family continuation, bringing deep emotional joy, mutual affection, and fulfillment through parenthood."
-            )
+            headline = f"Children, Family Lineage & Progeny (Saptamsha)"
+            d7_moon = div_dict.get("D7", {}).get("Moon", "")
+            d7_jup = div_dict.get("D7", {}).get("Jupiter", "")
+            d7_ven = div_dict.get("D7", {}).get("Venus", "")
+
+            d7_strong_list = []
+            if d7_moon in ("Cancer", "Taurus"):
+                d7_strong_list.append(f"Moon in {d7_moon}")
+            if d7_jup in ("Sagittarius", "Pisces", "Cancer"):
+                d7_strong_list.append(f"Jupiter in {d7_jup}")
+            if d7_ven in ("Taurus", "Libra", "Pisces"):
+                d7_strong_list.append(f"Venus in {d7_ven}")
+            if "own_sign" in lord_dig or "exalted" in lord_dig:
+                d7_strong_list.append(f"{lord} in {lord_sign} ({lord_dig.replace('_', ' ').title()})")
+
+            if d7_strong_list:
+                guardians_str = f"The key guardians of progeny ({', '.join(d7_strong_list)}) are deeply fortified in this chart."
+                reading_parts.append(
+                    f"This division reveals an <b>exceptionally fertile, blessed, and strong foundational promise for children and family continuation</b>. "
+                    f"{guardians_str} "
+                    f"Classical confirmation affirms joyful, healthy children and family happiness that unfolds naturally after marriage in adulthood."
+                )
+            else:
+                reading_parts.append(
+                    f"This chart confirms supportive potential for children and family continuation, bringing deep emotional joy, mutual affection, and fulfillment through parenthood."
+                )
         remedy_planet = "Jupiter"
         remedy_reason = "To Bless Progeny & Family Growth (Santan Gopal Upaya)"
 
     elif code == "D9":
-        headline = f"Marriage, Life Partner & Soul Purpose (Navamsha)"
-        partner_nature, partner_realm, dynamics = _determine_marriage_profile(
-            d1_lagna=d1_lagna,
-            d1_h7_lord=SIGN_LORDS.get(house_sign(d1_lagna, 7), ""),
-            d1_h7_lord_house=d1_h7_lord_house,
-            d9_lagna=v_lagna,
-            d9_lord=lord,
-            d9_lord_house=lord_house,
-            dk=dk,
-        )
-        reading_parts.append(
-            f"The Navamsha division maps life partnership, marital harmony, and inner destiny (Bhagyodaya). "
-            f"Your chart indicates a <b>{partner_nature}</b> life partner, likely connected with <b>{partner_realm}</b>. "
-            f"The relationship provides {dynamics}, bringing emotional stability, shared values, and mutual life elevation in adulthood."
-        )
+        if is_hinglish:
+            headline = f"Vivah, Jeevansathi Aur Bhagyodaya (Navamsha · D9)"
+            reading_parts.append(
+                f"Navamsha kundli jeevansathi, vaivahik sukh aur bhagyodaya ko darshati hai. "
+                f"Aapki kundli ek samajhdar, supportive jeevansathi aur vivah ke baad aarthik v manasik sthirta ka sanket deti hai."
+            )
+        else:
+            headline = f"Marriage, Life Partner & Soul Purpose (Navamsha)"
+            partner_nature, partner_realm, dynamics = _determine_marriage_profile(
+                d1_lagna=d1_lagna,
+                d1_h7_lord=SIGN_LORDS.get(house_sign(d1_lagna, 7), ""),
+                d1_h7_lord_house=d1_h7_lord_house,
+                d9_lagna=v_lagna,
+                d9_lord=lord,
+                d9_lord_house=lord_house,
+                dk=dk,
+            )
+            reading_parts.append(
+                f"The Navamsha division maps life partnership, marital harmony, and inner destiny (Bhagyodaya). "
+                f"Your chart indicates a <b>{partner_nature}</b> life partner, likely connected with <b>{partner_realm}</b>. "
+                f"The relationship provides {dynamics}, bringing emotional stability, shared values, and mutual life elevation in adulthood."
+            )
         remedy_planet = "Venus"
         remedy_reason = "To Foster Harmony in Relationships (Shukra Upaya)"
 
     elif code == "D10":
-        headline = f"Career, Leadership & Professional Status (Dasamsha)"
-        archetype, suited_fields, work_style = _determine_career_profile(
-            d1_lagna=d1_lagna,
-            d1_h10_lord=d1_h10_lord,
-            d1_h10_lord_house=d1_h10_lord_house,
-            d10_lagna=v_lagna,
-            d10_lord=lord,
-            d10_lord_house=lord_house,
-            strong_planets=strong_planets,
-            amk=amk,
-        )
-        fields_bullet = ", ".join([f"<b>{f}</b>" for f in suited_fields])
-        reading_parts.append(
-            f"Your professional karma operates as an <b>{archetype}</b>. Your natural work style {work_style}.<br><br>"
-            f"<b>Optimal High-Growth Career Fields:</b> Your planetary confluence indicates maximum success and recognition in {fields_bullet}. "
-            f"Gaining specialized subject mastery early paves the way for significant executive respect and leadership authority."
-        )
+        if is_hinglish:
+            headline = f"Karyakshetra, Safalta Aur Pratishtha (Dashamsha · D10)"
+            reading_parts.append(
+                f"Yeh varga aapke career, professional status aur leadership abilities ko darshata hai.<br><br>"
+                f"<b>Anukool Karyakshetra:</b> Grah sthiti ke anusar aapko specialized mastery, structured execution aur executive responsibility mein safalta milti hai."
+            )
+        else:
+            headline = f"Career, Leadership & Professional Status (Dasamsha)"
+            archetype, suited_fields, work_style = _determine_career_profile(
+                d1_lagna=d1_lagna,
+                d1_h10_lord=d1_h10_lord,
+                d1_h10_lord_house=d1_h10_lord_house,
+                d10_lagna=v_lagna,
+                d10_lord=lord,
+                d10_lord_house=lord_house,
+                strong_planets=strong_planets,
+                amk=amk,
+            )
+            fields_bullet = ", ".join([f"<b>{f}</b>" for f in suited_fields])
+            reading_parts.append(
+                f"Your professional karma operates as an <b>{archetype}</b>. Your natural work style {work_style}.<br><br>"
+                f"<b>Optimal High-Growth Career Fields:</b> Your planetary confluence indicates maximum success and recognition in {fields_bullet}. "
+                f"Gaining specialized subject mastery early paves the way for significant executive respect and leadership authority."
+            )
         remedy_planet = "Sun"
         remedy_type = "dusthana" if d1_h10_lord_house in DUSTHANA else "strengthen"
         remedy_reason = "To Strengthen Professional Authority (Surya Upaya)"
 
     elif code == "D12":
-        headline = f"Family Roots & Parental Blessings (Dwadashamsha)"
-        reading_parts.append(
-            f"This chart reflects family heritage, parental affection, and ancestral protection. "
-            f"You carry strong moral grounding and blessings from parents. Respecting family elders and honoring family traditions brings positive energetic support throughout your life."
-        )
-        if strong_planets:
+        if is_hinglish:
+            headline = f"Mata-Pita Aur Parivarik Ashirwad (Dwadashamsha · D12)"
             reading_parts.append(
-                f"Fortified placements ({', '.join(strong_planets)}) in D12 indicate noble lineage and deep parental blessings."
+                f"Yeh kundli parivarik sanskar, mata-pita ka sahyog aur ancestral blessings ko darshati hai. "
+                f"Buzurgo ka samman aur parivarik mulya aapko jeevan mein sakaratmak urja aur shanti dete hain."
             )
+        else:
+            headline = f"Family Roots & Parental Blessings (Dwadashamsha)"
+            reading_parts.append(
+                f"This chart reflects family heritage, parental affection, and ancestral protection. "
+                f"You carry strong moral grounding and blessings from parents. Respecting family elders and honoring family traditions brings positive energetic support throughout your life."
+            )
+            if strong_planets:
+                reading_parts.append(
+                    f"Fortified placements ({', '.join(strong_planets)}) in D12 indicate noble lineage and deep parental blessings."
+                )
         remedy_planet = "Sun"
         remedy_reason = "To Honor Ancestral Blessings (Pitru Upaya)"
 
     elif code == "D24":
-        headline = f"Education, Memory & Intellectual Mastery (Chaturvimshamsha)"
-        reading_parts.append(
-            f"The D24 chart confirms strong conceptual grasping power, analytical thinking, and the ability to master complex disciplines. "
-            f"With structured, distraction-free study habits, you can excel in technical, scientific, legal, or management programs and competitive certifications."
-        )
-        if strong_planets:
+        if is_hinglish:
+            headline = f"Shiksha, Gyan Aur Intellectual Growth (Chaturvimshamsha · D24)"
             reading_parts.append(
-                f"Fortified planets ({', '.join(strong_planets)}) in D24 indicate exceptional memory retention, academic distinction, and intellectual authority."
+                f"D24 chart aapki conceptual grasping power, analytical thinking aur complex vishayon ko sikhne ki shamta darshata hai. "
+                f"Niyamit abhyas se aap technical, management ya professional certifications mein utkrisht safalta pa sakte hain."
             )
+        else:
+            headline = f"Education, Memory & Intellectual Mastery (Chaturvimshamsha)"
+            reading_parts.append(
+                f"The D24 chart confirms strong conceptual grasping power, analytical thinking, and the ability to master complex disciplines. "
+                f"With structured, distraction-free study habits, you can excel in technical, scientific, legal, or management programs and competitive certifications."
+            )
+            if strong_planets:
+                reading_parts.append(
+                    f"Fortified planets ({', '.join(strong_planets)}) in D24 indicate exceptional memory retention, academic distinction, and intellectual authority."
+                )
         remedy_planet = "Mercury"
         remedy_reason = "To Sharpen Memory & Academic Focus (Saraswati Upaya)"
 
     elif code == "D30":
-        headline = f"Health Sensitivities, Physical Stamina & Timely Upayas (D30 · Trimsamsha & D27 · Bhamsha)"
-        
         disease_res = {}
         conf = {}
         try:
@@ -1327,62 +1470,70 @@ def _interpret_varga_concrete(
         d30_merc_sign = d30_dict.get("Mercury", "")
         d30_malefics = [m for m in ("Rahu", "Ketu", "Saturn", "Mars", "Sun") if d30_dict.get(m) == d30_merc_sign and d30_merc_sign]
 
-        reading_parts.append(
-            "Classical Trimsamsha (D30) and Saptavimshamsha (D27) analysis maps your cellular stamina, "
-            "constitutional resilience, latent anatomical sensitivities, and preventive wellness rhythms."
-        )
-
-        # D30 & D27 Classical Static Promise: Inherent Capacity to Overcome Adversities & Crises
-        d30_lagna_lord = lord
-        d30_lagna_lord_house = lord_house
-        d30_lagna_lord_dig = lord_dig
-        
-        if d30_lagna_lord_dig in ("exalted", "moolatrikona", "own_sign") or d30_lagna_lord_house in (1, 4, 5, 7, 9, 10, 11):
-            dig_txt = f" ({d30_lagna_lord_dig.replace('_', ' ').title()})" if d30_lagna_lord_dig else ""
-            resilience_str = (
-                f"<b>Inherent Capacity to Overcome Adversities & Physical Resilience:</b> "
-                f"Your chart reflects strong inner recuperative vitality (D30 ruling planet <b>{d30_lagna_lord}</b> sitting in {lord_sign}, house {d30_lagna_lord_house}{dig_txt}). "
-                f"This confers the cellular stamina and psychological fortitude to rebound quickly from physical fatigue, neutralize latent health sensitivities, and successfully overcome crises and bodily strain."
+        if is_hinglish:
+            headline = f"Swasthya, Rog Pratirodhak Shamta Aur Upay (Trimshamsha · D30)"
+            reading_parts.append(
+                "Trimshamsha (D30) aur Saptavimshamsha (D27) aapki physical stamina, aantarik rog pratirodhak shamta aur preventive wellness rhythms ko darshata hai."
             )
-        elif d30_lagna_lord_house in DUSTHANA:
-            resilience_str = (
-                f"<b>Inherent Vitality & Preventive Health Management:</b> "
-                f"With the D30 ruling planet (<b>{d30_lagna_lord}</b>) placed in the {ORDINALS.get(d30_lagna_lord_house, '8th')} house, your chart indicates that vitality builds through patient physical pacing, structured rest cycles, and early preventive care rather than pushing through extreme exhaustion."
+            reading_parts.append(
+                "<br><br><b>Aantarik Shamta Aur Swasthya Prabandhan:</b> "
+                "Aapki kundli niyamit dainik routine, pachan ka dhyan aur swasth aahar se achhi vitality aur physical balance banaye rakhne ka sanket deti hai."
             )
         else:
-            resilience_str = (
-                f"<b>Inherent Capacity to Overcome Adversities:</b> "
-                f"Your chart demonstrates steady constitutional stamina (D30 Lagna ruled by <b>{d30_lagna_lord}</b> in {lord_sign}), giving you the resilience to restore physical balance through wholesome daily routines and active stress management."
-            )
-
-        reading_parts.append(f"<br><br>{resilience_str}")
-
-        if d30_malefics:
-            malefics_str = ", ".join(d30_malefics)
+            headline = f"Health Sensitivities, Physical Stamina & Timely Upayas (D30 · Trimsamsha & D27 · Bhamsha)"
             reading_parts.append(
-                f"<br><br><b>Sensory, Nervous & Expressive Coordination (Mercury with {malefics_str} in D30 {d30_merc_sign}):</b> "
-                f"Classical principles indicate heightened nervous system sensitivity, sensory fatigue, and transient expressive/speech pacing latency when under pressure. "
-                f"Maintaining consistent sleep rhythms, vocal clarity exercises, and structured daily routines brings robust natural recovery and mental resilience."
+                "Classical Trimsamsha (D30) and Saptavimshamsha (D27) analysis maps your cellular stamina, "
+                "constitutional resilience, latent anatomical sensitivities, and preventive wellness rhythms."
             )
-
-        preds = conf.get("predictions", []) if isinstance(conf, dict) else []
-        if preds:
-            zone_bullets = []
-            for p in preds:
-                zone_bullets.append(
-                    f"• <b>{p['title']} ({p['match_pct']}% Chart Alignment):</b> {p['prediction']} "
-                    f"<br><i>Preventive Protocol:</i> {p['preventive']}"
+            d30_lagna_lord = lord
+            d30_lagna_lord_house = lord_house
+            d30_lagna_lord_dig = lord_dig
+            
+            if d30_lagna_lord_dig in ("exalted", "moolatrikona", "own_sign") or d30_lagna_lord_house in (1, 4, 5, 7, 9, 10, 11):
+                dig_txt = f" ({d30_lagna_lord_dig.replace('_', ' ').title()})" if d30_lagna_lord_dig else ""
+                resilience_str = (
+                    f"<b>Inherent Capacity to Overcome Adversities & Physical Resilience:</b> "
+                    f"Your chart reflects strong inner recuperative vitality (D30 ruling planet <b>{d30_lagna_lord}</b> sitting in {lord_sign}, house {d30_lagna_lord_house}{dig_txt}). "
+                    f"This confers the cellular stamina and psychological fortitude to rebound quickly from physical fatigue, neutralize latent health sensitivities, and successfully overcome crises and bodily strain."
                 )
-            reading_parts.append(
-                "<br><br><b>Key Anatomical Vulnerability Zones:</b><br>" + "<br>".join(zone_bullets)
-            )
-        else:
-            baseline = disease_res.get("constitutional_baseline", []) if isinstance(disease_res, dict) else []
-            base_str = " ".join(baseline[:2]) if baseline else "Your chart shows steady natural vitality and good recuperative capacity."
-            reading_parts.append(
-                f"<br><br><b>Constitutional Baseline:</b> {base_str} "
-                f"No single localized organ vulnerability shows extreme affliction; balanced nutrition, hydration, and regular sleep provide robust health preservation."
-            )
+            elif d30_lagna_lord_house in DUSTHANA:
+                resilience_str = (
+                    f"<b>Inherent Vitality & Preventive Health Management:</b> "
+                    f"With the D30 ruling planet (<b>{d30_lagna_lord}</b>) placed in the {ORDINALS.get(d30_lagna_lord_house, '8th')} house, your chart indicates that vitality builds through patient physical pacing, structured rest cycles, and early preventive care rather than pushing through extreme exhaustion."
+                )
+            else:
+                resilience_str = (
+                    f"<b>Inherent Capacity to Overcome Adversities:</b> "
+                    f"Your chart demonstrates steady constitutional stamina (D30 Lagna ruled by <b>{d30_lagna_lord}</b> in {lord_sign}), giving you the resilience to restore physical balance through wholesome daily routines and active stress management."
+                )
+            reading_parts.append(f"<br><br>{resilience_str}")
+
+            if d30_malefics:
+                malefics_str = ", ".join(d30_malefics)
+                reading_parts.append(
+                    f"<br><br><b>Sensory, Nervous & Expressive Coordination (Mercury with {malefics_str} in D30 {d30_merc_sign}):</b> "
+                    f"Classical principles indicate heightened nervous system sensitivity, sensory fatigue, and transient expressive/speech pacing latency when under pressure. "
+                    f"Maintaining consistent sleep rhythms, vocal clarity exercises, and structured daily routines brings robust natural recovery and mental resilience."
+                )
+
+            preds = conf.get("predictions", []) if isinstance(conf, dict) else []
+            if preds:
+                zone_bullets = []
+                for p in preds:
+                    zone_bullets.append(
+                        f"• <b>{p['title']} ({p['match_pct']}% Chart Alignment):</b> {p['prediction']} "
+                        f"<br><i>Preventive Protocol:</i> {p['preventive']}"
+                    )
+                reading_parts.append(
+                    "<br><br><b>Key Anatomical Vulnerability Zones:</b><br>" + "<br>".join(zone_bullets)
+                )
+            else:
+                baseline = disease_res.get("constitutional_baseline", []) if isinstance(disease_res, dict) else []
+                base_str = " ".join(baseline[:2]) if baseline else "Your chart shows steady natural vitality and good recuperative capacity."
+                reading_parts.append(
+                    f"<br><br><b>Constitutional Baseline:</b> {base_str} "
+                    f"No single localized organ vulnerability shows extreme affliction; balanced nutrition, hydration, and regular sleep provide robust health preservation."
+                )
 
         # High-Threshold Critical Mishappening & Near-Death Precaution Engine
         # Requires severe multi-clock confluence (Score >= 8) across Mrityu Bhaga, 8th Lord, Yogini Sankata/Ulka & Chara 8th Sign
@@ -1547,29 +1698,51 @@ def _interpret_varga_concrete(
             primary_c = critical_candidates[0]
             st_fmt = _format_month_year(str(primary_c["start"]))
             en_fmt = _format_month_year(str(primary_c["end"]))
-            hdr = "Active High-Precaution Phase" if primary_c["is_current"] else "Upcoming Critical Precaution Window"
             conf_str = "; ".join(primary_c["proofs"][:3])
-            reading_parts.append(
-                f"<br><br><b>Critical Vitality & Precaution Advisory:</b><br>"
-                f"• <b>{hdr} ({primary_c['md']}-{primary_c['ad']}-{primary_c['pd']} · {st_fmt} – {en_fmt}):</b> "
-                f"High-confluence sensitivity window activating foundational vitality pacing. "
-                f"Prioritize routine medical wellness evaluations, practice mindful driving, avoid reckless physical exhaustion or high-risk adventure sports, and observe daily protective Upayas. <br>"
-                f"<i>Astrological Confluence:</i> {conf_str}."
-            )
+            if is_hinglish:
+                hdr = "Sakriya Savdhani Phase" if primary_c["is_current"] else "Aage Aane Wala Savdhani Window"
+                reading_parts.append(
+                    f"<br><br><b>Aavashyak Swasthya Savdhani:</b><br>"
+                    f"• <b>{hdr} ({primary_c['md']}-{primary_c['ad']}-{primary_c['pd']} · {st_fmt} – {en_fmt}):</b> "
+                    f"Is samay physical pacing aur swasthya ka dhyan rakhein. "
+                    f"Niyamit routine follow karein, bhari thakan aur rash driving se bachein aur dainik suraksha upay karein.<br>"
+                    f"<i>Astrological Confluence:</i> {conf_str}."
+                )
+            else:
+                hdr = "Active High-Precaution Phase" if primary_c["is_current"] else "Upcoming Critical Precaution Window"
+                reading_parts.append(
+                    f"<br><br><b>Critical Vitality & Precaution Advisory:</b><br>"
+                    f"• <b>{hdr} ({primary_c['md']}-{primary_c['ad']}-{primary_c['pd']} · {st_fmt} – {en_fmt}):</b> "
+                    f"High-confluence sensitivity window activating foundational vitality pacing. "
+                    f"Prioritize routine medical wellness evaluations, practice mindful driving, avoid reckless physical exhaustion or high-risk adventure sports, and observe daily protective Upayas. <br>"
+                    f"<i>Astrological Confluence:</i> {conf_str}."
+                )
         else:
-            reading_parts.append(
-                f"<br><br><b>Constitutional Resilience & Preventive Balance:</b><br>"
-                f"• <b>Protected Vitality Shield:</b> Your chart reflects steady constitutional endurance with no critical vitality collapse or severe mishappening confluence indicated in the active forecast horizon. "
-                f"Maintaining balanced daily nutrition, hydration, and regular sleep rhythms ensures continued robust health."
-            )
+            if is_hinglish:
+                reading_parts.append(
+                    f"<br><br><b>Aantarik Suraksha Aur Santulan:</b><br>"
+                    f"• <b>Suraksha Kavach:</b> Aapki kundli mein sthir aantarik endurance aur vitality hai. "
+                    f"Niyamit poshtik aahar, paryaapt paani aur sahi sleep routine se swasthya achha bana rehta hai."
+                )
+            else:
+                reading_parts.append(
+                    f"<br><br><b>Constitutional Resilience & Preventive Balance:</b><br>"
+                    f"• <b>Protected Vitality Shield:</b> Your chart reflects steady constitutional endurance with no critical vitality collapse or severe mishappening confluence indicated in the active forecast horizon. "
+                    f"Maintaining balanced daily nutrition, hydration, and regular sleep rhythms ensures continued robust health."
+                )
 
         # Remedy
         rems = [r for r in (disease_res.get("remedies", []) if isinstance(disease_res, dict) else []) if r.get("planet") != "General"]
         top_rem = rems[0] if rems else {}
         rem_lines = []
-        if top_rem:
-            rem_lines.append(f"<b>Primary Upaya ({top_rem.get('planet')}):</b> Chant {top_rem.get('mantra')}; perform charity: {top_rem.get('charity')}.")
-        rem_lines.append("<b>Universal Health Protection (Maha Mrityunjaya):</b> Recite the Maha Mrityunjaya Mantra (108 times daily) during sensitive planetary transitions; cultivate calm breathing, wholesome nutrition, and steady restorative routines.")
+        if is_hinglish:
+            if top_rem:
+                rem_lines.append(f"<b>Mukhya Upay ({top_rem.get('planet')}):</b> {top_rem.get('mantra')} ka jaap karein; daan: {top_rem.get('charity')}.")
+            rem_lines.append("<b>Sarva Swasthya Suraksha (Maha Mrityunjaya):</b> Niyamit Maha Mrityunjaya Mantra ka jaap ya shravan karein, shant vatavaran banayein aur swasth dainik dincharya apnayein.")
+        else:
+            if top_rem:
+                rem_lines.append(f"<b>Primary Upaya ({top_rem.get('planet')}):</b> Chant {top_rem.get('mantra')}; perform charity: {top_rem.get('charity')}.")
+            rem_lines.append("<b>Universal Health Protection (Maha Mrityunjaya):</b> Recite the Maha Mrityunjaya Mantra (108 times daily) during sensitive planetary transitions; cultivate calm breathing, wholesome nutrition, and steady restorative routines.")
         
         prediction = "".join(reading_parts)
         remedy = "<br>".join(rem_lines)
@@ -1636,7 +1809,8 @@ def get_108_snapshot_summary_paragraph(pc: dict) -> str:
 
 
 def render_divisional_blocks(pc: dict, *, paid: bool = False,
-                            today: Optional[date] = None) -> tuple[str, str]:
+                            today: Optional[date] = None,
+                            lang: str = "en") -> tuple[str, str]:
     """Build the divisional block as two independently placeable pieces.
 
     Returns ``(baseline_html, areas_html)``. The report puts the foundational
@@ -1650,8 +1824,15 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
     Paid tier:
       - All 9 divisional cards rendered in full depth with strengths, domain-specific timelines, unblurred remedies, and collapsible proof.
     """
-    insights = build_divisional_insights(pc)
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    insights = build_divisional_insights(pc, lang=lang)
     summary_108 = get_108_snapshot_summary_paragraph(pc)
+    if is_hinglish:
+        summary_108 = (
+            "Aapki janma kundli mein mool classical strengths hain: aapke vyaktigat prayas aur anushasan se "
+            "jeevan ke mukhya kshetro mein naye avsar aur sthirta prapt hoti hai. Supportive dasha aur transits "
+            "ke dauran sahi disha mein uthaye gaye kadam lambe samay tak safalta aur santushti dete hain."
+        )
 
     div_cards_html = []
     teaser_items = []
@@ -1659,24 +1840,26 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
     def _free_timeline(text: str) -> str:
         from free_dates import strip_future_sentences
         kept = strip_future_sentences(text, today)
+        locked_msg = "🔒 Is kshetra ka dated window poori reading mein shamil hai." if is_hinglish else "🔒 The dated window for this area is in the full reading."
         locked = (
-            '<span style="display:block;margin-top:6px;font-size:0.78rem;'
-            'font-weight:700;color:#8a6a1f;">🔒 The dated window for this area '
-            'is in the full reading.</span>')
+            f'<span style="display:block;margin-top:6px;font-size:0.78rem;'
+            f'font-weight:700;color:#8a6a1f;">{locked_msg}</span>')
         return (kept + locked) if kept else locked.strip()
+
+    v_meta_dict = VARGA_META_HINGLISH if is_hinglish else VARGA_META
 
     for ins in insights:
         pill_cls = "up" if ins.strength == "strong" else "down" if ins.strength == "weak" else "mixed"
-        pill_lbl = "Well Supported" if ins.strength == "strong" else "Needs Care" if ins.strength == "weak" else "Constructive / Active"
+        if is_hinglish:
+            pill_lbl = "Anukool / Mazboot" if ins.strength == "strong" else "Savdhani Aavashyak" if ins.strength == "weak" else "Sakriya"
+        else:
+            pill_lbl = "Well Supported" if ins.strength == "strong" else "Needs Care" if ins.strength == "weak" else "Constructive / Active"
         border_color = "#1c6b45" if ins.strength == "strong" else "#a3341f" if ins.strength == "weak" else "#8a6a1f"
 
         is_free_allowed = ins.code in FREE_ALLOWED_VARGAS
 
         if paid or is_free_allowed:
-            # Dasha Timeline Box (Domain Specific). The free card keeps the
-            # sentences it can date from the reader's past and swaps the rest
-            # for the lock — a window a decade out was both the paid answer
-            # and, printed bare, a reason not to buy.
+            # Dasha Timeline Box (Domain Specific).
             timeline_box = ""
             timeline_text = ins.timeline
             if timeline_text and not paid:
@@ -1689,45 +1872,46 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
                 )
 
             # Remedy display: Clear if paid, blurred with lock overlay if free
+            upaya_lbl = "Vedic Upay:" if is_hinglish else "Targeted Vedic Upaya:"
             if paid:
                 remedy_box = (
                     f'  <div style="background:#f9f8f5;border-left:3px solid #1c6b45;padding:8px 12px;border-radius:6px;margin:8px 0 10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">\n'
-                    f'    <b>Targeted Vedic Upaya:</b> {ins.remedy}\n'
+                    f'    <b>{upaya_lbl}</b> {ins.remedy}\n'
                     f'  </div>\n'
                 )
             else:
-                # A blur is a visual effect, not a paywall: the real remedy
-                # would sit in the markup for anyone who opens view-source.
-                # Blur a description of the remedy instead, which teases the
-                # same thing and gives nothing away.
                 teaser_remedy = (
+                    f'Mantra, daan aur dainik abhyas jo {html.escape(ins.lord or "grahadhipati")} se mel khate hain.'
+                    if is_hinglish else
                     f'Mantra, charity and daily practice matched to '
-                    f'{html.escape(ins.lord or "your chart ruler")} for this '
-                    f'area of life.')
+                    f'{html.escape(ins.lord or "your chart ruler")} for this area of life.'
+                )
+                lock_text = "🔒 Complete Reading Mein Upay Shamil" if is_hinglish else "🔒 Remedial Action in Full Reading"
                 remedy_box = (
                     f'  <div class="lock-wrap" style="margin:8px 0 10px;border-radius:8px;">\n'
                     f'    <div class="lock-blur" style="padding:8px 12px;font-size:0.84rem;line-height:1.45;">\n'
-                    f'      <b>Targeted Vedic Upaya:</b> {teaser_remedy}\n'
+                    f'      <b>{upaya_lbl}</b> {teaser_remedy}\n'
                     f'    </div>\n'
                     f'    <div class="lock-over">\n'
-                    f'      <span class="lock-chip" style="font-size:0.72rem;padding:4px 10px;">🔒 Remedial Action in Full Reading</span>\n'
+                    f'      <span class="lock-chip" style="font-size:0.72rem;padding:4px 10px;">{lock_text}</span>\n'
                     f'    </div>\n'
                     f'  </div>\n'
                 )
 
             # Collapsible Proof Drawer
+            proof_title = f"Jyotishiya Praman ({html.escape(ins.name)})" if is_hinglish else f"Technical Astrological Proof ({html.escape(ins.name)})"
             proof_drawer = (
                 f'  <details style="margin-top:10px;border-top:1px solid #eeeae3;padding-top:8px;font-size:0.78rem;color:#7a756c;line-height:1.45;">\n'
-                f'    <summary style="cursor:pointer;font-weight:600;color:#1f2430;">Technical Astrological Proof ({html.escape(ins.name)})</summary>\n'
+                f'    <summary style="cursor:pointer;font-weight:600;color:#1f2430;">{proof_title}</summary>\n'
                 f'    <div style="padding-top:6px;color:#444;">\n'
                 f'      {ins.evidence}\n'
                 f'    </div>\n'
                 f'  </details>\n'
             )
 
-            # The kicker doubles as this card's entry in the contents rail, so
-            # it names the life area rather than repeating the headline below.
-            area = VARGA_META.get(ins.code, {}).get("nav") or ins.governs
+            # The kicker doubles as this card's entry in the contents rail.
+            meta_entry = v_meta_dict.get(ins.code, {})
+            area = meta_entry.get("nav") or meta_entry.get("governs") or ins.governs
             card = (
                 f'<article class="card div-card" id="{ins.domain_id}" style="margin-bottom:16px;border-left:4px solid {border_color};background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
                 f'  <div class="card-top">\n'
@@ -1743,28 +1927,28 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
             )
             div_cards_html.append(card)
         else:
-            # These five are the areas people come here to ask about, so the
-            # teaser names what this chart already decided about each one. The
-            # verdict is a one-word reading of their own chart; the dates, the
-            # reasoning and the remedy stay behind the paywall. A brochure line
-            # about what a D10 chart covers in general sells nobody.
-            meta = VARGA_META.get(ins.code, {})
+            meta = v_meta_dict.get(ins.code, {})
             verdict_bg = ("#e6f2ea" if ins.strength == "strong"
                           else "#fbeae6" if ins.strength == "weak" else "#fbf3e2")
             verdict_fg = ("#155c3a" if ins.strength == "strong"
                           else "#8f2c19" if ins.strength == "weak" else "#7a5a12")
-            # The pill label is a badge; a sentence needs a phrase.
-            verdict_said = ("well supported" if ins.strength == "strong"
-                            else "needing care" if ins.strength == "weak"
-                            else "active but mixed")
+            if is_hinglish:
+                verdict_said = ("anukool sthiti" if ins.strength == "strong"
+                                else "savdhani aavashyak" if ins.strength == "weak"
+                                else "sakriya aur mixed")
+                teaser_chart_msg = f'Aapki kundli mein yahan <b style="color:{verdict_fg};">{verdict_said}</b> hai{" — dated window already calculated hai" if ins.timeline else ""}.'
+            else:
+                verdict_said = ("well supported" if ins.strength == "strong"
+                                else "needing care" if ins.strength == "weak"
+                                else "active but mixed")
+                teaser_chart_msg = f'Your chart reads as <b style="color:{verdict_fg};">{verdict_said}</b> here{" — with a dated window already calculated" if ins.timeline else ""}.'
+            
             teaser_items.append(
                 f'<li style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #e2ded5;gap:10px;">'
                 f'  <div>'
                 f'    <b style="font-size:0.9rem;color:#1f2430;">{html.escape(ins.code)} · {html.escape(meta.get("governs", ins.governs))}</b><br>'
                 f'    <span style="font-size:0.78rem;color:#6a7080;">{html.escape(meta.get("desc", ""))}</span><br>'
-                f'    <span style="font-size:0.76rem;color:#3d4250;">Your chart reads as '
-                f'<b style="color:{verdict_fg};">{verdict_said}</b> here'
-                f'{" — with a dated window already calculated" if ins.timeline else ""}.</span>'
+                f'    <span style="font-size:0.76rem;color:#3d4250;">{teaser_chart_msg}</span>'
                 f'  </div>'
                 f'  <span class="pill {pill_cls}" style="font-size:0.72rem;font-weight:700;'
                 f'padding:4px 10px;border-radius:99px;white-space:nowrap;background:{verdict_bg};'
@@ -1774,32 +1958,44 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
 
     teaser_html = ""
     if not paid and teaser_items:
+        t_area = "Baki 5 Jeevan Kshetra" if is_hinglish else "The other five areas"
+        t_avail = "Full Reading Mein Uplabdh" if is_hinglish else "Available in Full Reading"
+        t_desc = (
+            "Aapke baki divisional charts career karma (D10), vivah aur jeevansathi (D9), santan (D7), uccha shiksha (D24), aur swasthya/immunity (D30) ko map karte hain:"
+            if is_hinglish else
+            "Your remaining divisional charts map deep career karma (D10), marriage and soul purpose (D9), progeny dynamics (D7), intellectual mastery (D24), and overcoming life obstacles (D30):"
+        )
+        t_cta = "Complete Divisional Breakdown Unlock Karein" if is_hinglish else "Unlock Complete Divisional Breakdown"
         teaser_html = (
             f'<article class="card div-teaser-card" id="domain-locked" style="background:#fcfbf9;border:1px dashed #d5cfc4;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
             f'  <div class="card-top">\n'
-            f'    <span class="area">The other five areas</span>\n'
-            f'    <span style="font-size:0.72rem;font-weight:700;background:#ebdcc7;color:#6b4012;padding:2px 8px;border-radius:99px;">Available in Full Reading</span>\n'
+            f'    <span class="area">{t_area}</span>\n'
+            f'    <span style="font-size:0.72rem;font-weight:700;background:#ebdcc7;color:#6b4012;padding:2px 8px;border-radius:99px;">{t_avail}</span>\n'
             f'  </div>\n'
             f'  <p style="font-size:0.84rem;color:#5a554c;margin:0 0 12px;line-height:1.45;">\n'
-            f'    Your remaining divisional charts map deep career karma (D10), marriage and soul purpose (D9), progeny dynamics (D7), intellectual mastery (D24), and overcoming life obstacles (D30):\n'
+            f'    {t_desc}\n'
             f'  </p>\n'
             f'  <ul style="list-style:none;margin:0;padding:0;">\n'
             f'    {"".join(teaser_items)}\n'
             f'  </ul>\n'
             f'  <div style="text-align:center;margin-top:14px;">\n'
-            f'    <a href="#unlock" data-unlock="1" style="display:inline-block;background:#16181d;color:#f7f5f1;font-size:0.82rem;font-weight:600;padding:8px 18px;border-radius:99px;text-decoration:none;">Unlock Complete Divisional Breakdown</a>\n'
+            f'    <a href="#unlock" data-unlock="1" style="display:inline-block;background:#16181d;color:#f7f5f1;font-size:0.82rem;font-weight:600;padding:8px 18px;border-radius:99px;text-decoration:none;">{t_cta}</a>\n'
             f'  </div>\n'
             f'</article>\n'
         )
 
     # 108 Rule Snapshot Card
+    base_kicker = "Mool adhar" if is_hinglish else "Foundational baseline"
+    base_chip = "Janm Kundli Mool Vaada" if is_hinglish else "Static Promise"
+    base_heading = "Mool Jyotishiya Adhar" if is_hinglish else "Foundational Astrological Baseline"
+
     snapshot_108_html = (
         f'<article class="card snapshot-108-card" id="domain-baseline" style="margin-bottom:16px;background:#fbfbf9;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
         f'  <div class="card-top">\n'
-        f'    <span class="area">Foundational baseline</span>\n'
-        f'    <span class="pill up">Static Promise</span>\n'
+        f'    <span class="area">{base_kicker}</span>\n'
+        f'    <span class="pill up">{base_chip}</span>\n'
         f'  </div>\n'
-        f'  <h3 style="font-family:Georgia,serif;font-size:1.05rem;margin:8px 0 8px;color:#1f2430;font-weight:600;">Foundational Astrological Baseline</h3>\n'
+        f'  <h3 style="font-family:Georgia,serif;font-size:1.05rem;margin:8px 0 8px;color:#1f2430;font-weight:600;">{base_heading}</h3>\n'
         f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{summary_108}</p>\n'
         f'</article>\n'
     )

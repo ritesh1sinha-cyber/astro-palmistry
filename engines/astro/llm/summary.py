@@ -1279,29 +1279,41 @@ def _fallback_from_report_text(text: str, *, max_sections: int = 5, paid: bool =
     return sections
 
 
-def _fb_full_report(brief: dict, *, paid: bool) -> list[dict]:
+def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     out: list[Optional[dict]] = []
     tone = brief.get("current_phase_tone")
     notes = brief.get("current_phase_notes") or []
     direction = str(brief.get("current_phase_direction") or "").lower()
     if tone or notes:
-        lead = {
-            "support": "The stretch you are in is working with you rather than against you.",
-            "caution": "The stretch you are in asks for patience more than push.",
-        }.get(direction, "")
+        if is_hinglish:
+            lead = {
+                "support": "Aapka vartaman samay aapke paksh mein kaam kar raha hai.",
+                "caution": "Vartaman samay aage badhne ke liye jaldbaazi ke bajay dhairya maangta hai.",
+            }.get(direction, "")
+        else:
+            lead = {
+                "support": "The stretch you are in is working with you rather than against you.",
+                "caution": "The stretch you are in asks for patience more than push.",
+            }.get(direction, "")
         # phase_tone is sometimes a bare adjective ("supportive"); on its own it
         # reads as a stray word, and the lead sentence already carries it.
         if tone and len(tone.split()) < 4:
             tone = ""
         parts = [lead, tone] + list(notes[:2])
         if paid and brief.get("current_phase_ends"):
-            parts.append(f"This chapter runs to {_human_date(brief['current_phase_ends'])}")
-        out.append(_sec("Where you are right now", _join_sentences(parts)))
+            if is_hinglish:
+                parts.append(f"Yeh adhyay {_human_date(brief['current_phase_ends'])} tak chalega.")
+            else:
+                parts.append(f"This chapter runs to {_human_date(brief['current_phase_ends'])}")
+        sec_title = "Aapka Vartaman Samay (Current Phase)" if is_hinglish else "Where you are right now"
+        out.append(_sec(sec_title, _join_sentences(parts)))
 
     traits = brief.get("personality_traits") or []
     if traits:
+        sec_title = "Aapke Swabhav Aur Kundli Ke Mukhya Lakshana" if is_hinglish else "What your chart says about you"
         out.append(_sec(
-            "What your chart says about you",
+            sec_title,
             _join_sentences(list(traits[:6] if paid else traits[:3])),
         ))
 
@@ -1311,8 +1323,9 @@ def _fb_full_report(brief: dict, *, paid: bool) -> list[dict]:
         if isinstance(item, dict) and item.get("chart") and item.get("outlook")
     ]
     if foundations:
+        sec_title = "Aapki Kundli Ke Mukhya Aadhar (Vargas)" if is_hinglish else "What your key chart foundations say"
         out.append(_sec(
-            "What your key chart foundations say",
+            sec_title,
             _join_sentences(foundations),
         ))
 
@@ -1321,120 +1334,187 @@ def _fb_full_report(brief: dict, *, paid: bool) -> list[dict]:
         picked = areas[:5]
         lines = [f"{a.get('area')}: {a.get('outlook')}" for a in picked if a.get("outlook")]
         if lines:
-            out.append(_sec("How each part of life reads", _join_sentences(lines)))
+            sec_title = "Jeevan Ke Mukhya Kshetra" if is_hinglish else "How each part of life reads"
+            out.append(_sec(sec_title, _join_sentences(lines)))
 
     pressure = brief.get("areas_under_pressure") or []
     if pressure:
-        out.append(_sec(
-            "Where the pressure sits",
-            "The chart puts the most strain on " + ", ".join(pressure[:3])
-            + ". That is where steady effort pays back the most, and where "
-              "pushing hard for a fast result tends to cost you.",
-        ))
+        if is_hinglish:
+            sec_title = "Chunauti Aur Dabav Wale Kshetra"
+            body = ("Kundli in kshetron par vishesh dabav darshati hai: " + ", ".join(pressure[:3])
+                    + ". In kshetron mein dhairya aur niyamit prayas se hi behtar parinam milenge.")
+        else:
+            sec_title = "Where the pressure sits"
+            body = ("The chart puts the most strain on " + ", ".join(pressure[:3])
+                    + ". That is where steady effort pays back the most, and where "
+                      "pushing hard for a fast result tends to cost you.")
+        out.append(_sec(sec_title, body))
 
     if paid:
         windows = [w for w in (brief.get("dated_windows") or []) if isinstance(w, dict)]
-        lines = [
-            f"{_label(w.get('label')) or 'A window'} opens {_human_date(w.get('start'))}"
-            + (f" and runs to {_human_date(w.get('end'))}" if w.get("end") else "")
-            for w in windows[:4] if w.get("start")
-        ]
+        if is_hinglish:
+            lines = [
+                f"{_label(w.get('label')) or 'Ek window'} {_human_date(w.get('start'))} ko shuru hota hai"
+                + (f" aur {_human_date(w.get('end'))} tak chalta hai" if w.get("end") else "")
+                for w in windows[:4] if w.get("start")
+            ]
+            sec_title = "Mahatvapurna Dates Aur Samay Chakra"
+        else:
+            lines = [
+                f"{_label(w.get('label')) or 'A window'} opens {_human_date(w.get('start'))}"
+                + (f" and runs to {_human_date(w.get('end'))}" if w.get("end") else "")
+                for w in windows[:4] if w.get("start")
+            ]
+            sec_title = "The dates that matter"
         if lines:
-            out.append(_sec("The dates that matter", _join_sentences(lines)))
+            out.append(_sec(sec_title, _join_sentences(lines)))
 
     return [s for s in out if s]
 
 
-def _fb_user_question(brief: dict, meta: dict, *, paid: bool) -> list[dict]:
+def _fb_user_question(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list[dict]:
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     out: list[Optional[dict]] = []
     q = _tidy(_clip(brief.get("question") or meta.get("question") or meta.get("area"), 200))
     q = q.rstrip(".?!")
-    # The verdict arrives clipped to a fixed width, so close it off before
-    # anything is appended — otherwise the two run together as one sentence and
-    # the whole thing is dropped when the appended half mentions a technique.
     finding = _tidy(_clip(brief.get("finding"), 400))
     area = _clip(brief.get("life_area"), 80)
     direction = str(brief.get("direction") or "").lower()
 
-    low = finding.lower()
-    if low.startswith(("the chart", "your chart", "regarding", "on your question")):
-        body = finding
-    elif q:
-        body = f"On your question about {q}, the chart reads: {finding}"
-    else:
-        body = f"On the question you asked, the chart reads: {finding}"
-    if paid and brief.get("breakthrough_window"):
-        body += f" The strongest opening sits around {_tidy(brief['breakthrough_window'])}"
-    out.append(_sec("The direct answer", body))
+    if is_hinglish:
+        if q:
+            body = f"Aapke prashna ({q}) par kundli spasht sanket deti hai: {finding}"
+        else:
+            body = f"Aapke prashna par kundli ka vishleshan: {finding}"
+        if paid and brief.get("breakthrough_window"):
+            body += f" Sabse majboot anukool samay {_tidy(brief['breakthrough_window'])} ke aas-paas banta hai."
+        out.append(_sec("Seedha Uttar", body))
 
-    if direction in ("support", "caution", "mixed"):
-        note = {
-            "support": "The weight of the chart is behind this, which means effort you put in "
-                       "now tends to land rather than stall.",
-            "caution": "The chart asks for care here. The result is reachable, but not on the "
-                       "timeline you would pick, and pushing early tends to cost you.",
-            "mixed": "The chart is genuinely split on this. Part of it supports you and part "
-                     "of it holds you back, so the outcome turns on how you play it.",
-        }[direction]
-        if area:
-            note = f"This sits in your {area.lower()} area. " + note
-        out.append(_sec("What that means in practice", note))
+        if direction in ("support", "caution", "mixed"):
+            note = {
+                "support": "Kundli ka bal is disha mein aapke saath hai, jisse kiye gaye prayas safal hone ke aache asar hain.",
+                "caution": "Kundli saavdhani baratne ka sanket deti hai. Parinam sambhav hai par thoda samay aur dhairya lag sakta hai.",
+                "mixed": "Kundli is par mili-juli sthiti darshati hai. Santulit kadam uthana zaroori hai.",
+            }[direction]
+            if area:
+                note = f"Yeh aapke {area} kshetra se juda hai. " + note
+            out.append(_sec("Vyavaharik Margdarshan", note))
+    else:
+        low = finding.lower()
+        if low.startswith(("the chart", "your chart", "regarding", "on your question")):
+            body = finding
+        elif q:
+            body = f"On your question about {q}, the chart reads: {finding}"
+        else:
+            body = f"On the question you asked, the chart reads: {finding}"
+        if paid and brief.get("breakthrough_window"):
+            body += f" The strongest opening sits around {_tidy(brief['breakthrough_window'])}"
+        out.append(_sec("The direct answer", body))
+
+        if direction in ("support", "caution", "mixed"):
+            note = {
+                "support": "The weight of the chart is behind this, which means effort you put in "
+                           "now tends to land rather than stall.",
+                "caution": "The chart asks for care here. The result is reachable, but not on the "
+                           "timeline you would pick, and pushing early tends to cost you.",
+                "mixed": "The chart is genuinely split on this. Part of it supports you and part "
+                         "of it holds you back, so the outcome turns on how you play it.",
+            }[direction]
+            if area:
+                note = f"This sits in your {area.lower()} area. " + note
+            out.append(_sec("What that means in practice", note))
 
     return [s for s in out if s]
 
 
-def _fb_horary(brief: dict, meta: dict, *, paid: bool) -> list[dict]:
+def _fb_horary(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list[dict]:
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     out: list[Optional[dict]] = []
     q = _clip(brief.get("question") or meta.get("question"), 200).rstrip(".?!")
     subject = _clip(brief.get("subject"), 120)
 
     if not paid:
-        body = f"Your question is{(' about ' + q) if q else ''}."
-        if subject:
-            body += f" The reading is focused on {subject.lower()}."
-        body += " The full Western horary judgment is prepared in the report."
-        out.append(_sec("What the chart is examining", body))
+        if is_hinglish:
+            body = f"Aapka prashna{(' ' + q) if q else ''} ke baare mein hai."
+            if subject:
+                body += f" Prashna kundli {subject} par kendrit hai."
+            body += " Poora prashna kundli faisla report mein taiyar hai."
+            out.append(_sec("Prashna Ka Vishleshan", body))
+        else:
+            body = f"Your question is{(' about ' + q) if q else ''}."
+            if subject:
+                body += f" The reading is focused on {subject.lower()}."
+            body += " The full Western horary judgment is prepared in the report."
+            out.append(_sec("What the chart is examining", body))
         return [s for s in out if s]
 
     verdict = _clip(brief.get("verdict") or "Open", 120)
     conf = _clip(brief.get("confidence") or "moderate", 40)
-    body = f"On your question{(' — ' + q) if q else ''}, the moment chart reads: {verdict}."
-    if conf:
-        body += f" The chart is {conf} in saying so."
-    if subject:
-        body += f" It is reading {subject}."
-    out.append(_sec("The answer", body))
+    if is_hinglish:
+        body = f"Aapke prashna{(' — ' + q) if q else ''} par prashna kundli ka faisla: {verdict}."
+        if conf:
+            body += f" Is faisle par vishwas level {conf} hai."
+        out.append(_sec("Prashna Ka Faisla", body))
+    else:
+        body = f"On your question{(' — ' + q) if q else ''}, the moment chart reads: {verdict}."
+        if conf:
+            body += f" The chart is {conf} in saying so."
+        if subject:
+            body += f" It is reading {subject}."
+        out.append(_sec("The answer", body))
 
     fav = brief.get("favourable")
-    if fav is True:
-        out.append(_sec(
-            "How to play it",
-            "The moment is with you, so acting sooner reads better than waiting for a "
-            "cleaner signal. The chart was cast for the moment you asked, and that is "
-            "the window it answers for.",
-        ))
-    elif fav is False:
-        out.append(_sec(
-            "How to play it",
-            "The moment is not with you on this. That is not the same as never — it means "
-            "this particular attempt, asked at this particular moment, is working against "
-            "the current rather than with it.",
-        ))
+    if is_hinglish:
+        if fav is True:
+            out.append(_sec(
+                "Kaise Aage Badhein",
+                "Samay aapke anukool hai, isliye turant thos kadam uthana faydemand rahega.",
+            ))
+        elif fav is False:
+            out.append(_sec(
+                "Kaise Aage Badhein",
+                "Vartaman kshan mein chunautiyan hain. Jaldbaazi ke bajay sahi samay ka intezar karein aur grah shanti ke upay karein.",
+            ))
+    else:
+        if fav is True:
+            out.append(_sec(
+                "How to play it",
+                "The moment is with you, so acting sooner reads better than waiting for a "
+                "cleaner signal. The chart was cast for the moment you asked, and that is "
+                "the window it answers for.",
+            ))
+        elif fav is False:
+            out.append(_sec(
+                "How to play it",
+                "The moment is not with you on this. That is not the same as never — it means "
+                "this particular attempt, asked at this particular moment, is working against "
+                "the current rather than with it.",
+            ))
 
     if paid:
         windows = [w for w in (brief.get("dated_windows") or []) if isinstance(w, dict)]
-        lines = [
-            f"{_label(w.get('label')) or 'A window'} opens {_human_date(w.get('start'))}"
-            + (f" and runs to {_human_date(w.get('end'))}" if w.get("end") else "")
-            for w in windows[:3] if w.get("start")
-        ]
+        if is_hinglish:
+            lines = [
+                f"{_label(w.get('label')) or 'Ek timing window'} {_human_date(w.get('start'))} ko shuru hota hai"
+                + (f" aur {_human_date(w.get('end'))} tak chalta hai" if w.get("end") else "")
+                for w in windows[:3] if w.get("start")
+            ]
+            sec_title = "Dates Aur Samay Chakra"
+        else:
+            lines = [
+                f"{_label(w.get('label')) or 'A window'} opens {_human_date(w.get('start'))}"
+                + (f" and runs to {_human_date(w.get('end'))}" if w.get("end") else "")
+                for w in windows[:3] if w.get("start")
+            ]
+            sec_title = "When it moves"
         if lines:
-            out.append(_sec("When it moves", _join_sentences(lines)))
+            out.append(_sec(sec_title, _join_sentences(lines)))
 
     return [s for s in out if s]
 
 
-def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool) -> list[dict]:
+def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool, lang: str = "en") -> list[dict]:
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     out = _fallback_from_palm_text(text, paid=paid)
     if out:
         return out
@@ -1442,18 +1522,27 @@ def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool) -> list[dict]:
     shape = _clip(brief.get("hand_shape"), 40)
     traits = brief.get("personality_traits") or []
     if shape or traits:
-        lead = f"Your hands read as an {shape.title()} hand. " if shape else ""
-        sections.append(_sec(
-            "Personality & Core Temperament",
-            lead + _join_sentences(list(traits[:4])),
-        ))
+        if is_hinglish:
+            lead = f"Aapka haath {shape.title()} archetype darshata hai. " if shape else ""
+            sections.append(_sec(
+                "Swabhav Aur Core Archetype",
+                lead + _join_sentences(list(traits[:4])),
+            ))
+        else:
+            lead = f"Your hands read as an {shape.title()} hand. " if shape else ""
+            sections.append(_sec(
+                "Personality & Core Temperament",
+                lead + _join_sentences(list(traits[:4])),
+            ))
     areas = [a for a in (brief.get("life_areas") or []) if isinstance(a, dict)]
     if areas:
         lines = [f"{a.get('area')}: {a.get('reading')}" for a in areas[:4] if a.get("reading")]
         if lines:
-            sections.append(_sec("What your hands say about your life", _join_sentences(lines)))
+            sec_title = "Hatho Ke Mukhya Kshetra" if is_hinglish else "What your hands say about your life"
+            sections.append(_sec(sec_title, _join_sentences(lines)))
     if brief.get("both_hands_summary"):
-        sections.append(_sec("Both hands together", str(brief["both_hands_summary"])))
+        sec_title = "Dono Hatho Ka Tulnatmak Vishleshan" if is_hinglish else "Both hands together"
+        sections.append(_sec(sec_title, str(brief["both_hands_summary"])))
     return [s for s in sections if s]
 
 
@@ -1466,19 +1555,20 @@ def _fallback_sections(
     paid: bool = True,
     brief: Optional[dict] = None,
     inventory: Optional[dict] = None,
+    lang: str = "en",
 ) -> list[dict]:
     meta = meta or {}
     brief = brief if brief is not None else _summary_brief(kind, meta, facts, paid=paid)
     sections: list[dict] = []
 
     if kind in ("full_report", "classical_report"):
-        sections = _fb_full_report(brief, paid=paid)
+        sections = _fb_full_report(brief, paid=paid, lang=lang)
     elif kind == "user_question":
-        sections = _fb_user_question(brief, meta, paid=paid)
+        sections = _fb_user_question(brief, meta, paid=paid, lang=lang)
     elif kind == "horary":
-        sections = _fb_horary(brief, meta, paid=paid)
+        sections = _fb_horary(brief, meta, paid=paid, lang=lang)
     elif kind == "palm":
-        sections = _fb_palm(brief, meta, text, paid=paid)
+        sections = _fb_palm(brief, meta, text, paid=paid, lang=lang)
     elif kind == "kundali_match":
         body = _join_sentences([
             brief.get("headline"), brief.get("verdict"),
@@ -1540,38 +1630,59 @@ def _fallback_sections(
 
 
 def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
-                       text: str = "") -> str:
+                       text: str = "", lang: str = "en") -> str:
     """One clean sentence. A bare adjective or a page of teaser copy is not one."""
+    is_hinglish = str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     candidates: list[str] = []
     if kind in ("horary", "user_question"):
         if kind == "horary" and not paid:
             q = _clip(brief.get("question") or meta.get("question"), 130).rstrip(".?!")
-            candidates.append(
-                f"The chart is examining your question about {q}" if q
-                else "The chart is examining the question you asked"
-            )
+            if is_hinglish:
+                candidates.append(
+                    f"Prashna kundli aapke prashna ({q}) ka vishleshan karti hai." if q
+                    else "Prashna kundli aapke prashna ka vishleshan karti hai."
+                )
+            else:
+                candidates.append(
+                    f"The chart is examining your question about {q}" if q
+                    else "The chart is examining the question you asked"
+                )
         verdict = _tidy(_clip(brief.get("verdict") or brief.get("finding"), 130)).rstrip(".")
-        # "Leaning yes" is the whole answer but not yet a sentence. A verdict
-        # that already reads as one is left exactly as the engine wrote it.
         if verdict and len(verdict.split()) < 5 and not (kind == "horary" and not paid):
-            candidates.append(f"On the question you asked, the chart reads: {verdict}")
+            if is_hinglish:
+                candidates.append(f"Aapke prashna par kundli ka faisla: {verdict}")
+            else:
+                candidates.append(f"On the question you asked, the chart reads: {verdict}")
         if not (kind == "horary" and not paid):
             candidates += [brief.get("finding"), brief.get("verdict")]
     elif kind in ("full_report", "classical_report"):
         tone = _clip(brief.get("current_phase_tone"), 90).rstrip(".").lower()
         pressure = [p for p in (brief.get("areas_under_pressure") or []) if p][:2]
-        if tone and pressure:
-            candidates.append(
-                f"A {tone} chapter overall, with the pressure sitting on "
-                + " and ".join(p.lower() for p in pressure)
-            )
-        elif tone:
-            candidates.append(f"This reads as a {tone} chapter of your life")
+        if is_hinglish:
+            if tone and pressure:
+                candidates.append(
+                    f"Aapka vartaman daur sahayak hai, jabki vishesh dabav "
+                    + " aur ".join(p.lower() for p in pressure) + " par hai."
+                )
+            elif tone:
+                candidates.append("Aapki kundli ka vartaman daur anukool aur sahayak hai.")
+            candidates.append("Aapke vyaktitva aur current phase ke sanket anukool hain.")
+        else:
+            if tone and pressure:
+                candidates.append(
+                    f"A {tone} chapter overall, with the pressure sitting on "
+                    + " and ".join(p.lower() for p in pressure)
+                )
+            elif tone:
+                candidates.append(f"This reads as a {tone} chapter of your life")
         candidates += list((brief.get("current_phase_notes") or [])[:1])
     elif kind == "palm":
         shape = _clip(brief.get("hand_shape"), 40)
         if shape:
-            candidates.append(f"Your hands read as an {shape.title()} hand")
+            if is_hinglish:
+                candidates.append(f"Aapke haath {shape.title()} archetype darshate hain.")
+            else:
+                candidates.append(f"Your hands read as an {shape.title()} hand")
         candidates += list((brief.get("personality_traits") or [])[:1])
     elif kind == "kundali_match":
         candidates += [brief.get("headline"), brief.get("verdict")]
@@ -1604,7 +1715,7 @@ def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
 # LLM path
 # ---------------------------------------------------------------------------
 def _user_prompt(
-    kind: str, meta: dict, text: str, *, paid: bool, brief: dict, inventory: Optional[dict],
+    kind: str, meta: dict, text: str, *, paid: bool, brief: dict, inventory: Optional[dict], lang: str = "en",
 ) -> str:
     report_label = _kind_label(kind)
     question = str(meta.get("question") or "").strip()
@@ -1653,6 +1764,13 @@ def _user_prompt(
         }, ensure_ascii=False, default=str))
     lines.append("Visible report text (the only prose the reader has already seen):")
     lines.append(text)
+    if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi"):
+        lines.append(
+            "LANGUAGE REQUIREMENT: Write the headline and all section titles and bodies in natural, conversational Hindi "
+            "using the English/Latin alphabet (Hinglish / Roman Hindi). DO NOT use Devanagari script. "
+            "Example headline: 'Aapki kundli mein career growth aur stability ke strong sanket hain.' "
+            "Example body: 'Aapka Lagna aur dasha period yeh dikhata hai ki aane wale samay mein professional progression ke acche avsar milenge.'"
+        )
     return "\n".join(lines)
 
 
@@ -1664,12 +1782,13 @@ def _llm_sections(
     paid: bool = True,
     brief: Optional[dict] = None,
     inventory: Optional[dict] = None,
+    lang: str = "en",
 ) -> Optional[dict]:
     if not _enabled() or not text.strip():
         return None
     brief = brief or {}
-    system = system_prompt_for("plain_summary")
-    user = _user_prompt(kind, meta, text, paid=paid, brief=brief, inventory=inventory)
+    system = system_prompt_for("plain_summary", lang=lang)
+    user = _user_prompt(kind, meta, text, paid=paid, brief=brief, inventory=inventory, lang=lang)
 
     prose = _complete(PlainSummaryProse, system, user)
     if prose is None:
@@ -1729,29 +1848,32 @@ def build_plain_summary(
     facts: Any = None,
     paid: bool = True,
     paid_html: str = "",
+    lang: str = "",
 ) -> dict:
     """Return {headline, sections: [{title, body, role}], generated, ...}."""
     meta = dict(meta or {})
+    if not lang:
+        lang = str(meta.get("language") or (facts.get("language") if isinstance(facts, dict) else getattr(facts, "language", "en")) or "en")
     text = html_to_report_text(html)
     brief = _summary_brief(kind, meta, facts, paid=paid)
     inventory = None if paid else _locked_inventory(paid_html or html, facts, meta)
     cache_key = hashlib.sha256(
-        f"{kind}:{paid}:{text[:4000]}:{json.dumps(meta, sort_keys=True, default=str)[:800]}".encode()
+        f"{kind}:{paid}:{lang}:{text[:4000]}:{json.dumps(meta, sort_keys=True, default=str)[:800]}".encode()
     ).hexdigest()[:24]
 
-    out = _llm_sections(kind, meta, text, paid=paid, brief=brief, inventory=inventory)
+    out = _llm_sections(kind, meta, text, paid=paid, brief=brief, inventory=inventory, lang=lang)
     generated = "llm"
     if not out or not out.get("sections"):
         out = {
             "sections": _fallback_sections(
-                kind, meta, facts, text, paid=paid, brief=brief, inventory=inventory,
+                kind, meta, facts, text, paid=paid, brief=brief, inventory=inventory, lang=lang
             ),
-            "headline": _fallback_headline(kind, brief, meta, paid=paid, text=text),
+            "headline": _fallback_headline(kind, brief, meta, paid=paid, text=text, lang=lang),
         }
         generated = "fallback"
     elif not out.get("headline"):
         # QA may have cut the model's headline; the panel leads with this line.
-        out["headline"] = _fallback_headline(kind, brief, meta, paid=paid, text=text)
+        out["headline"] = _fallback_headline(kind, brief, meta, paid=paid, text=text, lang=lang)
 
     result = {
         "headline": out.get("headline") or "",
@@ -1760,10 +1882,12 @@ def build_plain_summary(
         "cache_key": cache_key,
         "paid": bool(paid),
     }
-    if inventory:
+    if not paid and inventory:
         result["locked"] = {
-            k: v for k, v in inventory.items()
-            if k in ("dated_windows", "life_areas", "remedies", "items")
+            "dated_windows": inventory.get("dated_windows", 0),
+            "life_areas": inventory.get("life_areas", 0),
+            "remedies": inventory.get("remedies", 0),
+            "items": inventory.get("items", []),
         }
     return result
 
@@ -1773,9 +1897,10 @@ def attach_plain_summary(
     *,
     kind: str,
     free_html: str,
-    paid_html: str,
-    paid: bool,
+    paid_html: str = "",
+    paid: bool = True,
     facts: Any = None,
+    lang: str = "",
 ) -> dict:
     """Mutate meta in place with plainSummary (free) and plainSummaryPaid.
 
@@ -1785,6 +1910,8 @@ def attach_plain_summary(
     saw.
     """
     meta = dict(meta or {})
+    if not lang:
+        lang = str(meta.get("language") or (facts.get("language") if isinstance(facts, dict) else getattr(facts, "language", "en")) or "en")
     free_src = free_html or ""
     paid_src = paid_html or ""
 
@@ -1792,7 +1919,7 @@ def attach_plain_summary(
         try:
             summary = build_plain_summary(
                 kind=kind, html=source, meta=meta, facts=facts,
-                paid=is_paid, paid_html=paid_src,
+                paid=is_paid, paid_html=paid_src, lang=lang,
             )
         except Exception as exc:  # noqa: BLE001
             print(f"[plain_summary] {kind} paid={is_paid} skipped: {exc}", flush=True)

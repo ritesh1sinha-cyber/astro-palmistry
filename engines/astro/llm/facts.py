@@ -2774,6 +2774,7 @@ def build_horary_facts(
     report_id: str = "",
     western_judgment: Optional[dict] = None,
     vedic_customer: Optional[dict] = None,
+    language: str = "en",
 ) -> HoraryFacts:
     summary = summary or {}
     wj = western_judgment or {}
@@ -2870,6 +2871,7 @@ def build_horary_facts(
         supportive_planet=supportive_planet[:40],
         hindering_remedy=hindering_remedy[:250],
         supportive_remedy=supportive_remedy[:250],
+        language=language,
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
 
@@ -2896,6 +2898,7 @@ def build_palm_facts(
     age_band: str = "adult",
     age_years: Optional[int] = None,
     report_id: str = "",
+    language: str = "en",
 ) -> PalmFacts:
     """Build PalmFacts from pipeline raw / reading_result — strip prose."""
     rr = raw.get("reading_result") or {}
@@ -3045,8 +3048,15 @@ def build_palm_facts(
             aspect.point_ids = [pid for pid in aspect.point_ids
                                 if not any(tok in pid.lower() for tok in blocked_tokens)]
 
-    # Life stage at current age + demanding aspect (lowest strength).
+    # Personality traits from morphology + palm state
+    personality_traits: list[str] = []
+    for t in conf.get("personality_traits") or []:
+        st = str(t).strip()
+        if st and st not in personality_traits:
+            personality_traits.append(st[:80])
+
     life_stage_note, life_stage_age = _palm_life_stage(raw, dominant, age_years)
+
     demanding_aspect = ""
     demanding_label = ""
     if aspects:
@@ -3111,6 +3121,7 @@ def build_palm_facts(
         remedies=remedies[:4],
         hand_contrast=hand_contrast,
         palm_state=palm_state,
+        language=language,
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
 

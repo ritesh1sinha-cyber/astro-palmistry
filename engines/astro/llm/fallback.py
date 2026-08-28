@@ -855,8 +855,15 @@ def _life_state_prose(life_state: Any) -> tuple[list[str], str]:
 
 def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
     name = getattr(facts, "first_name", "") or ""
+    is_hinglish = str(getattr(facts, "language", "") or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
     traits = [str(t).strip() for t in (getattr(facts, "personality_traits", None) or []) if str(t).strip()]
-    if traits:
+    if is_hinglish:
+        personality = (
+            f"{name}, aapke haath aapke swabhav, dhyan aur karya shaili ka santulan darshate hain."
+            if name else
+            "Aapke haath aapke swabhav, dhyan aur karya shaili ka majboot santulan darshate hain."
+        )
+    elif traits:
         # Use the primary character and temperament sentence intact
         personality = traits[0]
     else:
@@ -873,11 +880,15 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
         if cut > 40:
             stage = stage[: cut + 1].strip()
     demanding = str(getattr(facts, "demanding_aspect_label", "") or "").strip()
-    current_phase = stage or (
-        "Your hands point to a life stage that rewards steadiness. Do not rush "
-        "what they are asking you to look after."
-    )
-    hardest = f"The area asking for more care right now is {demanding}." if demanding else ""
+    if is_hinglish:
+        current_phase = "Aapke haath vartaman jeevan phase mein sthirta aur dheeraj ke sath aage badhne ka sanket dete hain."
+        hardest = f"Vartaman samay mein sabse jyada dhyan dene yogya kshetra: {demanding}." if demanding else ""
+    else:
+        current_phase = stage or (
+            "Your hands point to a life stage that rewards steadiness. Do not rush "
+            "what they are asking you to look after."
+        )
+        hardest = f"The area asking for more care right now is {demanding}." if demanding else ""
 
     areas = {}
     access = getattr(facts, "access", "free") or "free"
@@ -897,9 +908,12 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
                 or strength in ("weak", "tentative", "challenged")
                 or key == str(getattr(facts, "demanding_aspect", "") or "")
             )
-            outlook = clean_palm_summary(summary) or (
-                f"Your hands read as steady on {title.lower()}."
-            )
+            if is_hinglish:
+                outlook = f"Aapke haath {title} ke kshetra mein santulit aur sakriy urja darshate hain."
+            else:
+                outlook = clean_palm_summary(summary) or (
+                    f"Your hands read as steady on {title.lower()}."
+                )
             try:
                 from .rules import scrub_palm_bodily
                 outlook = scrub_palm_bodily(outlook)
@@ -907,7 +921,9 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
                 pass
             recognize = list(getattr(a, "recognize", None) or [])
             if not outlook:
-                if recognize:
+                if is_hinglish:
+                    outlook = f"Aapke haath {title} ke kshetra mein sthirta darshate hain."
+                elif recognize:
                     first = str(recognize[0]).strip().rstrip(".")
                     outlook = (
                         f"Your hands keep bringing this back: "
@@ -918,11 +934,7 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
             if key == "character" and personality:
                 if outlook[:80].lower() in personality.lower():
                     if recognize:
-                        first = str(recognize[0]).strip().rstrip(".")
-                        outlook = (
-                            f"This is the temperament your hands keep showing: "
-                            f"{first[0].lower() + first[1:]}."
-                        )
+                        outlook = str(recognize[0]).strip()
                     else:
                         outlook = (
                             "Your nature is consistent — the same temperament "
@@ -989,7 +1001,7 @@ _PALM_TONE_LINE = {
 }
 
 
-def _palm_state_prose(palm_state: Any) -> tuple[list[str], str]:
+def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False) -> tuple[list[str], str]:
     """Deterministic 'what may be on your mind' lines for a palm reading.
 
     Every line stays a possibility. A hand can show a tendency or an unmet
@@ -1012,7 +1024,9 @@ def _palm_state_prose(palm_state: Any) -> tuple[list[str], str]:
             subject = experience[0]
         else:
             subject = ""
-        if not subject:
+        if is_hinglish:
+            lines.append(f"Agar {head.lower()} aapke dhyan mein raha hai, toh yeh samay santulan aur samajhdari se aage badhne ka hai.")
+        elif not subject:
             lines.append(f"If {head.lower()} has been on your mind, this {lead} be the theme your hands keep bringing back.")
         elif i == 0:
             lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be sitting with you now.")
@@ -1021,20 +1035,23 @@ def _palm_state_prose(palm_state: Any) -> tuple[list[str], str]:
         else:
             lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be in the background too.")
 
-    tone = str(getattr(palm_state, "chapter_tone", "") or "mixed")
-    why = _PALM_TONE_LINE.get(tone, _PALM_TONE_LINE["mixed"])
-    note = str(getattr(palm_state, "confidence_note", "") or "").strip()
-    if str(getattr(palm_state, "uncertainty", "") or "") == "high":
-        why += (
-            " Your two hands do not tell quite the same story here, so treat "
-            "this as a period to reassess rather than commit."
-        )
-    if note:
-        why = f"{why} {note}"
+    if is_hinglish:
+        why = "Kul milakar aapke haath supportive urja darshate hain. Yeh samay sthirta aur vishwas ke sath karya karne ka hai."
+    else:
+        tone = str(getattr(palm_state, "chapter_tone", "") or "mixed")
+        why = _PALM_TONE_LINE.get(tone, _PALM_TONE_LINE["mixed"])
+        note = str(getattr(palm_state, "confidence_note", "") or "").strip()
+        if str(getattr(palm_state, "uncertainty", "") or "") == "high":
+            why += (
+                " Your two hands do not tell quite the same story here, so treat "
+                "this as a period to reassess rather than commit."
+            )
+        if note:
+            why = f"{why} {note}"
     return lines[:3], why
 
 
-def _hand_contrast_prose(contrast: Any) -> str:
+def _hand_contrast_prose(contrast: Any, *, is_hinglish: bool = False) -> str:
     """The two-hand story, written in natural, fluent consultation voice."""
     if contrast is None:
         return ""
@@ -1047,6 +1064,13 @@ def _hand_contrast_prose(contrast: Any) -> str:
     latent_traits = [str(x) for x in (getattr(contrast, "latent_traits", None) or [])]
     if not (steady or developed or latent or traits or latent_traits):
         return ""
+
+    if is_hinglish:
+        return (
+            f"Aapke dono haath aapke jeevan vikas ki spasht kahani batate hain. "
+            f"Aapka {other} haath janma se mili pratibha ko darshata hai, "
+            f"jabki {dominant} haath aapke abhyas aur parishram se viksit gunon ko dikhata hai."
+        )
 
     parts = [
         f"Your hands tell a clear story of personal evolution. Your {other} hand represents your inborn potential and natural blueprint, while your {dominant} hand reflects the strengths and conscious choices you have actively cultivated."
@@ -1272,6 +1296,14 @@ def horary_fallback(facts: Any) -> dict[str, Any]:
     label = getattr(facts, "label", "Genuinely open") or "Genuinely open"
     conf = getattr(facts, "confidence", "moderate") or "moderate"
     subject = getattr(facts, "subject", "this") or "this"
+    is_hinglish = str(getattr(facts, "language", "") or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+    if is_hinglish:
+        return {
+            "lead": f"Aapne {subject} ke baare mein prashna poocha hai. Prashna kundli ka vishleshan neeche diya gaya hai.",
+            "verdict_line": f"Prashna Kundli Ka Faisla: {label} (Pramanikta: {conf}).",
+            "why": "Prashna samay ke lagnesh, karyesh aur grah drishti is faisle ka samarthan karte hain.",
+            "action": "Is uttar ke anusar santulit aur vivekpurna kadam uthayein.",
+        }
     return {
         "lead": f"You asked about {subject}. Here is the horary reading.",
         "verdict_line": f"The chart reads as: {label} (confidence {conf}).",

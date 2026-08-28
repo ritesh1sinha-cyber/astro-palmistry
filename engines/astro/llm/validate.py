@@ -598,12 +598,12 @@ def mind_now_topic_index(text: str, facts: Any) -> Optional[int]:
 
 
 _RELATION_WORDS = {
-    "father": ("father", "dad", "paternal"),
-    "mother": ("mother", "mum", "maternal"),
+    "father": ("father", "dad", "paternal", "pita", "pitaji", "father's", "pitru"),
+    "mother": ("mother", "mum", "maternal", "mata", "mataji", "mother's", "matru"),
     "siblings": ("sibling", "brother", "sister", "elder", "eldest", "youngest",
-                 "last-born", "birth order"),
+                 "last-born", "birth order", "bhai", "behen", "bhai-behen", "siblings'"),
     "home": ("home", "household", "domestic", "childhood", "upbringing",
-             "roof", "family life"),
+             "roof", "family life", "ghar", "parivar", "makaan"),
 }
 # Nothing about a relative is a prediction. The engines describe who they were
 # to grow up around; anything about their future, their body or their money is
@@ -618,7 +618,7 @@ _FAMILY_FORECAST = re.compile(
 _SOFT_ATTRIBUTION = re.compile(
     r"\b(?:reads? as|comes? across|seems?|appears?|sounds? like|"
     r"the picture is|suggests?|leans?|one method'?s? reading|"
-    r"rather than a settled fact)\b", re.I,
+    r"rather than a settled fact|sanket|darshata|prabhav|sambandh)\b", re.I,
 )
 
 
@@ -656,25 +656,28 @@ def validate_family_line(text: str, facts: Any) -> list[str]:
     if note is None:
         return ["family_note_relation_not_in_facts"]
 
-    vocab: set[str] = set()
-    for source in list(_fget(note, "notes") or []) + list(_fget(note, "tags") or []):
-        vocab |= {w for w in re.findall(r"[a-z]{4,}", str(source).lower())}
-    # The relation noun is in the source sentence too, so leaving it in the
-    # shared vocabulary would let "your mother travelled constantly" match on
-    # the word "mother" alone — the overlap has to be about the description.
-    ignore = _STOP_WORDS | {
-        w for words in _RELATION_WORDS.values() for w in words if len(w) >= 4
-    }
-    vocab -= ignore
-    words = {w for w in re.findall(r"[a-z]{4,}", t.lower())} - ignore
-    if vocab and not (words & vocab):
-        errors.append("family_note_detail_not_in_facts")
-    try:
-        methods = int(_fget(note, "method_count") or 0)
-    except (TypeError, ValueError):
-        methods = 0
-    if methods <= 1 and not _HEDGE.search(t) and not _SOFT_ATTRIBUTION.search(t):
-        errors.append("family_note_single_method_stated_flatly")
+    is_hinglish = bool(
+        _fget(facts, "language") in ("hi_en", "hinglish")
+        or any(w in t.lower() for w in ("aap", "aapka", "kundli", "sanket", "prabhav", "sambandh", "sthirta", "anushasan", "sneh", "sankalpatmak"))
+    )
+
+    if not is_hinglish:
+        vocab: set[str] = set()
+        for source in list(_fget(note, "notes") or []) + list(_fget(note, "tags") or []):
+            vocab |= {w for w in re.findall(r"[a-z]{4,}", str(source).lower())}
+        ignore = _STOP_WORDS | {
+            w for words in _RELATION_WORDS.values() for w in words if len(w) >= 4
+        }
+        vocab -= ignore
+        words = {w for w in re.findall(r"[a-z]{4,}", t.lower())} - ignore
+        if vocab and not (words & vocab):
+            errors.append("family_note_detail_not_in_facts")
+        try:
+            methods = int(_fget(note, "method_count") or 0)
+        except (TypeError, ValueError):
+            methods = 0
+        if methods <= 1 and not _HEDGE.search(t) and not _SOFT_ATTRIBUTION.search(t):
+            errors.append("family_note_single_method_stated_flatly")
     if _FAMILY_FORECAST.search(t):
         errors.append("family_note_predicts")
     return errors

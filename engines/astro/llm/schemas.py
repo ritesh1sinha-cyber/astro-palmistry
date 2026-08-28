@@ -565,6 +565,7 @@ class HoraryFacts(BaseModel):
     supportive_planet: str = Field(default="", max_length=40)
     hindering_remedy: str = Field(default="", max_length=250)
     supportive_remedy: str = Field(default="", max_length=250)
+    language: str = "en"
 
 
 class PalmAspectFacts(BaseModel):
@@ -614,6 +615,7 @@ class PalmFacts(BaseModel):
     remedies: list[str] = Field(default_factory=list, max_length=4)
     hand_contrast: Optional[HandContrastFacts] = None
     palm_state: Optional[PalmStateFacts] = None
+    language: str = "en"
 
 
 # ---------------------------------------------------------------------------

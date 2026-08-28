@@ -113,6 +113,10 @@ DOMAIN_ANCHORS: dict[str, list[str]] = {
     "speech": [
         "speech stammer stutter voice speak communication teeth",
     ],
+    "remedy": [
+        "gemstone stone ratna wear gemstone which gemstone will suit me lucky stone rudraksha mantra remedy upaya",
+        "which gemstone should I wear which stone is good for me gemstone advice what stone to wear ratna dharan",
+    ],
     "current": [
         "right now current period last six months recent past present window",
         "how have the last months been where do I stand now",
@@ -132,6 +136,7 @@ TOPIC_ANCHORS: dict[str, list[str]] = {
     "travel": ["travel trip foreign abroad visa relocation journey"],
     "education": ["exam study education college university course degree"],
     "litigation": ["court litigation lawsuit legal case win the case dispute"],
+    "gemstone": ["which gemstone will suit me what stone to wear lucky gemstone ratna remedy wear gemstone"],
     "general": ["general life question outcome of the matter"],
 }
 
@@ -140,7 +145,7 @@ DOMAIN_PRIMARY_HOUSE: dict[str, int] = {
     "career": 10, "finance": 2, "marriage": 7, "children": 5,
     "health": 6, "property": 4, "travel": 9, "spiritual": 12,
     "personality": 1, "legal": 6, "education": 9, "speech": 2,
-    "current": 1, "general": 1,
+    "remedy": 1, "current": 1, "general": 1,
 }
 
 TOPIC_TO_DOMAIN: dict[str, str] = {
@@ -148,7 +153,7 @@ TOPIC_TO_DOMAIN: dict[str, str] = {
     "litigation": "legal", "job": "career", "children": "children",
     "marriage": "marriage", "career": "career", "health": "health",
     "finance": "finance", "travel": "travel", "education": "education",
-    "property": "property", "general": "general",
+    "property": "property", "gemstone": "remedy", "general": "general",
 }
 
 # question_answer.Topic keys ↔ semantic domain / house
@@ -161,6 +166,7 @@ QA_TOPIC_BY_DOMAIN: dict[str, str] = {
     "education": "study",
     "marriage": "general",
     "children": "general",
+    "remedy": "gemstone",
 }
 
 
@@ -185,6 +191,7 @@ LIFE_AREAS: list[tuple[str, str]] = [
     ("health", "Health"),
     ("travel", "Foreign travel / relocation"),
     ("legal", "Legal / court matter"),
+    ("gemstone", "Gemstones & Remedies"),
     ("general", "Something else"),
 ]
 
@@ -193,21 +200,21 @@ AREA_TO_QA_TOPIC: dict[str, str] = {
     "career": "job_change", "promotion": "promotion", "business": "business",
     "finance": "money", "property": "property", "marriage": "marriage",
     "children": "children", "education": "study", "health": "health",
-    "travel": "foreign", "legal": "legal",
+    "travel": "foreign", "legal": "legal", "gemstone": "gemstone",
 }
 
 AREA_TO_HORARY_TOPIC: dict[str, str] = {
     "career": "career", "promotion": "career", "business": "career",
     "finance": "finance", "property": "property", "marriage": "marriage",
     "children": "children", "education": "education", "health": "health",
-    "travel": "travel", "legal": "litigation",
+    "travel": "travel", "legal": "litigation", "gemstone": "general",
 }
 
 # area -> classical house, for western_horary_rules.py's scoring bias
 AREA_TO_HOUSE: dict[str, int] = {
     "career": 10, "promotion": 10, "business": 10, "finance": 2,
     "property": 4, "marriage": 7, "children": 5, "education": 9,
-    "health": 6, "travel": 9, "legal": 9,
+    "health": 6, "travel": 9, "legal": 9, "gemstone": 1,
 }
 
 # area -> semantic DOMAIN_ANCHORS key (promotion/business fold into career)
@@ -215,7 +222,7 @@ AREA_TO_DOMAIN: dict[str, str] = {
     "career": "career", "promotion": "career", "business": "career",
     "finance": "finance", "property": "property", "marriage": "marriage",
     "children": "children", "education": "education", "health": "health",
-    "travel": "travel", "legal": "legal", "general": "general",
+    "travel": "travel", "legal": "legal", "gemstone": "remedy", "general": "general",
 }
 
 # valid areas defined in LIFE_AREAS

@@ -28,16 +28,24 @@ def _name_tokens(name: str) -> set[str]:
     if not name:
         return set()
     parts = re.split(r"[\s_\-]+", name.strip().lower())
-    return {p for p in parts if len(p) >= 2}
+    tokens = {p for p in parts if len(p) >= 2}
+    # Also include alpha-only tokens (e.g. 'ishu1' -> 'ishu')
+    alpha_parts = re.split(r"[^a-zA-Z]+", name.strip().lower())
+    tokens |= {p for p in alpha_parts if len(p) >= 2}
+    return tokens
 
 
 def names_compatible(expected: str, meta_client: str, slug: str = "") -> bool:
     """True when expected client / slug shares a name token with precompute meta.client."""
+    e_clean = (expected or "").strip().lower()
+    m_clean = (meta_client or "").strip().lower()
+    if not m_clean or not e_clean:
+        return True
+    if e_clean == m_clean or e_clean.startswith(m_clean) or m_clean.startswith(e_clean):
+        return True
     et = _name_tokens(expected) | _name_tokens(slug)
     mt = _name_tokens(meta_client)
-    if not mt:
-        return True
-    if not et:
+    if not mt or not et:
         return True
     return bool(et & mt)
 

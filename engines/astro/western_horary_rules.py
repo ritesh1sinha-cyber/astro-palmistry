@@ -398,6 +398,14 @@ _RELATIVE_RE = re.compile(r"\bmy\s+(friend|brother|sister|mother|father|son|daug
 _PRIORITY = [5, 7, 4, 10, 6, 9, 8, 12, 3, 11, 2, 1]  # specificity tie-break
 
 
+def is_out_of_domain_question(question: str) -> bool:
+    try:
+        from confluence_question_engine import is_strictly_out_of_domain
+        return is_strictly_out_of_domain(question)
+    except Exception:
+        return False
+
+
 def parse_question(question: str, area: str = "") -> dict:
     """Extract (quesited house, mode flags, third-party) from free text.
 
@@ -406,6 +414,8 @@ def parse_question(question: str, area: str = "") -> dict:
     or the encoder is unavailable.
     """
     q = question.strip()
+    out_of_domain = is_out_of_domain_question(q)
+
     scores: dict[int, int] = {}
     for pattern, house, weight in _INTENT_RULES:
         n = len(re.findall(pattern, q, re.I))
@@ -446,11 +456,11 @@ def parse_question(question: str, area: str = "") -> dict:
     elif _BUY_RE.search(q):
         house = 2  # acquiring an unspecified movable
     else:
-        house = 7  # generic "the other party / the matter"
+        house = 1  # general querent / overall situation
 
-    # Prefer semantic house when keyword path collapsed to generic 7
-    if (not area_house and house == 7 and sem_house and sem_house != 7
-            and sem_score >= 0.32 and not scores.get(7)):
+    # Prefer semantic house when keyword path collapsed to generic 1 or 7
+    if (not area_house and house in (1, 7) and sem_house and sem_house not in (1, 7)
+            and sem_score >= 0.32 and not scores.get(house)):
         house = sem_house
 
     # Third-party: a named person ("Will Luis…", "Sara's…") or a relative the querent asks about.
@@ -471,6 +481,7 @@ def parse_question(question: str, area: str = "") -> dict:
         "scores": scores,
         "semantic_house": sem_house,
         "semantic_score": sem_score,
+        "out_of_domain": out_of_domain,
     }
 
 
