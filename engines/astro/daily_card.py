@@ -824,11 +824,25 @@ def _extras(reading: dict) -> str:
 
 
 def _locked_preview(*, price: int, n_lanes: int, md: str, ad: str, pd: str) -> str:
+    """Free view: what today's paid reading adds, named against this chart.
+
+    The periods running today are already known here, so the teaser says whose
+    clock it is rather than describing the feature in the abstract. A reader
+    who sees their own three lords named knows the locked half is about them.
+    """
+    stack = " – ".join(x for x in (md, ad, pd) if x)
+    clock_teaser = (
+        f"Your <b>{stack}</b> clock is what is running today. The exact "
+        "three-tier sequence, its handover dates, and what each layer is doing "
+        "to the day are in the full reading."
+        if stack else
+        "The exact three-tier period clock running today, with its handover "
+        "dates and what each layer is doing to the day.")
     return f"""
 <div class="qa-window locked" style="margin:14px 0;">
   <div class="qa-wlabel">Precision Auspicious Hours & Timing Windows</div>
   <p class="blurred">Exact daylight planetary hours (Jupiter, Mercury, Venus horas) for commercial decisions, applications, negotiations, and exact Rahu Kaal window to avoid.</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Daily clock windows are locked.</b> Unlock to view exact clock times for today's highest-converting windows.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Daily clock windows are locked.</b> Unlock to see the exact clock times of today's most favourable hours, and the hour to keep clear.</p>
 </div>
 
 <div class="qa-window locked" style="margin:14px 0;">
@@ -845,7 +859,7 @@ def _locked_preview(*, price: int, n_lanes: int, md: str, ad: str, pd: str) -> s
 
 <div class="qa-window locked" style="margin:14px 0;">
   <div class="qa-wlabel">Active Timing Clock & Life Phase Sub-Periods</div>
-  <p class="blurred">The exact three-tier Dasha clock running today with transition dates and energy impact analysis.</p>
+  <p class="blurred">{clock_teaser}</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Dasha timing stack is locked.</b> Unlock to see the active planetary periods governing today.</p>
 </div>
 

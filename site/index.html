@@ -668,6 +668,31 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 .readacts{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:nowrap}
 .readacts .btn-summary{background:linear-gradient(135deg,var(--gold),#d9a544);color:#1b1405;font-weight:600;border-color:rgba(201,162,39,.6);box-shadow:0 2px 8px rgba(201,162,39,.25)}
 .readacts .btn-summary:hover{background:linear-gradient(135deg,#d9a544,#c89332);color:#140e02}
+/* Plain-English summary sheet. On a locked reading this panel is also the
+   pitch, so the account of what is still waiting and the unlock button are
+   part of the layout rather than a paragraph at the bottom. */
+.ps-wrap{padding:2px 2px 4px}
+.ps-lead{margin:0 0 16px;font-family:var(--serif);font-size:17.5px;line-height:1.45;
+  color:var(--ink);font-weight:600}
+.ps-sec{margin:0 0 18px}
+.ps-sec h4{margin:0 0 7px;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink)}
+.ps-sec p{margin:0;font-size:14.5px;line-height:1.62;color:var(--muted)}
+.ps-locked{padding:14px 16px;background:#fcfbf8;border:1px solid #e8e4dc;border-radius:10px}
+.ps-list{margin:10px 0 0;padding:0;list-style:none;font-size:14px;line-height:1.5;color:var(--muted)}
+.ps-list li{position:relative;padding:0 0 0 22px;margin:0 0 6px}
+.ps-list li:last-child{margin-bottom:0}
+.ps-list li::before{content:'';position:absolute;left:4px;top:6px;width:8px;height:8px;
+  border-radius:2px;background:var(--gold);opacity:.75}
+.ps-cta{margin:18px 0 0;padding:16px;border:1px solid rgba(201,162,39,.45);border-radius:10px;
+  background:linear-gradient(180deg,#fffdf6,#fdf8ea);text-align:center}
+.ps-cta h4{margin:0 0 7px;font-family:var(--serif);font-size:16.5px;font-weight:600;color:var(--ink)}
+.ps-cta p{margin:0 0 12px;font-size:14px;line-height:1.55;color:var(--muted)}
+.ps-buy{width:100%;max-width:320px;font-weight:600}
+.ps-foot{margin:14px 0 0;font-size:13px;line-height:1.5;color:var(--muted-2)}
+.ps-dl{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+/* A basis rather than auto: on a 360px phone both labels would otherwise share
+   one row and wrap inside the buttons. */
+.ps-dl .btn{flex:1 1 160px;white-space:normal}
 .tocbtn{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px}
 .tocbtn svg{width:16px;height:16px;flex:0 0 auto}
 .tocbtn[hidden],.readtoc[hidden]{display:none!important}
@@ -785,6 +810,10 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
 .sheet-bg{position:absolute;inset:0;background:rgba(22,24,29,.42)}
 .sheet-box{
   position:absolute;left:0;right:0;bottom:0;max-height:86vh;overflow-y:auto;
+  /* The app's WebView needs both: momentum scrolling, and a promise not to
+     hand the scroll back to the reading underneath when the sheet hits its
+     end — reaching the buy button used to scroll the report instead. */
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   background:var(--paper);border-radius:22px 22px 0 0;border-top:1px solid var(--line);
   padding:10px 0 calc(18px + env(safe-area-inset-bottom));
   box-shadow:0 -18px 50px rgba(22,24,29,.18);animation:sheetUp .26s cubic-bezier(.22,.8,.3,1)
@@ -1386,18 +1415,9 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
      <div class="err">Required</div>
      <p class="placenote" id="hPlaceNote">We fill coordinates from the city you pick.</p></div>
     <input type="hidden" id="hLat"><input type="hidden" id="hLon"><input type="hidden" id="hTz" value="5.5">
-    <div class="field" style="margin-top:4px">
-     <label for="hKp">KP number <span class="hint">(1–249 · pick any number that comes to mind)</span></label>
-     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <input class="inp" id="hKp" type="number" min="1" max="249" step="1" placeholder="e.g. 108" style="max-width:140px">
-      <button type="button" class="btn btn-ghost btn-sm" onclick="pickKpNumber()">Pick random number</button>
-     </div>
-     <div class="err">Enter a number from 1 to 249</div>
-     <p class="hint" style="margin-top:8px">In KP horary the querent names a number at random — it sets the chart for the Vedic leg.</p>
-    </div>
     <p class="hint" style="margin:8px 0 14px">Your question is read for the moment you tap submit — no need to enter the time.</p>
     <button class="btn btn-gold btn-block" onclick="astroJob('horary')">Read my question — free</button>
-    <p class="hint" style="text-align:center">Takes ~1–2 minutes. Four classical methods, each read on its own — then one answer.</p>
+    <p class="hint" style="text-align:center">Takes ~1–2 minutes. Western horary reads the moment you ask — then gives one answer.</p>
    </div>
   </div>
 
@@ -2375,17 +2395,27 @@ function watchReportUnlock(reportId, onUnlocked, opts){
   }, intervalMs);
   return iv;
 }
-async function downloadReportPdf(reportId){
+async function downloadReportPdf(reportId, opts){
   if(!reportId){ toast('No report selected'); return; }
   const token = ASTRO.token || apSessionToken;
   if(!token){ toast('Please sign in first'); return; }
+  const o = opts || {};
   const base = CONFIG.apiBase || window.location.origin;
-  const pdfUrl = new URL('/api/reports/'+encodeURIComponent(reportId)+'/pdf', base).href;
-  const fname = 'graharekha-'+String(reportId).slice(0,8)+'.pdf';
+  // summaryOnly → the plain-English pages alone; otherwise the full report with
+  // the summary as its first page.
+  const path = o.summaryOnly
+    ? '/api/reports/'+encodeURIComponent(reportId)+'/summary.pdf'
+    : '/api/reports/'+encodeURIComponent(reportId)+'/pdf';
+  const pdfUrl = new URL(path, base).href;
+  const fname = 'graharekha-'+String(reportId).slice(0,8)
+              + (o.summaryOnly ? '-summary' : '') + '.pdf';
   // Android WebView cannot save blob: URLs — the shell downloads the HTTPS endpoint.
   if(window.GrahaRekhaAndroid && typeof window.GrahaRekhaAndroid.downloadReport === 'function'){
     try{
       window.GrahaRekhaAndroid.downloadReport(pdfUrl, fname, token);
+      // The shell downloads in the background and says nothing back, so the
+      // tap needs an acknowledgement here or it reads as a dead button.
+      toast(o.summaryOnly ? 'Downloading summary…' : 'Downloading PDF…');
       return;
     }catch(e){ /* fall through to fetch */ }
   }
@@ -2407,8 +2437,11 @@ async function downloadReportPdf(reportId){
     a.href = url; a.download = downloadName;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 60000);
-    toast('PDF downloaded');
+    toast(o.summaryOnly ? 'Summary downloaded' : 'PDF downloaded');
   }catch(e){ toast(e.message||'PDF download failed'); }
+}
+function downloadSummaryPdf(reportId){
+  return downloadReportPdf(reportId, {summaryOnly:true});
 }
 function reportToolbar(reportId, link){
   const rid = esc(reportId||'');
@@ -2735,6 +2768,13 @@ function extractSummaryFromActiveReading(){
         }
       }
     }catch(e){}
+  } else if(kind === 'horary' && !unlocked){
+    const horaryQuestion = q.replace(/[.?!]+$/, '');
+    sections.push({
+      title: 'What the chart is examining',
+      body: `Your question is${horaryQuestion ? ` about ${horaryQuestion}` : ''}. `
+        + 'The full Western horary judgment is prepared in the report.'
+    });
   } else {
     if(label){
       let body = label;
@@ -2746,13 +2786,112 @@ function extractSummaryFromActiveReading(){
     }
   }
 
+  const summaryText = text => {
+    const raw = (text || '').replace(/\s+/g, ' ').trim();
+    if(unlocked) return raw;
+    return raw.split(/(?<=[.!?])\s+/)
+      .filter(s => !/\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2}\b|\b20\d{2}\b/i.test(s))
+      .filter(s => !/\b(?:remed(?:y|ies)?|upaya|targeted vedic|dasha|nakshatra|\d+(?:st|nd|rd|th)\s+house)\b/i.test(s))
+      .join(' ');
+  };
+  const clipFoundation = text => {
+    const sentences = summaryText(text).split(/(?<=[.!?])\s+/);
+    const substantive = sentences.filter(s =>
+      !/\b(?:this division maps|classically maps|this chart reflects)\b/i.test(s));
+    const raw = (substantive.length ? substantive : sentences).slice(0, 2).join(' ');
+    return raw.length > 220 ? raw.slice(0, 220).replace(/\s+\S*$/, '') + '…' : raw;
+  };
+  let personalBlock = null;
+  let currentBlock = null;
   try{
-    if(!sections.length){
+    if(!isPalm && (kind === 'full_report' || kind === 'classical_report')){
+      const iframe = document.querySelector('#readingBody iframe');
+      const doc = iframe && iframe.contentDocument;
+      if(!doc || !doc.body) throw new Error('report frame is not ready');
+      const personalHeading = Array.from(doc.querySelectorAll('h1,h2,h3,h4')).find(h=>{
+        const t = (h.textContent || '').toLowerCase();
+        return /core nature|personal constitution|who your chart says|personality|constitutional baseline/.test(t);
+      });
+      personalBlock = personalHeading
+        && (personalHeading.closest('section,article,.card,.conv-block') || personalHeading.parentElement);
+      const personalLead = personalHeading && personalHeading.nextElementSibling;
+      const personalParas = personalLead && (personalLead.textContent || '').trim().length > 35
+        ? [summaryText(personalLead.textContent || '')]
+        : (personalBlock
+          ? Array.from(personalBlock.querySelectorAll('p'))
+              .map(p => (p.textContent || '').trim())
+              .map(summaryText)
+              .filter(t => t.length > 35)
+          : []);
+      if(personalParas[0]){
+        sections.push({
+          title: 'What your chart says about you',
+          body: personalParas.slice(0, 2).join(' ').slice(0, 600)
+        });
+      }
+      const foundationCodes = ['D1', 'D2', 'D3', 'D12'];
+      const foundationFacts = [];
+      Array.from(doc.querySelectorAll('article,section.card')).forEach(card=>{
+        const marker = card.querySelector('.card-top,.section-kicker');
+        const markerText = (marker && marker.textContent || '').replace(/\s+/g, ' ');
+        const code = foundationCodes.find(c => new RegExp(`\\b${c}\\b`, 'i').test(markerText));
+        if(!code || foundationFacts.some(x => x.code === code)) return;
+        const heading = card.querySelector('h2,h3,h4');
+        const lead = heading && heading.nextElementSibling;
+        const body = clipFoundation((lead && lead.textContent) || '');
+        if(body.length > 35){
+          foundationFacts.push({
+            code,
+            label: (markerText.replace(new RegExp(`\\b${code}\\b`, 'i'), '')
+              .replace(/\s+/g, ' ').trim()),
+            body
+          });
+        }
+      });
+      if(foundationFacts.length){
+        sections.push({
+          title: 'What your key chart foundations say',
+          body: foundationFacts.map(x => `${x.code} (${x.label}): ${x.body}`)
+            .join(' ').slice(0, 1200)
+        });
+      }
+      const currentHeading = Array.from(doc.querySelectorAll('h1,h2,h3,h4')).find(h=>{
+        const t = (h.textContent || '').toLowerCase();
+        return /where life is putting its weight|current chapter/.test(t);
+      });
+      currentBlock = currentHeading
+        && (currentHeading.closest('section,article,.card,.conv-block') || currentHeading.parentElement);
+      const currentParas = currentBlock
+        ? Array.from(currentBlock.querySelectorAll('p'))
+            .map(p => summaryText(p.textContent || ''))
+            .filter(t => t.length > 35)
+        : [];
+      if(currentParas.length){
+        const strained = currentParas.find(t =>
+          /hardest|strained|under pressure|needs care/i.test(t));
+        const currentDetails = currentParas.slice(0, 2);
+        if(strained && !currentDetails.includes(strained)) currentDetails.push(strained);
+        sections.push({
+          title: 'Where you are right now',
+          body: currentDetails.join(' ').slice(0, 600)
+        });
+      }
+    }
+  }catch(e){}
+
+  try{
+    const fullChartNeedsContext = !isPalm
+      && (kind === 'full_report' || kind === 'classical_report')
+      && sections.length < 2;
+    if(!sections.length || fullChartNeedsContext){
       const iframe = document.querySelector('#readingBody iframe');
       const doc = iframe && iframe.contentDocument;
       if(doc && doc.body){
         const paras = Array.from(doc.querySelectorAll('p, .confluence-summary, .verdict-text, .lead, .pv-means'))
+          .filter(p => !personalBlock || !personalBlock.contains(p))
+          .filter(p => !currentBlock || !currentBlock.contains(p))
           .map(p => (p.textContent||'').trim())
+          .map(summaryText)
           .filter(t => t.length > 35 && !t.includes('{') && !t.includes('}') && !t.toLowerCase().includes('unlock') && !t.toLowerCase().includes('targeted vedic upaya'));
         if(paras.length >= 2){
           const titles = isPalm
@@ -2774,10 +2913,13 @@ function extractSummaryFromActiveReading(){
 
   if(!unlocked){
     sections.push({
-      title: isPalm ? 'Unlock Full Reading' : 'Unlock Full Report',
+      role: 'locked',
+      title: isPalm ? 'What the full reading adds' : 'What the full report adds',
       body: isPalm
-        ? 'To unlock your complete chronological life timeline, future age chapters, line markings, and planetary mount remedies, unlock the full reading.'
-        : 'To unlock the full classical verdict, exact breakthrough dates, milestone timeline, and targeted Vedic remedies (Upaya), unlock the full report.'
+        ? 'Your complete life timeline, the age chapters still ahead, every line and mount marking, and the remedies drawn from them are written and waiting.'
+        : kind === 'horary'
+          ? 'The complete Western horary judgment, the dated opening windows and the specific guidance are written and waiting.'
+        : 'The classical verdict, the dated opening windows, the milestone timeline and the remedies chosen for your chart are written and waiting.'
     });
   } else if(!sections.length){
     sections.push({
@@ -2787,57 +2929,124 @@ function extractSummaryFromActiveReading(){
         : 'Review the reading document below for the complete astrological guidance and analysis.'
     });
   }
-  return { sections, generated: 'fallback' };
+  return { sections, generated: 'fallback', headline: '' };
+}
+
+function summaryPayItem(kind){
+  return ({ numerology:'numerology_full', palm:'palm_full', daily:'subscription' })[kind]
+         || kind || 'full_report';
+}
+
+function summaryUnlock(){
+  closeSheet();
+  const kind = READING.kind || (READING.meta && READING.meta.kind) || '';
+  if(kind === 'palm'){ startPay(); return; }
+  const refId = READING.reportId
+             || (typeof ASTRO !== 'undefined' ? ASTRO.lastReportId : '') || '';
+  astroPay(summaryPayItem(kind), refId);
 }
 
 function openPlainSummary(){
   const m = READING.meta || {};
   const kind = READING.kind || m.kind || '';
-  const isPalm = kind === 'palm';
   const unlocked = !!(READING.unlocked || (m && m.paid) || (READING.link && READING.link.includes('.paid.')) || hasFullAccess());
-  let ps = m.plainSummary;
-  if(!ps || !Array.isArray(ps.sections) || !ps.sections.length){
-    ps = extractSummaryFromActiveReading();
+  // Each half has its own summary, written against the half the reader can see.
+  let ps = unlocked ? (m.plainSummaryPaid || m.plainSummary) : m.plainSummary;
+  // Only a stored summary can be exported; the client-side rebuild below exists
+  // for older reports and has no server copy to render as a PDF.
+  const stored = !!(ps && Array.isArray(ps.sections) && ps.sections.length);
+  const fullChart = kind === 'full_report' || kind === 'classical_report';
+  const freeHorary = kind === 'horary' && !unlocked;
+  const storedHasPersonality = stored && fullChart
+    && ps.sections.some(s => /personality|about you|who your chart|temperament/i.test(
+      s.title || ''));
+  if(!stored || freeHorary || (!unlocked && fullChart && !storedHasPersonality)){
+    const extracted = extractSummaryFromActiveReading();
+    if(extracted && Array.isArray(extracted.sections) && extracted.sections.length){
+      ps = stored
+        ? {...ps, headline: extracted.headline || '', sections: extracted.sections,
+           generated: extracted.generated || 'fallback'}
+        : extracted;
+    }
   }
   if(!ps || !Array.isArray(ps.sections) || !ps.sections.length){
     toast('Summary not available for this report yet');
     return;
   }
-  let sections = ps.sections;
+
+  let sections = ps.sections.slice();
   if(!unlocked){
-    const hasUnlockSec = sections.some(s => (s.title||'').toLowerCase().includes('unlock') || (s.body||'').toLowerCase().includes('unlock full'));
-    if(!hasUnlockSec){
-      sections = sections.concat([{
-        title: isPalm ? 'Unlock Full Reading' : 'Unlock Full Report',
-        body: isPalm
-          ? 'To unlock your complete chronological life timeline, future age chapters, line markings, and planetary mount remedies, unlock the full reading.'
-          : 'To unlock the full classical verdict, exact breakthrough dates, milestone timeline, and targeted Vedic remedies (Upaya), unlock the full report.'
-      }]);
+    const freeDate = /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2}\b|\b20\d{2}\b/i;
+    const seenSentences = new Set();
+    sections = sections.map(s=>{
+      if((s.role || 'insight') !== 'insight') return s;
+      const body = String(s.body || '').split(/(?<=[.!?])\s+/)
+        .filter(sentence => !freeDate.test(sentence))
+        .filter(sentence=>{
+          const key = sentence.toLowerCase().replace(/\s+/g, ' ').trim();
+          if(!key || seenSentences.has(key)) return false;
+          seenSentences.add(key);
+          return true;
+        }).join(' ').trim();
+      return {...s, body};
+    }).filter(s => (s.role || 'insight') !== 'insight' || s.body);
+    if(freeDate.test(ps.headline || '')) ps = {...ps, headline: ''};
+  }
+  if(unlocked){
+    // A paid reader is never pitched to, whichever half we ended up rendering.
+    const kept = sections.filter(s => (s.role || 'insight') === 'insight');
+    if(kept.length) sections = kept;
+  }
+
+  const lockedItems = (ps.locked && Array.isArray(ps.locked.items)) ? ps.locked.items : [];
+  const parts = [];
+  if(ps.headline) parts.push(`<p class="ps-lead">${esc(ps.headline)}</p>`);
+
+  let cta = null;
+  sections.forEach(s => {
+    const role = s.role || 'insight';
+    if(role === 'cta'){ cta = s; return; }
+    if(role === 'locked' && !unlocked){
+      const bullets = lockedItems.length
+        ? `<ul class="ps-list">${lockedItems.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`
+        : '';
+      parts.push(`<section class="ps-sec ps-locked"><h4>${esc(s.title||'What the full report adds')}</h4>`
+        + `<p>${esc(s.body||'')}</p>${bullets}</section>`);
+      return;
+    }
+    parts.push(`<section class="ps-sec"><h4>${esc(s.title||'Overview')}</h4>`
+      + `<p>${esc(s.body||'')}</p></section>`);
+  });
+
+  if(unlocked){
+    parts.push(`<p class="ps-foot">This is the crux of your reading in everyday language. `
+      + `Scroll the report below for the full detail.</p>`);
+    // Only a saved report can be exported — a guest reading has nothing to fetch.
+    const rid = READING.reportId
+             || (typeof ASTRO !== 'undefined' ? ASTRO.lastReportId : '') || '';
+    if(rid && stored){
+      parts.push(`<div class="ps-dl">`
+        + `<button class="btn btn-ghost btn-sm" type="button" onclick="downloadSummaryPdf('${esc(rid)}')">`
+        + `Summary PDF</button>`
+        + `<button class="btn btn-ghost btn-sm" type="button" onclick="downloadReportPdf('${esc(rid)}')">`
+        + `Summary + full report</button></div>`);
     }
   } else {
-    // When the report is fully unlocked, strip any stale "Unlock Full Report" teaser/disclaimer section
-    sections = sections.filter(s => {
-      const t = (s.title || '').toLowerCase();
-      const b = (s.body || '').toLowerCase();
-      if(t.includes('unlock full report') || t.includes('unlock full reading')) return false;
-      if(b.startsWith('unlocking the full report provides') || b.startsWith('to unlock the full report') || b.startsWith('to unlock your complete chronological')) return false;
-      return true;
-    });
+    const item = summaryPayItem(kind);
+    const sub = item === 'subscription';
+    const price = money(CONFIG.astroPrices[item] ?? CONFIG.price ?? 298);
+    const title = (cta && cta.title) || (sub ? 'Subscribe for full daily access' : 'Unlock the full reading');
+    const line = (cta && cta.body)
+      || 'Unlock the full report and everything above opens straight away — the dated windows, '
+       + 'the area-by-area verdicts and the remedies chosen for your chart. It stays in your account.';
+    parts.push(`<section class="ps-cta"><h4>${esc(title)}</h4><p>${esc(line)}</p>`
+      + `<button class="btn btn-gold ps-buy" type="button" onclick="summaryUnlock()">`
+      + (sub ? `Subscribe · ${price}/month` : `Unlock now · ${price}`)
+      + `</button></section>`);
   }
-  const body = sections.map(s =>
-    `<section style="margin-bottom:18px">`
-    + `<h4 style="margin:0 0 8px;font-family:var(--serif,Georgia,serif);font-size:16px;color:var(--ink,#1a1510);font-weight:600">${esc(s.title||'Overview')}</h4>`
-    + `<p style="margin:0;line-height:1.6;color:var(--muted,#5a554c);font-size:14.5px">${esc(s.body||'')}</p>`
-    + `</section>`
-  ).join('');
 
-  const footerNote = unlocked
-    ? `<p class="hint" style="margin-top:14px;font-size:13px">This is the crux in everyday language. Scroll the report below for the full technical reading.</p>`
-    : `<div style="margin-top:16px;padding:12px 14px;background:#fcfbf8;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:8px;font-size:13px;line-height:1.5;color:#2c3140;"><strong>Free Preview:</strong> Classical verdict details, exact milestone dates, and targeted Vedic remedies (Upaya) are locked. Unlock the full report for complete guidance.</div>`;
-
-  openSheet('Plain-English summary',
-    `<div style="padding:4px 2px">${body}</div>`
-    + footerNote);
+  openSheet(unlocked ? 'Your reading in plain English' : 'Your free reading in plain English',
+    `<div class="ps-wrap">${parts.join('')}</div>`);
 }
 
 function openReading(o){
@@ -5208,12 +5417,6 @@ function horaryPayload(){
     return null;
   }
   bad('#hLoc', false);
-  const kpRaw=($('#hKp').value||'').trim();
-  const kpNum=parseInt(kpRaw,10);
-  if(!bad('#hKp', !(kpRaw && kpNum>=1 && kpNum<=249))){
-    toast('Pick a KP number from 1 to 249 (use “Pick random number” if you like).');
-    return null;
-  }
   S.horaryPlace = captureHoraryPlace(); save();
   const now=new Date(), pad=n=>String(n).padStart(2,'0');
   const area = ($('#hArea')?$('#hArea').value:'').trim();
@@ -5222,14 +5425,7 @@ function horaryPayload(){
     qTime: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
     location: place,
     lat: parseFloat(lat), lon: parseFloat(lon),
-    tz: parseFloat($('#hTz').value||'5.5'),
-    kpNumber: String(kpNum) };
-}
-function pickKpNumber(){
-  const n = Math.floor(Math.random() * 249) + 1;
-  const el = $('#hKp');
-  if(el){ el.value = n; bad('#hKp', false); }
-  toast('KP number '+n+' — use this one, or type your own.');
+    tz: parseFloat($('#hTz').value||'5.5') };
 }
 
 async function astroSummary(){

@@ -78,9 +78,9 @@ h3.sec{font-family:Fraunces,serif;font-size:1.25rem;margin:38px 0 4px;font-weigh
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
 padding:18px 20px;margin-bottom:12px}
 .card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.area{font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;
+.area{font-size:.72rem;letter-spacing:.13em;text-transform:uppercase;
 font-weight:600;color:var(--muted)}
-.pill{font-size:.66rem;font-weight:600;padding:3px 9px;border-radius:99px;
+.pill{font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:99px;
 letter-spacing:.04em}
 .pill.up{background:#e4f2ea;color:var(--up)}
 .pill.down{background:#fbeae6;color:var(--down)}
@@ -94,7 +94,7 @@ summary{font-size:.78rem;color:var(--muted);cursor:pointer;font-weight:500}
 details ul{margin:10px 0 0;padding-left:18px;font-size:.85rem;color:#3d4250}
 details li{margin:6px 0}
 .action{margin-top:12px;background:#f6f4ef;border-radius:10px;padding:12px 14px}
-.act-label{font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;
+.act-label{font-size:.72rem;letter-spacing:.13em;text-transform:uppercase;
 font-weight:600;color:var(--mixed)}
 .action p{margin:6px 0 0;font-size:.88rem}
 .mantra{font-style:italic;color:var(--muted);font-size:.82rem!important}
@@ -108,13 +108,13 @@ overflow:hidden;background:var(--card);margin-bottom:26px;cursor:pointer;transit
 pointer-events:none;color:#3d4250;font-size:.86rem;line-height:1.7}
 .lock-over{position:absolute;inset:0;display:grid;place-items:center;
 background:rgba(251,250,248,.18);pointer-events:none;padding:12px}
-.lock-chip{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+.lock-chip{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
 font-weight:700;color:var(--mixed,#7a4b18);background:#fff;border:1px solid var(--line);
 border-radius:999px;padding:7px 16px;box-shadow:0 2px 10px rgba(22,24,29,.08);
 white-space:nowrap;cursor:pointer}
 .locked-section{margin-top:28px}
 .evidence{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
-.ev-label{font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;
+.ev-label{font-size:.72rem;letter-spacing:.13em;text-transform:uppercase;
 font-weight:600;color:var(--muted)}
 .agree{float:right;font-size:.66rem;font-weight:600;color:var(--muted);
 background:#f1efea;border-radius:99px;padding:2px 9px}
@@ -357,9 +357,10 @@ font-size:.9rem}
 .mm-dosha{background:#fbeae6;border-radius:12px;padding:14px 16px;margin-top:16px}
 .btr-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
 @media(min-width:560px){.btr-grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:520px){.btr-grid{grid-template-columns:1fr}}
 .btr-grid div{background:var(--card);border:1px solid var(--line);border-radius:12px;
 padding:12px 14px}
-.btr-grid span{display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+.btr-grid span{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
 color:var(--muted);font-weight:600;margin-bottom:4px}
 .btr-grid b{font-size:1.05rem}
 .btr-stakes{background:#fbeae6;border-radius:12px;padding:14px 16px;margin-top:14px}
@@ -448,7 +449,7 @@ font-variant-numeric:tabular-nums}
 b.both{font-size:.72rem;color:var(--up);letter-spacing:.02em}
 /* Present reading + recognition feedback (accuracy pills / mismatch modal) */
 .present{margin:22px 0 28px}
-.present-head .ev-label,.recog-label{font-size:.64rem;letter-spacing:.13em;
+.present-head .ev-label,.recog-label{font-size:.72rem;letter-spacing:.13em;
 text-transform:uppercase;font-weight:600;color:var(--muted)}
 .present-head h3{font-family:Fraunces,serif;font-size:1.22rem;margin:8px 0 6px;font-weight:600}
 .present-lede{font-size:.9rem;color:#3d4250;margin:0 0 12px}

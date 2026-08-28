@@ -233,7 +233,12 @@ def main() -> int:
     lanes = meta.get("lanes") or {}
     print(f"   design tag: {meta.get('design')}")
     print(f"   lanes built: {lanes.get('built')} · failed: {lanes.get('failed')}")
-    RESULTS.append(("design tag is cards-v2", meta.get("design") == "cards-v2"))
+    # The tag names the renderer that ran, which is now the same one whether or
+    # not the model answered — so what matters is that both halves agree.
+    RESULTS.append(("design tag names a known renderer",
+                    meta.get("design") in ("cards-v2", "conversational-v1")))
+    RESULTS.append(("free and paid halves share one design",
+                    meta.get("freeDesign") == meta.get("design")))
     RESULTS.append(("all 12 lanes built", (lanes.get("built") or 0) >= 12))
 
     print("\n" + "=" * 74)

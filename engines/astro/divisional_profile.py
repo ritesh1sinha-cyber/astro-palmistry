@@ -1635,7 +1635,8 @@ def get_108_snapshot_summary_paragraph(pc: dict) -> str:
         )
 
 
-def render_divisional_blocks(pc: dict, *, paid: bool = False) -> tuple[str, str]:
+def render_divisional_blocks(pc: dict, *, paid: bool = False,
+                            today: Optional[date] = None) -> tuple[str, str]:
     """Build the divisional block as two independently placeable pieces.
 
     Returns ``(baseline_html, areas_html)``. The report puts the foundational
@@ -1655,6 +1656,15 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False) -> tuple[str, str]
     div_cards_html = []
     teaser_items = []
 
+    def _free_timeline(text: str) -> str:
+        from free_dates import strip_future_sentences
+        kept = strip_future_sentences(text, today)
+        locked = (
+            '<span style="display:block;margin-top:6px;font-size:0.78rem;'
+            'font-weight:700;color:#8a6a1f;">🔒 The dated window for this area '
+            'is in the full reading.</span>')
+        return (kept + locked) if kept else locked.strip()
+
     for ins in insights:
         pill_cls = "up" if ins.strength == "strong" else "down" if ins.strength == "weak" else "mixed"
         pill_lbl = "Well Supported" if ins.strength == "strong" else "Needs Care" if ins.strength == "weak" else "Constructive / Active"
@@ -1663,12 +1673,18 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False) -> tuple[str, str]
         is_free_allowed = ins.code in FREE_ALLOWED_VARGAS
 
         if paid or is_free_allowed:
-            # Dasha Timeline Box (Domain Specific)
+            # Dasha Timeline Box (Domain Specific). The free card keeps the
+            # sentences it can date from the reader's past and swaps the rest
+            # for the lock — a window a decade out was both the paid answer
+            # and, printed bare, a reason not to buy.
             timeline_box = ""
-            if ins.timeline:
+            timeline_text = ins.timeline
+            if timeline_text and not paid:
+                timeline_text = _free_timeline(timeline_text)
+            if timeline_text:
                 timeline_box = (
                     f'  <div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:8px 12px;border-radius:6px;margin:8px 0 10px;font-size:0.84rem;line-height:1.5;color:#2c3140;">\n'
-                    f'    {ins.timeline}\n'
+                    f'    {timeline_text}\n'
                     f'  </div>\n'
                 )
 
@@ -1680,13 +1696,21 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False) -> tuple[str, str]
                     f'  </div>\n'
                 )
             else:
+                # A blur is a visual effect, not a paywall: the real remedy
+                # would sit in the markup for anyone who opens view-source.
+                # Blur a description of the remedy instead, which teases the
+                # same thing and gives nothing away.
+                teaser_remedy = (
+                    f'Mantra, charity and daily practice matched to '
+                    f'{html.escape(ins.lord or "your chart ruler")} for this '
+                    f'area of life.')
                 remedy_box = (
                     f'  <div class="lock-wrap" style="margin:8px 0 10px;border-radius:8px;">\n'
                     f'    <div class="lock-blur" style="padding:8px 12px;font-size:0.84rem;line-height:1.45;">\n'
-                    f'      <b>Targeted Vedic Upaya:</b> {ins.remedy}\n'
+                    f'      <b>Targeted Vedic Upaya:</b> {teaser_remedy}\n'
                     f'    </div>\n'
                     f'    <div class="lock-over">\n'
-                    f'      <span class="lock-chip" style="font-size:0.65rem;padding:4px 10px;">🔒 Remedial Action in Full Reading</span>\n'
+                    f'      <span class="lock-chip" style="font-size:0.72rem;padding:4px 10px;">🔒 Remedial Action in Full Reading</span>\n'
                     f'    </div>\n'
                     f'  </div>\n'
                 )
@@ -1719,14 +1743,32 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False) -> tuple[str, str]
             )
             div_cards_html.append(card)
         else:
+            # These five are the areas people come here to ask about, so the
+            # teaser names what this chart already decided about each one. The
+            # verdict is a one-word reading of their own chart; the dates, the
+            # reasoning and the remedy stay behind the paywall. A brochure line
+            # about what a D10 chart covers in general sells nobody.
             meta = VARGA_META.get(ins.code, {})
+            verdict_bg = ("#e6f2ea" if ins.strength == "strong"
+                          else "#fbeae6" if ins.strength == "weak" else "#fbf3e2")
+            verdict_fg = ("#155c3a" if ins.strength == "strong"
+                          else "#8f2c19" if ins.strength == "weak" else "#7a5a12")
+            # The pill label is a badge; a sentence needs a phrase.
+            verdict_said = ("well supported" if ins.strength == "strong"
+                            else "needing care" if ins.strength == "weak"
+                            else "active but mixed")
             teaser_items.append(
-                f'<li style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #e2ded5;">'
+                f'<li style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #e2ded5;gap:10px;">'
                 f'  <div>'
                 f'    <b style="font-size:0.9rem;color:#1f2430;">{html.escape(ins.code)} · {html.escape(meta.get("governs", ins.governs))}</b><br>'
-                f'    <span style="font-size:0.78rem;color:#6a7080;">{html.escape(meta.get("desc", ""))}</span>'
+                f'    <span style="font-size:0.78rem;color:#6a7080;">{html.escape(meta.get("desc", ""))}</span><br>'
+                f'    <span style="font-size:0.76rem;color:#3d4250;">Your chart reads as '
+                f'<b style="color:{verdict_fg};">{verdict_said}</b> here'
+                f'{" — with a dated window already calculated" if ins.timeline else ""}.</span>'
                 f'  </div>'
-                f'  <span style="font-size:0.75rem;font-weight:700;color:#8a6a1f;background:#fbf6e4;padding:4px 10px;border-radius:99px;white-space:nowrap;margin-left:12px;">🔒 In Full Reading</span>'
+                f'  <span class="pill {pill_cls}" style="font-size:0.72rem;font-weight:700;'
+                f'padding:4px 10px;border-radius:99px;white-space:nowrap;background:{verdict_bg};'
+                f'color:{verdict_fg};">{pill_lbl}</span>'
                 f'</li>'
             )
 
@@ -1736,7 +1778,7 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False) -> tuple[str, str]
             f'<article class="card div-teaser-card" id="domain-locked" style="background:#fcfbf9;border:1px dashed #d5cfc4;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
             f'  <div class="card-top">\n'
             f'    <span class="area">The other five areas</span>\n'
-            f'    <span style="font-size:0.68rem;font-weight:700;background:#ebdcc7;color:#6b4012;padding:2px 8px;border-radius:99px;">Available in Full Reading</span>\n'
+            f'    <span style="font-size:0.72rem;font-weight:700;background:#ebdcc7;color:#6b4012;padding:2px 8px;border-radius:99px;">Available in Full Reading</span>\n'
             f'  </div>\n'
             f'  <p style="font-size:0.84rem;color:#5a554c;margin:0 0 12px;line-height:1.45;">\n'
             f'    Your remaining divisional charts map deep career karma (D10), marriage and soul purpose (D9), progeny dynamics (D7), intellectual mastery (D24), and overcoming life obstacles (D30):\n'
@@ -1765,7 +1807,8 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False) -> tuple[str, str]
     return snapshot_108_html, f"{''.join(div_cards_html)}\n{teaser_html}"
 
 
-def render_divisional_about_you_html(pc: dict, *, paid: bool = False) -> str:
+def render_divisional_about_you_html(pc: dict, *, paid: bool = False,
+                                    today: Optional[date] = None) -> str:
     """Baseline card and life-area cards as one contiguous block."""
-    baseline_html, areas_html = render_divisional_blocks(pc, paid=paid)
+    baseline_html, areas_html = render_divisional_blocks(pc, paid=paid, today=today)
     return f"{baseline_html}\n{areas_html}"

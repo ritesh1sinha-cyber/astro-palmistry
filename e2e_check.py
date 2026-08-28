@@ -226,7 +226,9 @@ def main() -> int:
             free_html = api(links["free"], raw=True) if links.get("free") else b""
             if isinstance(free_html, bytes):
                 free_html = free_html.decode("utf-8", errors="replace")
-            say("palm cards-v2", meta.get("design") == "cards-v2")
+            # Every palm reading goes through the conversational template now,
+            # with or without the model — the tag names the renderer that ran.
+            say("palm conversational-v1", meta.get("design") == "conversational-v1")
             say("palm free report has both hands",
                 "Left hand" in free_html and "Right hand" in free_html)
             say("palm free evidence stays locked",

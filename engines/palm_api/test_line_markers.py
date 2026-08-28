@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from palm_api.analyzer import extract_features
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +44,8 @@ def _assert_line_anatomy(dots: dict[str, tuple[float, float]], fate_x: float = 0
 
 
 def test_ritz_right_palm_lines() -> None:
+    if not RIGHT.exists():
+        pytest.skip(f"missing fixture {RIGHT.name}")
     feats = extract_features(RIGHT, hand="right")
     dots = _line_dots(feats)
     assert set(dots) >= {"life", "head", "heart", "fate"}
@@ -49,6 +53,8 @@ def test_ritz_right_palm_lines() -> None:
 
 
 def test_ritz_left_palm_lines() -> None:
+    if not LEFT.exists():
+        pytest.skip(f"missing fixture {LEFT.name}")
     feats = extract_features(LEFT, hand="left")
     dots = _line_dots(feats)
     assert set(dots) >= {"life", "head", "heart", "fate"}

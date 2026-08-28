@@ -31,7 +31,9 @@ from core.db import (chat_append, chat_history, engine, extend_partitions,
                      init_schema, job_get, job_insert, job_update, jdump,
                      new_id, now, report_delete, report_get, reports_for_user,
                      tx)
-from core.pdf_export import entitlement_item_for_kind, html_to_pdf, report_title
+from core.pdf_export import (entitlement_item_for_kind, html_to_pdf,
+                             prepend_summary, report_title, summary_for_pdf,
+                             summary_html)
 from core.store import store
 
 app = FastAPI(title="GrahaRekha API", version="3.0")
@@ -393,10 +395,15 @@ _LOCKED_KINDS = frozenset({"horary", "user_question"})
 
 
 def _gate_meta(kind: str, meta: dict, unlocked: bool) -> dict:
-    """Strip verdict fields from JSON when the report is still locked."""
-    if unlocked or kind not in _LOCKED_KINDS or not isinstance(meta, dict):
+    """Strip paid-only fields from JSON when the report is still locked."""
+    if unlocked or not isinstance(meta, dict):
         return meta
-    return {**meta, "answer": None, "verdicts": {}}
+    # plainSummaryPaid summarises the paid half for every kind, so it is gated
+    # for every kind — not only the ones that hide a verdict.
+    out = {**meta, "plainSummaryPaid": None}
+    if kind in _LOCKED_KINDS:
+        out.update({"answer": None, "verdicts": {}})
+    return out
 
 
 @app.get("/api/file/{token}")
@@ -503,13 +510,53 @@ def one_report(rid: str, user: dict = Depends(current_user)):
             "links": _links(rid, user["id"], unlocked)}
 
 
+def _pdf_response(pdf: bytes, fname: str) -> Response:
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{fname}"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
+def _pdf_bytes(html: str) -> bytes:
+    try:
+        return html_to_pdf(html)
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:                                            # noqa: BLE001
+        # Surface a short hint; full traceback is in Railway logs via pdf_export.
+        hint = (str(e) or type(e).__name__)[:160]
+        raise HTTPException(500, f"could not build the PDF ({hint})")
+
+
+def _pdf_name(rep: dict, suffix: str = "") -> str:
+    kind = (rep.get("kind") or "report").replace("_", "-")
+    created = str(rep.get("created_at") or "")[:10] or "report"
+    return f"graharekha-{kind}{suffix}-{created}.pdf"
+
+
+def _report_summary(rep: dict, unlocked: bool) -> Optional[dict]:
+    """The summary this reader may download, chosen through the same gate as JSON."""
+    kind = rep.get("kind") or ""
+    meta = _gate_meta(kind, rep.get("meta") or {}, unlocked)
+    return summary_for_pdf(meta, unlocked=unlocked)
+
+
 @app.get("/api/reports/{rid}/pdf")
-def report_pdf(rid: str, user: dict = Depends(current_user)):
-    """Download the paid HTML half as a PDF. Locked reports → 402."""
+def report_pdf(rid: str, summary: bool = True, user: dict = Depends(current_user)):
+    """Download the paid HTML half as a PDF. Locked reports → 402.
+
+    The plain-English summary rides along as the first page unless the caller
+    passes summary=0 — most readers want the crux before the detail.
+    """
     rep = report_get(rid, user["id"])
     if not rep:
         raise HTTPException(404, "no such report")
-    if not _report_unlocked(rep, user["id"]):
+    unlocked = _report_unlocked(rep, user["id"])
+    if not unlocked:
         raise HTTPException(402, "payment required")
     key = rep.get("paid_key") or ""
     if not key:
@@ -520,26 +567,39 @@ def report_pdf(rid: str, user: dict = Depends(current_user)):
         raise HTTPException(404, "the stored report is missing")
     if key.endswith(".json"):
         raise HTTPException(415, "this older report cannot be exported as PDF")
-    try:
-        html = data.decode("utf-8", errors="replace")
-        pdf = html_to_pdf(html)
-    except RuntimeError as e:
-        raise HTTPException(503, str(e))
-    except Exception as e:                                            # noqa: BLE001
-        # Surface a short hint; full traceback is in Railway logs via pdf_export.
-        hint = (str(e) or type(e).__name__)[:160]
-        raise HTTPException(500, f"could not build the PDF ({hint})")
-    kind = (rep.get("kind") or "report").replace("_", "-")
-    created = str(rep.get("created_at") or "")[:10] or "report"
-    fname = f"graharekha-{kind}-{created}.pdf"
-    return Response(
-        content=pdf,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="{fname}"',
-            "Cache-Control": "private, no-store",
-        },
+    html = data.decode("utf-8", errors="replace")
+    if summary:
+        brief = _report_summary(rep, True)
+        if brief:
+            html = prepend_summary(html, summary_html(
+                brief,
+                title=report_title(rep.get("kind") or "", rep.get("meta") or {}),
+                subtitle=str(rep.get("created_at") or "")[:10],
+            ))
+    return _pdf_response(_pdf_bytes(html), _pdf_name(rep))
+
+
+@app.get("/api/reports/{rid}/summary.pdf")
+def report_summary_pdf(rid: str, user: dict = Depends(current_user)):
+    """Download just the plain-English summary of a report.
+
+    A locked report yields its free summary — that half is already on screen,
+    so there is nothing to withhold, and it is the shareable page.
+    """
+    rep = report_get(rid, user["id"])
+    if not rep:
+        raise HTTPException(404, "no such report")
+    unlocked = _report_unlocked(rep, user["id"])
+    brief = _report_summary(rep, unlocked)
+    if not brief:
+        raise HTTPException(404, "no summary stored for that report")
+    doc = summary_html(
+        brief,
+        title=report_title(rep.get("kind") or "", rep.get("meta") or {}),
+        subtitle=str(rep.get("created_at") or "")[:10],
+        standalone=True,
     )
+    return _pdf_response(_pdf_bytes(doc), _pdf_name(rep, "-summary"))
 
 
 @app.delete("/api/reports/{rid}")

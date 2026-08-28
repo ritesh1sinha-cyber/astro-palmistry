@@ -21,10 +21,15 @@ meta)` so `core.handlers` stays thin and testable.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Any, Optional
 
 import report_shell as RS
+
+_MONTH_YEAR_TEXT = re.compile(
+    r"\b(January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)\s+(20\d\d)\b", re.I)
 
 
 def clean(html: str) -> str:
@@ -37,6 +42,40 @@ def clean(html: str) -> str:
     through here.
     """
     return _scrub(html)
+
+
+def _conversational_when_llm_off() -> bool:
+    """Whether Python's own prose may drive the conversational page.
+
+    Defaults to on: the reading should keep its shape when the model is off.
+    Missing config counts as on for the same reason — a page that silently
+    reverts to another layout is the failure this flag exists to prevent.
+    """
+    try:
+        from core.config import S
+        return bool(getattr(S, "conversational_when_llm_off", True))
+    except Exception:                                                # noqa: BLE001
+        return True
+
+
+def _use_conversational(prose: dict, *, llm_enabled: bool, accepted: int) -> bool:
+    """Which astro template renders this half of the reading.
+
+    A complete overlay is all the conversational page needs, and that overlay is
+    deterministic prose at worst. Whether the sentences came from the model or
+    from Python is not something the reader should be able to tell from the
+    shape of the report, so the layout no longer depends on the model answering.
+    With the flag off, the older rule applies: only accepted model prose earns
+    this page and everything else falls back to the classic cards.
+    """
+    prose = prose if isinstance(prose, dict) else {}
+    ready = (bool(prose.get("conversational"))
+             and bool(str(prose.get("personality") or "").strip()))
+    if not ready:
+        return False
+    if _conversational_when_llm_off():
+        return True
+    return bool(llm_enabled) and accepted > 0
 
 
 def _safe(fn, *a, **k) -> str:
@@ -340,6 +379,20 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
     except Exception as exc:  # noqa: BLE001
         print(f"[report_render] canonical timing render failed: {exc}", flush=True)
 
+    # What the paid half really dates, for the free teaser to advertise: every
+    # dated turn on every area card, not the four-item featured shortlist.
+    try:
+        dated_turns = sum(
+            1 for c in shared_cards
+            if any(
+                bool((n.get("start") or n.get("end")) if isinstance(n, dict)
+                     else (getattr(n, "start", None) or getattr(n, "end", None)))
+                for n in (getattr(c, "transition_map", None) or [])
+            ))
+        n_windows = max(n_windows, dated_turns)
+    except Exception:                                                # noqa: BLE001
+        pass
+
     # LLM prose layer (facts in → structured prose out). Off unless configured.
     # Free and Paid share the same canonical truth but use different fact
     # projections (depth). When the LLM fails QA, humanize fills deterministic
@@ -389,8 +442,20 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
     # list, every per-card trajectory window, and the running dasha/
     # antardasha envelope. Anything else that looks like an exact month-year
     # gets softened by date_guard in _scrub (P2-4).
-    allowed_dates: set = set()
-    try:
+    #
+    # Built per tier, because the paid analytical layer contributes dates the
+    # free document never holds. It also has to be built where `paid` exists:
+    # reading it from module scope raised NameError into the bare except
+    # below, which left the allowlist empty and quietly disabled the guard on
+    # every full report.
+    def _allowed_dates(paid: bool) -> set:
+        try:
+            return _collect_allowed_dates(paid)
+        except Exception as exc:                                     # noqa: BLE001
+            print(f"[report_render] date allowlist unavailable: {exc}", flush=True)
+            return set()
+
+    def _collect_allowed_dates(paid: bool) -> set:
         from qa_checks.date_guard import allowed_month_years
         window_sources: list = list(timing_rows)
         for c in shared_cards:
@@ -450,9 +515,26 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                         {"start": ev.get("start"), "end": ev.get("end")})
         except Exception:  # noqa: BLE001
             pass
-        allowed_dates = allowed_month_years(window_sources)
-    except Exception:                                                 # noqa: BLE001
-        allowed_dates = set()
+        allowed = allowed_month_years(window_sources)
+        # The divisional cards date their own domain windows from the dasha,
+        # Yogini and Chara clocks. Those never pass through timing_rows, so
+        # without them the guard would soften real engine dates on the page
+        # that computed them.
+        try:
+            from divisional_profile import build_divisional_insights
+            for ins in build_divisional_insights(pc) or []:
+                for field in ("timeline", "prediction", "remedy", "headline",
+                              "evidence", "governs"):
+                    allowed.update(
+                        f"{m.group(1).capitalize()} {m.group(2)}"
+                        for m in _MONTH_YEAR_TEXT.finditer(
+                            str(getattr(ins, field, "") or "")))
+        except Exception as exc:                                     # noqa: BLE001
+            print(f"[report_render] divisional dates not allowlisted: {exc}",
+                  flush=True)
+        return allowed
+
+    designs: dict[bool, str] = {}
 
     def build(paid: bool) -> str:
         import report_cards as RC
@@ -461,12 +543,9 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             prose = {}
         tier = (llm_meta.get("paid") if paid else llm_meta.get("free")) or {}
         accepted = int((tier.get("stats") or {}).get("accepted") or 0)
-        use_conversational = (
-            bool(llm_meta.get("enabled"))
-            and accepted > 0
-            and bool(prose.get("conversational"))
-            and bool(str(prose.get("personality") or "").strip())
-        )
+        use_conversational = _use_conversational(
+            prose, llm_enabled=bool(llm_meta.get("enabled")), accepted=accepted)
+        designs[paid] = "conversational-v1" if use_conversational else "cards-v2"
         if use_conversational:
             import report_conversational as RConv
             # The stones and the practical step are computed, not written, so
@@ -477,13 +556,24 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 fact_cards = list(getattr(paid_facts, "cards", None) or [])
             elif (not paid) and free_facts is not None:
                 fact_cards = list(getattr(free_facts, "cards", None) or [])
+            # The free view must show what it is holding back and how to buy
+            # it. Those blocks are computed, not written, so this page carries
+            # the same pair the classic page does instead of ending on a bare
+            # CTA once the model is out of the picture.
+            upsell = ""
+            if not paid:
+                upsell = (_locked_preview(price=price, n_areas=len(RC.AREAS),
+                                          n_windows=n_windows,
+                                          n_periods=n_periods)
+                          + _bundle(bundle_price))
             body = RConv.render(
                 pc, name=name, price=price, today=today, paid=paid,
                 cards=fact_cards or shared_cards, prose=prose,
                 footer_unlock=(not paid),
                 remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price),
+                upsell_html=upsell,
                 analysis=(paid_facts if paid else free_facts))
-            return _post_render_guard(_scrub(body, allowed_dates=allowed_dates))
+            return _post_render_guard(_scrub(body, allowed_dates=_allowed_dates(paid)))
 
         # Frozen non-LLM / classic path — untouched when conversational is used.
         present_html = ""
@@ -510,19 +600,14 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             cards=shared_cards,
             prose=prose,
             footer_unlock=(not paid))  # free view: bottom CTA; paid: none
-        return _post_render_guard(_scrub(body, allowed_dates=allowed_dates))
+        return _post_render_guard(_scrub(body, allowed_dates=_allowed_dates(paid)))
 
     free_html, paid_html = build(False), build(True)
     meta = {
-        "design": (
-            "conversational-v1"
-            if (
-                bool(llm_meta.get("enabled"))
-                and int(((llm_meta.get("paid") or {}).get("stats") or {}).get("accepted") or 0) > 0
-                and bool((paid_prose_overlay or {}).get("conversational"))
-            )
-            else "cards-v2"
-        ),
+        # Name the renderer that actually ran rather than re-deriving it from
+        # LLM stats: the two answers used to drift apart.
+        "design": designs.get(True, "cards-v2"),
+        "freeDesign": designs.get(False, "cards-v2"),
         "price": price, "bundlePrice": bundle_price,
         "llm": llm_meta,
         # Internal only — _save_report pops this into object storage as facts.json
@@ -571,11 +656,14 @@ def _locked_preview(*, price: int, n_areas: int, n_windows: int,
     paid content in memory, so nothing here can be unpicked from the HTML. The
     single unlock CTA comes from ``report_cards``' footer block.
     """
+    # A number sells the paid half only while it sounds like depth. The
+    # best-windows list is capped at four, so quoting its length told buyers
+    # they were paying for "1 dated window" — worse than saying nothing.
     windows_teaser = (
-        f"{n_windows} dated window{'s' if n_windows != 1 else ''} "
-        "across the next five years."
-        if n_windows else
-        "The strongest windows across the next five years.")
+        f"{n_windows} dated windows across the next five years."
+        if n_windows >= 3 else
+        "The strongest windows across the next five years, each with its own "
+        "dates.")
     periods_teaser = (
         f"{n_periods} period{'s' if n_periods != 1 else ''} with real dates."
         if n_periods else

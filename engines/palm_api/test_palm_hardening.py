@@ -42,9 +42,14 @@ def test_special_marks_are_modifiers_not_promises():
 
 
 def test_remedy_line_never_exposes_internal_source_id():
-    text = format_remedy_line(PalmRemedy("do", "Optional practice", "Measured focus", "special_marks.MARK_READING"))
+    text = format_remedy_line(PalmRemedy(
+        "do", "Optional practice", "Measured focus",
+        "Steady attention is what this marking responds to",
+        "special_marks.MARK_READING"))
+    # The line is the action and nothing else: neither the rule id that
+    # produced it nor the internal reason text belongs in front of a customer.
     assert "special_marks.MARK_READING" not in text
-    assert "Why:" in text
+    assert text.strip() == "Measured focus"
 
 
 def test_paid_evidence_does_not_expose_book_source_or_traditional_raw_text():

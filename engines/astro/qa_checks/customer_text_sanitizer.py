@@ -380,6 +380,18 @@ _SOFT_LABEL_REPLACEMENTS = [
     (re.compile(r"\bTechnical detail\b", re.I), "Why this is supported"),
 ]
 
+# Source names and acquisition labels are implementation details, not part of
+# a customer reading. Replace them in visible text rather than dropping an
+# entire otherwise useful sentence. Slash-delimited source labels are handled
+# as one span so values such as "Bhardwaj/gochar_auspicious" do not survive.
+_CITATION_TEXT_REPLACEMENTS = [
+    (re.compile(r"\bBhardwaj(?:'s)?(?:\s*/\s*[A-Za-z0-9_-]+)*", re.I), ""),
+    (re.compile(r"\bOCR\b", re.I), ""),
+    (re.compile(r"\bBNN(?:\s*/\s*[A-Za-z0-9_-]+)*\b", re.I), "the nadi method"),
+    (re.compile(r"\bJaimini\b", re.I), "the second sign-based"),
+    (re.compile(r"\bSamudrika?(?:\s+Shastra)?\b", re.I), "classical palmistry"),
+]
+
 
 def _safe_replacement_for_leak(text: str) -> str:
     """Return a safe replacement for a contaminated visible node.
@@ -453,6 +465,8 @@ def sanitize_html_document(html_text: str) -> str:
             value = data
             # Soft customer labels are applied only to visible text nodes.
             for pat, repl in _SOFT_LABEL_REPLACEMENTS:
+                value = pat.sub(repl, value)
+            for pat, repl in _CITATION_TEXT_REPLACEMENTS:
                 value = pat.sub(repl, value)
 
             # Any raw/internal pattern in a visible node is replaced as a

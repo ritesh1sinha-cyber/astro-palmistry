@@ -50,10 +50,18 @@ def test_daily_personal_focus_exposes_exact_moon_av_and_significator():
 
 
 def test_daily_free_teaser_sells_personal_facts_not_generic_technical_dump():
+    """The locked teaser must name this reader's own periods.
+
+    It receives the three running lords and used to ignore them, describing
+    the paid feature in the abstract instead. Naming them is the whole
+    difference between "we sell a timing clock" and "your clock says this".
+    """
     html = _locked_preview(price=298, n_lanes=8, md="Saturn", ad="Venus", pd="Moon")
-    assert "Exact transit house, SAV/BAV support" in html
-    assert "natal house significator" in html
-    assert "running timing stack" in html.lower()
+    for lord in ("Saturn", "Venus", "Moon"):
+        assert lord in html, lord
+    assert "three-tier" in html
+    # Internal marketing vocabulary is not customer copy.
+    assert "highest-converting" not in html
 
 
 def test_palm_fair_photo_hides_special_marks_in_customer_workings():

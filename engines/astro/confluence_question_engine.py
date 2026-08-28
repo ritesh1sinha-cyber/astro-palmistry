@@ -925,6 +925,8 @@ class QuestionConsultationOutput(BaseModel):
 
 def synthesize_with_qwen(confluence: QuestionConfluenceReport) -> str:
     """Prompts Qwen LLM using the structured confluence payload to produce an authoritative consultation response."""
+    if not _llm_allowed():
+        return _deterministic_consultation(confluence)
     try:
         from core.llm_client import _get_client, complete_model
         from core.config import S
@@ -998,7 +1000,27 @@ Write a comprehensive, professional Vedic consultation response containing:
     except Exception as exc:
         print(f"[confluence_question_engine] Qwen call failed: {exc}", flush=True)
 
-    # Fallback to rich deterministic prose if LLM unavailable
+    return _deterministic_consultation(confluence)
+
+
+def _llm_allowed(kind: str = "user_question") -> bool:
+    """Whether this answer may call the model at all.
+
+    The calls in this module build their own client rather than going through
+    ``core.llm_client``, so they never inherited that module's check on
+    ``llm_enabled``. Without this gate, switching the LLM off left the question
+    answer still calling out — and a dead endpoint cost every reader the full
+    request timeout before the deterministic prose appeared.
+    """
+    try:
+        from core.config import S
+        return bool(S.llm_tab_enabled(kind))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _deterministic_consultation(confluence: QuestionConfluenceReport) -> str:
+    """The same consultation written from the facts, with no model involved."""
     return (
         f"### Astrological Consultation: {confluence.domain_title}\n\n"
         f"**Question:** *{confluence.question}*\n\n"
@@ -1252,6 +1274,8 @@ CHART CONFLUENCE:
     messages.append({"role": "user", "content": question})
     
     try:
+        if not _llm_allowed("chat"):
+            raise RuntimeError("chat tab has the LLM switched off")
         client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key, timeout=60.0)
         resp = client.chat.completions.create(
             model=model,

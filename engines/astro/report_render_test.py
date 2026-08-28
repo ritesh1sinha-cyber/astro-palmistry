@@ -134,6 +134,22 @@ except Exception:
     print("  skip  no demo precompute available")
 
 if pc:
+    # Default path: Python's own prose drives the conversational page, so a
+    # reading keeps its shape whether or not the model answered.
+    _, _, dmeta = RD.full_report(pc, name="Meera Nair",
+                                 question="When will I change my job?",
+                                 price=1499, bundle_price=2100)
+    check("LLM-off report still uses the conversational page",
+          dmeta.get("design") == "conversational-v1", str(dmeta.get("design")))
+    check("both halves share one design",
+          dmeta.get("freeDesign") == dmeta.get("design"))
+
+    # The checks below describe the classic cards page, so ask for it by name.
+    try:
+        from core.config import S as _S
+        _S.conversational_when_llm_off = False
+    except Exception:                                                # noqa: BLE001
+        pass
     ff, fp, fmeta = RD.full_report(pc, name="Meera Nair",
                                    question="When will I change my job?",
                                    price=1499, bundle_price=2100)
