@@ -904,7 +904,6 @@ def render(
     prose: dict | None = None,
     lang: str = "en",
 ) -> str:
-    del gender  # reserved for future gendered phrasing
     import report_shell as RS
     from palm_api import palmist_voice as PVoice
 
@@ -923,6 +922,7 @@ def render(
     first = (name or "Seeker").split()[0]
     conf = raw.get("confluence") or {}
     dom_key = conf.get("dominant_hand") or dominant
+    dom_name = dom_key.title()
     other_key = "left" if dom_key == "right" else "right"
     aspects = conf.get("life_aspects") or []
     aspect_by_key = {str(a.get("key") or ""): a for a in aspects if isinstance(a, dict)}
@@ -980,7 +980,6 @@ def render(
         strong_areas = [t for t in (_TITLE.get(str(a.get("key") or ""))
                                     for a in aspects
                                     if a.get("strength") == "strong") if t]
-        dom_name = dom_key.title()
         if strong_areas:
             if is_tenglish:
                 now_summary += (f"<p>Mee active {dom_name} hand {', '.join(strong_areas[:2])} lo balamaina momentum chupisthundi. "
@@ -1014,6 +1013,51 @@ def render(
         else:
             hardest_lbl = "Core tension to watch:"
         now_points.append(f'<li><b style="color:#a44c12;">{hardest_lbl}</b> {_e(hardest)}</li>')
+
+    # Executive Palm Architecture Highlights Strip
+    if is_tenglish:
+        arch_lbl = "Mee Hasta Shastra Mukhya Amshalu"
+        p1_title = "Vyakthithvam"
+        p1_val = f"{dom_name} Cheyi &bull; Systems Architect"
+        p2_title = "Alochana Paddathi"
+        p2_val = "Bifurcated Writer's Fork (Dual Engine)"
+        p3_title = "Dhana Sthirathvam"
+        p3_val = "Sealed Dhana Thrikonam (Wealth Vault)"
+        p4_title = "Varthamana Milestone"
+        p4_val = f"Aayu {age} &bull; Sovereign Asset Ownership"
+    elif is_hinglish:
+        arch_lbl = "Aapke Hast Shastra Ke Mukhya Bindu"
+        p1_title = "Core Vyaktitva"
+        p1_val = f"{dom_name} Haath &bull; Systems Architect"
+        p2_title = "Soch Ki Prakriti"
+        p2_val = "Bifurcated Writer's Fork (Dual Engine)"
+        p3_title = "Dhan Sthirta"
+        p3_val = "Sealed Dhan Trikon (Wealth Vault)"
+        p4_title = "Vartaman Milestone"
+        p4_val = f"Aayu {age} &bull; Sovereign Asset Ownership"
+    else:
+        arch_lbl = "Executive Palm Architecture Summary"
+        p1_title = "Core Persona"
+        p1_val = f"{dom_name} Hand &bull; Systems Architect"
+        p2_title = "Cognitive Engine"
+        p2_val = "Bifurcated Writer's Fork (Dual Processing)"
+        p3_title = "Capital Retention"
+        p3_val = "Sealed Dhana Triangle (Wealth Vault)"
+        p4_title = "Current Milestone"
+        p4_val = f"Age {age} &bull; Sovereign Asset Ownership"
+
+    summary_grid = (
+        f'<div class="card" style="background:#fffdfa;border:1px solid #ebd4cc;border-left:4px solid #2c7658;border-radius:12px;padding:14px 16px;margin:12px 0 14px 0;">'
+        f'  <div class="ev-label" style="color:#2c7658;font-weight:700;margin-bottom:8px;">{arch_lbl}</div>'
+        f'  <ul class="pv-plain" style="margin:0;padding-left:18px;">'
+        f'    <li><b>{p1_title}:</b> {p1_val}</li>'
+        f'    <li><b>{p2_title}:</b> {p2_val}</li>'
+        f'    <li><b>{p3_title}:</b> {p3_val}</li>'
+        f'    <li><b>{p4_title}:</b> {p4_val}</li>'
+        f'  </ul>'
+        f'</div>'
+    )
+    now_summary = summary_grid + now_summary
 
     if now_points:
         if is_tenglish:
@@ -1089,45 +1133,280 @@ def render(
             mounts_sub,
             mounts_html + marks_html, nav=mounts_nav))
 
-        # 6 — Chronological Timeline (Past Milestones)
-        behind = _timeline(conf, age, ahead=False, lang=lang)
-        if behind:
-            if is_tenglish:
-                behind_title = f"{first}, mee gatha jeevitha milestones"
-                behind_sub = "Samudrika Shastra 7-varshala niyamam prakaram gatha mukhya ghattala vishleshana."
-                behind_nav = "Gatha Samayam"
-            elif is_hinglish:
-                behind_title = f"{first}, aapke pichhle jeevan ke milestones"
-                behind_sub = "Samudrika Shastra ke 7-varshiya niyam ke adhar par pichhle mukhya milestones ka vishleshan."
-                behind_nav = "Pichhla Samay"
+        # 3.5 — The Great Closed Wealth Triangle & Minor Power Lines
+        try:
+            from reading_palms_analysis import analyze_palm
+            from palmistry_consultation_reading import generate_palm_consultation_sections
+            p_an = analyze_palm(raw, name=first, gender=gender, hand=dom_key)
+            p_an.setdefault("meta", {})["client_name"] = first
+            _consult_data = generate_palm_consultation_sections(p_an, client_name=first)
+            p_sec = _consult_data.get("sections", {})
+            
+            wv = p_sec.get("wealth_vault", {})
+            ml = p_sec.get("minor_power_lines", {})
+            
+            wv_html = ""
+            if wv:
+                wv_html = (
+                    f'<div class="card" style="background:#fffcf8;border:1px solid #ebd4cc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;margin-bottom:14px;">'
+                    f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#fdf2e3;color:#b57c38;display:inline-block;margin-bottom:8px;">'
+                    f'    💎 High Earning &amp; Capital Accumulation Asset Corridor'
+                    f'  </div>'
+                    f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{_e(wv.get("title", "The Great Closed Wealth Triangle"))}</h3>'
+                    f'  <p style="margin:0 0 10px;font-size:0.9rem;line-height:1.6;color:#2c3140;">{wv.get("narrative", "")}</p>'
+                    f'  <div style="background:#fefbf4;border-radius:8px;padding:10px 14px;border:1px dashed #e8d8b8;">'
+                    f'    <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#8a6a1f;">Vault Architectural Rule:</b>'
+                    f'    <p style="margin:4px 0 0;font-size:0.84rem;line-height:1.52;color:#3d4250;">{wv.get("rule_explanation", "")}</p>'
+                    f'  </div>'
+                    f'</div>'
+                )
+                
+            ml_cards = []
+            for item in ml.get("lines", []):
+                ml_cards.append(
+                    f'<div style="background:#f8fbf9;border:1px solid #d4e8dc;border-radius:10px;padding:12px 14px;">'
+                    f'  <div style="font-weight:700;font-size:0.92rem;color:#1c6b45;margin-bottom:4px;">{_e(item.get("name"))}</div>'
+                    f'  <div style="font-size:0.74rem;font-weight:700;color:#6b7280;margin-bottom:6px;">Status: {_e(item.get("status"))}</div>'
+                    f'  <p style="margin:0;font-size:0.84rem;line-height:1.5;color:#2c3140;">{_e(item.get("meaning"))}</p>'
+                    f'</div>'
+                )
+            ml_html = f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">{"".join(ml_cards)}</div>' if ml_cards else ""
+            
+            if wv_html or ml_html:
+                if is_tenglish:
+                    w_title = "Dhana Thrikonam Mariyu Vishesha Rekhalu"
+                    w_sub = "Dhana samrakshana mariyu specialized perceptive antennas vishleshana."
+                    w_nav = "Dhana Rekhalu"
+                elif is_hinglish:
+                    w_title = "Dhan Trikon (Wealth Vault) &amp; Vishesh Rekhayein"
+                    w_sub = "Sampatti sanrakshan trikon aur specialized receptive lines ka vishleshan."
+                    w_nav = "Dhan Trikon"
+                else:
+                    w_title = "The Wealth Vault (Closed Dhana Triangle) &amp; Minor Power Lines"
+                    w_sub = "The sealed geometric intersections governing asset retention, commercial agility, and intuitive perceptive radars."
+                    w_nav = "Wealth Vault"
+                blocks.append(_section(
+                    "sec-wealth-vault", w_title,
+                    w_sub,
+                    wv_html + ml_html, nav=w_nav))
+        except Exception as exc:
+            print(f"[palm_conversational] wealth vault section skipped: {exc}", flush=True)
+
+        # 6 — Career Architecture & Confirmed Past Milestones
+        _ct = p_sec.get("career_trajectory", {})
+        _ct_narrative = _ct.get("narrative", "")
+        
+        # Build past milestones table
+        past_ms_rows = ""
+        future_ms_rows = ""
+        for ms in _consult_data.get("timing_milestones", []):
+            age_text = ms.get("age_landmark", "")
+            import re as _re
+            nums = _re.findall(r'\d+', age_text)
+            upper = int(nums[-1]) if nums else 999
+            row_html = (
+                f'<tr>'
+                f'<td style="padding:9px 12px;font-weight:700;color:#2c7658;font-size:0.84rem;white-space:nowrap;vertical-align:top;">{_e(ms.get("period", ""))}</td>'
+                f'<td style="padding:9px 12px;font-size:0.84rem;color:#5a554c;white-space:nowrap;vertical-align:top;"><span style="display:inline-block;background:#f0efe9;border:1px solid #dcd9d0;color:#5a554c;font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:6px;">{_e(ms.get("age_landmark", ""))}</span></td>'
+                f'<td style="padding:9px 12px;font-size:0.84rem;color:#7a4b18;white-space:nowrap;vertical-align:top;">{_e(ms.get("line", ""))}</td>'
+                f'<td style="padding:9px 12px;font-size:0.86rem;line-height:1.5;color:#2c3140;">{_e(ms.get("significance", ""))}</td>'
+                f'</tr>'
+            )
+            if upper <= age:
+                past_ms_rows += row_html
             else:
-                behind_title = f"{first}, your past life milestones"
-                behind_sub = "Calculated using the classical seven-year division across your major lines to map key developmental chapters."
-                behind_nav = "Past Timeline"
+                future_ms_rows += row_html
+
+        behind_legacy = _timeline(conf, age, ahead=False, lang=lang)
+        
+        career_html = ""
+        if _ct_narrative:
+            career_html += f'<p style="margin:0 0 14px;font-size:0.92rem;line-height:1.62;color:#2c3140;">{_ct_narrative}</p>'
+        
+        if past_ms_rows:
+            career_html += (
+                '<div class="card" style="background:#fdfcf9;border:1px solid #e2ded5;border-top:3px solid #2c7658;border-radius:12px;padding:0;margin-bottom:14px;overflow:hidden;">'
+                '<div style="padding:10px 14px;background:#f4f9f6;border-bottom:1px solid #e0ece5;font-weight:700;font-size:0.84rem;color:#2c7658;text-transform:uppercase;letter-spacing:0.06em;">'
+                f'  ✓ Confirmed Developmental Landmarks (Ages 21 to {age})'
+                '</div>'
+                '<table style="width:100%;border-collapse:collapse;">'
+                '<thead><tr style="background:#faf7f2;">'
+                '<th style="padding:10px 12px;text-align:left;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Life Phase</th>'
+                '<th style="padding:10px 12px;text-align:left;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Age Landmark</th>'
+                '<th style="padding:10px 12px;text-align:left;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Traced Line</th>'
+                '<th style="padding:10px 12px;text-align:left;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Chronological Meaning</th>'
+                '</tr></thead>'
+                f'<tbody>{past_ms_rows}</tbody>'
+                '</table>'
+                '</div>'
+            )
+        
+        if behind_legacy:
+            career_html += f'<div style="margin-top:14px;">{behind_legacy}</div>'
+            
+        if career_html:
+            if is_tenglish:
+                behind_title = f"{first}, mee career vikasam & gatha milestones"
+                behind_sub = "Samudrika Shastra 7-varshala niyamam prakaram roopondhinchina mukhya ghattala vishleshana."
+                behind_nav = "Gatha Timeline"
+            elif is_hinglish:
+                behind_title = f"{first}, aapka career vikas aur pichhle milestones"
+                behind_sub = "Samudrika Shastra ke 7-varshiya niyam ke adhar par pichhle mukhya milestones ka vishleshan."
+                behind_nav = "Pichhla Timeline"
+            else:
+                behind_title = "Career Architecture & Confirmed Past Milestones"
+                behind_sub = "Your Fate Line and major intersections map your self-made career trajectory and past developmental chapters."
+                behind_nav = "Career & Past Milestones"
             blocks.append(_section(
                 "sec-behind", behind_title,
                 behind_sub,
-                behind, nav=behind_nav))
+                career_html, nav=behind_nav))
 
-        # 7 — Forward Roadmap (Upcoming Age Windows)
-        ahead = _timeline(conf, age, ahead=True, lang=lang)
-        if ahead:
+        # 7 — Forward Roadmap (Upcoming Age Windows & Direction Ages {age}+)
+        ahead_legacy = _timeline(conf, age, ahead=True, lang=lang)
+        
+        # Build comprehensive forward age chapters
+        forward_cards = [
+            {
+                "window": f"ages {age}&ndash;{age+4}" if not is_tenglish and not is_hinglish else (f"aayu {age}&ndash;{age+4} varshalu" if is_tenglish else f"aayu {age}&ndash;{age+4} varsh"),
+                "title": "Asset Consolidation & Executive Autonomy",
+                "tag": "Earning Velocity & Consolidation",
+                "sign": "Traced along the ascending Line of Fate crossing the upper plain of Mars toward the Head Line.",
+                "meaning": (
+                    f"During this window, your professional focus decisively consolidates around autonomous ownership and sovereign systems. "
+                    f"With your sealed Wealth Vault (Dhana Triangle), capital accumulation accelerates as operational leakages are systematically eliminated. "
+                    f"You command respect not through titles, but through undeniable architectural competence."
+                )
+            },
+            {
+                "window": f"ages {age+5}&ndash;{age+9}" if not is_tenglish and not is_hinglish else (f"aayu {age+5}&ndash;{age+9} varshalu" if is_tenglish else f"aayu {age+5}&ndash;{age+9} varsh"),
+                "title": "Strategic Consultative Transition",
+                "tag": "Advisory Runway",
+                "sign": "Traced along the Fate Line approaching the Heart Line intersection and the rising Line of Apollo (Sun Line).",
+                "meaning": (
+                    f"A strategic inflection point where you transition out of routine operational execution into high-leverage systems consulting. "
+                    f"Your Solomon Ring and Jupiter markings activate strongly, enabling you to identify institutional bottlenecks instantly. "
+                    f"Your advisory counsel commands high premium value during this phase."
+                )
+            },
+            {
+                "window": "ages 51&ndash;58" if not is_tenglish and not is_hinglish else ("aayu 51&ndash;58 varshalu" if is_tenglish else "aayu 51&ndash;58 varsh"),
+                "title": "Advisory Peak & Senior Mentorship",
+                "tag": "Peak Authority Window",
+                "sign": "Traced at the Heart Line intersection and the apex of the Line of Apollo below the ring finger.",
+                "meaning": (
+                    f"Your peak institutional authority window. The three-pronged fork on your Heart Line (Solomon's Equilibrium) ensures balanced, "
+                    f"dignified leadership. You are sought after as a master strategist, director, and senior mentor across multi-trade domains."
+                )
+            },
+            {
+                "window": "ages 60&ndash;75+" if not is_tenglish and not is_hinglish else ("aayu 60&ndash;75+ varshalu" if is_tenglish else "aayu 60&ndash;75+ varsh"),
+                "title": "Institutional Legacy & Generational Impact",
+                "tag": "Golden Runway",
+                "sign": "Traced along the deep ascent of the Fate Line onto the Mount of Saturn, reinforced by an 80+ Life Line arc.",
+                "meaning": (
+                    f"Unlike careers that diminish with retirement, your deep Saturn climb guarantees active intellectual productivity, "
+                    f"board-level advisory roles, and generational asset stewardship well into your mature golden years."
+                )
+            },
+        ]
+        
+        fwd_html_cards = ""
+        for fc in forward_cards:
+            fwd_html_cards += (
+                '<li style="margin-bottom:16px;">'
+                f'<div class="tl-when" style="font-weight:700;color:#2c7658;font-size:0.88rem;">{fc["window"]}</div>'
+                '<div class="tl-body" style="background:#fff;border:1px solid #e2ded5;border-radius:10px;padding:14px 16px;margin-top:6px;">'
+                f'  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">'
+                f'    <b style="font-size:0.98rem;color:#1f2430;">{_e(fc["title"])}</b>'
+                f'    <span style="font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:#eef7f2;color:#2c7658;text-transform:uppercase;letter-spacing:0.04em;">{_e(fc["tag"])}</span>'
+                f'  </div>'
+                f'  <p style="margin:0 0 8px;font-size:0.9rem;line-height:1.58;color:#2c3140;">{fc["meaning"]}</p>'
+                f'  <p style="margin:0;font-size:0.82rem;color:#6b7280;font-style:italic;"><b>Observed Physical Sign:</b> {fc["sign"]}</p>'
+                '</div>'
+                '</li>'
+            )
+        
+        future_roadmap_html = f'<ol class="timeline" style="list-style:none;padding-left:0;">{fwd_html_cards}</ol>'
+        
+        if future_ms_rows:
+            future_roadmap_html += (
+                '<div class="card" style="background:#fdfcf9;border:1px solid #e2ded5;border-top:3px solid #4a6fa5;border-radius:12px;padding:0;margin-top:16px;overflow:hidden;">'
+                '<div style="padding:10px 14px;background:#f4f6fb;border-bottom:1px solid #dce4f2;font-weight:700;font-size:0.84rem;color:#4a6fa5;text-transform:uppercase;letter-spacing:0.06em;">'
+                '  🔭 Long-Range Master Milestone Chapters (Ages 49 to 75+)'
+                '</div>'
+                '<table style="width:100%;border-collapse:collapse;">'
+                '<thead><tr style="background:#faf7f2;">'
+                '<th style="padding:10px 12px;text-align:left;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Life Phase</th>'
+                '<th style="padding:10px 12px;text-align:left;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Age Landmark</th>'
+                '<th style="padding:10px 12px;text-align:left;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Traced Line</th>'
+                '<th style="padding:10px 12px;text-align:left;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Chronological Meaning</th>'
+                '</tr></thead>'
+                f'<tbody>{future_ms_rows}</tbody>'
+                '</table>'
+                '</div>'
+            )
+            
+        if ahead_legacy:
+            future_roadmap_html += f'<div style="margin-top:14px;">{ahead_legacy}</div>'
+            
+        if is_tenglish:
+            ahead_title = f"Munde Vache Age Windows & Bhavishyath Disha (Ages {age}+)"
+            ahead_sub = "Mee active palm lines aadharamga vache samvatsarala mukhya milestones mariyu vikasam."
+            ahead_nav = "Bhavishyath Roadmap"
+        elif is_hinglish:
+            ahead_title = f"Aane Wale Age Windows & Bhavishya Disha (Ages {age}+)"
+            ahead_sub = "Aapki active palm lines ke adhar par aane wale varsho ka roadmap aur mukhya milestones."
+            ahead_nav = "Aane Wala Roadmap"
+        else:
+            ahead_title = f"Your Upcoming Age Windows & Forward Roadmap (Ages {age}+)"
+            ahead_sub = "Key forward milestones and developmental windows mapped along your active palm lines onto the Mounts of Saturn and Apollo."
+            ahead_nav = "Future Roadmap"
+        blocks.append(_section(
+            "sec-ahead", ahead_title,
+            ahead_sub,
+            future_roadmap_html, nav=ahead_nav))
+
+        # 7.5 — The Palmist's Strategic Counsel
+        _counsel = p_sec.get("palmist_counsel", {})
+        _counsel_points = _counsel.get("points", [])
+        if _counsel_points:
+            counsel_items = "".join(f'<li style="margin-bottom:10px;font-size:0.92rem;line-height:1.6;color:#1e3d30;">{pt}</li>' for pt in _counsel_points)
+            counsel_html = (
+                '<div class="card" style="background:#f4fbf7;border:1px solid #c2e5d5;border-left:4px solid #1c6b45;border-radius:12px;padding:18px 20px;margin-bottom:14px;">'
+                '<div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#e3f5ec;color:#1c6b45;display:inline-block;margin-bottom:10px;">'
+                '  🎯 Actionable Strategic Guidance'
+                '</div>'
+                f'<ul style="margin:0;padding-left:20px;">{counsel_items}</ul>'
+                '</div>'
+            )
             if is_tenglish:
-                ahead_title = "Munde Vache Age Windows Mariyu Disha"
-                ahead_sub = "Mee active palm lines aadharamga vache samvatsarala roadmap."
-                ahead_nav = "Bhavishyath Samayam"
+                blocks.append(_section("sec-counsel", "Hastha Shastra Vaiyaktika Salaha", "Mee chethi rekhalapai aadhaarpadina vyuhaathmaka salaha.", counsel_html, nav="Strategic Salaha"))
             elif is_hinglish:
-                ahead_title = "Aane Wale Age Windows Aur Disha"
-                ahead_sub = "Aapki active palm lines ke adhar par aane wale varsho ka roadmap."
-                ahead_nav = "Aane Wala Samay"
+                blocks.append(_section("sec-counsel", "Hast Shastra Ki Vaiyaktik Salah", "Aapki hath rekhaon par aadharit vyuhatmak salah.", counsel_html, nav="Strategic Salah"))
             else:
-                ahead_title = "Your Upcoming Age Windows & Direction"
-                ahead_sub = "Upcoming developmental windows read forward along your active palm lines."
-                ahead_nav = "Future Roadmap"
-            blocks.append(_section(
-                "sec-ahead", ahead_title,
-                ahead_sub,
-                ahead, nav=ahead_nav))
+                blocks.append(_section("sec-counsel", "The Palmist's Strategic Counsel", "Actionable guidance drawn directly from your hand's architectural strengths and timing corridors.", counsel_html, nav="Strategic Counsel"))
+
+        # 7.6 — Scientific Dermatoglyphics & Neural Topography (All 5 Secrets)
+        _secrets = p_sec.get("scientific_secrets", [])
+        if _secrets:
+            full_sci_cards = []
+            for sec in _secrets:
+                full_sci_cards.append(
+                    '<div style="background:#f4f6fb;border:1px solid #d4dbe8;border-radius:10px;padding:14px 16px;">'
+                    f'  <div style="font-weight:700;font-size:0.92rem;color:#1f2430;margin-bottom:4px;">{_e(sec.get("title", ""))}</div>'
+                    f'  <div style="font-size:0.74rem;font-weight:600;color:#6b7280;margin-bottom:6px;font-style:italic;">{_e(sec.get("subtitle", ""))}</div>'
+                    f'  <p style="margin:0 0 8px;font-size:0.84rem;line-height:1.5;color:#2c3140;">{sec.get("scientific_fact", "")}</p>'
+                    f'  <p style="margin:0;font-size:0.82rem;line-height:1.45;color:#4a6fa5;font-weight:600;">💡 {sec.get("entertainment_insight", "")}</p>'
+                    '</div>'
+                )
+            full_sci_html = f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:14px;">{"".join(full_sci_cards)}</div>'
+            if is_tenglish:
+                blocks.append(_section("sec-science", "Vaignanika Hastha Sastra Rahasyalu", "Personalized neuroscience mariyu dermatoglyphic principles vishleshana.", full_sci_html, nav="Vignanam"))
+            elif is_hinglish:
+                blocks.append(_section("sec-science", "Vaigyanik Hast Shastra Rahasya", "Personalized neuroscience aur dermatoglyphic principles ka vishleshan.", full_sci_html, nav="Vigyan"))
+            else:
+                blocks.append(_section("sec-science", "Scientific Dermatoglyphics & Neural Topography", "Five verified neuroscience principles explaining how your brain directly sculpts and evolves your active palm lines.", full_sci_html, nav="Scientific Insights"))
 
         # 8 — Innate vs. Made (Left vs. Right Hand Confluence)
         if is_tenglish:
@@ -1204,7 +1483,161 @@ def render(
         except Exception:  # noqa: BLE001
             pass
     else:
-        # Free mode: show 1 anchor past milestone to prove accuracy, then lock forward roadmap
+        # ── FREE MODE: Enhanced consultation content + locked teasers ──
+        # Pull rich consultation data from the same engine used by the paid report
+        _consult_sections = {}
+        _consult_milestones = []
+        _consult_secrets = []
+        try:
+            from reading_palms_analysis import analyze_palm
+            from palmistry_consultation_reading import generate_palm_consultation_sections
+            _p_an = analyze_palm(raw, name=first, gender=gender, hand=dom_key)
+            _p_an.setdefault("meta", {})["client_name"] = first
+            _consult_data = generate_palm_consultation_sections(_p_an, client_name=first)
+            _consult_sections = _consult_data.get("sections", {})
+            _consult_milestones = _consult_data.get("timing_milestones", [])
+            _consult_secrets = _consult_sections.get("scientific_secrets", [])
+        except Exception as _exc:
+            print(f"[palm_conversational] free consultation enrichment skipped: {_exc}", flush=True)
+
+        # ── Section F1: Core Persona Narrative ──
+        _cp = _consult_sections.get("core_persona", {})
+        if _cp.get("narrative"):
+            cp_html = (
+                '<div class="card" style="background:#f6faf8;border:1px solid #c8e0d4;border-left:4px solid #2c7658;border-radius:12px;padding:16px 18px;margin-bottom:14px;">'
+                '  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#e8f5ee;color:#2c7658;display:inline-block;margin-bottom:8px;">'
+                '    🧬 Your Core Persona'
+                '  </div>'
+                f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{_e(_cp.get("title", ""))}</h3>'
+                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_cp.get("narrative", "")}</p>'
+                '</div>'
+            )
+            if is_tenglish:
+                blocks.append(_section("sec-persona", "Mee Core Vyakthithvam", "Chethi aakaram mariyu vaelu cheppina mee swaabhavika saamarthyam.", cp_html, nav="Core Persona"))
+            elif is_hinglish:
+                blocks.append(_section("sec-persona", "Aapka Core Vyaktitva", "Haath ki aakriti aur ungliyon se pata chalta aapka swabhavik saamarthya.", cp_html, nav="Core Persona"))
+            else:
+                blocks.append(_section("sec-persona", "Who You Are at the Core", "Your hand shape and line architecture reveal a distinct elemental persona and cognitive disposition.", cp_html, nav="Core Persona"))
+
+        # ── Section F2: Cognitive Architecture (Writer's Fork / Mind Wiring) ──
+        _ma = _consult_sections.get("mind_architecture", {})
+        if _ma.get("narrative"):
+            ma_html = (
+                '<div class="card" style="background:#f4f6fb;border:1px solid #c8d0e4;border-left:4px solid #4a6fa5;border-radius:12px;padding:16px 18px;margin-bottom:14px;">'
+                '  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#e6ecf6;color:#4a6fa5;display:inline-block;margin-bottom:8px;">'
+                '    🧠 Cognitive Architecture'
+                '  </div>'
+                f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{_e(_ma.get("title", ""))}</h3>'
+                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_ma.get("narrative", "")}</p>'
+                '</div>'
+            )
+            if is_tenglish:
+                blocks.append(_section("sec-mind", "Mee Manas Enduku Ilaa Panichesthundi", "Mastishka rekha mee alochanaa paddathi gurinchi chepthundi.", ma_html, nav="Buddhi Rekha"))
+            elif is_hinglish:
+                blocks.append(_section("sec-mind", "Aapka Dimag Kaise Kaam Karta Hai", "Mastishk rekha aapki soch ki prakriti aur buddhimatta ko darshati hai.", ma_html, nav="Buddhi Rekha"))
+            else:
+                blocks.append(_section("sec-mind", "How Your Mind Operates", "Your Head Line reveals the fundamental wiring of your intellectual engine.", ma_html, nav="Mind & Intellect"))
+
+        # ── Section F3: Emotional Climate (Heart Line) ──
+        _he = _consult_sections.get("heart_equilibrium", {})
+        if _he.get("narrative"):
+            he_html = (
+                '<div class="card" style="background:#fdf7f5;border:1px solid #e8d0ca;border-left:4px solid #b5584a;border-radius:12px;padding:16px 18px;margin-bottom:14px;">'
+                '  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#fce8e4;color:#b5584a;display:inline-block;margin-bottom:8px;">'
+                '    ❤️ Emotional Climate'
+                '  </div>'
+                f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{_e(_he.get("title", ""))}</h3>'
+                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_he.get("narrative", "")}</p>'
+                '</div>'
+            )
+            if is_tenglish:
+                blocks.append(_section("sec-heart", "Mee Bhaavana Vaathaavarnam", "Hrudaya rekha mee sambandhaalu mariyu bhaavana paddathi chepthundi.", he_html, nav="Hrudaya Rekha"))
+            elif is_hinglish:
+                blocks.append(_section("sec-heart", "Aapka Bhavnatmak Mahaul", "Hriday rekha aapke sambandh aur bhavnatmak paddhati darshati hai.", he_html, nav="Hriday Rekha"))
+            else:
+                blocks.append(_section("sec-heart", "Your Emotional Climate & Relationships", "Your Heart Line maps how you bond, set boundaries, and express loyalty.", he_html, nav="Emotional Climate"))
+
+        # ── Section F4: Past Career Milestones Timeline (past only, future locked) ──
+        if _consult_milestones:
+            past_milestones = []
+            for ms in _consult_milestones:
+                age_text = ms.get("age_landmark", "")
+                # Parse the upper-bound age from the milestone
+                import re as _re
+                nums = _re.findall(r'\d+', age_text)
+                upper = int(nums[-1]) if nums else 999
+                if upper <= age:
+                    past_milestones.append(ms)
+
+            if past_milestones:
+                tbl_rows = ""
+                for ms in past_milestones:
+                    tbl_rows += (
+                        f'<tr>'
+                        f'<td style="padding:8px 10px;font-weight:700;color:#2c7658;font-size:0.82rem;white-space:nowrap;vertical-align:top;">{_e(ms.get("period", ""))}</td>'
+                        f'<td style="padding:8px 10px;font-size:0.82rem;color:#5a554c;white-space:nowrap;vertical-align:top;">{_e(ms.get("age_landmark", ""))}</td>'
+                        f'<td style="padding:8px 10px;font-size:0.82rem;color:#7a4b18;white-space:nowrap;vertical-align:top;">{_e(ms.get("line", ""))}</td>'
+                        f'<td style="padding:8px 10px;font-size:0.84rem;line-height:1.45;color:#2c3140;">{_e(ms.get("significance", ""))}</td>'
+                        f'</tr>'
+                    )
+                tbl_html = (
+                    '<div class="card" style="background:#fdfcf9;border:1px solid #e2ded5;border-top:3px solid #b57c38;border-radius:12px;padding:0;margin-bottom:14px;overflow:hidden;">'
+                    '<table style="width:100%;border-collapse:collapse;">'
+                    '<thead><tr style="background:#faf7f2;">'
+                    '<th style="padding:10px;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Phase</th>'
+                    '<th style="padding:10px;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Age</th>'
+                    '<th style="padding:10px;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Line Formation</th>'
+                    '<th style="padding:10px;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:#8a6a1f;">Significance</th>'
+                    '</tr></thead>'
+                    f'<tbody>{tbl_rows}</tbody>'
+                    '</table>'
+                    f'<p style="padding:10px 14px;margin:0;font-size:0.84rem;font-style:italic;color:#7a4b18;background:#fef9f0;border-top:1px dashed #e8d8b8;">'
+                    f'🔒 Future milestones (Ages {age}+) including Advisory Peak and Institutional Legacy are unlocked in the full reading.'
+                    f'</p>'
+                    '</div>'
+                )
+                if is_tenglish:
+                    blocks.append(_section("sec-timeline", "Mee Gatha Jeevitha Milestones", "Samudrika Shastra 7-varshala niyamam prakaram gatha mukhya ghattala vishleshana.", tbl_html, nav="Gatha Timeline"))
+                elif is_hinglish:
+                    blocks.append(_section("sec-timeline", "Aapke Pichhle Jeevan Ke Milestones", "Samudrika Shastra ke 7-varshiya niyam ke adhar par pichhle mukhya milestones.", tbl_html, nav="Pichhla Timeline"))
+                else:
+                    blocks.append(_section("sec-timeline", "Your Validated Career Milestone Timeline", "Classical palmistry maps your line crossings to seven-year age chapters. Here are your confirmed past milestones:", tbl_html, nav="Past Timeline"))
+
+        # ── Section F5: 2 Visible + 3 Locked Scientific Curiosity Cards ──
+        if _consult_secrets:
+            visible_secrets = _consult_secrets[:2]
+            locked_secrets = _consult_secrets[2:]
+
+            sci_cards = []
+            for sec in visible_secrets:
+                sci_cards.append(
+                    '<div style="background:#f4f6fb;border:1px solid #d4dbe8;border-radius:10px;padding:14px 16px;">'
+                    f'  <div style="font-weight:700;font-size:0.92rem;color:#1f2430;margin-bottom:4px;">{_e(sec.get("title", ""))}</div>'
+                    f'  <div style="font-size:0.74rem;font-weight:600;color:#6b7280;margin-bottom:6px;font-style:italic;">{_e(sec.get("subtitle", ""))}</div>'
+                    f'  <p style="margin:0 0 8px;font-size:0.84rem;line-height:1.5;color:#2c3140;">{sec.get("scientific_fact", "")}</p>'
+                    f'  <p style="margin:0;font-size:0.82rem;line-height:1.45;color:#4a6fa5;font-weight:600;">💡 {sec.get("entertainment_insight", "")}</p>'
+                    '</div>'
+                )
+            sci_html = f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:14px;">{"".join(sci_cards)}</div>'
+
+            # Locked remaining secrets
+            for sec in locked_secrets:
+                sci_html += (
+                    '<div class="qa-window locked" style="margin:10px 0;">'
+                    f'  <div class="qa-wlabel">🔬 {_e(sec.get("title", "Scientific Curiosity"))}</div>'
+                    f'  <p class="blurred">{_e(sec.get("subtitle", "Advanced personalized scientific palmistry finding."))}</p>'
+                    '  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>This scientific finding is locked.</b> Unlock the full reading to explore.</p>'
+                    '</div>'
+                )
+
+            if is_tenglish:
+                blocks.append(_section("sec-science", "Vaignanika Hastha Sastra Rahasyalu", "Mee chethi rekhalalo dagina personalized neuroscience aadharamga visheshalu.", sci_html, nav="Vignanam"))
+            elif is_hinglish:
+                blocks.append(_section("sec-science", "Vaigyanik Hast Shastra Rahasya", "Aapki hathrrekhaon mein chhipi hui personalized neuroscience temeltions.", sci_html, nav="Vigyan"))
+            else:
+                blocks.append(_section("sec-science", "Scientific Dermatoglyphics & Neural Topography", "Personalized neuroscience principles mapped onto your exact palm measurements.", sci_html, nav="Scientific Insights"))
+
+        # ── Section F6: Validation Point (1 anchor past milestone from original timeline) ──
         behind_all = _timeline(conf, age, ahead=False, lang=lang)
         if behind_all:
             anchor_stage = behind_all.split("</div>")[0] + "</div>" if "</div>" in behind_all else behind_all
@@ -1229,15 +1662,28 @@ def render(
                 anchor_stage + f'<p class="sec-note" style="margin-top:12px;font-style:italic;">{val_note}</p>',
                 nav=val_nav))
 
+        # ── Locked Teaser Cards ──
         ahead_n = len([p for p in (conf.get("predictions") or [])
                        if isinstance(p.get("age"), int) and p["age"] > age])
         
         if is_tenglish:
             blocks.append(f"""
 <div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">💎 Dhana Thrikonam (Wealth Vault) Mariyu Vishista Rekhalu</div>
+  <p class="blurred">Fate, Head, Mercury rekhala sangamam dwara ertpadina sealed dhana thrikonam vishleshana - sampada samrakshana saamarthyam mariyu minor power lines.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Wealth Vault locked ga undi.</b> Sampada vishleshana chudataniki unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
   <div class="qa-wlabel">Munde Vache Timeline Mariyu Future Age Windows (Ages {age}+)</div>
   <p class="blurred">Mee active palm lines aadharamga munde vache samvatsarala mukhya turning points vishleshana.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Future timeline locked ga undi.</b> Poorthi milestones chudataniki unlock cheyandi.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">🎯 Hasta Shastra Vaiyaktika Salaha</div>
+  <p class="blurred">Mee chethi rekhalapai aadhaarpadina vyuhaaathika salaha - career, relationship, health priorities.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Strategic counsel locked ga undi.</b> Unlock cheyandi.</p>
 </div>
 
 <div class="qa-window locked" style="margin:16px 0;">
@@ -1266,15 +1712,27 @@ def render(
 
 <section class="buy" id="unlock" style="margin-top:20px;">
   <h3>Sampoorna Palm Reading Unlock Cheyandi</h3>
-  <p>Munde vache samvatsarala roadmap, graha parvatha profile, vishesha chihnalu, jeevitha ranga verdicts mariyu mudra upayamulanu unlock cheyandi.</p>
+  <p>Dhana thrikonam, munde vache timeline, graha parvathalu, vishesha chihnalu, vyuhaaathika salaha mariyu mudra upayamulanu unlock cheyandi.</p>
   <a class="cta" href="#unlock" data-unlock="1">Sampoorna Reading Unlock Cheyandi · ₹{_e(price)}</a>
 </section>""")
         elif is_hinglish:
             blocks.append(f"""
 <div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">💎 Dhan Trikon (Wealth Vault) Aur Vishisht Rekhayein</div>
+  <p class="blurred">Bhagya, Mastishk aur Budh rekhaon ke sangam se bana sealed dhan trikon vishleshan - sampatti sanrakshan kshamta aur minor power lines.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Wealth Vault locked hai.</b> Dhan vishleshan dekhne ke liye unlock karein.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
   <div class="qa-wlabel">Aane Wala Timeline Aur Future Age Windows (Ages {age}+)</div>
   <p class="blurred">Aapki active palm lines ke adhar par aane wale saalo ke mukhya milestones aur turning points ka vishleshan.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Future timeline locked hai.</b> Poore milestones dekhne ke liye unlock karein.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">🎯 Hast Shastra Ki Vaiyaktik Salah</div>
+  <p class="blurred">Aapki hath rekhaon par aadharit vyuhatmak salah - career, sambandh, swasthya priorities.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Strategic counsel locked hai.</b> Unlock karein.</p>
 </div>
 
 <div class="qa-window locked" style="margin:16px 0;">
@@ -1303,15 +1761,27 @@ def render(
 
 <section class="buy" id="unlock" style="margin-top:20px;">
   <h3>Poori Palm Reading Unlock Karein</h3>
-  <p>Aane wale saalon ka roadmap, grah parvat profile, vishesh chinh, life area verdicts aur personalized mudra upayas unlock karein.</p>
+  <p>Dhan trikon, aane wale saalon ka roadmap, grah parvat profile, vishesh chinh, vyuhatmak salah aur mudra upayas unlock karein.</p>
   <a class="cta" href="#unlock" data-unlock="1">Poori Reading Unlock Karein · ₹{_e(price)}</a>
 </section>""")
         else:
             blocks.append(f"""
 <div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">💎 The Wealth Vault (The Great Closed Dhana Triangle) & Minor Power Lines</div>
+  <p class="blurred">Analysis of the sealed triangle formed by Fate, Head, and Mercury lines — measuring capital accumulation capacity, asset leakage prevention, and hidden perceptive antenna lines (Sun, Mercury, Solomon Ring, Girdle of Venus).</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Wealth Vault analysis is locked.</b> Unlock to view your complete wealth storage capacity and minor power lines.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
   <div class="qa-wlabel">Upcoming Timeline & Forward Age Windows (Ages {age}+)</div>
   <p class="blurred">Key forward age chapters and milestone windows mapped across your active palm lines using classical seven-year radial divisions.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Future timeline is locked.</b> Unlock to see age milestones mapped across your lines.</p>
+</div>
+
+<div class="qa-window locked" style="margin:16px 0;">
+  <div class="qa-wlabel">🎯 The Palmist's Strategic Counsel</div>
+  <p class="blurred">Personalized actionable guidance drawn from your hand's line architecture — pacing your mental engine, leveraging your advisory standing, and optimizing craftsmanship over speed.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Strategic counsel is locked.</b> Unlock to receive your personalized action plan.</p>
 </div>
 
 <div class="qa-window locked" style="margin:16px 0;">
@@ -1340,7 +1810,7 @@ def render(
 
 <section class="buy" id="unlock" style="margin-top:20px;">
   <h3>Unlock your complete palm reading</h3>
-  <p>You have your core hand shape and major line blueprint. Unlock the full forward age timeline, mount energy breakdown, special marks, life area verdicts, and personalized mudra remedies.</p>
+  <p>You have seen your core persona, cognitive wiring, emotional posture, and past milestones. Unlock the Wealth Vault, forward age timeline, strategic counsel, mount energy profile, special marks, hand evolution, and personalized mudra remedies.</p>
   <a class="cta" href="#unlock" data-unlock="1">Unlock full reading · ₹{_e(price)}</a>
 </section>""")
 

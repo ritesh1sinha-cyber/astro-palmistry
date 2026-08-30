@@ -24,7 +24,7 @@ at once is the ideal case, not a coincidence to hide.
 from __future__ import annotations
 
 import html as _html
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 HOUSE_LIFE = {
@@ -152,6 +152,28 @@ def build(pc: dict, *, today: Optional[date] = None) -> dict:
         )
         predictions.append(yog_pred)
 
+    # Real-time state of mind & fast-moving Moon trigger from transit matrix
+    mind_trigger = None
+    transit_roadmap = None
+    try:
+        from transit_planet_analysis import analyze_transit_planet
+        tp_res = analyze_transit_planet(pc, analysis_datetime=datetime.now() if isinstance(today, date) else None)
+        mind_trigger = tp_res.get("state_of_mind_now") or {}
+        transit_roadmap = tp_res.get("roadmap_ahead") or {}
+        if mind_trigger and mind_trigger.get("fast_trigger"):
+            mind_pred = PV.Prediction(
+                scenario=PV.polish_prose(
+                    f"<b>Current State of Mind &amp; Immediate Focus:</b> {mind_trigger.get('fast_trigger')} "
+                    f"{mind_trigger.get('state_description', '')}"
+                ),
+                backing=f"transit Moon in {mind_trigger.get('sign_occupied', '')} ({mind_trigger.get('nakshatra_occupied', '')})",
+                direction="mixed",
+            )
+            # Place at top of predictions so reader sees their exact real-time mindset first
+            predictions.insert(0, mind_pred)
+    except Exception as exc:
+        print(f"[present_read] transit_planet mind trigger skipped: {exc}", flush=True)
+
     # Dated six-month validation, separate from generic "present" predictions
     # so the reader can judge the recent past independently.
     try:
@@ -164,7 +186,8 @@ def build(pc: dict, *, today: Optional[date] = None) -> dict:
     return {"today": today, "since": back, "predictions": predictions,
             "direction": dasha["direction"], "agreement": dasha["agreement"],
             "period": f"{md}–{ad}", "live": live,
-            "active_houses": active, "history": history}
+            "active_houses": active, "history": history,
+            "mind_trigger": mind_trigger, "transit_roadmap": transit_roadmap}
 
 
 def render(block: dict, *, tab: str = "", paid: bool = False) -> str:

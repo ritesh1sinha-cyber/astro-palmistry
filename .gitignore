@@ -64,3 +64,9 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+models/
+ci-storage/debug_*.py
+ci-storage/verify_*.py
+ci-storage/sample_chart_*
+ci-storage/d1_anticlock_preview.html
+

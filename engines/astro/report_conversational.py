@@ -12,7 +12,7 @@ from __future__ import annotations
 import html as _html
 import re
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Optional
 
 from report_shell import EXTRA as _EXTRA
@@ -1530,6 +1530,83 @@ def _build_unified_current_chapter_html(
     
     # Chronology cards
     chronology_items = []
+
+    # 1. Real-time mind state & 2. Last 6 Months consultation cards
+    mind_card_html = ""
+    past_card_html = ""
+    try:
+        from vedic_consultation_reading import generate_consultation_reading
+        g_raw = ((pc.get("meta") or {}).get("gender") or "male")
+        g_str = "female" if g_raw in (1, "female", "f") else "male"
+        cr_res = generate_consultation_reading(pc, gender=g_str)
+        
+        m_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("mind_state", []))
+        if m_items:
+            mind_card_html = (
+                f'<div class="chapter-consultation-card" style="background:#fffcf8;border:1px solid #cde0f7;border-left:5px solid #1a5f9e;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
+                f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#e1effe;color:#1a5f9e;display:inline-block;margin-bottom:10px;">'
+                f'    1. What Is in Your Mind Right Now (The Immediate Trigger)'
+                f'  </div>'
+                f'  <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
+                f'    {m_items}'
+                f'  </ul>'
+                f'</div>'
+            )
+            
+        p_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("past_6_months", []))
+        if p_items:
+            past_card_html = (
+                f'<div class="chapter-consultation-card" style="background:#fffcf8;border:1px solid #ebd4cc;border-left:5px solid #b57c38;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
+                f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#fdf2e3;color:#b57c38;display:inline-block;margin-bottom:10px;">'
+                f'    2. What Happened in the Last 6 Months (Timeline &amp; Building Real Strength)'
+                f'  </div>'
+                f'  <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
+                f'    {p_items}'
+                f'  </ul>'
+                f'</div>'
+            )
+
+        roadmap_card_html = ""
+        r_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("roadmap_ahead", []))
+        if r_items:
+            if is_hinglish:
+                r_badge = "3. Aane Wala Jyotishiya Roadmap Aur Exact Turning Point Date"
+                r_lock = "🔒 Exact Turning Point Date Aur Roadmap Full Reading Mein"
+            elif is_tenglish:
+                r_badge = "3. Munde Vache Jyotisha Roadmap Mariyu Exact Turning Point Date"
+                r_lock = "🔒 Exact Turning Point Date Mariyu Roadmap Sampoorna Reading Lo"
+            else:
+                r_badge = "3. Astrological Roadmap Ahead &amp; Exact Turning Point Date"
+                r_lock = "🔒 Exact Turning Point Date &amp; Roadmap in Full Reading"
+
+            if paid:
+                roadmap_card_html = (
+                    f'<div class="chapter-consultation-card" style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:5px solid #1c6b45;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
+                    f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#e3f5ec;color:#1c6b45;display:inline-block;margin-bottom:10px;">'
+                    f'    {r_badge}'
+                    f'  </div>'
+                    f'  <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
+                    f'    {r_items}'
+                    f'  </ul>'
+                    f'</div>'
+                )
+            else:
+                roadmap_card_html = (
+                    f'<div class="chapter-consultation-card lock-wrap" style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:5px solid #1c6b45;border-radius:12px;margin-bottom:16px;position:relative;overflow:hidden;">'
+                    f'  <div class="lock-blur" style="padding:18px 20px;">'
+                    f'    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#e3f5ec;color:#1c6b45;display:inline-block;margin-bottom:10px;">'
+                    f'      {r_badge}'
+                    f'    </div>'
+                    f'    <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
+                    f'      {r_items}'
+                    f'    </ul>'
+                    f'  </div>'
+                    f'  <div class="lock-over"><span class="lock-chip" style="font-size:0.75rem;padding:7px 18px;">{r_lock}</span></div>'
+                    f'</div>'
+                )
+    except Exception as exc:
+        print(f"[report_conversational] consultation cards skipped: {exc}", flush=True)
+
     if prev_ad:
         p_lord = prev_ad.get("ad_lord")
         p_dates = when(prev_ad.get("start", ""), prev_ad.get("end", ""))
@@ -2051,6 +2128,10 @@ def _build_unified_current_chapter_html(
           {astrologer_p}
         </p>
       </div>
+
+      {mind_card_html}
+      {past_card_html}
+      {roadmap_card_html}
 
       <!-- KEY PROBLEM AREA & ASTROLOGICAL PILLARS -->
       <div class="chapter-domains-wrap" style="margin:22px 0;">

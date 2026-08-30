@@ -23,6 +23,7 @@ from astro_precompute import (
     SIGNS,
     get_dignity,
     sign_index,
+    house_from_lagna,
 )
 
 DOMAINS_CONFIG = {
@@ -1039,19 +1040,47 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
         av_eval = f"thinner baseline requiring disciplined pacing and perseverance ({prim_b} SAV Bindus, below 28-point average)"
     ashtakavarga_finding = f"House {prim_h} ({prim_sign}) holds {prim_b} Sarvāṣṭakavarga (SAV) Bindus — indicating {av_eval}."
 
-    # 8. Live Planetary Transits (Gochar)
+    # 8. Live Planetary Transits (Gochar) & Chandra Naadi Alignment
     t_now = date.today()
     transits = get_live_transit_positions(t_now)
     jup_s = transits.get("Jupiter", "")
     sat_s = transits.get("Saturn", "")
+    rahu_s = transits.get("Rahu", "")
+    ketu_s = transits.get("Ketu", "")
+    mars_s = transits.get("Mars", "")
+    moon_s = transits.get("Moon", "")
+
     transit_items = []
     if jup_s:
         j_b = sav.get(jup_s, 28)
-        transit_items.append(f"Transit Jupiter in {jup_s} ({j_b} SAV Bindus)")
+        j_h = house_from_lagna(jup_s, lagna_sign)
+        transit_items.append(f"Transit Jupiter in House {j_h} ({jup_s}, {j_b} SAV Bindus)")
     if sat_s:
         s_b = sav.get(sat_s, 28)
-        transit_items.append(f"Transit Saturn in {sat_s} ({s_b} SAV Bindus)")
-    transit_finding = f"Active Gochar: {', '.join(transit_items) if transit_items else 'Transits aligned with natal matrix.'}"
+        s_h = house_from_lagna(sat_s, lagna_sign)
+        transit_items.append(f"Transit Saturn in House {s_h} ({sat_s}, {s_b} SAV Bindus)")
+    if rahu_s and ketu_s:
+        r_h = house_from_lagna(rahu_s, lagna_sign)
+        k_h = house_from_lagna(ketu_s, lagna_sign)
+        transit_items.append(f"Rahu-Ketu Axis in Houses {r_h}/{k_h} ({rahu_s}/{ketu_s})")
+    if mars_s:
+        m_h = house_from_lagna(mars_s, lagna_sign)
+        transit_items.append(f"Transit Mars in House {m_h} ({mars_s})")
+
+    # Chandra Naadi / Real-Time Lunar Mindset Context for the Question
+    lunar_naadi_note = ""
+    try:
+        from transit_planet_analysis import analyze_transit_planet
+        tp_res = analyze_transit_planet(pc, analysis_datetime=datetime.now())
+        mind_data = tp_res.get("state_of_mind_now") or {}
+        if mind_data.get("fast_trigger"):
+            lunar_naadi_note = f"Lunar Trigger: Transit Moon in {mind_data.get('sign_occupied', moon_s)} triggers active focus on {mind_data.get('fast_trigger')}."
+    except Exception:
+        pass
+
+    transit_finding = f"Active Gochar: {', '.join(transit_items) if transit_items else 'Transits aligned with natal matrix.'}."
+    if lunar_naadi_note:
+        transit_finding += f" {lunar_naadi_note}"
 
     # 9. Triple Dasha Confluence (Vimshottari + Jaimini Chara + Yogini)
     jaimini = pc.get("jaimini", {})
