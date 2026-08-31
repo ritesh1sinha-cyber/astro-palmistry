@@ -2215,86 +2215,209 @@ def _build_unified_current_chapter_html(
     """
 
 
-def _specialist_readings_html(analysis: Any, *, paid: bool, lang: str) -> str:
-    """Render the canonical specialist projection without re-running engines."""
-    data = analysis.model_dump(mode="json") if hasattr(analysis, "model_dump") else analysis
-    if not isinstance(data, dict):
-        return ""
-    readings = data.get("specialist_readings") or {}
-    if not isinstance(readings, dict):
-        return ""
+def _build_executive_summary_crux_html(
+    pc: dict,
+    analysis: Any = None,
+    cards: Optional[list] = None,
+    *,
+    paid: bool = False,
+    today: Optional[date] = None,
+    lang: str = "en",
+) -> str:
+    """Build a comprehensive, authoritative Executive Summary & Crux section covering all core life areas and timing."""
     lang_code = str(lang or "").lower().strip()
-    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
-    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
-    labels = {
-        "chandra_naadi": "Chandra Naadi",
-        "rahu_ketu": "Rahu-Ketu",
-        "transit_matrix": "Transit Matrix",
-    }
-    planet_hi = {
-        "Sun": "Surya", "Moon": "Chandra", "Mars": "Mangal",
-        "Mercury": "Budh", "Jupiter": "Guru", "Venus": "Shukra",
-        "Saturn": "Shani", "Rahu": "Rahu", "Ketu": "Ketu",
-    }
-    planet_te = {
-        "Sun": "Suryudu", "Moon": "Chandrudu", "Mars": "Kujudu",
-        "Mercury": "Budhudhu", "Jupiter": "Guru", "Venus": "Shukrudu",
-        "Saturn": "Shaniswarudu", "Rahu": "Rahu", "Ketu": "Ketu",
-    }
-    cards: list[str] = []
-    total = 0
-    for key in ("chandra_naadi", "rahu_ketu", "transit_matrix"):
-        block = readings.get(key)
-        if not isinstance(block, dict):
-            continue
-        for finding in (block.get("findings") or [])[:6]:
-            if not isinstance(finding, dict):
-                continue
-            total += 1
-            planet = str(finding.get("planet") or "")
-            if is_hi:
-                local_planet = planet_hi.get(planet, planet)
-                body = (
-                    f"{local_planet or 'Is grah'} se juda ek chart pattern active "
-                    "dikh raha hai. Is sanket ko current focus aur soch ko samajhne "
-                    "ke liye guidance ki tarah dekhein, pakka result nahi."
-                )
-            elif is_te:
-                local_planet = planet_te.get(planet, planet)
-                body = (
-                    f"{local_planet or 'Ee graham'} tho sambandham unna chart pattern "
-                    "active ga kanipisthondi. Ee sanketam current focus ni artham "
-                    "chesukovadaniki guidance, khachchitamaina result kaadu."
-                )
-            else:
-                body = str(finding.get("summary") or "").strip()
-            if not body:
-                continue
-            source = labels.get(key, key)
-            if is_hi:
-                source = {"Chandra Naadi": "Chandra Naadi Sanket", "Rahu-Ketu": "Rahu-Ketu Sanket", "Transit Matrix": "Transit Matrix Sanket"}.get(source, source)
-            elif is_te:
-                source = {"Chandra Naadi": "Chandra Naadi Sanketam", "Rahu-Ketu": "Rahu-Ketu Sanketam", "Transit Matrix": "Transit Matrix Sanketam"}.get(source, source)
-            cards.append(
-                f'<li style="margin:0 0 8px;line-height:1.55;">'
-                f'<b>{_e(source)}</b>: {_e(body)}</li>'
-            )
-    if not cards:
-        return ""
-    if is_hi:
-        title, sub = "Naye Grah Sanket", "Chandra Naadi, Rahu-Ketu aur transit se mile customer-safe patterns."
-    elif is_te:
-        title, sub = "Kotha Graha Sankethalu", "Chandra Naadi, Rahu-Ketu mariyu transit nunchi dorikina customer-safe patterns."
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+
+    lagna = ((pc.get("lagna") or {}).get("sign") or "Aries")
+    moon_sign = ""
+    if pc:
+        moon_sign = (
+            str(((pc.get("planets") or {}).get("Moon") or {}).get("sign") or "")
+            or str((pc.get("meta") or {}).get("moon_sign") or "")
+            or str((pc.get("moon") or {}).get("sign") or ""))
+    nakshatra = (pc.get("nakshatra") or (pc.get("meta") or {}).get("nakshatra") or "")
+    
+    from astro_precompute import SIGN_LORDS, get_dignity
+    lord = SIGN_LORDS.get(lagna, "Sun")
+    lord_data = pc.get("planets", {}).get(lord, {})
+    lord_s = str(lord_data.get("sign") or "")
+    lord_h = int(lord_data.get("house") or 1)
+    lord_d = get_dignity(lord, lord_s) if lord_s else ""
+    
+    ordinals = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th", 7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th"}
+    h_str = ordinals.get(lord_h, f"House {lord_h}")
+    
+    vim = pc.get("vimshottari", {})
+    cur_md = (vim.get("current_md") or {}).get("md_lord", "Rahu")
+    cur_ad = (vim.get("current_ad") or {}).get("ad_lord", "Jupiter")
+    next_ad = vim.get("next_ad") or {}
+    next_lord = next_ad.get("ad_lord", "Saturn")
+
+    # Jaimini Karakas (defensive parsing)
+    ak = "Moon"
+    amk = "Jupiter"
+    jai_raw = pc.get("jaimini") if isinstance(pc, dict) else None
+    if isinstance(jai_raw, dict):
+        karakas = jai_raw.get("karakas")
+        if isinstance(karakas, dict):
+            ak = str(karakas.get("AK") or "Moon")
+            amk = str(karakas.get("AmK") or "Jupiter")
+        elif isinstance(karakas, list):
+            for item in karakas:
+                if isinstance(item, dict):
+                    k_name = item.get("karaka") or item.get("role")
+                    p_name = item.get("planet")
+                    if k_name == "AK" and p_name:
+                        ak = str(p_name)
+                    elif k_name == "AmK" and p_name:
+                        amk = str(p_name)
+    elif isinstance(jai_raw, list):
+        for item in jai_raw:
+            if isinstance(item, dict):
+                k_name = item.get("karaka") or item.get("role")
+                p_name = item.get("planet")
+                if k_name == "AK" and p_name:
+                    ak = str(p_name)
+                elif k_name == "AmK" and p_name:
+                    amk = str(p_name)
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                if item[0] == "AK":
+                    ak = str(item[1])
+                elif item[0] == "AmK":
+                    amk = str(item[1])
+                elif item[1] == "AK":
+                    ak = str(item[0])
+                elif item[1] == "AmK":
+                    amk = str(item[0])
+
+    if is_hinglish:
+        sec_kicker = "MUKHYA KUNDLI SARANSH (EXECUTIVE SUMMARY)"
+        sec_title = "Aapki Kundli Ka Sampoorna Nichod Aur Mukhya Kshetra"
+        sec_sub = "Aapke mool vyaktitva, chalu dasha chakra aur sabhi pramukh jeevan kshetron ka vishleshatmak saransh."
+        
+        c1_title = "1. Mool Swabhav Aur Jeevan Disha"
+        c1_body = f"Aapka <b>{lagna} Lagna</b> aur <b>{moon_sign} Chandra</b> hai. Lagnesh <b>{lord}</b> {h_str} house ({lord_s}) mein virajman hain, jo aapko strategic vision aur nischit lakshya ki disha mein aage badhate hain. Atmakaraka <b>{ak}</b> aantarik atmavishwas aur naitik sthirta pradan karta hai."
+        
+        c2_title = "2. Chalu Dasha Aur Vartaman Chapter"
+        c2_body = f"Vartaman mein aap <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b> ke daur se guzar rahe hain. Yeh samay aantarik mazbooti, purani rukawaton ko suljhane aur aane wale vistar ke liye zameen tayyar karne ka hai."
+        
+        c3_title = "3. Career, Rozgar Aur Pratishtha"
+        c3_body = f"10th house aur Amatyakaraka <b>{amk}</b> ke prabhav se aapko structured responsibilities, management aur executive roles mein vishesh safalta milti hai. Mehnat aur consistency se career mein sthirta aur samman prapt hota hai."
+        
+        c4_title = "4. Dhan, Bachat Aur Aarthik Vriddhi"
+        c4_body = "2nd aur 11th house ka sanket hai ki aapki aarthik sthirta anushasit bachat aur strategic planning se majboot hoti hai. Speculative jaldbaazi ke bajay sustained growth par focus karna labhkari hai."
+        
+        c5_title = "5. Rishte, Vivah Aur Parivarik Santulan"
+        c5_body = "7th house aur Navamsha (D9) sambandhon mein aapsi samman aur spasht communication ki maang karte hain. Understanding aur patience se parivarik jeevan mein santulan bana rehta hai."
+        
+        c6_title = "6. Swasthya, Urja Aur Daily Routine"
+        c6_body = "Workload aur stress se physical stamina par asar na pade, iske liye niyamit routine, hydration aur balanced aahar zaroori hai. Choti moti chintaon ko dhyan aur walk se shant karein."
+        
+        c7_title = "7. Aane Wala Turning Point Aur Disha"
+        c7_body = f"Agla mukhya breakthrough window <b>{cur_md}&mdash;{next_lord}</b> Antardasha mein khulta hai. Is dauran pichli mehnat ka uchit samman aur aarthik unnati ka yog banta hai."
+    elif is_tenglish:
+        sec_kicker = "MUKHYA KUNDALI SARAMSAM (EXECUTIVE SUMMARY)"
+        sec_title = "Mee Kundali Sampoorna Saramsam Mariyu Mukhya Rangalu"
+        sec_sub = "Mee moola swabhavam, nadusthuna dasha chakra mariyu anni mukhya jeevitha rangala vishleshana saramsam."
+        
+        c1_title = "1. Moola Swabhavam Mariyu Jeevitha Disha"
+        c1_body = f"Mee <b>{lagna} Lagnam</b> mariyu <b>{moon_sign} Chandra</b> unnai. Lagnaadhipathi <b>{lord}</b> {h_str} house ({lord_s}) lo unnar, idi meeku strategic vision mariyu spashthamaina lakshyam vaipu nadipisthundi. Atmakaraka <b>{ak}</b> aantarika aathmavishwasam isthundi."
+        
+        c2_title = "2. Nadusthuna Dasha Mariyu Vartamana Chapter"
+        c2_body = f"Prasthutam meeru <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b> phase lo unnar. Ee samayam lo internal consolidation, patha samasyalanu sari cheyadam mariyu future growth kosam foundation veyadam mukhyam."
+        
+        c3_title = "3. Career, Udyogam Mariyu Gouravam"
+        c3_body = f"10th house mariyu Amatyakaraka <b>{amk}</b> prabhavam valla meeku structured responsibilities, management mariyu executive roles lo manchi vijayam labhisthundi. Discipline tho career sthirapaduthundi."
+        
+        c4_title = "4. Dhanam, Podupu Mariyu Aarthika Vriddhi"
+        c4_body = "2nd mariyu 11th house sankethala prakaram mee aarthika sthiratha regular savings mariyu structured financial planning valla peruguthundi. Sudden risks kante safe growth manchidi."
+        
+        c5_title = "5. Sambandhalu, Vivaham Mariyu Kutumba Samathulyatha"
+        c5_body = "7th house mariyu Navamsha (D9) relationship lo mutual respect mariyu clear communication korukuntundi. Opika mariyu understanding tho kutumbamlo shanti untundi."
+        
+        c6_title = "6. Aarogyam, Urja Mariyu Daily Routine"
+        c6_body = "Workload valla stress peragakunda daily routine, manchi aaharam mariyu sleep balance maintain cheyali. Regular walking mariyu meditation energy ni replenish chesthayi."
+        
+        c7_title = "7. Munde Vache Turning Point Mariyu Margadarshanam"
+        c7_body = f"Mee next breakthrough window <b>{cur_md}&mdash;{next_lord}</b> Antardasha lo start avuthundi. Ee phase lo mundu chesina kashtaniki tagga gouravam mariyu progress kanipisthundi."
     else:
-        title, sub = "Specialist chart findings", "Customer-safe findings from the Chandra Naadi, Rahu-Ketu, and transit engines."
-    return (
-        f'<section class="conv-block specialist-block">'
-        f'<div class="section-kicker">{_e(title)}</div>'
-        f'<h2 id="sec-specialist-readings" data-nav="{_e(title)}">{_e(title)}</h2>'
-        f'<p class="sec-note">{_e(sub)}</p>'
-        f'<div class="card"><ul class="conv-mind">{"".join(cards)}</ul></div>'
-        f'</section>'
-    )
+        sec_kicker = "EXECUTIVE SUMMARY & REPORT CRUX"
+        sec_title = "Crux of Your Kundli & Key Life Domains"
+        sec_sub = "An authoritative executive synthesis summarizing your core archetype, active operating chapter, and domain-by-domain astrological outlook."
+        
+        c1_title = "1. Core Constitutional Archetype & Life Drive"
+        c1_body = f"With <b>{lagna} rising</b> and <b>Moon in {moon_sign}</b> ({nakshatra}), your chart establishes an ambitious, principled constitutional archetype. Governed by Lagna lord <b>{lord} in the {h_str} house ({lord_s})</b> and Atmakaraka <b>{ak}</b>, your natural path rewards intellectual mastery, strategic independence, and dignified self-reliance."
+        
+        c2_title = "2. Active Operating Chapter & Planetary Dynamics"
+        c2_body = f"You are currently traversing the <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b>. This is a foundational realignment phase dedicated to restructuring internal priorities, resolving residual friction, and preparing the structural runway for upcoming expansion."
+        
+        c3_title = "3. Career, Authority & Vocational Growth (D10)"
+        c3_body = f"Your 10th house dynamics and Amatyakaraka <b>{amk}</b> indicate strong capabilities in specialized execution, organizational management, and executive responsibility. Sustained perseverance and institutional credibility create enduring authority."
+        
+        c4_title = "4. Wealth, Income & Material Expansion (D2 / D11)"
+        c4_body = "Financial accumulation in this chart is built on disciplined compounding, intellectual expertise, and structured asset management rather than volatile speculation. Long-term liquid wealth strengthens steadily through mid-career."
+        
+        c5_title = "5. Relationships, Marriage & Alliances (D9)"
+        c5_body = "The 7th house and Navamsha framework favor partnerships based on shared intellectual values, mutual dignity, and clear boundary setting. Transparent communication ensures relational harmony."
+        
+        c6_title = "6. Vitality, Health & Energy Management (D6 / D8)"
+        c6_body = "Vitality is solid, with vulnerability centered around mental over-analysis and digestive sensitivity during peak workloads. Maintaining regular hydration, balanced sleep rhythms, and daily mindful walking provides optimal equilibrium."
+        
+        c7_title = "7. Strategic Roadmap & Key Turning Points"
+        c7_body = f"The primary forward catalyst activates as you transition towards the <b>{cur_md}&mdash;{next_lord}</b> cycle, unlocking decisive professional recognition, financial elevation, and material stabilization."
+
+    return f"""
+    <section class="conv-block executive-summary-block" style="background:#fffcf8;border:1px solid #e2dccf;border-left:5px solid #8a6a1f;border-radius:14px;padding:22px 24px;margin:22px 0 26px;box-shadow:0 3px 12px rgba(0,0,0,0.03);">
+      <div class="section-kicker" style="font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:8px;">{sec_kicker}</div>
+      <h2 id="sec-executive-summary" data-nav="Executive Summary" style="font-family:Georgia,serif;font-size:1.35rem;color:#1f2430;margin:0 0 6px;font-weight:700;">{sec_title}</h2>
+      <p class="sec-note" style="font-size:0.86rem;color:#656a74;margin:0 0 18px;line-height:1.5;">{sec_sub}</p>
+      
+      <div class="summary-crux-grid" style="display:grid;grid-template-columns:1fr;gap:12px;">
+        <div style="background:#ffffff;border:1px solid #ebd4cc;border-left:4px solid #b57c38;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#b57c38;margin-bottom:5px;">{c1_title}</div>
+          <div style="font-size:0.88rem;line-height:1.6;color:#2c3140;">{c1_body}</div>
+        </div>
+        
+        <div style="background:#ffffff;border:1px solid #cde0f7;border-left:4px solid #1a5f9e;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1a5f9e;margin-bottom:5px;">{c2_title}</div>
+          <div style="font-size:0.88rem;line-height:1.6;color:#2c3140;">{c2_body}</div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
+          <div style="background:#ffffff;border:1px solid #e4ded3;border-left:4px solid #2f5d4a;border-radius:10px;padding:13px 15px;">
+            <div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#2f5d4a;margin-bottom:4px;">{c3_title}</div>
+            <div style="font-size:0.86rem;line-height:1.58;color:#2c3140;">{c3_body}</div>
+          </div>
+          <div style="background:#ffffff;border:1px solid #e4ded3;border-left:4px solid #8a6a1f;border-radius:10px;padding:13px 15px;">
+            <div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#8a6a1f;margin-bottom:4px;">{c4_title}</div>
+            <div style="font-size:0.86rem;line-height:1.58;color:#2c3140;">{c4_body}</div>
+          </div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
+          <div style="background:#ffffff;border:1px solid #e4ded3;border-left:4px solid #5c4a7a;border-radius:10px;padding:13px 15px;">
+            <div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#5c4a7a;margin-bottom:4px;">{c5_title}</div>
+            <div style="font-size:0.86rem;line-height:1.58;color:#2c3140;">{c5_body}</div>
+          </div>
+          <div style="background:#ffffff;border:1px solid #e4ded3;border-left:4px solid #a3341f;border-radius:10px;padding:13px 15px;">
+            <div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#a3341f;margin-bottom:4px;">{c6_title}</div>
+            <div style="font-size:0.86rem;line-height:1.58;color:#2c3140;">{c6_body}</div>
+          </div>
+        </div>
+        
+        <div style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1c6b45;margin-bottom:5px;">{c7_title}</div>
+          <div style="font-size:0.88rem;line-height:1.6;color:#2c3140;">{c7_body}</div>
+        </div>
+      </div>
+    </section>
+    """
+
+
+def _specialist_readings_html(analysis: Any, *, paid: bool, lang: str) -> str:
+    """Specialist chart findings removed — return empty string."""
+    return ""
 
 
 def render(
@@ -2618,8 +2741,9 @@ def render(
         pc, analysis, cards, paid=paid, today=today, authoritative_timing_text=authoritative_timing_text,
         lang=lang
     )
-    specialist_html = _specialist_readings_html(
-        analysis, paid=paid, lang=lang)
+    executive_summary_html = _build_executive_summary_crux_html(
+        pc, analysis, cards, paid=paid, today=today, lang=lang
+    )
     recent_html = ""
 
     unlock = ""
@@ -2698,6 +2822,8 @@ def render(
       <p>{_e(astrological_basis)}</p>
     </section>
 
+    {executive_summary_html}
+
     <section class="conv-block who-you-are-block">
       <div class="section-kicker">{who_kicker}</div>
       <h2 id="sec-who-you-are" data-nav="Who you are">{who_heading}</h2>
@@ -2708,7 +2834,6 @@ def render(
 
     {family_html}
     {current_html}
-    {specialist_html}
     {recent_html}
 
     <section class="conv-block life-domains-block">

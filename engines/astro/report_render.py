@@ -611,13 +611,6 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             cards=shared_cards,
             prose=prose,
             footer_unlock=(not paid))  # free view: bottom CTA; paid: none
-        try:
-            import report_conversational as RConv
-            fact_view = paid_facts if paid else free_facts
-            body += RConv._specialist_readings_html(
-                fact_view, paid=paid, lang=lang)
-        except Exception as exc:                                     # noqa: BLE001
-            print(f"[report_render] specialist classic block skipped: {exc}", flush=True)
         return _post_render_guard(_scrub(body, allowed_dates=_allowed_dates(paid)))
 
     free_html, paid_html = build(False), build(True)

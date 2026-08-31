@@ -1578,26 +1578,6 @@ def _localized_full_report_fallback(
         date_template = "{label} {_start} nunchi prarambham avuthundi{_end}."
         dates_title = "Mukhya Dates Mariyu Timing Windows"
 
-    specialist = brief.get("specialist_readings") or {}
-    specialist_count = sum(
-        len(v) for v in specialist.values() if isinstance(v, list)
-    ) if isinstance(specialist, dict) else 0
-    if specialist_count:
-        if is_hinglish:
-            sections.append((
-                "Naye Grah Sanket",
-                f"Chandra Naadi, Rahu-Ketu aur transit analysis mein {specialist_count} "
-                "customer-safe sanket mile hain. Yeh patterns aapke current focus ko "
-                "samajhne mein madad karte hain; inhe guidance ke roop mein dekhein.",
-            ))
-        else:
-            sections.append((
-                "Kotha Graha Sankethalu",
-                f"Chandra Naadi, Rahu-Ketu mariyu transit analysis lo {specialist_count} "
-                "customer-safe sankethalu dorikayi. Ivi mee current focus ni artham "
-                "chesukovadaniki guidance ga upayogapadutayi.",
-            ))
-
     areas = [
         area_map.get(str(a.get("area") or "").lower(), str(a.get("area") or "").strip())
         for a in (brief.get("life_areas") or [])
@@ -1648,24 +1628,6 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
             brief, paid=paid, is_hinglish=is_hinglish
         )
     out: list[Optional[dict]] = []
-    specialist = brief.get("specialist_readings") or {}
-    specialist_lines = []
-    if isinstance(specialist, dict):
-        for engine_key, findings in specialist.items():
-            if not isinstance(findings, list):
-                continue
-            label = {
-                "chandra_naadi": "Chandra Naadi",
-                "rahu_ketu": "Rahu/Ketu",
-                "transit_matrix": "Transit matrix",
-            }.get(engine_key, engine_key.replace("_", " ").title())
-            for finding in findings[:3]:
-                if isinstance(finding, dict) and finding.get("summary"):
-                    specialist_lines.append(
-                        f"{label}: {_clip(finding.get('summary'), 260)}"
-                    )
-    if specialist_lines:
-        out.append(_sec("Specialist chart findings", _join_sentences(specialist_lines[:6])))
     if brief.get("classical_lagna") and not any(
         brief.get(k) for k in ("current_phase_tone", "personality_traits", "chart_foundations")
     ):
