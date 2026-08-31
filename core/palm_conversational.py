@@ -1188,11 +1188,11 @@ def render(
                     w_sub = "Dhana samrakshana mariyu specialized perceptive antennas vishleshana."
                     w_nav = "Dhana Rekhalu"
                 elif is_hinglish:
-                    w_title = "Dhan Trikon (Wealth Vault) &amp; Vishesh Rekhayein"
+                    w_title = "Dhan Trikon (Wealth Vault) & Vishesh Rekhayein"
                     w_sub = "Sampatti sanrakshan trikon aur specialized receptive lines ka vishleshan."
                     w_nav = "Dhan Trikon"
                 else:
-                    w_title = "The Wealth Vault (Closed Dhana Triangle) &amp; Minor Power Lines"
+                    w_title = "The Wealth Vault (Closed Dhana Triangle) & Minor Power Lines"
                     w_sub = "The sealed geometric intersections governing asset retention, commercial agility, and intuitive perceptive radars."
                     w_nav = "Wealth Vault"
                 blocks.append(_section(
@@ -1201,28 +1201,6 @@ def render(
                     wv_html + ml_html, nav=w_nav))
         except Exception as exc:
             print(f"[palm_conversational] wealth vault section skipped: {exc}", flush=True)
-
-        # 5.5 — Measured consultation facts (evidence-only, quality-gated)
-        for _key, _nav in (
-            ("core_persona", "Core"),
-            ("mind_architecture", "Mind"),
-            ("heart_equilibrium", "Heart"),
-            ("vitality_shield", "Vitality"),
-            ("career_trajectory", "Career"),
-        ):
-            _section_data = p_sec.get(_key, {})
-            if not isinstance(_section_data, dict) or not _section_data.get("narrative"):
-                continue
-            _section_title = str(_section_data.get("title") or "").strip()
-            _section_nav = (
-                "Mukhya Bindu" if is_hinglish else
-                "Mukhya Amsham" if is_tenglish else
-                _nav
-            )
-            blocks.append(_section(
-                f"sec-measured-{_key}", _section_title, "",
-                f'<div class="card"><p>{_e(_section_data.get("narrative"))}</p></div>',
-                nav=_section_nav))
 
         # 6 — Career Architecture & Confirmed Past Milestones
         _ct = p_sec.get("career_trajectory", {})
@@ -1297,51 +1275,105 @@ def render(
         # 7 — Forward Roadmap (Upcoming Age Windows & Direction Ages {age}+)
         ahead_legacy = _timeline(conf, age, ahead=True, lang=lang)
         
-        # Build comprehensive forward age chapters
-        forward_cards = [] if _consult_data.get("measured") else [
-            {
-                "window": f"ages {age}&ndash;{age+4}" if not is_tenglish and not is_hinglish else (f"aayu {age}&ndash;{age+4} varshalu" if is_tenglish else f"aayu {age}&ndash;{age+4} varsh"),
-                "title": "Asset Consolidation & Executive Autonomy",
-                "tag": "Earning Velocity & Consolidation",
-                "sign": "Traced along the ascending Line of Fate crossing the upper plain of Mars toward the Head Line.",
-                "meaning": (
-                    f"During this window, your professional focus decisively consolidates around autonomous ownership and sovereign systems. "
-                    f"With your sealed Wealth Vault (Dhana Triangle), capital accumulation accelerates as operational leakages are systematically eliminated. "
-                    f"You command respect not through titles, but through undeniable architectural competence."
-                )
-            },
-            {
-                "window": f"ages {age+5}&ndash;{age+9}" if not is_tenglish and not is_hinglish else (f"aayu {age+5}&ndash;{age+9} varshalu" if is_tenglish else f"aayu {age+5}&ndash;{age+9} varsh"),
-                "title": "Strategic Consultative Transition",
-                "tag": "Advisory Runway",
-                "sign": "Traced along the Fate Line approaching the Heart Line intersection and the rising Line of Apollo (Sun Line).",
-                "meaning": (
-                    f"A strategic inflection point where you transition out of routine operational execution into high-leverage systems consulting. "
-                    f"Your Solomon Ring and Jupiter markings activate strongly, enabling you to identify institutional bottlenecks instantly. "
-                    f"Your advisory counsel commands high premium value during this phase."
-                )
-            },
-            {
-                "window": "ages 51&ndash;58" if not is_tenglish and not is_hinglish else ("aayu 51&ndash;58 varshalu" if is_tenglish else "aayu 51&ndash;58 varsh"),
-                "title": "Advisory Peak & Senior Mentorship",
-                "tag": "Peak Authority Window",
-                "sign": "Traced at the Heart Line intersection and the apex of the Line of Apollo below the ring finger.",
-                "meaning": (
-                    f"Your peak institutional authority window. The three-pronged fork on your Heart Line (Solomon's Equilibrium) ensures balanced, "
-                    f"dignified leadership. You are sought after as a master strategist, director, and senior mentor across multi-trade domains."
-                )
-            },
-            {
-                "window": "ages 60&ndash;75+" if not is_tenglish and not is_hinglish else ("aayu 60&ndash;75+ varshalu" if is_tenglish else "aayu 60&ndash;75+ varsh"),
-                "title": "Institutional Legacy & Generational Impact",
-                "tag": "Golden Runway",
-                "sign": "Traced along the deep ascent of the Fate Line onto the Mount of Saturn, reinforced by an 80+ Life Line arc.",
-                "meaning": (
-                    f"Unlike careers that diminish with retirement, your deep Saturn climb guarantees active intellectual productivity, "
-                    f"board-level advisory roles, and generational asset stewardship well into your mature golden years."
-                )
-            },
-        ]
+        # Build comprehensive forward age chapters dynamically for any current age
+        w1_start, w1_end = age, age + 4
+        w2_start, w2_end = age + 5, age + 9
+        w3_start, w3_end = max(50, age + 10), max(58, age + 17)
+        w4_start = max(60, age + 18)
+
+        if is_tenglish:
+            forward_cards = [
+                {
+                    "window": f"aayu {w1_start}&ndash;{w1_end} varshalu",
+                    "title": "Asset Sthiratha Mariyu Executive Swatantrata",
+                    "tag": "Earning Velocity & Sthiratha",
+                    "sign": "Fate Line Mars plain nunchi Head Line vaipu peruguthunna sandarbham.",
+                    "meaning": f"Ee phase lo mee vruthi mariyu career lo autonomous responsibility mariyu high-value execution peruguthundi. Sealed Wealth Vault aarthika sthirathaku thodupaduthundi."
+                },
+                {
+                    "window": f"aayu {w2_start}&ndash;{w2_end} varshalu",
+                    "title": "Strategic Advisory Mariyu Expansion",
+                    "tag": "Advisory Runway",
+                    "sign": "Fate Line Heart Line mariyu Surya Rekha (Sun Line) intersection.",
+                    "meaning": f"Routine execution nunchi high-level advisory, systems planning mariyu senior leadership vaipu marpu kanipisthundi. Mee anubhavam gouravanni thesthundhi."
+                },
+                {
+                    "window": f"aayu {w3_start}&ndash;{w3_end} varshalu",
+                    "title": "Peak Authority Mariyu Senior Mentorship",
+                    "tag": "Peak Authority Phase",
+                    "sign": "Heart Line Solomon Trident mariyu Apollo Mount apex.",
+                    "meaning": f"Mee institutional authority mariyu mentorship peak stage ki cheruthundi. Senior leadership mariyu strategic advisory roles lo meeru key decision maker ga untaru."
+                },
+                {
+                    "window": f"aayu {w4_start}+ varshalu",
+                    "title": "Generational Legacy Mariyu Long-term Stability",
+                    "tag": "Golden Runway",
+                    "sign": "Fate Line Saturn mount meeda deep ascent mariyu 80+ Life Line arc.",
+                    "meaning": f"Active intellectual productivity, advisory roles mariyu generational asset guidance tho mee paripakvatha jeevitham anandamga konasaguthundi."
+                },
+            ]
+        elif is_hinglish:
+            forward_cards = [
+                {
+                    "window": f"aayu {w1_start}&ndash;{w1_end} varsh",
+                    "title": "Asset Sthirta Aur Executive Swatantrata",
+                    "tag": "Earning Velocity & Sthirta",
+                    "sign": "Fate Line ka Mars plain se Head Line ki or vikasit hona.",
+                    "meaning": f"Is dauran aapka career focus autonomous decision-making aur structured systems par kendrit hota hai. Sealed Wealth Vault aarthika bachat aur capital growth ko majboot karta hai."
+                },
+                {
+                    "window": f"aayu {w2_start}&ndash;{w2_end} varsh",
+                    "title": "Strategic Advisory Aur Career Expansion",
+                    "tag": "Advisory Runway",
+                    "sign": "Fate Line aur Surya Rekha (Sun Line) ka Heart Line ke kareeb milan.",
+                    "meaning": f"Routine kaam se aage badhkar aap strategic consulting, systems planning aur senior leadership roles mein vistar karte hain. Aapki salah ka vishesh samman hoga."
+                },
+                {
+                    "window": f"aayu {w3_start}&ndash;{w3_end} varsh",
+                    "title": "Peak Authority Aur Senior Mentorship",
+                    "tag": "Peak Authority Phase",
+                    "sign": "Heart Line aur Mount of Apollo par shubh lakshan.",
+                    "meaning": f"Aapka institutional authority aur mentorship ka peak phase. Aap multi-domain projects mein director aur master mentor ke roop mein prabhavshali sthiti mein honge."
+                },
+                {
+                    "window": f"aayu {w4_start}+ varsh",
+                    "title": "Generational Legacy Aur Deerghakalin Sthirta",
+                    "tag": "Golden Runway",
+                    "sign": "Mount of Saturn par Fate Line ka sthir pravesh aur mazboot Life Line arc.",
+                    "meaning": f"Sustained intellectual productivity, advisory board roles aur generational asset stewardship aapko aane wale dashakon mein sthir samman aur santushti dete hain."
+                },
+            ]
+        else:
+            forward_cards = [
+                {
+                    "window": f"ages {w1_start}&ndash;{w1_end}",
+                    "title": "Asset Consolidation & Executive Autonomy",
+                    "tag": "Earning Velocity & Consolidation",
+                    "sign": "Traced along the ascending Line of Fate crossing the upper plain of Mars toward the Head Line.",
+                    "meaning": f"During this window, your professional focus decisively consolidates around autonomous ownership and sovereign systems. Capital accumulation accelerates with disciplined structure."
+                },
+                {
+                    "window": f"ages {w2_start}&ndash;{w2_end}",
+                    "title": "Strategic Consultative Transition",
+                    "tag": "Advisory Runway",
+                    "sign": "Traced along the Fate Line approaching the Heart Line intersection and the rising Line of Apollo (Sun Line).",
+                    "meaning": f"A strategic inflection point where you transition out of routine execution into high-leverage systems consulting, advisory counsel, and senior leadership."
+                },
+                {
+                    "window": f"ages {w3_start}&ndash;{w3_end}",
+                    "title": "Advisory Peak & Senior Mentorship",
+                    "tag": "Peak Authority Window",
+                    "sign": "Traced at the Heart Line intersection and the apex of the Line of Apollo below the ring finger.",
+                    "meaning": f"Your peak institutional authority window. Balanced, dignified leadership and multi-domain expertise position you as a master strategist and senior director."
+                },
+                {
+                    "window": f"ages {w4_start}+",
+                    "title": "Institutional Legacy & Generational Impact",
+                    "tag": "Golden Runway",
+                    "sign": "Traced along the deep ascent of the Fate Line onto the Mount of Saturn, reinforced by a strong Life Line arc.",
+                    "meaning": f"Active intellectual productivity, board-level advisory roles, and generational asset stewardship well into your mature golden years."
+                },
+            ]
         
         fwd_html_cards = ""
         for fc in forward_cards:

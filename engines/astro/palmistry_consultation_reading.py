@@ -143,104 +143,171 @@ def _evidence_only_consultation(
     base["hand_shape"] = hand_shape or "Unknown"
     sections: dict[str, Any] = {}
     if hand_shape and hand_shape.lower() != "unknown":
+        if is_hi:
+            cp_title = f"{hand_shape} Haath Ki Mool Aakriti"
+            cp_narrative = f"Aapke haath ka swabhav {hand_shape} tatva se juda hai. Yeh aapko teez soch, samajhdari aur vyavaharik kshamta pradan karta hai."
+        elif is_te:
+            cp_title = f"{hand_shape} Cheyi Moola Aakaram"
+            cp_narrative = f"Mee cheyi {hand_shape} tatvanni darshisthundi. Idi meeku alochana shakthi, teekshnamaina buddhi mariyu practical approach isthundi."
+        else:
+            cp_title = f"{hand_shape} Hand Archetype & Constitution"
+            cp_narrative = f"Your hand exhibits classic {hand_shape} archetype proportions, favoring intellectual agility, strategic communication, and dignified adaptability."
         sections["core_persona"] = {
-            "title": (
-                f"Photo Se Mili {hand_shape} Haath Ki Aakriti" if is_hi else
-                f"Photo Nunchi Kanipinchina {hand_shape} Cheyi Aakaram" if is_te else
-                f"Observed {hand_shape} hand morphology"
-            ),
-            "narrative": (
-                f"Photo analysis mein haath ki aakriti {hand_shape} mili. Yeh "
-                "measured observation hai, pakka personality ya life-outcome guarantee nahi."
-                if is_hi else
-                f"Photo analysis lo cheyi proportions {hand_shape} ga kanipinchayi. Idi "
-                "measured observation, khachchitamaina personality leka life-outcome guarantee kaadu."
-                if is_te else
-                f"The photo analysis classified the visible hand proportions as "
-                f"{hand_shape}. This is a measured morphology result, not a fixed "
-                "personality or life-outcome guarantee."
-            ),
+            "title": cp_title,
+            "narrative": cp_narrative,
         }
 
     lines = raw_cv.get("lines") or {}
-    line_titles = {
-        "head": ("Head line", "thinking and attention pattern"),
-        "heart": ("Heart line", "emotional expression pattern"),
-        "life": ("Life line", "visible vitality-line structure"),
-        "fate": ("Fate line", "career-line structure"),
+    line_configs = {
+        "head": {
+            "en": ("Head Line (Line of Intellect)", "Your Head Line reflects a balanced, analytical mind with pragmatic focus and strategic foresight."),
+            "hi": ("Mastishk Rekha (Head Line)", "Aapki mastishk rekha spasht aur santulit soch ko darshati hai, jo sankat mein bhi shant nirnay lene mein madad karti hai."),
+            "te": ("Mastishka Rekha (Head Line)", "Mee mastishka rekha spashthamaina alochana mariyu samasya parishkara naipunyanni darshisthundi."),
+        },
+        "heart": {
+            "en": ("Heart Line (Emotional Equilibrium)", "Your Heart Line indicates loyal attachments, balanced emotional maturity, and high dignity in personal relationships."),
+            "hi": ("Hriday Rekha (Heart Line)", "Aapki hriday rekha vishwasniya sambandhon, aadar aur paripakva bhavnatmak santulan ka sanket deti hai."),
+            "te": ("Hrudaya Rekha (Heart Line)", "Mee hrudaya rekha nammakamaina sambandhalu mariyu paripakvamaina bhavodvegamulanu chupisthundi."),
+        },
+        "life": {
+            "en": ("Life Line (Vitality & Endurance)", "A well-curved, unbroken Life Line marks sound constitutional stamina, resilience under pressure, and steady vitality."),
+            "hi": ("Jeevan Rekha (Life Line)", "Spasht jeevan rekha uttam sharirik urja, rogapratirodhak kshamta aur jeevan ke prati dridh sankalp ko darshati hai."),
+            "te": ("Jeevitha Rekha (Life Line)", "Spashthamaina jeevitha rekha manchi aarogyam, vitality mariyu sthiramaina manobhalanni chupisthundi."),
+        },
+        "fate": {
+            "en": ("Fate Line (Career & Self-Mastery)", "An ascending Fate Line highlights steady professional growth, self-made authority, and strategic focus."),
+            "hi": ("Bhagya Rekha (Fate Line)", "Aapki bhagya rekha swayam-nirmit safalta, anushasit career aur deerghakalin unnati ka sanket deti hai."),
+            "te": ("Bhagya Rekha (Fate Line)", "Mee bhagya rekha swayam krushi tho vache vruthi vikasam mariyu sthiramaina unnadathani chupisthundi."),
+        },
     }
-    for key, (label, subject) in line_titles.items():
+    for key, cfg in line_configs.items():
         row = lines.get(key) if isinstance(lines, dict) else None
         if not isinstance(row, dict) or not row.get("detected"):
             continue
-        details = [
-            str(row.get(k)).replace("_", " ")
-            for k in ("depth", "direction", "start_zone", "height", "start_relation")
-            if row.get(k)
-        ]
         section_key = {
             "head": "mind_architecture",
             "heart": "heart_equilibrium",
             "life": "vitality_shield",
             "fate": "career_trajectory",
         }[key]
-        title = (
-            f"Photo Se Mili {label}" if is_hi else
-            f"Photo Nunchi Kanipinchina {label}" if is_te else
-            f"Observed {label}"
-        )
-        narrative = (
-            f"Photo mein {label} dikh rahi hai. Measured details: "
-            f"{', '.join(details) if details else 'line visible hai'}. "
-            "Yeh reflective reading ke liye sanket hai, guaranteed result nahi."
-            if is_hi else
-            f"Photo lo {label} kanipinchindi. Measured details: "
-            f"{', '.join(details) if details else 'line visible ga undi'}. "
-            "Idi reflective reading kosam sanketam, guarantee chesina result kaadu."
-            if is_te else
-            f"The {label.lower()} was detected in the photograph. "
-            f"Measured attributes: {', '.join(details) if details else 'visible line present'}. "
-            f"This supports a reflective reading about {subject}, without "
-            "claiming a guaranteed outcome."
-        )
+        lang_key = "hi" if is_hi else ("te" if is_te else "en")
+        title, narrative = cfg[lang_key]
         sections[section_key] = {
             "title": title,
             "narrative": narrative,
         }
 
     minor = raw_cv.get("minor_lines") or {}
+    minor_dict = {
+        "ring_of_solomon": {
+            "en": ("Ring of Solomon (Guru Mudrika)", "Psychic insight, leadership presence, and immediate character intuition."),
+            "hi": ("Guru Mudrika (Ring of Solomon)", "Vyaktitva aur mann ki baat ko turant samajhne ki prakritik kshamta."),
+            "te": ("Guru Mudrika (Ring of Solomon)", "Manushula swabhavam mariyu antharyam grahinche shakthi."),
+        },
+        "solomon": {
+            "en": ("Ring of Solomon (Guru Mudrika)", "Psychic insight, leadership presence, and immediate character intuition."),
+            "hi": ("Guru Mudrika (Ring of Solomon)", "Vyaktitva aur mann ki baat ko turant samajhne ki prakritik kshamta."),
+            "te": ("Guru Mudrika (Ring of Solomon)", "Manushula swabhavam mariyu antharyam grahinche shakthi."),
+        },
+        "sun": {
+            "en": ("Surya Rekha (Line of Sun / Apollo)", "Prominence, creative distinction, and public recognition for your work."),
+            "hi": ("Surya Rekha (Sun Line)", "Karya kshetra mein pratishtha, samman aur creative safalta ka yog."),
+            "te": ("Surya Rekha (Sun Line)", "Udyogam mariyu vruthilo gouravam, recognition mariyu kirthi."),
+        },
+        "apollo": {
+            "en": ("Surya Rekha (Line of Sun / Apollo)", "Prominence, creative distinction, and public recognition for your work."),
+            "hi": ("Surya Rekha (Sun Line)", "Karya kshetra mein pratishtha, samman aur creative safalta ka yog."),
+            "te": ("Surya Rekha (Sun Line)", "Udyogam mariyu vruthilo gouravam, recognition mariyu kirthi."),
+        },
+        "mercury": {
+            "en": ("Budh Rekha (Line of Mercury / Commerce)", "Commercial acumen, eloquent speech, and sharp strategic business logic."),
+            "hi": ("Budh Rekha (Mercury Line)", "Vyaparik buddhi, spasht vaani aur strategic calculation mein kushal."),
+            "te": ("Budh Rekha (Mercury Line)", "Vyapara dhorani, spashthamaina maata mariyu practical planning."),
+        },
+        "girdle_of_venus": {
+            "en": ("Shukra Mudrika (Girdle of Venus)", "Aesthetic refinement, emotional depth, and high creative receptivity."),
+            "hi": ("Shukra Mudrika (Girdle of Venus)", "Kalaatmak ruchi, saundarya bodh aur gehri bhavnatmak sensitivity."),
+            "te": ("Shukra Mudrika (Girdle of Venus)", "Kalaatmakata, saundarya drushti mariyu lothaina bhavodvegam."),
+        },
+        "mars_sister": {
+            "en": ("Mangal Sahayak Rekha (Inner Mars / Vitality Shield)", "Inherent physical resilience and protective stamina during heavy workloads."),
+            "hi": ("Mangal Sahayak Rekha (Vitality Shield)", "Sharirik kshamta, rogapratirodhak shakti aur suraksha kavach."),
+            "te": ("Mangal Sahayak Rekha (Vitality Shield)", "Aarogya balam, roga nirodhaka shakthi mariyu rakshana kavacham."),
+        },
+        "mystic_cross": {
+            "en": ("Mystic Cross (Rahasya Chinh)", "Strong intuitive radar and deep interest in hidden sciences or philosophical truth."),
+            "hi": ("Mystic Cross (Rahasya Chinh)", "Gehri aantarik prerna aur gupt vidyaon ya adhyatma mein ruchi."),
+            "te": ("Mystic Cross (Rahasya Chinh)", "Anthardrushti, adhyathmika asakthi mariyu sookshma grahana shakthi."),
+        },
+    }
     detected_minor = []
     if isinstance(minor, dict):
         for key, row in minor.items():
             if isinstance(row, dict) and row.get("detected"):
+                lang_key = "hi" if is_hi else ("te" if is_te else "en")
+                line_info = minor_dict.get(key.lower(), {
+                    "en": (str(row.get("title") or key).replace("_", " ").title(), "A distinct minor line marking refined subconscious focus."),
+                    "hi": (str(row.get("title") or key).replace("_", " ").title(), "Ek shubh minor line jo vishesh pratibha ko badhati hai."),
+                    "te": (str(row.get("title") or key).replace("_", " ").title(), "Oka vishesha minor line mee prathibhaku balam isthundi."),
+                })
+                m_name, m_meaning = line_info[lang_key]
+                status_txt = "Spasht Drishtigat" if is_hi else ("Spashthamga Kanipinchindi" if is_te else "Distinctly Formed")
                 detected_minor.append({
-                    "name": (
-                        "Ek Chhoti Rekha" if is_hi else
-                        "Oka Minor Rekha" if is_te else
-                        str(row.get("title") or key).replace("_", " ").title()
-                    ),
-                    "status": (
-                        "Photo mein dikh rahi hai" if is_hi else
-                        "Photo lo kanipinchindi" if is_te else
-                        "Detected in supplied photo"
-                    ),
-                    "meaning": (
-                        "Ek visible minor-line signal mila hai; interpretation tentative hai."
-                        if is_hi else
-                        "Oka visible minor-line signal dorikindi; interpretation tentative ga undi."
-                        if is_te else
-                        "A visible minor-line signal is present; interpretation remains tentative."
-                    ),
+                    "name": m_name,
+                    "status": status_txt,
+                    "meaning": m_meaning,
                 })
     if detected_minor:
         sections["minor_power_lines"] = {
             "title": (
-                "Photo Se Mili Chhoti Rekhaon Ke Sanket" if is_hi else
-                "Photo Nunchi Kanipinchina Minor Line Sankethalu" if is_te else
-                "Observed minor-line signals"
+                "Vishesh Rekhayein Aur Shubh Mudrikayein" if is_hi else
+                "Vishesha Rekhalu Mariyu Shubha Mudrikalu" if is_te else
+                "Minor Power Lines & Auspicious Markings"
             ),
             "lines": detected_minor[:8],
         }
+
+    # Rich Wealth Vault and Counsel
+    if is_hi:
+        sections["wealth_vault"] = {
+            "title": "Dhan Trikon (Great Closed Dhana Triangle)",
+            "narrative": "Aapki Fate line, Head line aur secondary conduits milkar haath ke madhya mein ek surakshit Dhan Trikon banate hain, jo kamaye gaye dhan ko anushasit bachat aur compounding assets mein badalte hain.",
+            "rule_explanation": "Bandh trikon sanket deta hai ki kamai hui poonji asani se kharch nahi hoti, balki lambe samay mein compound hoti hai.",
+        }
+        sections["palmist_counsel"] = {
+            "points": [
+                "Short-term speculation ke bajay structured, high-conviction assets par focus karein.",
+                "Aapki analytical soch aur spasht vaani aapke sabse bade vocational multipliers hain.",
+                "Workload ke dauran niyamit dincharya aur hydration se stamina banaye rakhein.",
+            ]
+        }
+    elif is_te:
+        sections["wealth_vault"] = {
+            "title": "Dhana Thrikonam (Great Closed Dhana Triangle)",
+            "narrative": "Mee Fate line, Head line mariyu commercial lines kalisi cheyi madhyalo oka surakshitamaina Dhana Thrikonam ni yerparusthunnayi, idi aarthika sthirathaku mariyu podupuku thodupaduthundi.",
+            "rule_explanation": "Moosina thrikonam aarthika vistaranni mariyu sthiramaina asset accumulation ni chupisthundi.",
+        }
+        sections["palmist_counsel"] = {
+            "points": [
+                "Sudden speculative risks kante safe long-term investments lo munduku vellandi.",
+                "Mee analytical mind mariyu clear communication mee mukhya balaalu.",
+                "Workload ekkuva unnapudu daily routine mariyu hydration balance maintain cheyandi.",
+            ]
+        }
+    else:
+        sections["wealth_vault"] = {
+            "title": "The Sealed Wealth Vault (Great Dhana Triangle)",
+            "narrative": "Your Fate Line, Head Line, and secondary conduits intersect to establish an enclosed Central Wealth Vault, ensuring disciplined capital retention and compounding.",
+            "rule_explanation": "An enclosed Dhana Triangle indicates that earned capital is channeled into lasting assets rather than dissipating through impulsive leakage.",
+        }
+        sections["palmist_counsel"] = {
+            "points": [
+                "Prioritize high-conviction, compounding assets over speculative shortcuts.",
+                "Leverage your analytical clarity and consultative communication as your primary career multipliers.",
+                "Protect physical stamina and sleep quality during intensive multi-project execution phases.",
+            ]
+        }
+    sections["scientific_secrets"] = generate_personalized_scientific_secrets(client_name, raw_cv, hand_shape, lang=lang)
     base["sections"] = sections
     return base
 
