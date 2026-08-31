@@ -1205,15 +1205,19 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
             remedies.append(f"Strengthen Natural Karaka ({top_k}): Chant the {top_k} Gayatri Mantra or perform charitable seva (e.g. Surya Arghya for Sun, Jal Abhishek for Moon).")
         remedies.append(f"Energize Lagna Lord ({lagna_lord}): Daily spiritual grounding, meditation, and chanting the Lagna lord's root mantra to fortify overall constitutional resilience.")
     elif is_in_dusthana:
+        # SAV strength: 28+ is strong, <28 is weak — never call 23 a "solid floor"
+        if prim_b >= 28:
+            sav_clause = f"While underlying Ashtakavarga strength ({prim_b} SAV Bindus in House {prim_h}, above the 28-bindu threshold) provides a solid floor against permanent loss, active progress"
+        else:
+            sav_clause = f"With only {prim_b} SAV Bindus in House {prim_h} (below the 28-bindu threshold) indicating limited static buffering and heightened vulnerability, active progress"
         root_cause_diagnosis = (
             f"The chart indicates genuine classical vulnerability in {cfg['title']} due to primary ruler {prim_lord} occupying "
             f"the {lord_h}th Dusthana ({lord_sign}) and key natural significators facing specific afflictions in foundational divisional charts (D9/D30). "
             f"This structural placement creates intermittent delays, friction in execution, and a non-linear development curve. "
-            f"While underlying Ashtakavarga strength ({prim_b} SAV Bindus in House {prim_h}) provides a solid floor against permanent loss, "
-            f"active progress requires navigating this karmic restructuring phase until the supportive cycle activates."
+            f"{sav_clause} requires navigating this karmic restructuring phase until the supportive cycle activates."
         )
         verdict = (
-            f"{root_cause_diagnosis} With targeted planetary remedies, favorable Ashtakavarga support, "
+            f"{root_cause_diagnosis} With targeted planetary remedies, calibrated Ashtakavarga support, "
             f"and supportive planetary transits, the upcoming {breakthrough_period_str} acts as the primary classical catalyst for decisive breakthroughs."
         )
         PLANET_WEEKDAY = {
@@ -1229,9 +1233,13 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
             remedies.append(f"Strengthen Natural Karaka ({top_k}): Chant the {top_k} Gayatri Mantra or perform charitable seva (e.g. green fodder to cows for Mercury, Surya Arghya for Sun, Jal Abhishek for Moon).")
         remedies.append(f"Energize Lagna Lord ({lagna_lord}): Daily spiritual grounding, meditation, and chanting the Lagna lord's root mantra to fortify overall constitutional resilience.")
     else:
+        if prim_b >= 28:
+            sav_clause2 = f"Backed by {prim_b} SAV Bindus in House {prim_h} (above 28), the chart carries sufficient static promise to overcome immediate friction,"
+        else:
+            sav_clause2 = f"With only {prim_b} SAV Bindus in House {prim_h} (below the 28-bindu threshold) indicating limited buffering, the chart requires steady remedial support to overcome immediate friction,"
         root_cause_diagnosis = (
             f"The chart shows constructive underlying potential for {cfg['title']} anchored by {prim_lord} in the {lord_h}th house ({lord_dig.replace('_', ' ')}). "
-            f"Backed by {prim_b} SAV Bindus in House {prim_h}, the chart carries sufficient static promise to overcome immediate friction, "
+            f"{sav_clause2} "
             f"though current multi-clock alignments demand steady patience during the ongoing operating sub-period."
         )
         verdict = (
