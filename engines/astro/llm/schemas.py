@@ -473,6 +473,9 @@ class ReportFacts(BaseModel):
     dasha_planet_transits: list[DashaPlanetTransitFact] = Field(default_factory=list, max_length=4)
     life_area_judgements: list[LifeAreaJudgementFact] = Field(default_factory=list, max_length=12)
     vedic_context: Optional[VedicContext] = None
+    # One orchestration-time projection shared by the visible report and its
+    # summaries.  It contains only fired, customer-safe specialist findings.
+    specialist_readings: dict[str, Any] = Field(default_factory=dict)
 
 
 class QuestionFacts(BaseModel):
@@ -615,6 +618,7 @@ class PalmFacts(BaseModel):
     remedies: list[str] = Field(default_factory=list, max_length=4)
     hand_contrast: Optional[HandContrastFacts] = None
     palm_state: Optional[PalmStateFacts] = None
+    consultation_sections: dict[str, Any] = Field(default_factory=dict)
     language: str = "en"
 
 

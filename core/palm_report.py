@@ -598,6 +598,18 @@ def build_palm_html_reading(raw: dict, p: dict, *,
     prose_overlay: dict = {}
     llm_meta: dict = {"enabled": False}
     facts_payload: dict = {}
+    consultation_data: dict = {}
+    try:
+        import sys
+        from pathlib import Path
+        eng = Path(__file__).resolve().parents[1] / "engines" / "astro"
+        if str(eng) not in sys.path:
+            sys.path.insert(0, str(eng))
+        from palmistry_adapter import build_palm_consultation_data
+        consultation_data = build_palm_consultation_data(
+            raw, name=name, gender=req.gender, lang=lang)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[palm_report] consultation facts skipped: {exc}", flush=True)
     try:
         import sys
         from pathlib import Path
@@ -625,7 +637,8 @@ def build_palm_html_reading(raw: dict, p: dict, *,
         elif age < 25:
             age_band = "young_adult"
         pfacts_paid = build_palm_facts(
-            raw, name=name, access="paid", age_band=age_band, age_years=age, language=lang)
+            raw, name=name, access="paid", age_band=age_band, age_years=age,
+            language=lang, consultation_sections=consultation_data)
         pfacts_free = project_for_access(pfacts_paid, "free")
         facts_payload = public_fact_payload(pfacts_paid)
         free_llm = humanize("palm", pfacts_free, access="free", lang=lang)
@@ -654,7 +667,9 @@ def build_palm_html_reading(raw: dict, p: dict, *,
                  if isinstance(prose_overlay, dict) else {})
         if not isinstance(prose, dict):
             prose = {}
-        return PConv.render(raw, paid=paid, prose=prose, lang=lang, **common)
+        return PConv.render(
+            raw, paid=paid, prose=prose, lang=lang,
+            consultation_data=consultation_data, **common)
 
     free_html = _scrub_palm_html(_render_palm(False))
     paid_html = _scrub_palm_html(_render_palm(True))
@@ -679,6 +694,10 @@ def build_palm_html_reading(raw: dict, p: dict, *,
         "photoScore": quality.get("score"),
         "photoAdvice": guidance.get("suggestions") or [],
         "summary": conf.get("summary", ""),
+        "consultation": {
+            "measured": bool(consultation_data.get("measured")),
+            "sections": len(consultation_data.get("sections") or {}),
+        },
         "teaser": _teaser(len(aspects), len(ahead), n_points, special_marks_allowed=special_marks_allowed),
         "freeSections": list(FREE_SECTIONS),
         "paidSections": list(PAID_SECTIONS),

@@ -218,12 +218,29 @@ def analyze_transit_planet(
                 if r_entry.get("severity") == "positive":
                     has_positive = True
             elif t_p == "Moon":
-                pred_parts.append(f"<b>Over Natal {n_p}:</b> {TRANSIT_MOON_OVER_NATAL.get(n_p, '')}")
+                r_entry = TRANSIT_MOON_OVER_NATAL.get(n_p, {})
+                pred_parts.append(f"<b>Over Natal {n_p}:</b> {r_entry.get('prediction', r_entry) if isinstance(r_entry, dict) else r_entry}")
+                if isinstance(r_entry, dict):
+                    if r_entry.get("severity") in ["warning", "critical", "caution"]:
+                        has_warning = True
+                    if r_entry.get("severity") == "positive":
+                        has_positive = True
             elif t_p == "Mercury":
-                pred_parts.append(f"<b>Over Natal {n_p}:</b> {TRANSIT_MERCURY_OVER_NATAL.get(n_p, '')}")
+                r_entry = TRANSIT_MERCURY_OVER_NATAL.get(n_p, {})
+                pred_parts.append(f"<b>Over Natal {n_p}:</b> {r_entry.get('prediction', r_entry) if isinstance(r_entry, dict) else r_entry}")
+                if isinstance(r_entry, dict):
+                    if r_entry.get("severity") in ["warning", "critical", "caution"]:
+                        has_warning = True
+                    if r_entry.get("severity") == "positive":
+                        has_positive = True
             elif t_p == "Venus":
-                pred_parts.append(f"<b>Over Natal {n_p}:</b> {TRANSIT_VENUS_OVER_NATAL.get(n_p, '')}")
-                has_positive = True
+                r_entry = TRANSIT_VENUS_OVER_NATAL.get(n_p, {})
+                pred_parts.append(f"<b>Over Natal {n_p}:</b> {r_entry.get('prediction', r_entry) if isinstance(r_entry, dict) else r_entry}")
+                if isinstance(r_entry, dict):
+                    if r_entry.get("severity") in ["warning", "critical", "caution"]:
+                        has_warning = True
+                    if r_entry.get("severity") == "positive":
+                        has_positive = True
 
         synthesis_text = " ".join(pred_parts)
 
@@ -256,15 +273,32 @@ def analyze_transit_planet(
                 next_pred = "Energy remains productive, laying solid groundwork for upcoming ventures."
                 preventive = "Channel excess physical energy into productive technical/property works rather than debates."
         elif t_p in ["Jupiter", "Venus"]:
-            phase_assessment = "Highly Auspicious / Favorable"
-            badge = "positive"
-            next_pred = "Momentum continues to expand into domestic celebrations, material gains, and emotional contentment."
-            preventive = "Maximize this auspicious window by finalizing negotiations, expanding networks, and undertaking auspicious initiatives."
+            if has_warning:
+                phase_assessment = "Favorable with Sensitive Conditions"
+                badge = "warning"
+                next_pred = "The supportive momentum remains available when the sensitive conditions are handled deliberately."
+                preventive = "Move forward after checking commitments, timing, and practical constraints."
+            else:
+                phase_assessment = "Highly Auspicious / Favorable"
+                badge = "positive"
+                next_pred = "Momentum continues to expand into domestic celebrations, material gains, and emotional contentment."
+                preventive = "Maximize this auspicious window by finalizing negotiations, expanding networks, and undertaking auspicious initiatives."
         else:
-            phase_assessment = "Active Fast-Moving Phase"
-            badge = "info"
-            next_pred = "The brief decision surge eases smoothly as the planet moves into the subsequent sign."
-            preventive = "Stay focused on essential daily priorities; defer impulsive non-essential decisions until the transit settles."
+            if has_warning:
+                phase_assessment = "Active but Sensitive Phase"
+                badge = "warning"
+                next_pred = "The sensitive part of this transit eases as the planet moves into the subsequent sign."
+                preventive = "Stay focused on essential daily priorities and avoid impulsive non-essential decisions."
+            elif has_positive:
+                phase_assessment = "Active and Supportive Phase"
+                badge = "positive"
+                next_pred = "The supportive part of this transit continues while the planet remains in this sign."
+                preventive = "Use the constructive momentum for focused, practical progress."
+            else:
+                phase_assessment = "Active Fast-Moving Phase"
+                badge = "info"
+                next_pred = "The brief decision surge eases smoothly as the planet moves into the subsequent sign."
+                preventive = "Stay focused on essential daily priorities; defer impulsive non-essential decisions until the transit settles."
 
         cards.append(GroupedTransitCard(
             transit_planet=t_p,
@@ -281,6 +315,15 @@ def analyze_transit_planet(
             is_dasha_active=is_dasha,
         ))
 
+    moon_snapshot = transit.get("Moon") or {}
+    moon_cards = [c for c in cards if c.transit_planet == "Moon"]
+    if moon_cards:
+        moon_focus = ", ".join(moon_cards[0].natal_planets)
+        moon_description = moon_cards[0].synthesis_prediction
+    else:
+        moon_focus = f"House {house_from_lagna(moon_snapshot.get('sign', ''), lagna)}"
+        moon_description = "The fast lunar cycle is moving through this area; use the feeling as a short-term focus signal."
+
     return {
         "meta": {
             "client": pc.get("meta", {}).get("client", "Client"),
@@ -296,4 +339,20 @@ def analyze_transit_planet(
             "next_ad": next_ad,
         },
         "cards": cards,
+        "state_of_mind_now": {
+            "fast_trigger": moon_focus,
+            "sign_occupied": moon_snapshot.get("sign", ""),
+            "nakshatra_occupied": moon_snapshot.get("nakshatra", ""),
+            "state_description": moon_description,
+        },
+        "roadmap_ahead": {
+            "cards": [
+                {
+                    "planet": c.transit_planet,
+                    "ease_date": c.ease_date,
+                    "assessment": c.phase_assessment,
+                }
+                for c in cards
+            ],
+        },
     }

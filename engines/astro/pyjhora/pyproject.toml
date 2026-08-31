@@ -9,7 +9,7 @@ version = "4.7.0"
 authors = [
 	{name="Sundar Sundaresan",email = "carnaticmusicguru2015@comcast.net"},
 ]
-readme = "README.MD"
+readme = "README_WORKSPACE.md"
 license = {file="LICENSE"}
 requires-python = ">=3.8"
 keywords = ["Vedic Astrology", "Astrology", "Hindu Astrology", "Kundali", "Panchang", "Horoscope", "Hora", "JHora"]
@@ -22,8 +22,6 @@ classifiers = [
 ]
 [tool.setuptools.package-data]
 "jhora.lang" = ["*"]
-"jhora.images" = ["*"]
-"jhora.tests" = ["*"]
 "*" = ["*.txt", "*.csv","*.md", "*.json"]
 [project.urls]
 homepage = "https://github.com/naturalstupid/pyjhora"

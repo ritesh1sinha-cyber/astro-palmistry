@@ -97,6 +97,7 @@ def generate_consultation_reading(
     *,
     analysis_datetime: datetime | None = None,
     gender: str = "male",
+    lang: str = "en",
 ) -> dict:
     """
     Synthesizes a deep, generalized consultation-level astrological reading:

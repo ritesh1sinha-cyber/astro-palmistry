@@ -239,6 +239,7 @@ def html_to_report_text(html: str) -> str:
 # reading. They are not findings and must never be quoted back as a summary.
 _FURNITURE_RE = re.compile(
     r"(₹|\$\d|\bunlock\b|\bsubscribe\b|\bfree preview\b|\bpaywall\b|"
+    r"\bFuture timeline is locked\b|\block(ed)?\b|"
     r"\bscroll\b|\bclick\b|\btap\b|\bread more\b|\bdownload\b|\bshare\b|"
     r"\bcontents\b|\bterms\b|\bprivacy\b|\brefund)",
     re.I,
@@ -482,7 +483,14 @@ def _num_word(n: int) -> str:
 
 def _clip(value: Any, limit: int = 240) -> str:
     text = re.sub(r"\s{2,}", " ", str(value or "")).strip()
-    return text[:limit]
+    if len(text) <= limit:
+        return text
+    # Cut at word boundary to avoid "restru." stubs; keep at least 70% of limit
+    cut = text[:limit]
+    space = cut.rfind(" ")
+    if space > limit * 0.7:
+        return cut[:space]
+    return cut
 
 
 def _str_list(value: Any, *, cap: int = 8, limit: int = 200) -> list[str]:
@@ -564,6 +572,28 @@ def _summary_brief(kind: str, meta: dict, facts: Any, *, paid: bool) -> dict:
                     foundations.append(entry)
                     break
         put("chart_foundations", foundations)
+        specialist = f.get("specialist_readings")
+        if isinstance(specialist, dict):
+            specialist_brief: dict[str, Any] = {}
+            for engine_key in ("chandra_naadi", "rahu_ketu", "transit_matrix"):
+                block = specialist.get(engine_key)
+                if not isinstance(block, dict):
+                    continue
+                findings = []
+                for finding in (block.get("findings") or [])[:4]:
+                    if not isinstance(finding, dict):
+                        continue
+                    row = {
+                        "title": _clip(finding.get("title"), 120),
+                        "summary": _clip(finding.get("summary"), 260),
+                        "planet": _clip(finding.get("planet"), 30),
+                        "house": finding.get("house") if paid else 0,
+                    }
+                    if row["title"] and row["summary"]:
+                        findings.append({k: v for k, v in row.items() if v not in ("", 0, None)})
+                if findings:
+                    specialist_brief[engine_key] = findings
+            put("specialist_readings", specialist_brief)
         if kind == "classical_report":
             put("classical_lagna", _clip(meta.get("lagna"), 40))
             put("classical_moon", _clip(meta.get("moonSign"), 40))
@@ -629,6 +659,20 @@ def _summary_brief(kind: str, meta: dict, facts: Any, *, paid: bool) -> dict:
             }
             for a in aspects[:8] if isinstance(a, dict) and a.get("aspect")
         ])
+        consultation = f.get("consultation_sections")
+        if isinstance(consultation, dict):
+            measured_sections = []
+            for key, section in consultation.items():
+                if not isinstance(section, dict):
+                    continue
+                title = _clip(section.get("title"), 100)
+                narrative = _clip(section.get("narrative"), 260)
+                if title and narrative:
+                    measured_sections.append({
+                        "title": title,
+                        "summary": narrative,
+                    })
+            put("measured_consultation", measured_sections[:6])
 
     elif kind == "numerology":
         put("empty_grid_cells", meta.get("emptyCells"))
@@ -1060,6 +1104,9 @@ def _validate(
         else:
             continue
         break
+    titles = [str(s.title or "").strip().lower() for s in sections if str(s.title or "").strip()]
+    if len(titles) != len(set(titles)):
+        errors.append("duplicate_sections")
 
     if not paid:
         roles = [s.role for s in sections]
@@ -1462,6 +1509,26 @@ def _localized_full_report_fallback(
         date_template = "{label} {_start} nunchi prarambham avuthundi{_end}."
         dates_title = "Mukhya Dates Mariyu Timing Windows"
 
+    specialist = brief.get("specialist_readings") or {}
+    specialist_count = sum(
+        len(v) for v in specialist.values() if isinstance(v, list)
+    ) if isinstance(specialist, dict) else 0
+    if specialist_count:
+        if is_hinglish:
+            sections.append((
+                "Naye Grah Sanket",
+                f"Chandra Naadi, Rahu-Ketu aur transit analysis mein {specialist_count} "
+                "customer-safe sanket mile hain. Yeh patterns aapke current focus ko "
+                "samajhne mein madad karte hain; inhe guidance ke roop mein dekhein.",
+            ))
+        else:
+            sections.append((
+                "Kotha Graha Sankethalu",
+                f"Chandra Naadi, Rahu-Ketu mariyu transit analysis lo {specialist_count} "
+                "customer-safe sankethalu dorikayi. Ivi mee current focus ni artham "
+                "chesukovadaniki guidance ga upayogapadutayi.",
+            ))
+
     areas = [
         area_map.get(str(a.get("area") or "").lower(), str(a.get("area") or "").strip())
         for a in (brief.get("life_areas") or [])
@@ -1512,6 +1579,24 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
             brief, paid=paid, is_hinglish=is_hinglish
         )
     out: list[Optional[dict]] = []
+    specialist = brief.get("specialist_readings") or {}
+    specialist_lines = []
+    if isinstance(specialist, dict):
+        for engine_key, findings in specialist.items():
+            if not isinstance(findings, list):
+                continue
+            label = {
+                "chandra_naadi": "Chandra Naadi",
+                "rahu_ketu": "Rahu/Ketu",
+                "transit_matrix": "Transit matrix",
+            }.get(engine_key, engine_key.replace("_", " ").title())
+            for finding in findings[:3]:
+                if isinstance(finding, dict) and finding.get("summary"):
+                    specialist_lines.append(
+                        f"{label}: {_clip(finding.get('summary'), 260)}"
+                    )
+    if specialist_lines:
+        out.append(_sec("Specialist chart findings", _join_sentences(specialist_lines[:6])))
     if brief.get("classical_lagna") and not any(
         brief.get(k) for k in ("current_phase_tone", "personality_traits", "chart_foundations")
     ):
@@ -1864,6 +1949,31 @@ def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool, lang: str = "en"
     is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
     is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     out = _fallback_from_palm_text(text, paid=paid, lang=lang)
+    measured = [
+        x for x in (brief.get("measured_consultation") or [])
+        if isinstance(x, dict) and x.get("title")
+    ]
+    if measured:
+        if is_hinglish:
+            out.append(_sec(
+                "Photo Se Mile Sanket",
+                "Aapke palm photo mein kuch measured rekha-sanket mile hain. "
+                "Yeh observation-based guidance hai, pakka bhavishya-vachan nahi.",
+            ))
+        elif is_tenglish:
+            out.append(_sec(
+                "Photo Nunchi Dorikina Sankethalu",
+                "Mee palm photo lo konni measured rekha sankethalu dorikayi. "
+                "Ivi observation-based guidance, khachchitamaina bhavishyavani kaadu.",
+            ))
+        else:
+            out.append(_sec(
+                "Measured photo findings",
+                "The palm photo contains measured line or morphology signals. "
+                "They support reflective guidance, not guaranteed outcomes.",
+            ))
+        if out:
+            return [s for s in out if s]
     if out:
         return out
     sections: list[Optional[dict]] = []

@@ -902,6 +902,7 @@ def render(
     paid: bool = False,
     price: int = 298,
     prose: dict | None = None,
+    consultation_data: dict | None = None,
     lang: str = "en",
 ) -> str:
     import report_shell as RS
@@ -1134,12 +1135,20 @@ def render(
             mounts_html + marks_html, nav=mounts_nav))
 
         # 3.5 — The Great Closed Wealth Triangle & Minor Power Lines
+        # Initialize before try so failure still leaves safe defaults for later sections.
+        _consult_data: dict = {}
+        p_sec: dict = {}
         try:
-            from reading_palms_analysis import analyze_palm
-            from palmistry_consultation_reading import generate_palm_consultation_sections
-            p_an = analyze_palm(raw, name=first, gender=gender, hand=dom_key)
-            p_an.setdefault("meta", {})["client_name"] = first
-            _consult_data = generate_palm_consultation_sections(p_an, client_name=first)
+            try:
+                from engines.astro.palmistry_adapter import build_palm_consultation_data as _build_palm
+            except ImportError:
+                from palmistry_adapter import build_palm_consultation_data as _build_palm
+            _consult_data = (
+                consultation_data
+                if isinstance(consultation_data, dict)
+                else _build_palm(
+                    raw, name=first, gender=gender, lang=lang)
+            )
             p_sec = _consult_data.get("sections", {})
             
             wv = p_sec.get("wealth_vault", {})
@@ -1153,10 +1162,10 @@ def render(
                     f'    💎 High Earning &amp; Capital Accumulation Asset Corridor'
                     f'  </div>'
                     f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{_e(wv.get("title", "The Great Closed Wealth Triangle"))}</h3>'
-                    f'  <p style="margin:0 0 10px;font-size:0.9rem;line-height:1.6;color:#2c3140;">{wv.get("narrative", "")}</p>'
+                    f'  <p style="margin:0 0 10px;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_e(wv.get("narrative", ""))}</p>'
                     f'  <div style="background:#fefbf4;border-radius:8px;padding:10px 14px;border:1px dashed #e8d8b8;">'
                     f'    <b style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#8a6a1f;">Vault Architectural Rule:</b>'
-                    f'    <p style="margin:4px 0 0;font-size:0.84rem;line-height:1.52;color:#3d4250;">{wv.get("rule_explanation", "")}</p>'
+                    f'    <p style="margin:4px 0 0;font-size:0.84rem;line-height:1.52;color:#3d4250;">{_e(wv.get("rule_explanation", ""))}</p>'
                     f'  </div>'
                     f'</div>'
                 )
@@ -1166,7 +1175,8 @@ def render(
                 ml_cards.append(
                     f'<div style="background:#f8fbf9;border:1px solid #d4e8dc;border-radius:10px;padding:12px 14px;">'
                     f'  <div style="font-weight:700;font-size:0.92rem;color:#1c6b45;margin-bottom:4px;">{_e(item.get("name"))}</div>'
-                    f'  <div style="font-size:0.74rem;font-weight:700;color:#6b7280;margin-bottom:6px;">Status: {_e(item.get("status"))}</div>'
+                    f'  <div style="font-size:0.74rem;font-weight:700;color:#6b7280;margin-bottom:6px;">'
+                    f'{"Sthiti" if is_hinglish else "Sthithi" if is_tenglish else "Status"}: {_e(item.get("status"))}</div>'
                     f'  <p style="margin:0;font-size:0.84rem;line-height:1.5;color:#2c3140;">{_e(item.get("meaning"))}</p>'
                     f'</div>'
                 )
@@ -1191,6 +1201,28 @@ def render(
                     wv_html + ml_html, nav=w_nav))
         except Exception as exc:
             print(f"[palm_conversational] wealth vault section skipped: {exc}", flush=True)
+
+        # 5.5 — Measured consultation facts (evidence-only, quality-gated)
+        for _key, _nav in (
+            ("core_persona", "Core"),
+            ("mind_architecture", "Mind"),
+            ("heart_equilibrium", "Heart"),
+            ("vitality_shield", "Vitality"),
+            ("career_trajectory", "Career"),
+        ):
+            _section_data = p_sec.get(_key, {})
+            if not isinstance(_section_data, dict) or not _section_data.get("narrative"):
+                continue
+            _section_title = str(_section_data.get("title") or "").strip()
+            _section_nav = (
+                "Mukhya Bindu" if is_hinglish else
+                "Mukhya Amsham" if is_tenglish else
+                _nav
+            )
+            blocks.append(_section(
+                f"sec-measured-{_key}", _section_title, "",
+                f'<div class="card"><p>{_e(_section_data.get("narrative"))}</p></div>',
+                nav=_section_nav))
 
         # 6 — Career Architecture & Confirmed Past Milestones
         _ct = p_sec.get("career_trajectory", {})
@@ -1221,7 +1253,7 @@ def render(
         
         career_html = ""
         if _ct_narrative:
-            career_html += f'<p style="margin:0 0 14px;font-size:0.92rem;line-height:1.62;color:#2c3140;">{_ct_narrative}</p>'
+            career_html += f'<p style="margin:0 0 14px;font-size:0.92rem;line-height:1.62;color:#2c3140;">{_e(_ct_narrative)}</p>'
         
         if past_ms_rows:
             career_html += (
@@ -1266,7 +1298,7 @@ def render(
         ahead_legacy = _timeline(conf, age, ahead=True, lang=lang)
         
         # Build comprehensive forward age chapters
-        forward_cards = [
+        forward_cards = [] if _consult_data.get("measured") else [
             {
                 "window": f"ages {age}&ndash;{age+4}" if not is_tenglish and not is_hinglish else (f"aayu {age}&ndash;{age+4} varshalu" if is_tenglish else f"aayu {age}&ndash;{age+4} varsh"),
                 "title": "Asset Consolidation & Executive Autonomy",
@@ -1489,11 +1521,16 @@ def render(
         _consult_milestones = []
         _consult_secrets = []
         try:
-            from reading_palms_analysis import analyze_palm
-            from palmistry_consultation_reading import generate_palm_consultation_sections
-            _p_an = analyze_palm(raw, name=first, gender=gender, hand=dom_key)
-            _p_an.setdefault("meta", {})["client_name"] = first
-            _consult_data = generate_palm_consultation_sections(_p_an, client_name=first)
+            try:
+                from engines.astro.palmistry_adapter import build_palm_consultation_data as _build_palm2
+            except ImportError:
+                from palmistry_adapter import build_palm_consultation_data as _build_palm2
+            _consult_data = (
+                consultation_data
+                if isinstance(consultation_data, dict)
+                else _build_palm2(
+                    raw, name=first, gender=gender, lang=lang)
+            )
             _consult_sections = _consult_data.get("sections", {})
             _consult_milestones = _consult_data.get("timing_milestones", [])
             _consult_secrets = _consult_sections.get("scientific_secrets", [])
@@ -1506,10 +1543,10 @@ def render(
             cp_html = (
                 '<div class="card" style="background:#f6faf8;border:1px solid #c8e0d4;border-left:4px solid #2c7658;border-radius:12px;padding:16px 18px;margin-bottom:14px;">'
                 '  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#e8f5ee;color:#2c7658;display:inline-block;margin-bottom:8px;">'
-                '    🧬 Your Core Persona'
+                f'    🧬 {"Aapka Core Vyaktitva" if is_hinglish else "Mee Core Vyakthithvam" if is_tenglish else "Your Core Persona"}'
                 '  </div>'
                 f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{_e(_cp.get("title", ""))}</h3>'
-                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_cp.get("narrative", "")}</p>'
+                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_e(_cp.get("narrative", ""))}</p>'
                 '</div>'
             )
             if is_tenglish:
@@ -1525,10 +1562,10 @@ def render(
             ma_html = (
                 '<div class="card" style="background:#f4f6fb;border:1px solid #c8d0e4;border-left:4px solid #4a6fa5;border-radius:12px;padding:16px 18px;margin-bottom:14px;">'
                 '  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#e6ecf6;color:#4a6fa5;display:inline-block;margin-bottom:8px;">'
-                '    🧠 Cognitive Architecture'
+                f'    🧠 {"Soch Ki Banawat" if is_hinglish else "Alochana Paddhathi" if is_tenglish else "Cognitive Architecture"}'
                 '  </div>'
                 f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{_e(_ma.get("title", ""))}</h3>'
-                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_ma.get("narrative", "")}</p>'
+                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_e(_ma.get("narrative", ""))}</p>'
                 '</div>'
             )
             if is_tenglish:
@@ -1544,10 +1581,10 @@ def render(
             he_html = (
                 '<div class="card" style="background:#fdf7f5;border:1px solid #e8d0ca;border-left:4px solid #b5584a;border-radius:12px;padding:16px 18px;margin-bottom:14px;">'
                 '  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#fce8e4;color:#b5584a;display:inline-block;margin-bottom:8px;">'
-                '    ❤️ Emotional Climate'
+                f'    ❤️ {"Bhavnatmak Mahaul" if is_hinglish else "Bhaavana Vaathaavaranam" if is_tenglish else "Emotional Climate"}'
                 '  </div>'
                 f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{_e(_he.get("title", ""))}</h3>'
-                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_he.get("narrative", "")}</p>'
+                f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{_e(_he.get("narrative", ""))}</p>'
                 '</div>'
             )
             if is_tenglish:

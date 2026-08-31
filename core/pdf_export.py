@@ -109,6 +109,15 @@ def report_title(kind: str, meta: Optional[dict] = None) -> str:
     """Short human title for My Reports list."""
     m = meta if isinstance(meta, dict) else {}
     label = KIND_LABELS.get(kind or "", (kind or "Report").replace("_", " ").title())
+    language = str(m.get("language") or "").lower().strip()
+    if kind == "full_report" and language in ("hi_en", "hinglish", "hi", "hindi"):
+        label = "Poori Kundli Reading"
+    elif kind == "full_report" and language in ("te_en", "tenglish", "te", "telugu"):
+        label = "Sampoorna Kundali Reading"
+    elif kind == "palm" and language in ("hi_en", "hinglish", "hi", "hindi"):
+        label = "Hast Rekha Reading"
+    elif kind == "palm" and language in ("te_en", "tenglish", "te", "telugu"):
+        label = "Hasta Rekha Reading"
     name = (m.get("name") or m.get("personName")
             or (m.get("couple") or {}).get("groom") or "")
     q = (m.get("question") or m.get("q") or "")[:80]

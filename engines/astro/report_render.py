@@ -403,11 +403,21 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
     facts_payload: dict = {}
     paid_facts = None
     free_facts = None
+    specialist_readings: dict[str, Any] = {}
+    try:
+        from specialist_readings import build_specialist_readings
+        raw_gender = (pc.get("meta") or {}).get("gender", "male")
+        gender = "female" if raw_gender in (1, "female", "f") else "male"
+        specialist_readings = build_specialist_readings(
+            pc, today=today, gender=gender)
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_render] specialist readings unavailable: {exc}", flush=True)
     try:
         from llm.facts import build_report_facts, project_for_access, public_fact_payload
         from llm.humanize import humanize
         base_facts = build_report_facts(
-            pc, shared_cards, name=name, access="paid", today=today)
+            pc, shared_cards, name=name, access="paid", today=today,
+            specialist_readings=specialist_readings)
         paid_facts = project_for_access(base_facts, "paid")
         free_facts = project_for_access(base_facts, "free")
         facts_payload = public_fact_payload(paid_facts)
@@ -601,6 +611,13 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
             cards=shared_cards,
             prose=prose,
             footer_unlock=(not paid))  # free view: bottom CTA; paid: none
+        try:
+            import report_conversational as RConv
+            fact_view = paid_facts if paid else free_facts
+            body += RConv._specialist_readings_html(
+                fact_view, paid=paid, lang=lang)
+        except Exception as exc:                                     # noqa: BLE001
+            print(f"[report_render] specialist classic block skipped: {exc}", flush=True)
         return _post_render_guard(_scrub(body, allowed_dates=_allowed_dates(paid)))
 
     free_html, paid_html = build(False), build(True)
@@ -610,6 +627,14 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
         "design": designs.get(True, "cards-v2"),
         "freeDesign": designs.get(False, "cards-v2"),
         "language": lang,
+        "specialistReadings": {
+            key: {
+                "status": value.get("status", "unavailable"),
+                "count": len(value.get("findings") or []),
+            }
+            for key, value in specialist_readings.items()
+            if isinstance(value, dict)
+        },
         "price": price, "bundlePrice": bundle_price,
         "llm": llm_meta,
         # Internal only — _save_report pops this into object storage as facts.json

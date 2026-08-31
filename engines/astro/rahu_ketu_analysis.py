@@ -303,8 +303,18 @@ def check_shadow_punarphoo(pc: dict) -> bool:
     return False
 
 
-def get_current_dasha_bhukti(pc: dict) -> tuple[str, str]:
-    """Extract current MD and AD from pc['vimshottari']."""
+def get_current_dasha_bhukti(
+    pc: dict, today: date | None = None
+) -> tuple[str, str]:
+    """Resolve current MD/AD for the supplied report date."""
+    if today is not None:
+        try:
+            from report_confluence import vimshottari_at
+            state = vimshottari_at(pc, today) or {}
+            if state.get("md") or state.get("ad"):
+                return str(state.get("md") or ""), str(state.get("ad") or "")
+        except Exception:
+            pass
     v = pc.get("vimshottari", {})
     md = v.get("current_md", "") or v.get("dasha", "")
     ad = v.get("current_ad", "") or v.get("bhukti", "")
@@ -732,7 +742,7 @@ def analyze_progeny(pc: dict) -> list[RahuKetuReading]:
     rahu_sign, ketu_sign = get_rahu_ketu_signs(pc)
 
     # 1. Jupiter with Rahu/Ketu (Puthra Dosha)
-    if jup_sign in [rahu_sign, ketu_sign]:
+    if jup_sign and jup_sign in [rahu_sign, ketu_sign]:
         node = "Rahu" if jup_sign == rahu_sign else "Ketu"
         readings.append(RahuKetuReading(
             rule_id="RK_PROGENY_PUTHRA_DOSHA",
@@ -748,7 +758,7 @@ def analyze_progeny(pc: dict) -> list[RahuKetuReading]:
         ))
 
     # 2. Mars with Rahu/Ketu (Puthra Sogam)
-    if mars_sign in [rahu_sign, ketu_sign]:
+    if mars_sign and mars_sign in [rahu_sign, ketu_sign]:
         node = "Rahu" if mars_sign == rahu_sign else "Ketu"
         readings.append(RahuKetuReading(
             rule_id="RK_PROGENY_PUTHRA_SOGAM",
@@ -880,10 +890,12 @@ def analyze_medical(pc: dict) -> list[RahuKetuReading]:
 #  SECTION 9: DASHA-BHUKTI & KARMIC TIMING
 # ══════════════════════════════════════════════════════════════════
 
-def analyze_dasha_timing(pc: dict) -> list[RahuKetuReading]:
+def analyze_dasha_timing(
+    pc: dict, today: date | None = None
+) -> list[RahuKetuReading]:
     """Evaluate Dasha-Bhukti effects, perilous periods, and karma exposure ages."""
     readings = []
-    dasha, bhukti = get_current_dasha_bhukti(pc)
+    dasha, bhukti = get_current_dasha_bhukti(pc, today)
 
     # 1. Perilous Dasha-Bhukti Check
     if dasha and bhukti and is_perilous_period(dasha, bhukti):
@@ -963,13 +975,13 @@ def analyze_yogas(pc: dict) -> list[RahuKetuReading]:
     # 2. Maha Sakthi Yoga (Chapter 55)
     factors = 0
     f_desc = []
-    if lagna_sign in [rahu_sign, ketu_sign]:
+    if lagna_sign and lagna_sign in [rahu_sign, ketu_sign]:
         factors += 1
         f_desc.append("Lagna with Node")
-    if moon_sign in [rahu_sign, ketu_sign]:
+    if moon_sign and moon_sign in [rahu_sign, ketu_sign]:
         factors += 1
         f_desc.append("Moon with Node")
-    if sun_sign in [rahu_sign, ketu_sign]:
+    if sun_sign and sun_sign in [rahu_sign, ketu_sign]:
         factors += 1
         f_desc.append("Sun with Node")
 
@@ -1079,7 +1091,9 @@ def analyze_remedies(pc: dict, all_readings: list[RahuKetuReading]) -> list[str]
 #  MASTER ORCHESTRATOR
 # ══════════════════════════════════════════════════════════════════
 
-def analyze_rahu_ketu(pc: dict, *, gender: str = "male") -> dict:
+def analyze_rahu_ketu(
+    pc: dict, *, gender: str = "male", analysis_date: date | None = None
+) -> dict:
     """
     Master entry point for Rahu & Ketu: The Life Changing Planets analysis.
     Takes a precomputed chart dict (from compute_chart) and returns a complete evaluation.
@@ -1095,7 +1109,7 @@ def analyze_rahu_ketu(pc: dict, *, gender: str = "male") -> dict:
     special_nadi = analyze_special_nadi(pc)
     progeny = analyze_progeny(pc)
     medical = analyze_medical(pc)
-    dasha_readings = analyze_dasha_timing(pc)
+    dasha_readings = analyze_dasha_timing(pc, analysis_date)
     yogas = analyze_yogas(pc)
     poorvika = analyze_poorvika_dosha(pc)
 

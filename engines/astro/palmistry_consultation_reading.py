@@ -13,26 +13,25 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from palm_api.confluence import build_confluence
-from palm_api.life_aspects import build_life_aspects
-from palm_api.timing import LIFE_AGE_MARKS, FATE_AGE_MARKS, HEAD_AGE_MARKS, HEART_AGE_MARKS
-from reading_palms_book_data import (
-    HAND_SHAPES,
-    MAJOR_LINES_RULES,
-    MOUNTS_DATA,
-    THUMB_RULES,
-)
+from palm_api.life_aspects import build_life_aspects  # noqa: F401 — kept for optional multi_aspect path
 
 
-def generate_personalized_scientific_secrets(client_name: str, raw_cv: dict, hand_shape: str) -> list[dict[str, str]]:
+def generate_personalized_scientific_secrets(client_name: str, raw_cv: dict, hand_shape: str, lang: str = "en") -> list[dict[str, str]]:
     """
     Generates 100% personalized scientific palmistry findings based on the native's
     exact measured Computer Vision features, line densities, and hand morphology.
     """
-    has_writers_fork = raw_cv.get("has_writers_fork", True)
-    has_solomon = bool(raw_cv.get("minor_lines", {}).get("ring_of_solomon", {}).get("detected")) or True
-    has_sun = bool(raw_cv.get("minor_lines", {}).get("sun", {}).get("detected")) or True
-    has_merc = bool(raw_cv.get("minor_lines", {}).get("mercury", {}).get("detected")) or True
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
+    quality = raw_cv.get("quality") or {}
+    if str(quality.get("grade") or "poor").lower() == "poor":
+        return []
+    has_writers_fork = bool(raw_cv.get("has_writers_fork"))
+    minor = raw_cv.get("minor_lines") or {}
+    has_solomon = bool(minor.get("ring_of_solomon", {}).get("detected"))
+    has_sun = bool(minor.get("sun", {}).get("detected"))
+    has_merc = bool(minor.get("mercury", {}).get("detected"))
     
     return [
         {
@@ -110,7 +109,145 @@ def generate_personalized_scientific_secrets(client_name: str, raw_cv: dict, han
     ]
 
 
-def generate_palm_consultation_sections(analysis_res: dict, client_name: str | None = None) -> dict[str, Any]:
+def _evidence_only_consultation(
+    analysis_res: dict[str, Any], client_name: str, lang: str = "en"
+) -> dict[str, Any]:
+    """Build consultation cards only from measurements that actually exist."""
+    raw_cv = analysis_res.get("cv_raw_features") or {}
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
+    quality = raw_cv.get("quality") or {}
+    grade = str(quality.get("grade") or "poor").lower()
+    base = {
+        "client_name": client_name,
+        "gender": (analysis_res.get("meta") or {}).get("gender", "unknown"),
+        "hand_shape": "Unknown",
+        "measured": bool(raw_cv),
+        "sections": {},
+        "timing_milestones": [],
+        "multi_aspect_confluence": [],
+    }
+    if grade == "poor" or not raw_cv:
+        base["quality_note"] = (
+            "Palm photo quality measured karne ke liye kaafi nahi hai."
+            if is_hi else
+            "Palm photo quality measured consultation kosam saripodu."
+            if is_te else
+            "Palm photo quality is insufficient for a measured consultation."
+        )
+        return base
+
+    morphology = raw_cv.get("morphology") or {}
+    hand_shape = str(morphology.get("hand_type") or "").strip().title()
+    base["hand_shape"] = hand_shape or "Unknown"
+    sections: dict[str, Any] = {}
+    if hand_shape and hand_shape.lower() != "unknown":
+        sections["core_persona"] = {
+            "title": (
+                f"Photo Se Mili {hand_shape} Haath Ki Aakriti" if is_hi else
+                f"Photo Nunchi Kanipinchina {hand_shape} Cheyi Aakaram" if is_te else
+                f"Observed {hand_shape} hand morphology"
+            ),
+            "narrative": (
+                f"Photo analysis mein haath ki aakriti {hand_shape} mili. Yeh "
+                "measured observation hai, pakka personality ya life-outcome guarantee nahi."
+                if is_hi else
+                f"Photo analysis lo cheyi proportions {hand_shape} ga kanipinchayi. Idi "
+                "measured observation, khachchitamaina personality leka life-outcome guarantee kaadu."
+                if is_te else
+                f"The photo analysis classified the visible hand proportions as "
+                f"{hand_shape}. This is a measured morphology result, not a fixed "
+                "personality or life-outcome guarantee."
+            ),
+        }
+
+    lines = raw_cv.get("lines") or {}
+    line_titles = {
+        "head": ("Head line", "thinking and attention pattern"),
+        "heart": ("Heart line", "emotional expression pattern"),
+        "life": ("Life line", "visible vitality-line structure"),
+        "fate": ("Fate line", "career-line structure"),
+    }
+    for key, (label, subject) in line_titles.items():
+        row = lines.get(key) if isinstance(lines, dict) else None
+        if not isinstance(row, dict) or not row.get("detected"):
+            continue
+        details = [
+            str(row.get(k)).replace("_", " ")
+            for k in ("depth", "direction", "start_zone", "height", "start_relation")
+            if row.get(k)
+        ]
+        section_key = {
+            "head": "mind_architecture",
+            "heart": "heart_equilibrium",
+            "life": "vitality_shield",
+            "fate": "career_trajectory",
+        }[key]
+        title = (
+            f"Photo Se Mili {label}" if is_hi else
+            f"Photo Nunchi Kanipinchina {label}" if is_te else
+            f"Observed {label}"
+        )
+        narrative = (
+            f"Photo mein {label} dikh rahi hai. Measured details: "
+            f"{', '.join(details) if details else 'line visible hai'}. "
+            "Yeh reflective reading ke liye sanket hai, guaranteed result nahi."
+            if is_hi else
+            f"Photo lo {label} kanipinchindi. Measured details: "
+            f"{', '.join(details) if details else 'line visible ga undi'}. "
+            "Idi reflective reading kosam sanketam, guarantee chesina result kaadu."
+            if is_te else
+            f"The {label.lower()} was detected in the photograph. "
+            f"Measured attributes: {', '.join(details) if details else 'visible line present'}. "
+            f"This supports a reflective reading about {subject}, without "
+            "claiming a guaranteed outcome."
+        )
+        sections[section_key] = {
+            "title": title,
+            "narrative": narrative,
+        }
+
+    minor = raw_cv.get("minor_lines") or {}
+    detected_minor = []
+    if isinstance(minor, dict):
+        for key, row in minor.items():
+            if isinstance(row, dict) and row.get("detected"):
+                detected_minor.append({
+                    "name": (
+                        "Ek Chhoti Rekha" if is_hi else
+                        "Oka Minor Rekha" if is_te else
+                        str(row.get("title") or key).replace("_", " ").title()
+                    ),
+                    "status": (
+                        "Photo mein dikh rahi hai" if is_hi else
+                        "Photo lo kanipinchindi" if is_te else
+                        "Detected in supplied photo"
+                    ),
+                    "meaning": (
+                        "Ek visible minor-line signal mila hai; interpretation tentative hai."
+                        if is_hi else
+                        "Oka visible minor-line signal dorikindi; interpretation tentative ga undi."
+                        if is_te else
+                        "A visible minor-line signal is present; interpretation remains tentative."
+                    ),
+                })
+    if detected_minor:
+        sections["minor_power_lines"] = {
+            "title": (
+                "Photo Se Mili Chhoti Rekhaon Ke Sanket" if is_hi else
+                "Photo Nunchi Kanipinchina Minor Line Sankethalu" if is_te else
+                "Observed minor-line signals"
+            ),
+            "lines": detected_minor[:8],
+        }
+    base["sections"] = sections
+    return base
+
+
+def generate_palm_consultation_sections(
+    analysis_res: dict, client_name: str | None = None, lang: str = "en"
+) -> dict[str, Any]:
     """
     Synthesizes palm analysis into comprehensive, fascinating consultation sections:
     1. Core Hand Persona & Elemental Drive
@@ -127,207 +264,9 @@ def generate_palm_consultation_sections(analysis_res: dict, client_name: str | N
     meta = analysis_res.get("meta", {})
     if not client_name:
         client_name = meta.get("client_name", "Native")
-    gender = meta.get("gender", "male")
-    cards = analysis_res.get("cards", [])
-    raw_cv = analysis_res.get("cv_raw_features", {})
-
-    hand_shape = meta.get("hand_shape") or "Air"
-    hs_info = HAND_SHAPES.get(hand_shape, HAND_SHAPES["Air"])
-
-    # 1. Core Hand Persona
-    persona_archetypes = {
-        "Air": {
-            "title": f"The Systems Architect & Master Strategist ({client_name}'s Air Hand)",
-            "narrative": (
-                f"You possess the classic <b>Air Hand Constitution</b> (a square palm paired with long, articulate fingers). "
-                f"You are an intellectual builder wired to understand how complex systems operate—whether software architectures, "
-                f"financial data, or organizational dynamics. You thrive on conceptual clarity and intellectual autonomy, "
-                f"with zero tolerance for superficial fluff or chaotic micromanagement. Your energy is directly fueled by meaningful complexity."
-            ),
-        },
-        "Earth": {
-            "title": f"The Master Builder & Grounded Realist ({client_name}'s Earth Hand)",
-            "narrative": (
-                f"You possess the solid <b>Earth Hand Constitution</b> (a square palm with firm, practical fingers). "
-                f"You are a natural builder who values tangible output, physical craftsmanship, and rock-solid reliability. "
-                f"You do not chase fleeting abstractions; you build enduring structures, manage concrete assets, and turn "
-                f"complex ideas into practical, reliable real-world systems."
-            ),
-        },
-        "Fire": {
-            "title": f"The Visionary Pioneer & Executive Catalyst ({client_name}'s Fire Hand)",
-            "narrative": (
-                f"You possess the dynamic <b>Fire Hand Constitution</b> (an oblong palm with energetic, swift fingers). "
-                f"You are a natural catalyst driven by ambition, bold initiative, and charismatic leadership. "
-                f"You have the courage to take calculated risks and inspire teams toward ambitious horizons."
-            ),
-        },
-        "Water": {
-            "title": f"The Empathetic Visionary & Intuitive Healer ({client_name}'s Water Hand)",
-            "narrative": (
-                f"You possess the profound <b>Water Hand Constitution</b> (an elongated palm with delicate, expressive fingers). "
-                f"You are an intuitive synthesizer gifted with deep psychological empathy, aesthetic refinement, and holistic perception."
-            ),
-        },
-    }
-    persona = persona_archetypes.get(hand_shape, persona_archetypes["Air"])
-
-    # 2. Cognitive Style & Head Line
-    has_writers_fork = any(c.feature_name.startswith("Writer's Fork") for c in cards) or raw_cv.get("has_writers_fork", True)
-    if has_writers_fork:
-        mind_title = f"The Dual Intellectual Engine (The Writer's Fork on {client_name}'s Head Line)"
-        mind_narrative = (
-            f"Your Head Line splits into a clear, distinct terminal bifurcation known as the <b>Writer’s Fork</b>. "
-            f"This gives you a dual-processing intellectual engine: the upper straight branch confers analytical rigor, "
-            f"algorithmic precision, and commercial realism, while the lower dipping branch grants holistic intuition, "
-            f"creative design, and visionary synthesis. You possess the rare capacity to both architect abstract concepts and "
-            f"directly monetize them into functional systems."
-        )
-    else:
-        mind_title = f"The Focused Analytical Mind ({client_name}'s Head Line)"
-        mind_narrative = (
-            f"Your Head Line runs with clear, uninterrupted focus across the palm, indicating strong powers of sustained concentration, "
-            f"linear problem-solving, and methodical execution under pressure."
-        )
-
-    # 3. Career Trajectory & Timing
-    career_title = f"The Self-Made Corridor & Long-Range Authority for {client_name}"
-    career_narrative = (
-        f"Your Fate Line rises directly from the central wrist base, proving that your professional trajectory is <b>100% self-made</b>, "
-        f"built through personal grit and technical competence rather than inherited privilege.<br><br>"
-        f"<b>The Age 35 Structural Milestone:</b> Right at the intersection with the Head Line (around ages 35–38), your career channel underwent "
-        f"a decisive consolidation—marking your transition from working for others into autonomous systems mastery and independent authority.<br><br>"
-        f"<b>The Long Runway (Ages 50–75+):</b> Because your Fate Line climbs deeply onto the Mount of Saturn, your career vitality remains active "
-        f"well past traditional retirement, evolving into high-level advisory leadership, institutional mentorship, and intellectual legacy."
-    )
-
-    # 4. Vitality & Physical Battery
-    has_mars_shield = any("Line of Mars" in c.feature_name for c in cards) or raw_cv.get("has_sister_mars_line", True)
-    vitality_title = f"Robust Stamina & The Inner Guardian Shield on {client_name}'s Palm"
-    if has_mars_shield:
-        vitality_narrative = (
-            f"Your Life Line forms a wide, generous arc around the Mount of Venus, establishing an <b>80+ longevity benchmark</b> and robust digestive fire. "
-            f"Crucially, you possess an inner <b>Sister Line of Mars (Line of Vitality Shield)</b> running parallel inside the thumb mount. "
-            f"This acts as an energetic buffer: whenever intense mental exertion threatens fatigue, this reserve kicks in to restore stamina, "
-            f"while attracting steadfast allies during high-stress operational phases."
-        )
-    else:
-        vitality_narrative = (
-            f"Your Life Line sweeps smoothly around the Mount of Venus, confirming steady metabolic vitality and resilience when energy is properly budgeted."
-        )
-
-    # 5. Emotional Climate & Heart Line
-    has_trident_heart = any("Trident" in c.title for c in cards) or raw_cv.get("heart_line_ending") == "forked_ending_trident"
-    heart_title = f"Emotional Equilibrium & Dignified Boundaries ({client_name}'s Heart Line)"
-    if has_trident_heart:
-        heart_narrative = (
-            f"Your Heart Line terminates in a balanced three-pronged fork (<b>Solomon’s Equilibrium</b>) touching both Jupiter and Saturn mounts. "
-            f"You do not wear your heart on your sleeve for strangers, nor are you cynical. You combine warmth, nobility, and loyalty with "
-            f"healthy, mature boundaries. You show dedication through concrete actions and protection rather than empty flattery."
-        )
-    else:
-        heart_narrative = (
-            f"Your Heart Line maintains clear direction toward the upper mounts, prioritizing loyalty, respect, and emotional integrity in all long-term partnerships."
-        )
-
-    # 6. Minor Power Lines & Hidden Antennas
-    minor_lines_title = f"Minor Power Lines & Specialized Perceptive Antennas on {client_name}'s Hands"
-    minor_lines_data = [
-        {
-            "name": "Line of Apollo (The Sun Line of Public Renown)",
-            "status": "Strongly Detected (Rising to Ring Finger Base)",
-            "meaning": "Guarantees that your intellectual and technical creations will receive recognized prestige, public standing, and creative wealth. It ensures you do not remain in obscurity.",
-        },
-        {
-            "name": "Line of Mercury (The Commercial & Health Antenna)",
-            "status": "Detected (Diagonal Ascent toward Little Finger)",
-            "meaning": "Marks swift commercial negotiation reflexes, gut intuition in business transactions, and agile nervous system adaptability.",
-        },
-        {
-            "name": "The Girdle of Venus (The Artist's High-Definition Radar)",
-            "status": "Detected (Curving Arc above Heart Line)",
-            "meaning": "Reveals that beneath your structured logical exterior, you possess acute sensory and aesthetic sensitivity. You feel emotional vibes in meetings before a single word is spoken.",
-        },
-        {
-            "name": "The Ring of Solomon (The Psychological Lie Detector)",
-            "status": "Strongly Detected (Curving Base of Index Finger)",
-            "meaning": "An innate gift for instant character appraisal—your subconscious reads micro-expressions, allowing you to instantly sense whether someone is trustworthy.",
-        },
-    ]
-
-    # 7. The Closed Wealth Triangle (The Money Vault)
-    wealth_vault_title = f"The Great Closed Triangle: {client_name}'s Personal Wealth Vault"
-    wealth_vault_narrative = (
-        f"In classical scientific dermatoglyphics, your ascending Line of Fate (earning drive), "
-        f"your bifurcated Line of Head (intellectual asset allocation), and your diagonal Line of Mercury (commercial transactions, density 0.0889) "
-        f"intersect cleanly in the center of your palm to seal the <b>Great Dhana Triangle (Wealth Vault)</b>. "
-        f"Because the walls of this triangle are fully closed on your right hand, capital earned is systematically preserved, "
-        f"invested prudently, and compounded into sovereign assets rather than dissipating through impulsive leakages."
-    )
-
-    # 8. Dual-Hand Synthesis
-    synthesis_title = f"The Secret of Your Two Hands: {client_name}'s Inborn Blueprint vs. Manifested Reality"
-    synthesis_narrative = (
-        f"<b>Your Left Hand (Passive Blueprint):</b> Reveals a deeply rich, imaginative, contemplative, and sensitive foundation.<br>"
-        f"<b>Your Right Hand (Active Reality):</b> Shows a significantly more defined, structured, disciplined, and commercially robust line architecture.<br>"
-        f"<b>The Synthesis:</b> You have not allowed sensitivity to make you vulnerable; you have channeled inborn creative and philosophical perceptions "
-        f"into an autonomous, high-impact operational reality."
-    )
-
-    # 9. Palmist's Personal Counsel
-    counsel_title = f"The Palmist's Strategic Counsel for {client_name}"
-    counsel_points = [
-        "<b>Pace Your Mental Engine:</b> Because your mind operates on dual processing (the Writer's Fork), avoid forcing progress when external systems move slowly. Allow architectures time to mature.",
-        "<b>Leverage Your Advisory Standing:</b> The leadership markings on your Mount of Jupiter (Trident & Solomon Ring) show that your highest financial and social leverage in your 40s and 50s will come from <i>consulting, systems architecture, and high-level advisory</i> rather than routine operational grinding.",
-        "<b>Craftsmanship Over Speed:</b> The markings on your Sun mount confirm that patient, meticulous craftsmanship guarantees public recognition and wealth. Never rush negotiations; let the quality of your systems command authority.",
-    ]
-
-    # 10. Personalized Scientific Secrets
-    scientific_secrets = generate_personalized_scientific_secrets(client_name, raw_cv, hand_shape)
-
-    # Multi-Aspect Confluence (from palm_api)
-    life_aspects_data = []
-    try:
-        dom_block = {"features": raw_cv}
-        non_block = {"features": analysis_res.get("cv_raw_features_left", raw_cv)}
-        aspects_res = build_life_aspects(dom_block, non_block)
-        for asp in aspects_res:
-            life_aspects_data.append({
-                "aspect": asp.get("title"),
-                "summary": asp.get("summary"),
-                "strength": asp.get("strength"),
-                "reinforced_in_both_hands": asp.get("reinforced_count", 0) > 0,
-                "book_citations": [p.get("quote") for p in asp.get("points", []) if p.get("quote")],
-            })
-    except Exception:
-        pass
-
-    return {
-        "client_name": client_name,
-        "gender": gender,
-        "hand_shape": hand_shape,
-        "sections": {
-            "core_persona": {"title": persona["title"], "narrative": persona["narrative"]},
-            "mind_architecture": {"title": mind_title, "narrative": mind_narrative},
-            "career_trajectory": {"title": career_title, "narrative": career_narrative},
-            "vitality_shield": {"title": vitality_title, "narrative": vitality_narrative},
-            "heart_equilibrium": {"title": heart_title, "narrative": heart_narrative},
-            "minor_power_lines": {"title": minor_lines_title, "lines": minor_lines_data},
-            "wealth_vault": {"title": wealth_vault_title, "narrative": wealth_vault_narrative},
-            "dual_hand_synthesis": {"title": synthesis_title, "narrative": synthesis_narrative},
-            "palmist_counsel": {"title": counsel_title, "points": counsel_points},
-            "scientific_secrets": scientific_secrets,
-        },
-        "timing_milestones": [
-            {"period": "Early Youth", "age_landmark": "Ages 21–25", "line": "Fate Line Base", "significance": "Self-driven career initiation; building core foundational skills through direct individual grit."},
-            {"period": "Skill Expansion", "age_landmark": "Ages 28–32", "line": "Fate & Head Intersection", "significance": "Gaining independent technical mastery; establishing professional reputation in specialized systems."},
-            {"period": "The Watershed Pivot", "age_landmark": "Ages 35–38", "line": "Head Line Intersection", "significance": "The decisive turning point: pivoting from dependent employment into sovereign systems ownership and autonomous executive authority."},
-            {"period": "Current Corridor", "age_landmark": "Age 39 (Window 35–49)", "line": "Major Life Line (53.0%)", "significance": "Deepening vitality channel and asset consolidation heading toward major expansion milestones."},
-            {"period": "Advisory Peak", "age_landmark": "Ages 49–52", "line": "Heart Line Intersection", "significance": "Transitioning from operational grinding into senior consultative leadership and strategic directing."},
-            {"period": "Institutional Legacy", "age_landmark": "Ages 56–75+", "line": "Mount of Saturn Summit", "significance": "Active intellectual productivity, institutional authority, mentorship, and lasting legacy."},
-        ],
-        "multi_aspect_confluence": life_aspects_data,
-    }
+    # All callers use the same measured, quality-gated projection.
+    return _evidence_only_consultation(
+        analysis_res, client_name or "Native", lang=lang)
 
 
 def save_palm_consultation_json(
@@ -356,18 +295,12 @@ def save_palm_consultation_json(
             "cv_processed": meta.get("cv_features_detected", True),
         },
         "verified_palm_facts": {
-            "hand_shape": consultation_data["sections"]["core_persona"],
-            "cognitive_architecture": consultation_data["sections"]["mind_architecture"],
-            "career_and_timing": consultation_data["sections"]["career_trajectory"],
-            "vitality_and_shield": consultation_data["sections"]["vitality_shield"],
-            "heart_and_relationships": consultation_data["sections"]["heart_equilibrium"],
-            "minor_power_lines": consultation_data["sections"]["minor_power_lines"],
-            "wealth_vault_triangle": consultation_data["sections"]["wealth_vault"],
-            "dual_hand_synthesis": consultation_data["sections"]["dual_hand_synthesis"],
-            "strategic_counsel": consultation_data["sections"]["palmist_counsel"],
+            k: consultation_data["sections"].get(k)
+            for k in ("core_persona", "mind_architecture", "career_trajectory", "vitality_shield", "heart_equilibrium", "minor_power_lines")
+            if consultation_data["sections"].get(k)
         },
-        "scientific_laws_and_curiosities_personalized": consultation_data["sections"]["scientific_secrets"],
-        "master_chronological_milestone_timeline": consultation_data["timing_milestones"],
+        "scientific_laws_and_curiosities_personalized": consultation_data["sections"].get("scientific_secrets", []),
+        "master_chronological_milestone_timeline": consultation_data.get("timing_milestones", []),
         "multi_aspect_confluence_domains": consultation_data.get("multi_aspect_confluence", []),
         "llm_prompt_instructions": {
             "role": "You are a master scientific palmist providing a personal, face-to-face consultation to the client.",

@@ -1538,14 +1538,24 @@ def _build_unified_current_chapter_html(
         from vedic_consultation_reading import generate_consultation_reading
         g_raw = ((pc.get("meta") or {}).get("gender") or "male")
         g_str = "female" if g_raw in (1, "female", "f") else "male"
-        cr_res = generate_consultation_reading(pc, gender=g_str)
+        # Deterministic: use report's `today` instead of datetime.now(), and
+        # pass lang so the engine can return localized strings when available.
+        try:
+            cr_res = generate_consultation_reading(pc, gender=g_str, analysis_datetime=datetime.combine(today, datetime.min.time()), lang=lang)  # type: ignore[call-arg]
+        except TypeError:
+            cr_res = generate_consultation_reading(pc, gender=g_str, analysis_datetime=datetime.combine(today, datetime.min.time()))
         
-        m_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("mind_state", []))
+        m_items = "".join(f"<li style='margin-bottom:10px;'>{_e(it)}</li>" for it in cr_res.get("mind_state", []))
         if m_items:
+            m_badge = (
+                "1. Abhi Aapke Man Mein Kya Chal Raha Hai" if is_hinglish else
+                "1. Ippudu Mee Manassulo Em Jaruguthondi" if is_tenglish else
+                "1. What Is in Your Mind Right Now (The Immediate Trigger)"
+            )
             mind_card_html = (
                 f'<div class="chapter-consultation-card" style="background:#fffcf8;border:1px solid #cde0f7;border-left:5px solid #1a5f9e;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
                 f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#e1effe;color:#1a5f9e;display:inline-block;margin-bottom:10px;">'
-                f'    1. What Is in Your Mind Right Now (The Immediate Trigger)'
+                f'    {_e(m_badge)}'
                 f'  </div>'
                 f'  <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
                 f'    {m_items}'
@@ -1553,12 +1563,17 @@ def _build_unified_current_chapter_html(
                 f'</div>'
             )
             
-        p_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("past_6_months", []))
+        p_items = "".join(f"<li style='margin-bottom:10px;'>{_e(it)}</li>" for it in cr_res.get("past_6_months", []))
         if p_items:
+            p_badge = (
+                "2. Pichhle 6 Mahino Mein Kya Hua (Timeline &amp; Majbooti)" if is_hinglish else
+                "2. Gatha 6 Nelallo Em Jarigindi (Timeline &amp; Balapadadam)" if is_tenglish else
+                "2. What Happened in the Last 6 Months (Timeline &amp; Building Real Strength)"
+            )
             past_card_html = (
                 f'<div class="chapter-consultation-card" style="background:#fffcf8;border:1px solid #ebd4cc;border-left:5px solid #b57c38;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
                 f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#fdf2e3;color:#b57c38;display:inline-block;margin-bottom:10px;">'
-                f'    2. What Happened in the Last 6 Months (Timeline &amp; Building Real Strength)'
+                f'    {_e(p_badge)}'
                 f'  </div>'
                 f'  <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
                 f'    {p_items}'
@@ -2200,6 +2215,88 @@ def _build_unified_current_chapter_html(
     """
 
 
+def _specialist_readings_html(analysis: Any, *, paid: bool, lang: str) -> str:
+    """Render the canonical specialist projection without re-running engines."""
+    data = analysis.model_dump(mode="json") if hasattr(analysis, "model_dump") else analysis
+    if not isinstance(data, dict):
+        return ""
+    readings = data.get("specialist_readings") or {}
+    if not isinstance(readings, dict):
+        return ""
+    lang_code = str(lang or "").lower().strip()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
+    labels = {
+        "chandra_naadi": "Chandra Naadi",
+        "rahu_ketu": "Rahu-Ketu",
+        "transit_matrix": "Transit Matrix",
+    }
+    planet_hi = {
+        "Sun": "Surya", "Moon": "Chandra", "Mars": "Mangal",
+        "Mercury": "Budh", "Jupiter": "Guru", "Venus": "Shukra",
+        "Saturn": "Shani", "Rahu": "Rahu", "Ketu": "Ketu",
+    }
+    planet_te = {
+        "Sun": "Suryudu", "Moon": "Chandrudu", "Mars": "Kujudu",
+        "Mercury": "Budhudhu", "Jupiter": "Guru", "Venus": "Shukrudu",
+        "Saturn": "Shaniswarudu", "Rahu": "Rahu", "Ketu": "Ketu",
+    }
+    cards: list[str] = []
+    total = 0
+    for key in ("chandra_naadi", "rahu_ketu", "transit_matrix"):
+        block = readings.get(key)
+        if not isinstance(block, dict):
+            continue
+        for finding in (block.get("findings") or [])[:6]:
+            if not isinstance(finding, dict):
+                continue
+            total += 1
+            planet = str(finding.get("planet") or "")
+            if is_hi:
+                local_planet = planet_hi.get(planet, planet)
+                body = (
+                    f"{local_planet or 'Is grah'} se juda ek chart pattern active "
+                    "dikh raha hai. Is sanket ko current focus aur soch ko samajhne "
+                    "ke liye guidance ki tarah dekhein, pakka result nahi."
+                )
+            elif is_te:
+                local_planet = planet_te.get(planet, planet)
+                body = (
+                    f"{local_planet or 'Ee graham'} tho sambandham unna chart pattern "
+                    "active ga kanipisthondi. Ee sanketam current focus ni artham "
+                    "chesukovadaniki guidance, khachchitamaina result kaadu."
+                )
+            else:
+                body = str(finding.get("summary") or "").strip()
+            if not body:
+                continue
+            source = labels.get(key, key)
+            if is_hi:
+                source = {"Chandra Naadi": "Chandra Naadi Sanket", "Rahu-Ketu": "Rahu-Ketu Sanket", "Transit Matrix": "Transit Matrix Sanket"}.get(source, source)
+            elif is_te:
+                source = {"Chandra Naadi": "Chandra Naadi Sanketam", "Rahu-Ketu": "Rahu-Ketu Sanketam", "Transit Matrix": "Transit Matrix Sanketam"}.get(source, source)
+            cards.append(
+                f'<li style="margin:0 0 8px;line-height:1.55;">'
+                f'<b>{_e(source)}</b>: {_e(body)}</li>'
+            )
+    if not cards:
+        return ""
+    if is_hi:
+        title, sub = "Naye Grah Sanket", "Chandra Naadi, Rahu-Ketu aur transit se mile customer-safe patterns."
+    elif is_te:
+        title, sub = "Kotha Graha Sankethalu", "Chandra Naadi, Rahu-Ketu mariyu transit nunchi dorikina customer-safe patterns."
+    else:
+        title, sub = "Specialist chart findings", "Customer-safe findings from the Chandra Naadi, Rahu-Ketu, and transit engines."
+    return (
+        f'<section class="conv-block specialist-block">'
+        f'<div class="section-kicker">{_e(title)}</div>'
+        f'<h2 id="sec-specialist-readings" data-nav="{_e(title)}">{_e(title)}</h2>'
+        f'<p class="sec-note">{_e(sub)}</p>'
+        f'<div class="card"><ul class="conv-mind">{"".join(cards)}</ul></div>'
+        f'</section>'
+    )
+
+
 def render(
     pc: dict,
     *,
@@ -2521,6 +2618,8 @@ def render(
         pc, analysis, cards, paid=paid, today=today, authoritative_timing_text=authoritative_timing_text,
         lang=lang
     )
+    specialist_html = _specialist_readings_html(
+        analysis, paid=paid, lang=lang)
     recent_html = ""
 
     unlock = ""
@@ -2609,6 +2708,7 @@ def render(
 
     {family_html}
     {current_html}
+    {specialist_html}
     {recent_html}
 
     <section class="conv-block life-domains-block">

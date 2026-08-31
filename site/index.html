@@ -2778,9 +2778,13 @@ function extractSummaryFromActiveReading(){
       const doc = iframe && iframe.contentDocument;
       if(doc && doc.body){
         const rows = Array.from(doc.querySelectorAll('.pv-row, .card, .palm-panel'));
-        let shapeText = '', thumbText = '';
+        let shapeText = '', thumbText = '', measuredText = '';
         rows.forEach(r => {
           const t = (r.textContent || '').trim();
+          if((r.id || '').startsWith('sec-measured-') || (r.id || '') === 'sec-persona' ||
+             (r.id || '') === 'sec-mind' || (r.id || '') === 'sec-heart'){
+            if(!measuredText) measuredText = t;
+          }
           if(t.includes('Your hand shape') || t.includes('hand shape') || t.includes('Air hand') || t.includes('Fire hand') || t.includes('Water hand') || t.includes('Earth hand')){
             const means = r.querySelector('.pv-means, p:not(.pv-sign)')?.textContent || t;
             if(!shapeText) shapeText = means.trim();
@@ -2794,6 +2798,9 @@ function extractSummaryFromActiveReading(){
         }
         if(thumbText){
           sections.push({ title: copy('Mukhya Kshamta Aur Nirnay Shailee', 'Mukhya Kshamathalu Mariyu Nirnaya Shailee', 'Innate Strengths & Decision Style'), body: thumbText.slice(0, 500) });
+        }
+        if(measuredText){
+          sections.push({ title: copy('Photo Se Mili Palm Jankari', 'Photo Nunchi Dorikina Palm Samacharam', 'Measured Palm Findings'), body: measuredText.slice(0, 600) });
         }
       }
     }catch(e){}

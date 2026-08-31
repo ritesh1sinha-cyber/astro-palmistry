@@ -308,6 +308,7 @@ def _public_fact_payload(facts: Any) -> Any:
         "life_state", "family_notes", "palm_state", "hand_contrast",
         "vedic_context", "timing_systems", "crossover_points", "slow_transits",
         "jaimini", "dasha_planet_transits", "life_area_judgements",
+        "specialist_readings", "consultation_sections",
     }
     allowed_nested = {
         "area", "label", "kind", "status", "activation_status", "confidence",
@@ -345,6 +346,19 @@ def _public_fact_payload(facts: Any) -> Any:
         "lane_judgements", "lane_scores", "supporting_factors", "caution_factors",
         "activated_houses", "current_verdict", "relief_window", "stronger_window",
         "future_confluence", "change_type", "previous_judgement", "transit_events", "dasha_changes",
+        # Specialist-engine customer projection.
+        "findings", "category", "severity", "planet", "sign", "house",
+        "evaluation_date", "status", "state_description", "sign_occupied",
+        "nakshatra_occupied", "summary", "consultation",
+        "chandra_naadi", "rahu_ketu", "transit_matrix", "core_persona",
+        "mind_architecture", "career_trajectory", "vitality_shield",
+        "heart_equilibrium", "minor_power_lines", "wealth_vault",
+        "dual_hand_synthesis", "palmist_counsel", "scientific_secrets",
+        "timing_milestones", "multi_aspect_confluence", "narrative",
+        "points", "lines", "name", "age_landmark", "period", "significance",
+        "subtitle", "scientific_fact", "entertainment_insight", "hand_shape",
+        "client_name", "gender", "strength", "reinforced_in_both_hands",
+        "measured", "quality_note",
     }
 
     def clean(obj: Any, root: bool = False) -> Any:
@@ -1770,6 +1784,7 @@ def build_report_facts(
     access: str = "free",
     today: Optional[date] = None,
     report_id: str = "",
+    specialist_readings: Optional[dict[str, Any]] = None,
 ) -> ReportFacts:
     """Build ReportFacts from precomputed chart + already-built Card list."""
     today = today or date.today()
@@ -2280,6 +2295,7 @@ def build_report_facts(
         dasha_planet_transits=dasha_planet_transits,
         life_area_judgements=life_area_judgements,
         vedic_context=vedic,
+        specialist_readings=dict(specialist_readings or {}),
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
 
@@ -2899,6 +2915,7 @@ def build_palm_facts(
     age_years: Optional[int] = None,
     report_id: str = "",
     language: str = "en",
+    consultation_sections: Optional[dict[str, Any]] = None,
 ) -> PalmFacts:
     """Build PalmFacts from pipeline raw / reading_result — strip prose."""
     rr = raw.get("reading_result") or {}
@@ -3121,6 +3138,7 @@ def build_palm_facts(
         remedies=remedies[:4],
         hand_contrast=hand_contrast,
         palm_state=palm_state,
+        consultation_sections=dict(consultation_sections or {}),
         language=language,
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)

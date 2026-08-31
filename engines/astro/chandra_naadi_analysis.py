@@ -581,10 +581,13 @@ def analyze_debts(pc: dict) -> list[ChandraNaadiReading]:
     readings = []
     rahu_sign = pc.get("planets", {}).get("Rahu", {}).get("sign")
     ketu_sign = pc.get("planets", {}).get("Ketu", {}).get("sign")
+    node_signs = {s for s in (rahu_sign, ketu_sign) if s}
+    if not node_signs:
+        return readings
 
     for p in PLANETS_7:
         p_sign = pc.get("planets", {}).get(p, {}).get("sign")
-        if p_sign in [rahu_sign, ketu_sign]:
+        if p_sign and p_sign in node_signs:
             node = "Rahu" if p_sign == rahu_sign else "Ketu"
             fs = frozenset({p, node})
             causes = DEBT_MATRIX.get(fs, [])
@@ -611,6 +614,8 @@ def analyze_marriage(pc: dict, gender: str) -> list[ChandraNaadiReading]:
     v_s = pc.get("planets", {}).get("Venus", {}).get("sign")
     ma_s = pc.get("planets", {}).get("Mars", {}).get("sign")
     me_s = pc.get("planets", {}).get("Mercury", {}).get("sign")
+    if not (v_s or ma_s or me_s):
+        return readings
 
     if gender.lower() == "male":
         v_strong = is_strong("Venus", v_s) if v_s else False
@@ -692,6 +697,8 @@ def analyze_death_danger(pc: dict) -> list[ChandraNaadiReading]:
     dob = pc.get("meta", {}).get("dob", "1990-01-01")
     bt = pc.get("meta", {}).get("birth_time", "12:00")
     sun_deg = pc.get("planets", {}).get("Sun", {}).get("abs_degree", 0.0)
+    if not dob or not pc.get("planets", {}).get("Sun"):
+        return readings
 
     weekday = get_birth_weekday(dob)
     daytime = is_daytime_birth(bt)
