@@ -604,9 +604,9 @@ def _planetary_dynamics_block(r: dict, j: dict, vc: dict | None = None, *, lang:
     parts_html = ""
     if p_parts:
         parts_html = (
-            f"<p style='margin:0 0 0.5rem 0;'>{_e(p_parts.get('opener', ''))}</p>"
-            f"<p style='margin:0 0 0.5rem 0;'>{_e(p_parts.get('link', ''))}</p>"
-            f"<p style='margin:0 0 0.5rem 0;'>{_e(p_parts.get('moon', ''))}</p>"
+            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('opener', '')}</p>"
+            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('link', '')}</p>"
+            f"<p style='margin:0 0 0.5rem 0;'>{p_parts.get('moon', '')}</p>"
         )
 
     return f"""

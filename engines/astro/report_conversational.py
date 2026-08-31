@@ -1545,7 +1545,7 @@ def _build_unified_current_chapter_html(
         except TypeError:
             cr_res = generate_consultation_reading(pc, gender=g_str, analysis_datetime=datetime.combine(today, datetime.min.time()))
         
-        m_items = "".join(f"<li style='margin-bottom:10px;'>{_e(it)}</li>" for it in cr_res.get("mind_state", []))
+        m_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("mind_state", []))
         if m_items:
             m_badge = (
                 "1. Abhi Aapke Man Mein Kya Chal Raha Hai" if is_hinglish else
@@ -1563,12 +1563,12 @@ def _build_unified_current_chapter_html(
                 f'</div>'
             )
             
-        p_items = "".join(f"<li style='margin-bottom:10px;'>{_e(it)}</li>" for it in cr_res.get("past_6_months", []))
+        p_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("past_6_months", []))
         if p_items:
             p_badge = (
-                "2. Pichhle 6 Mahino Mein Kya Hua (Timeline &amp; Majbooti)" if is_hinglish else
-                "2. Gatha 6 Nelallo Em Jarigindi (Timeline &amp; Balapadadam)" if is_tenglish else
-                "2. What Happened in the Last 6 Months (Timeline &amp; Building Real Strength)"
+                "2. Pichhle 6 Mahino Mein Kya Hua (Timeline & Majbooti)" if is_hinglish else
+                "2. Gatha 6 Nelallo Em Jarigindi (Timeline & Balapadadam)" if is_tenglish else
+                "2. What Happened in the Last 6 Months (Timeline & Building Real Strength)"
             )
             past_card_html = (
                 f'<div class="chapter-consultation-card" style="background:#fffcf8;border:1px solid #ebd4cc;border-left:5px solid #b57c38;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'

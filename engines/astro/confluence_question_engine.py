@@ -1751,10 +1751,18 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     else:
         pill_label = "Constructive Promise" if not confluence.is_lord_in_dusthana else "Requires Remedial Care"
 
-    karakas_html = "".join(f"<li style='margin-bottom:6px;'>{html.escape(k)}</li>" for k in confluence.karaka_findings)
-    vargas_html = "".join(f"<li style='margin-bottom:6px;'>{html.escape(v)}</li>" for v in confluence.varga_findings)
-    timeline_html = "".join(f"<li style='margin-bottom:6px;'>{html.escape(t)}</li>" for t in confluence.dasha_timeline)
-    remedies_html = "".join(f"<li style='margin-bottom:8px;padding-left:4px;'><b>•</b> {html.escape(r)}</li>" for r in confluence.remedies)
+    def _clean_html_item(text: str) -> str:
+        if not text:
+            return ""
+        if "<b" in text or "<i" in text or "<span" in text:
+            return text
+        escaped = html.escape(text)
+        return re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", escaped)
+
+    karakas_html = "".join(f"<li style='margin-bottom:6px;'>{_clean_html_item(k)}</li>" for k in confluence.karaka_findings)
+    vargas_html = "".join(f"<li style='margin-bottom:6px;'>{_clean_html_item(v)}</li>" for v in confluence.varga_findings)
+    timeline_html = "".join(f"<li style='margin-bottom:6px;'>{_clean_html_item(t)}</li>" for t in confluence.dasha_timeline)
+    remedies_html = "".join(f"<li style='margin-bottom:8px;padding-left:4px;'><b>•</b> {_clean_html_item(r)}</li>" for r in confluence.remedies)
 
     qwen_block = ""
     if paid and qwen_text:
