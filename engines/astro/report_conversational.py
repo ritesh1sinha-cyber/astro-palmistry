@@ -2240,7 +2240,7 @@ def _build_executive_summary_crux_html(
     
     from astro_precompute import SIGN_LORDS, get_dignity
     lord = SIGN_LORDS.get(lagna, "Sun")
-    lord_data = pc.get("planets", {}).get(lord, {})
+    lord_data = pc.get("planets", {}).get(lord, {}) if isinstance(pc, dict) else {}
     lord_s = str(lord_data.get("sign") or "")
     lord_h = int(lord_data.get("house") or 1)
     lord_d = get_dignity(lord, lord_s) if lord_s else ""
@@ -2248,11 +2248,58 @@ def _build_executive_summary_crux_html(
     ordinals = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th", 7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th"}
     h_str = ordinals.get(lord_h, f"House {lord_h}")
     
-    vim = pc.get("vimshottari", {})
-    cur_md = (vim.get("current_md") or {}).get("md_lord", "Rahu")
-    cur_ad = (vim.get("current_ad") or {}).get("ad_lord", "Jupiter")
-    next_ad = vim.get("next_ad") or {}
-    next_lord = next_ad.get("ad_lord", "Saturn")
+    # Accurate Dasha extraction from pc / analysis
+    vim = pc.get("vimshottari", {}) if isinstance(pc, dict) else {}
+    raw_cur_md = vim.get("current_md") or {}
+    cur_md = raw_cur_md.get("md_lord") if isinstance(raw_cur_md, dict) else str(raw_cur_md or "")
+    all_ads = vim.get("current_md_antardashas", [])
+    
+    cur_ad = ""
+    next_lord = ""
+    
+    # 1. Check if analysis has current_vimshottari
+    if isinstance(analysis, dict):
+        cv = analysis.get("current_vimshottari") or analysis.get("vimshottari")
+        if isinstance(cv, str) and ("-" in cv or "—" in cv):
+            delimiter = "-" if "-" in cv else "—"
+            parts = [p.strip() for p in cv.split(delimiter)]
+            if len(parts) >= 2:
+                if not cur_md:
+                    cur_md = parts[0]
+                cur_ad = parts[1]
+
+    # 2. Extract current and next Antardasha from current_md_antardashas
+    if all_ads:
+        cur_ad_idx = next((i for i, a in enumerate(all_ads) if isinstance(a, dict) and a.get("status") == "current"), -1)
+        if cur_ad_idx >= 0:
+            if not cur_ad:
+                cur_ad = str(all_ads[cur_ad_idx].get("ad_lord") or "")
+            if cur_ad_idx + 1 < len(all_ads):
+                next_lord = str(all_ads[cur_ad_idx + 1].get("ad_lord") or "")
+        else:
+            from datetime import date
+            check_d = str(today or date.today())
+            for i, a in enumerate(all_ads):
+                if isinstance(a, dict):
+                    s = str(a.get("start") or "")
+                    e = str(a.get("end") or "")
+                    if s and e and s <= check_d <= e:
+                        if not cur_ad:
+                            cur_ad = str(a.get("ad_lord") or "")
+                        if i + 1 < len(all_ads):
+                            next_lord = str(all_ads[i + 1].get("ad_lord") or "")
+                        break
+            if not cur_ad and all_ads:
+                cur_ad = str(all_ads[0].get("ad_lord") or "")
+                if len(all_ads) > 1:
+                    next_lord = str(all_ads[1].get("ad_lord") or "")
+
+    if not cur_md:
+        cur_md = "Jupiter"
+    if not cur_ad:
+        cur_ad = "Ketu"
+    if not next_lord:
+        next_lord = "Venus"
 
     # Jaimini Karakas (defensive parsing)
     ak = "Moon"
@@ -2291,28 +2338,47 @@ def _build_executive_summary_crux_html(
                 elif item[1] == "AmK":
                     amk = str(item[0])
 
+    from astro_precompute import SIGNS, SIGN_LORDS
+    lagna_idx = SIGNS.index(lagna) if lagna in SIGNS else 0
+    
+    def get_h(h_num: int) -> tuple[str, str]:
+        s = SIGNS[(lagna_idx + h_num - 1) % 12]
+        l = SIGN_LORDS.get(s, "Jupiter")
+        return s, l
+
+    h2_sign, h2_lord = get_h(2)
+    h6_sign, h6_lord = get_h(6)
+    h7_sign, h7_lord = get_h(7)
+    h8_sign, h8_lord = get_h(8)
+    h10_sign, h10_lord = get_h(10)
+    h11_sign, h11_lord = get_h(11)
+
+    placement_hi = f"{lord_s}, {h_str} bhav" if lord_s else f"{h_str} bhav"
+    placement_te = f"{lord_s}, {h_str} bhavam" if lord_s else f"{h_str} bhavam"
+    placement_en = f"in the {h_str} house ({lord_s})" if lord_s else f"in the {h_str} house"
+
     if is_hinglish:
         sec_kicker = "MUKHYA KUNDLI SARANSH (EXECUTIVE SUMMARY)"
         sec_title = "Aapki Kundli Ka Sampoorna Nichod Aur Mukhya Kshetra"
         sec_sub = "Aapke mool vyaktitva, chalu dasha chakra aur sabhi pramukh jeevan kshetron ka vishleshatmak saransh."
         
         c1_title = "1. Mool Swabhav Aur Jeevan Disha"
-        c1_body = f"Aapka <b>{lagna} Lagna</b> aur <b>{moon_sign} Chandra</b> hai. Lagnesh <b>{lord}</b> {h_str} house ({lord_s}) mein virajman hain, jo aapko strategic vision aur nischit lakshya ki disha mein aage badhate hain. Atmakaraka <b>{ak}</b> aantarik atmavishwas aur naitik sthirta pradan karta hai."
+        c1_body = f"Aapka <b>{lagna} Lagna</b> aur <b>{moon_sign} Chandra</b> hai. Lagnesh <b>{lord}</b> ({placement_hi}) mein sthit hain, jo aapko strategic vision aur nischit lakshya ki disha mein aage badhate hain. Atmakaraka <b>{ak}</b> aantarik atmavishwas aur naitik sthirta pradan karta hai."
         
         c2_title = "2. Chalu Dasha Aur Vartaman Chapter"
         c2_body = f"Vartaman mein aap <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b> ke daur se guzar rahe hain. Yeh samay aantarik mazbooti, purani rukawaton ko suljhane aur aane wale vistar ke liye zameen tayyar karne ka hai."
         
-        c3_title = "3. Career, Rozgar Aur Pratishtha"
-        c3_body = f"10th house aur Amatyakaraka <b>{amk}</b> ke prabhav se aapko structured responsibilities, management aur executive roles mein vishesh safalta milti hai. Mehnat aur consistency se career mein sthirta aur samman prapt hota hai."
+        c3_title = "3. Career, Rozgar Aur Pratishtha (10th House & D10)"
+        c3_body = f"10th house ({h10_sign}) ke swami <b>{h10_lord}</b> aur Amatyakaraka <b>{amk}</b> ke prabhav se aapko structured responsibilities, management aur executive roles mein vishesh safalta milti hai. Mehnat aur consistency se career mein sthirta aur samman prapt hota hai."
         
-        c4_title = "4. Dhan, Bachat Aur Aarthik Vriddhi"
-        c4_body = "2nd aur 11th house ka sanket hai ki aapki aarthik sthirta anushasit bachat aur strategic planning se majboot hoti hai. Speculative jaldbaazi ke bajay sustained growth par focus karna labhkari hai."
+        c4_title = "4. Dhan, Bachat Aur Aarthik Vriddhi (2nd & 11th Bhav)"
+        c4_body = f"Dhanesh <b>{h2_lord}</b> (2nd house, {h2_sign}) aur Labhesh <b>{h11_lord}</b> (11th house, {h11_sign}) ka sanket hai ki aapki aarthik sthirta anushasit bachat aur structured planning se majboot hoti hai. Speculative risk ke bajay steady compounding labhkari hai."
         
-        c5_title = "5. Rishte, Vivah Aur Parivarik Santulan"
-        c5_body = "7th house aur Navamsha (D9) sambandhon mein aapsi samman aur spasht communication ki maang karte hain. Understanding aur patience se parivarik jeevan mein santulan bana rehta hai."
+        c5_title = "5. Rishte, Vivah Aur Parivarik Santulan (7th House & D9 Navamsha)"
+        c5_body = f"7th house ({h7_sign}) ke swami <b>{h7_lord}</b> aur Navamsha (D9) sambandhon mein aapsi samman, spasht communication aur bhavnatmak paripakvata ki maang karte hain. Understanding aur patience se parivarik jeevan mein santulan bana rehta hai."
         
-        c6_title = "6. Swasthya, Urja Aur Daily Routine"
-        c6_body = "Workload aur stress se physical stamina par asar na pade, iske liye niyamit routine, hydration aur balanced aahar zaroori hai. Choti moti chintaon ko dhyan aur walk se shant karein."
+        c6_title = "6. Swasthya, Urja Aur Daily Routine (1st, 6th & 8th Bhav)"
+        c6_body = f"Sharirik urja Lagnesh <b>{lord}</b> dwara sanchalit hai, jabki 6th lord <b>{h6_lord}</b> ({h6_sign}) aur 8th lord <b>{h8_lord}</b> workload ke dauran regular diet, hydration aur walking routine banaye rakhne ka sanket dete hain."
         
         c7_title = "7. Aane Wala Turning Point Aur Disha"
         c7_body = f"Agla mukhya breakthrough window <b>{cur_md}&mdash;{next_lord}</b> Antardasha mein khulta hai. Is dauran pichli mehnat ka uchit samman aur aarthik unnati ka yog banta hai."
@@ -2322,22 +2388,22 @@ def _build_executive_summary_crux_html(
         sec_sub = "Mee moola swabhavam, nadusthuna dasha chakra mariyu anni mukhya jeevitha rangala vishleshana saramsam."
         
         c1_title = "1. Moola Swabhavam Mariyu Jeevitha Disha"
-        c1_body = f"Mee <b>{lagna} Lagnam</b> mariyu <b>{moon_sign} Chandra</b> unnai. Lagnaadhipathi <b>{lord}</b> {h_str} house ({lord_s}) lo unnar, idi meeku strategic vision mariyu spashthamaina lakshyam vaipu nadipisthundi. Atmakaraka <b>{ak}</b> aantarika aathmavishwasam isthundi."
+        c1_body = f"Mee <b>{lagna} Lagnam</b> mariyu <b>{moon_sign} Chandra</b> unnai. Lagnaadhipathi <b>{lord}</b> ({placement_te}) lo sthitamga unnar, idi meeku strategic vision mariyu spashthamaina lakshyam vaipu nadipisthundi. Atmakaraka <b>{ak}</b> aantarika aathmavishwasam isthundi."
         
         c2_title = "2. Nadusthuna Dasha Mariyu Vartamana Chapter"
         c2_body = f"Prasthutam meeru <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b> phase lo unnar. Ee samayam lo internal consolidation, patha samasyalanu sari cheyadam mariyu future growth kosam foundation veyadam mukhyam."
         
-        c3_title = "3. Career, Udyogam Mariyu Gouravam"
-        c3_body = f"10th house mariyu Amatyakaraka <b>{amk}</b> prabhavam valla meeku structured responsibilities, management mariyu executive roles lo manchi vijayam labhisthundi. Discipline tho career sthirapaduthundi."
+        c3_title = "3. Career, Udyogam Mariyu Gouravam (10th House & D10)"
+        c3_body = f"10th house ({h10_sign}) adhipathi <b>{h10_lord}</b> mariyu Amatyakaraka <b>{amk}</b> prabhavam valla meeku structured responsibilities, management mariyu executive roles lo manchi vijayam labhisthundi. Discipline tho career sthirapaduthundi."
         
-        c4_title = "4. Dhanam, Podupu Mariyu Aarthika Vriddhi"
-        c4_body = "2nd mariyu 11th house sankethala prakaram mee aarthika sthiratha regular savings mariyu structured financial planning valla peruguthundi. Sudden risks kante safe growth manchidi."
+        c4_title = "4. Dhanam, Podupu Mariyu Aarthika Vriddhi (2nd & 11th Bhavalu)"
+        c4_body = f"Dhanaadhipathi <b>{h2_lord}</b> (2nd house, {h2_sign}) mariyu Labhaadhipathi <b>{h11_lord}</b> (11th house, {h11_sign}) sankethala prakaram mee aarthika sthiratha regular savings mariyu structured financial planning valla peruguthundi."
         
-        c5_title = "5. Sambandhalu, Vivaham Mariyu Kutumba Samathulyatha"
-        c5_body = "7th house mariyu Navamsha (D9) relationship lo mutual respect mariyu clear communication korukuntundi. Opika mariyu understanding tho kutumbamlo shanti untundi."
+        c5_title = "5. Sambandhalu, Vivaham Mariyu Kutumba Samathulyatha (7th House & D9 Navamsha)"
+        c5_body = f"7th house ({h7_sign}) adhipathi <b>{h7_lord}</b> mariyu Navamsha (D9) relationship lo mutual respect, spashthamaina communication mariyu emotional maturity ni korukuntundi."
         
-        c6_title = "6. Aarogyam, Urja Mariyu Daily Routine"
-        c6_body = "Workload valla stress peragakunda daily routine, manchi aaharam mariyu sleep balance maintain cheyali. Regular walking mariyu meditation energy ni replenish chesthayi."
+        c6_title = "6. Aarogyam, Urja Mariyu Daily Routine (1st, 6th & 8th Bhavalu)"
+        c6_body = f"Vitality Lagnaadhipathi <b>{lord}</b> aadharamga untundi, mariyu 6th lord <b>{h6_lord}</b> ({h6_sign}) tatha 8th lord <b>{h8_lord}</b> workload ekkuva unnapudu regular routine, water intake mariyu sleep balance maintain cheyali ani chupisthayi."
         
         c7_title = "7. Munde Vache Turning Point Mariyu Margadarshanam"
         c7_body = f"Mee next breakthrough window <b>{cur_md}&mdash;{next_lord}</b> Antardasha lo start avuthundi. Ee phase lo mundu chesina kashtaniki tagga gouravam mariyu progress kanipisthundi."
@@ -2347,22 +2413,22 @@ def _build_executive_summary_crux_html(
         sec_sub = "An authoritative executive synthesis summarizing your core archetype, active operating chapter, and domain-by-domain astrological outlook."
         
         c1_title = "1. Core Constitutional Archetype & Life Drive"
-        c1_body = f"With <b>{lagna} rising</b> and <b>Moon in {moon_sign}</b> ({nakshatra}), your chart establishes an ambitious, principled constitutional archetype. Governed by Lagna lord <b>{lord} in the {h_str} house ({lord_s})</b> and Atmakaraka <b>{ak}</b>, your natural path rewards intellectual mastery, strategic independence, and dignified self-reliance."
+        c1_body = f"With <b>{lagna} rising</b> and <b>Moon in {moon_sign}</b> ({nakshatra}), your chart establishes an ambitious, principled constitutional archetype. Governed by Lagna lord <b>{lord} {placement_en}</b> and Atmakaraka <b>{ak}</b>, your natural path rewards intellectual mastery, strategic independence, and dignified self-reliance."
         
         c2_title = "2. Active Operating Chapter & Planetary Dynamics"
         c2_body = f"You are currently traversing the <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b>. This is a foundational realignment phase dedicated to restructuring internal priorities, resolving residual friction, and preparing the structural runway for upcoming expansion."
         
-        c3_title = "3. Career, Authority & Vocational Growth (D10)"
-        c3_body = f"Your 10th house dynamics and Amatyakaraka <b>{amk}</b> indicate strong capabilities in specialized execution, organizational management, and executive responsibility. Sustained perseverance and institutional credibility create enduring authority."
+        c3_title = "3. Career, Authority & Vocational Growth (10th House & D10)"
+        c3_body = f"Governed by 10th lord <b>{h10_lord}</b> ({h10_sign}) and Amatyakaraka <b>{amk}</b>, your vocational trajectory rewards executive responsibility, organizational management, and specialized execution. Sustained perseverance creates enduring institutional authority."
         
-        c4_title = "4. Wealth, Income & Material Expansion (D2 / D11)"
-        c4_body = "Financial accumulation in this chart is built on disciplined compounding, intellectual expertise, and structured asset management rather than volatile speculation. Long-term liquid wealth strengthens steadily through mid-career."
+        c4_title = "4. Wealth, Income & Material Expansion (2nd & 11th Houses)"
+        c4_body = f"Financial expansion is anchored by 2nd lord <b>{h2_lord}</b> ({h2_sign}) and 11th lord <b>{h11_lord}</b> ({h11_sign}). Capital accumulation thrives on disciplined compounding, strategic asset allocation, and structured enterprise rather than volatile speculation."
         
-        c5_title = "5. Relationships, Marriage & Alliances (D9)"
-        c5_body = "The 7th house and Navamsha framework favor partnerships based on shared intellectual values, mutual dignity, and clear boundary setting. Transparent communication ensures relational harmony."
+        c5_title = "5. Relationships, Marriage & Alliances (7th House & D9 Navamsha)"
+        c5_body = f"Governed by 7th lord <b>{h7_lord}</b> ({h7_sign}) and the Navamsha (D9) framework, partnerships flourish on mutual intellectual respect, transparent communication, and shared foundational values."
         
-        c6_title = "6. Vitality, Health & Energy Management (D6 / D8)"
-        c6_body = "Vitality is solid, with vulnerability centered around mental over-analysis and digestive sensitivity during peak workloads. Maintaining regular hydration, balanced sleep rhythms, and daily mindful walking provides optimal equilibrium."
+        c6_title = "6. Vitality, Health & Energy Management (1st, 6th & 8th Houses)"
+        c6_body = f"Constitutional stamina is sustained by Lagna lord <b>{lord}</b>, while 6th lord <b>{h6_lord}</b> ({h6_sign}) and 8th lord <b>{h8_lord}</b> advise maintaining balanced digestive rhythms, hydration, and proactive stress regulation during peak workloads."
         
         c7_title = "7. Strategic Roadmap & Key Turning Points"
         c7_body = f"The primary forward catalyst activates as you transition towards the <b>{cur_md}&mdash;{next_lord}</b> cycle, unlocking decisive professional recognition, financial elevation, and material stabilization."
