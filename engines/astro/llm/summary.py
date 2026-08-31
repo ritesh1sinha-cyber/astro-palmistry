@@ -1039,6 +1039,14 @@ def _validate(
 
     if not _language_is_present(prose, lang):
         errors.append("language:mismatch")
+    # Hinglish/Tenglish summaries must not leave English clauses untranslated — the
+    # Friday prod gibberish "few moments of confusion" etc slipped through because
+    # the marker check only required 2 Hindi words. Also catch palm fallback English
+    # leak "Your right hand is read here" inside Hinglish.
+    if str(lang or "").lower().strip() in ("hi_en", "hinglish", "hi", "hindi", "te_en", "tenglish", "te", "telugu"):
+        gib = re.search(r"\b(few moments|losing interest|peace of mind|mental tiredness|decision fatigue|If mind|has been on your mind|may well be sitting|Your right hand is read here|Your left hand is treated)\b", low)
+        if gib:
+            errors.append(f"gibberish:{gib.group(0)}")
 
     for bad in (
         "minilm", "pyjhora", "confluence_score", "facts_hash", "schema_version",
@@ -1160,6 +1168,52 @@ def _locked_section(kind: str, inventory: Optional[dict], lang: str = "en") -> d
     inv = inventory or {}
     items = [i for i in (inv.get("items") or []) if isinstance(i, str)]
     lang_code = str(lang or "").lower().strip()
+    # Translate inventory items for Hinglish/Tenglish — English "Two dated windows..." is gibberish in Roman Hindi
+    def _hi_items(src: list[str]) -> list[str]:
+        out: list[str] = []
+        for it in src:
+            low = it.lower()
+            if "dated window" in low:
+                # Extract number word
+                m = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten)\b", low)
+                num = m.group(1).capitalize() if m else "Kuch"
+                hi_num = {"One":"Ek","Two":"Do","Three":"Teen","Four":"Chaar","Five":"Paanch","Six":"Cheh","Seven":"Saath","Eight":"Aath","Nine":"Nau","Ten":"Das"}.get(num, num)
+                out.append(f"{hi_num} dated windows jismein mahine ke naam hain")
+            elif "life area" in low:
+                m = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve)\b", low)
+                num = m.group(1).capitalize() if m else "Kuch"
+                hi_num = {"One":"Ek","Two":"Do","Three":"Teen","Four":"Chaar","Five":"Paanch","Six":"Cheh","Seven":"Saath","Eight":"Aath","Twelve":"Barah"}.get(num, num)
+                out.append(f"{hi_num} life areas ke liye verdict aur uska karan")
+            elif "remed" in low:
+                m = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten)\b", low)
+                num = m.group(1).capitalize() if m else "Kuch"
+                hi_num = {"One":"Ek","Two":"Do","Three":"Teen","Four":"Chaar","Five":"Paanch","Six":"Cheh","Seven":"Saath","Eight":"Aath"}.get(num, num)
+                out.append(f"{hi_num} upay jo aapki kundli ke liye chune gaye hain")
+            else:
+                out.append(_dejargon(it))
+        return out
+    def _te_items(src: list[str]) -> list[str]:
+        out: list[str] = []
+        for it in src:
+            low = it.lower()
+            if "dated window" in low:
+                m = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten)\b", low)
+                num = m.group(1).capitalize() if m else "Konni"
+                te_num = {"One":"Oka","Two":"Rendu","Three":"Moodu","Four":"Nalugu","Five":"Aidu","Six":"Aaru","Seven":"Edu","Eight":"Enimidi"}.get(num, num)
+                out.append(f"{te_num} dated windows lo nelala perlu unnai")
+            elif "life area" in low:
+                m = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve)\b", low)
+                num = m.group(1).capitalize() if m else "Konni"
+                te_num = {"One":"Oka","Two":"Rendu","Eight":"Enimidi","Twelve":"Pannendu"}.get(num, num)
+                out.append(f"{te_num} life areas kosam verdict mariyu karanam")
+            elif "remed" in low:
+                m = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten)\b", low)
+                num = m.group(1).capitalize() if m else "Konni"
+                te_num = {"One":"Oka","Two":"Rendu","Eight":"Enimidi"}.get(num, num)
+                out.append(f"{te_num} upayamulu mee kundali kosam enchukobaddayi")
+            else:
+                out.append(_dejargon(it))
+        return out
     if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
         lead = {
             "palm": "Aapne apne haathon ka aakar aur swabhav padh liya hai. Baaki reading taiyar hai:",
@@ -1167,7 +1221,8 @@ def _locked_section(kind: str, inventory: Optional[dict], lang: str = "en") -> d
             "user_question": "Is jawab ke peeche ka poora vishleshan taiyar hai. Abhi yeh hissa locked hai:",
             "daily": "Aaj ka poora forecast taiyar hai. Abhi yeh hissa locked hai:",
         }.get(kind, "Aapki kundli ka poora vishleshan taiyar hai. Abhi yeh hissa locked hai:")
-        body = lead + (" " + "; ".join(items[:4]) + "." if items else
+        hi_items_list = _hi_items(items)
+        body = lead + (" " + "; ".join(hi_items_list[:4]) + "." if hi_items_list else
                        " Ismein detailed timing, life-area analysis aur chart-specific upay shamil hain.")
         return {"title": _locked_headline(kind, lang), "body": body[:900], "role": "locked"}
     if lang_code in ("te_en", "tenglish", "te", "telugu"):
@@ -1177,7 +1232,8 @@ def _locked_section(kind: str, inventory: Optional[dict], lang: str = "en") -> d
             "user_question": "Ee samadhanam venuka unna poorthi vishleshana siddham ga undi. Ippudu ee bhaagam locked:",
             "daily": "Eeroju poorthi forecast siddham ga undi. Ippudu ee bhaagam locked:",
         }.get(kind, "Mee kundali yokka poorthi vishleshana siddham ga undi. Ippudu ee bhaagam locked:")
-        body = lead + (" " + "; ".join(items[:4]) + "." if items else
+        te_items_list = _te_items(items)
+        body = lead + (" " + "; ".join(te_items_list[:4]) + "." if te_items_list else
                        " Indulo detailed timing, life-area analysis mariyu chart-specific upayamulu unnai.")
         return {"title": _locked_headline(kind, lang), "body": body[:900], "role": "locked"}
     lead = {
@@ -1311,15 +1367,23 @@ def _fallback_from_palm_text(
     text: str, *, paid: bool = True, lang: str = "en"
 ) -> list[dict]:
     """Extract personalized personality traits, thumb decision style, and strengths for palmistry."""
+    lang_code = str(lang or "").lower().strip()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+    # For Hinglish/Tenglish, English report sentences produce code-mixed gibberish
+    # ("If mind & intellect has been on your mind..."). Use brief-driven Hindi
+    # templates directly instead of slicing English report text.
+    if is_hinglish or is_tenglish:
+        # Callers pass brief via _fallback_sections; this helper only has text,
+        # so return a minimal Hindi fallback that _fb_palm will enrich with brief.
+        # Keep this path English-free; the Hindi palm fallback is built in _fb_palm.
+        return []
     text = _drop_bad_sentences(text, free=not paid)
     if not text:
         return []
     sentences = [s for s in _sentences(text) if len(s) > 18]
     if not sentences:
         return []
-    lang_code = str(lang or "").lower().strip()
-    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
-    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
     titles = (
         ("Swabhav Aur Core Temperament", "Mukhya Kshamta Aur Nirnay Shailee",
          "Mukhya Rekhaon Aur Jeevan Margdarshan")
@@ -1481,6 +1545,11 @@ def _localized_full_report_fallback(
             "career": "Career", "wealth": "Dhan", "marriage": "Vivah",
             "relationships": "Rishte", "health": "Swasthya", "children": "Santan",
             "property": "Sampatti", "foreign": "Videsh Yatra",
+            "fortune & higher learning": "Bhagya aur Uccha Shiksha",
+            "work & career": "Karya aur Career",
+            "home & family": "Ghar aur Parivar",
+            "money & savings": "Dhan aur Bachat",
+            "fortune": "Bhagya", "work": "Karya",
         }
         area_template = "Aapke {area} kshetra mein vartaman samay mein chart ke anusar dhairya, spasht soch aur practical kadam zaroori hain."
         pressure_template = "Kundli in kshetron mein vishesh dhyan maangti hai: {areas}. Niyamit prayas se sthiti behtar ho sakti hai."
@@ -2000,7 +2069,15 @@ def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool, lang: str = "en"
             ))
     areas = [a for a in (brief.get("life_areas") or []) if isinstance(a, dict)]
     if areas:
-        lines = [f"{a.get('area')}: {a.get('reading')}" for a in areas[:4] if a.get("reading")]
+        if is_hinglish or is_tenglish:
+            # For Hinglish/Tenglish, English palm readings produce gibberish when copied verbatim
+            # ("Character: Your Air-dominant hand architecture..."). Use Hindi area names only.
+            hi_area_map = {"character":"Swabhav","mind":"Mansikta","love":"Prem","career":"Career","wealth":"Dhan","health":"Swasthya","travel":"Yatra","fortune":"Bhagya"}
+            te_area_map = {"character":"Swabhavam","mind":"Manasika","love":"Prema","career":"Career","wealth":"Dhanam","health":"Aarogyam"}
+            amap = hi_area_map if is_hinglish else te_area_map
+            lines = [f"{amap.get(str(a.get('area') or '').lower(), str(a.get('area') or ''))} kshetra mein vishesh sanket hain" for a in areas[:4] if a.get("area")]
+        else:
+            lines = [f"{a.get('area')}: {a.get('reading')}" for a in areas[:4] if a.get("reading")]
         if lines:
             if is_hinglish:
                 sec_title = "Hatho Ke Mukhya Kshetra"
@@ -2151,20 +2228,25 @@ def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
     elif kind in ("full_report", "classical_report"):
         tone = _clip(brief.get("current_phase_tone"), 90).rstrip(".").lower()
         pressure = [p for p in (brief.get("areas_under_pressure") or []) if p][:2]
+        # Translate pressure area labels for Hinglish/Tenglish — brief carries English labels
+        hi_map = {"career":"Career","wealth":"Dhan","marriage":"Vivah","relationships":"Rishte","health":"Swasthya","children":"Santan","property":"Sampatti","foreign":"Videsh Yatra","fortune & higher learning":"Bhagya aur Uccha Shiksha","work & career":"Karya aur Career","home & family":"Ghar aur Parivar","money & savings":"Dhan aur Bachat"}
+        te_map = {"career":"Career","wealth":"Dhanam","marriage":"Vivaham","health":"Aarogyam","fortune & higher learning":"Bhagyam mariyu Higher Learning","work & career":"Pani mariyu Career"}
         if is_hinglish:
-            if tone and pressure:
+            hi_pressure = [hi_map.get(p.lower(), p) for p in pressure]
+            if tone and hi_pressure:
                 candidates.append(
                     f"Aapka vartaman daur sahayak hai, jabki vishesh dabav "
-                    + " aur ".join(p.lower() for p in pressure) + " par hai."
+                    + " aur ".join(hi_pressure) + " par hai."
                 )
             elif tone:
                 candidates.append("Aapki kundli ka vartaman daur anukool aur sahayak hai.")
             candidates.append("Aapke vyaktitva aur current phase ke sanket anukool hain.")
         elif is_tenglish:
-            if tone and pressure:
+            te_pressure = [te_map.get(p.lower(), p) for p in pressure]
+            if tone and te_pressure:
                 candidates.append(
                     f"Mee vartamana dasha anukulam ga undi, konni visheshalu "
-                    + " mariyu ".join(p.lower() for p in pressure) + " meeda unnai."
+                    + " mariyu ".join(te_pressure) + " meeda unnai."
                 )
             elif tone:
                 candidates.append("Mee kundali vartamana dasha anukulam ga undi.")
