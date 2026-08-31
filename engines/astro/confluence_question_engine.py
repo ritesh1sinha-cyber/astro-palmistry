@@ -1216,8 +1216,14 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
             f"{root_cause_diagnosis} With targeted planetary remedies, favorable Ashtakavarga support, "
             f"and supportive planetary transits, the upcoming {breakthrough_period_str} acts as the primary classical catalyst for decisive breakthroughs."
         )
+        PLANET_WEEKDAY = {
+            "Sun": "Sunday", "Moon": "Monday", "Mars": "Tuesday", "Mercury": "Wednesday",
+            "Jupiter": "Thursday", "Venus": "Friday", "Saturn": "Saturday",
+            "Rahu": "Saturday", "Ketu": "Tuesday",
+        }
+        _wd = PLANET_WEEKDAY.get(prim_lord, f"{prim_lord}'s weekday")
         remedies = []
-        remedies.append(f"Harmonize Obstructing Planet ({prim_lord}): Offer targeted donations or planetary prayers on {prim_lord}'s day to neutralize 8th/6th house friction.")
+        remedies.append(f"Harmonize Obstructing Planet ({prim_lord}): Offer targeted donations or planetary prayers on {prim_lord}'s day ({_wd}) to neutralize 8th/6th house friction.")
         if cfg["karakas"]:
             top_k = cfg["karakas"][0]
             remedies.append(f"Strengthen Natural Karaka ({top_k}): Chant the {top_k} Gayatri Mantra or perform charitable seva (e.g. green fodder to cows for Mercury, Surya Arghya for Sun, Jal Abhishek for Moon).")
