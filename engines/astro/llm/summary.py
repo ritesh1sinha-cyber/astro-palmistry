@@ -559,11 +559,22 @@ def _summary_brief(kind: str, meta: dict, facts: Any, *, paid: bool) -> dict:
         if "Moon" in planets and isinstance(planets["Moon"], dict):
             moon_sign = str(planets["Moon"].get("sign") or "")
         elif meta.get("moonSign"):
-            moon_sign = str(meta["moonSign"])
+            moon_sign = str(meta.get("moonSign"))
             
         nakshatra = str(f.get("nakshatra") or meta.get("nakshatra") or (f.get("meta") or {}).get("nakshatra") or "")
         
-        from astro_precompute import SIGN_LORDS
+        try:
+            from engines.astro.astro_precompute import SIGN_LORDS
+        except ImportError:
+            try:
+                from astro_precompute import SIGN_LORDS
+            except ImportError:
+                SIGN_LORDS = {
+                    "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury",
+                    "Cancer": "Moon", "Leo": "Sun", "Virgo": "Mercury",
+                    "Libra": "Venus", "Scorpio": "Mars", "Sagittarius": "Jupiter",
+                    "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter",
+                }
         if lagna_sign:
             lord = SIGN_LORDS.get(lagna_sign, "Sun")
             
@@ -2240,9 +2251,9 @@ def _fallback_sections(
         }]
 
     if not paid:
-        sections = _repair_free_sections(sections[:4], kind, inventory, lang)
+        sections = _repair_free_sections(sections[:8], kind, inventory, lang)
 
-    return sections[:6]
+    return sections[:10]
 
 
 def _fallback_headline(kind: str, brief: dict, meta: dict, *, paid: bool,
@@ -2484,7 +2495,7 @@ def _llm_sections(
         sections = _repair_free_sections(sections, kind, inventory, lang)
     else:
         sections = [s for s in sections if s["role"] != "cta"] or sections
-    return {"sections": sections[:6], "headline": (prose.headline or "").strip()}
+    return {"sections": sections[:10], "headline": (prose.headline or "").strip()}
 
 
 # ---------------------------------------------------------------------------
