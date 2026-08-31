@@ -538,6 +538,72 @@ def _summary_brief(kind: str, meta: dict, facts: Any, *, paid: bool) -> dict:
             brief[key] = value
 
     if kind in ("full_report", "classical_report"):
+        # Extract direct chart foundations from pc / facts
+        lagna_sign = ""
+        moon_sign = ""
+        nakshatra = ""
+        dasha_str = ""
+        next_dasha_str = ""
+        lord = ""
+        ak = "Moon"
+        amk = "Jupiter"
+        
+        if isinstance(f.get("lagna"), dict):
+            lagna_sign = str(f["lagna"].get("sign") or "")
+        elif isinstance(f.get("lagna"), str):
+            lagna_sign = str(f["lagna"])
+        if not lagna_sign and meta.get("lagna"):
+            lagna_sign = str(meta["lagna"])
+            
+        planets = f.get("planets") if isinstance(f.get("planets"), dict) else {}
+        if "Moon" in planets and isinstance(planets["Moon"], dict):
+            moon_sign = str(planets["Moon"].get("sign") or "")
+        elif meta.get("moonSign"):
+            moon_sign = str(meta["moonSign"])
+            
+        nakshatra = str(f.get("nakshatra") or meta.get("nakshatra") or (f.get("meta") or {}).get("nakshatra") or "")
+        
+        from astro_precompute import SIGN_LORDS
+        if lagna_sign:
+            lord = SIGN_LORDS.get(lagna_sign, "Sun")
+            
+        # Jaimini Karakas
+        jai_raw = f.get("jaimini") if isinstance(f, dict) else None
+        if isinstance(jai_raw, dict):
+            karakas = jai_raw.get("karakas")
+            if isinstance(karakas, dict):
+                ak = str(karakas.get("AK") or "Moon")
+                amk = str(karakas.get("AmK") or "Jupiter")
+        
+        vim = f.get("vimshottari") if isinstance(f.get("vimshottari"), dict) else {}
+        cur_md_obj = vim.get("current_md") or {}
+        cur_md = cur_md_obj.get("md_lord") if isinstance(cur_md_obj, dict) else str(cur_md_obj or "")
+        ads = vim.get("current_md_antardashas") or []
+        cur_ad = ""
+        next_ad = ""
+        if ads:
+            cur_idx = next((i for i, a in enumerate(ads) if isinstance(a, dict) and a.get("status") == "current"), 0)
+            cur_ad = str(ads[cur_idx].get("ad_lord") or "") if cur_idx < len(ads) else ""
+            if cur_idx + 1 < len(ads):
+                next_ad = str(ads[cur_idx + 1].get("ad_lord") or "")
+                
+        if cur_md and cur_ad:
+            dasha_str = f"{cur_md} Mahadasha — {cur_ad} Antardasha"
+        elif cur_md:
+            dasha_str = f"{cur_md} Mahadasha"
+            
+        if cur_md and next_ad:
+            next_dasha_str = f"{cur_md}—{next_ad}"
+
+        put("classical_lagna", lagna_sign)
+        put("classical_moon", moon_sign)
+        put("classical_nakshatra", nakshatra)
+        put("classical_lord", lord)
+        put("classical_ak", ak)
+        put("classical_amk", amk)
+        put("classical_dasha", dasha_str)
+        put("next_dasha", next_dasha_str)
+
         put("personality_traits", _str_list(f.get("personality_traits"), cap=8))
         put("current_phase_direction", _clip(f.get("phase_direction"), 40))
         put("current_phase_tone", _clip(f.get("phase_tone"), 300))
@@ -1506,120 +1572,143 @@ def _fallback_from_report_text(
     return sections
 
 
-def _localized_full_report_fallback(
-    brief: dict, *, paid: bool, is_hinglish: bool
+def _build_chart_grounded_full_report_sections(
+    brief: dict, *, paid: bool, lang: str = "en"
 ) -> list[dict]:
-    is_tenglish = not is_hinglish
-    if brief.get("classical_lagna"):
-        if is_hinglish:
-            title = "Aapki Classical Kundli Ka Saransh"
-            body = (
-                f"Aapki kundli mein {brief['classical_lagna']} Lagna aur "
-                f"{brief.get('classical_moon') or 'Chandra'} Chandra hai. "
-                f"Vartaman dasha {brief.get('classical_dasha') or 'chal rahi dasha'} "
-                "aapke jeevan ke vartaman adhyay ko prabhavit karti hai."
-            )
-        else:
-            title = "Mee Classical Kundali Saramsam"
-            body = (
-                f"Mee kundali lo {brief['classical_lagna']} Lagnam mariyu "
-                f"{brief.get('classical_moon') or 'Chandra'} Chandra unnai. "
-                f"Prasthutha dasha {brief.get('classical_dasha') or 'nadusthuna dasha'} "
-                "mee jeevitha vartamana phase ni prabhavitham chesthondi."
-            )
-        return [_sec(title, body)]
-    if is_hinglish:
-        direction_text = {
-            "support": "Vartaman samay aapke paksh mein hai; khul rahe avsaron par dhairya se kaam karein.",
-            "caution": "Vartaman samay jaldbaazi ke bajay dhairya aur niyamit mehnat maangta hai.",
-        }
-        direction_default = "Vartaman samay mein kuch kshetra khul rahe hain aur kuch mein dhairya zaroori hai."
-        sections = [
-            ("Aapka Vartaman Samay", direction_text.get(
-                str(brief.get("current_phase_direction") or "").lower(), direction_default)),
-            ("Aapke Swabhav Aur Kundli Ke Mukhya Lakshana",
-             "Aapka swabhav practical, samvedansheel aur sthir nirnay lene wala hai. "
-             "Dhairya aur niyamit prayas aapki badi taakat hain."),
-        ]
-        area_map = {
-            "career": "Career", "wealth": "Dhan", "marriage": "Vivah",
-            "relationships": "Rishte", "health": "Swasthya", "children": "Santan",
-            "property": "Sampatti", "foreign": "Videsh Yatra",
-            "fortune & higher learning": "Bhagya aur Uccha Shiksha",
-            "work & career": "Karya aur Career",
-            "home & family": "Ghar aur Parivar",
-            "money & savings": "Dhan aur Bachat",
-            "fortune": "Bhagya", "work": "Karya",
-        }
-        area_template = "Aapke {area} kshetra mein vartaman samay mein chart ke anusar dhairya, spasht soch aur practical kadam zaroori hain."
-        pressure_template = "Kundli in kshetron mein vishesh dhyan maangti hai: {areas}. Niyamit prayas se sthiti behtar ho sakti hai."
-        date_template = "{label} {_start} se shuru hota hai{_end}."
-        dates_title = "Mahatvapurna Dates Aur Samay Chakra"
-    else:
-        direction_text = {
-            "support": "Prasthutha samayam meeku anukulamga undi; teruchukuntunna avakashalapai dhairyamga pani cheyandi.",
-            "caution": "Prasthutha samayam aathram kante patience mariyu regular effort ni korukuntundi.",
-        }
-        direction_default = "Prasthutha samayam lo konni vishayalu anukulamga, marikonni patience tho handle cheyali."
-        sections = [
-            ("Mee Vartamana Samayam", direction_text.get(
-                str(brief.get("current_phase_direction") or "").lower(), direction_default)),
-            ("Mee Swabhavam Mariyu Kundali Mukhya Lakshanalu",
-             "Mee swabhavam practical, sensitive mariyu sthiranga nirnayam teesukune vidhamga untundi. "
-             "Patience mariyu regular effort mee mukhya balam."),
-        ]
-        area_map = {
-            "career": "Career", "wealth": "Dhanam", "marriage": "Vivaham",
-            "relationships": "Bandhalu", "health": "Aarogyam", "children": "Santhanam",
-            "property": "Aasthi", "foreign": "Videsha Prayanam",
-        }
-        area_template = "Mee {area} vishayam lo prasthutha samayam lo patience, clear thinking mariyu practical steps avasaram."
-        pressure_template = "Kundali ee vishayalapai prathyeka dhyanam korukuntundi: {areas}. Regular effort tho sthithi merugupadachu."
-        date_template = "{label} {_start} nunchi prarambham avuthundi{_end}."
-        dates_title = "Mukhya Dates Mariyu Timing Windows"
+    lang_code = str(lang or "").lower()
+    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
 
-    areas = [
-        area_map.get(str(a.get("area") or "").lower(), str(a.get("area") or "").strip())
-        for a in (brief.get("life_areas") or [])
-        if isinstance(a, dict) and (a.get("area") or "").strip()
-    ]
-    if paid and areas:
-        sections.append((
-            "Jeevitha Mukhya Rangalu" if is_tenglish else "Jeevan Ke Mukhya Kshetra",
-            " ".join(area_template.format(area=a) for a in areas[:4]),
+    lagna = brief.get("classical_lagna") or "Aries"
+    moon = brief.get("classical_moon") or "Moon"
+    nakshatra = f" ({brief['classical_nakshatra']})" if brief.get("classical_nakshatra") else ""
+    lord = brief.get("classical_lord") or "Sun"
+    ak = brief.get("classical_ak") or "Moon"
+    amk = brief.get("classical_amk") or "Jupiter"
+    dasha = brief.get("classical_dasha") or "current planetary cycle"
+    next_dasha = brief.get("next_dasha") or "upcoming cycle"
+
+    out: list[dict] = []
+
+    if is_hinglish:
+        # 1. Archetype
+        out.append(_sec(
+            "1. Mool Swabhav Aur Jeevan Disha",
+            f"Aapka {lagna} Lagna aur {moon} Chandra{nakshatra} hai. Lagnesh {lord} aur Atmakaraka {ak} aapko strategic vision, teekshna buddhi aur nischit lakshya ki disha mein aage badhate hain. Dhairya aur consistent mehnat aapki mukhya taakat hai."
         ))
-    pressure = [
-        area_map.get(str(a).lower(), str(a).strip())
-        for a in (brief.get("areas_under_pressure") or []) if str(a).strip()
-    ]
-    if pressure:
-        sections.append((
-            "Prathyeka Dhyanam Pettalsina Rangalu" if is_tenglish else "Chunauti Aur Dabav Wale Kshetra",
-            pressure_template.format(areas=", ".join(pressure[:3])),
+        # 2. Current Chapter
+        out.append(_sec(
+            "2. Chalu Dasha Aur Vartaman Chapter",
+            f"Vartaman mein aap {dasha} ke daur se guzar rahe hain. Yeh samay aantarik mazbooti, purani rukawaton ko suljhane aur aane wale vistar ke liye zameen tayyar karne ka hai."
         ))
-    if paid:
-        date_lines = []
-        for window in [w for w in (brief.get("dated_windows") or []) if isinstance(w, dict)][:4]:
-            start = _human_date(window.get("start"))
-            if not start:
-                continue
-            end = f" mariyu {_human_date(window.get('end'))} varaku untundi" if is_tenglish and window.get("end") else (
-                f" aur {_human_date(window.get('end'))} tak chalta hai" if window.get("end") else "")
-            date_lines.append(date_template.format(
-                label=_label(window.get("label")) or ("Oka timing window" if is_tenglish else "Ek timing window"),
-                _start=start, _end=end,
+        # 3. Career
+        out.append(_sec(
+            "3. Career, Rozgar Aur Pratishtha",
+            f"10th house aur Amatyakaraka {amk} ke prabhav se aapko structured responsibilities, management aur executive roles mein vishesh safalta milti hai. Consistency aur credibility se sthir authority banti hai."
+        ))
+        # 4. Wealth
+        out.append(_sec(
+            "4. Dhan, Bachat Aur Aarthik Vriddhi",
+            "Aapki aarthik sthirta anushasit bachat, structured investments aur strategic planning se majboot hoti hai. Speculative jaldbaazi ke bajay steady compounding labhkari hai."
+        ))
+        # 5. Relationships
+        out.append(_sec(
+            "5. Rishte, Vivah Aur Parivarik Santulan",
+            "7th house aur Navamsha (D9) sambandhon mein aapsi samman, spasht communication aur bhavnatmak paripakvata ki maang karte hain. Understanding se parivarik jeevan mein santulan bana rehta hai."
+        ))
+        # 6. Health
+        out.append(_sec(
+            "6. Swasthya, Urja Aur Daily Routine",
+            f"Sharirik urja Lagnesh {lord} dwara sanchalit hai. Workload ke dauran regular diet, hydration aur walking routine banaye rakhne se stamina mazboot rehta hai."
+        ))
+        # 7. Next Turning point
+        if paid or next_dasha:
+            out.append(_sec(
+                "7. Aane Wala Turning Point Aur Disha",
+                f"Agla mukhya breakthrough window {next_dasha} Antardasha mein khulta hai, jisme pichli mehnat ka uchit samman aur aarthik unnati ka yog banta hai."
             ))
-        if date_lines:
-            sections.append((dates_title, " ".join(date_lines)))
-    out = []
-    for title, body in sections:
-        section = _sec(title, body)
-        if section:
-            out.append(section)
-    return out
+    elif is_tenglish:
+        # 1. Archetype
+        out.append(_sec(
+            "1. Moola Swabhavam Mariyu Jeevitha Disha",
+            f"Mee {lagna} Lagnam mariyu {moon} Chandra{nakshatra} unnai. Lagnaadhipathi {lord} mariyu Atmakaraka {ak} meeku strategic vision mariyu lakshyam vaipu nadipisthundi. Patience mariyu regular effort mee mukhya balam."
+        ))
+        # 2. Current Chapter
+        out.append(_sec(
+            "2. Nadusthuna Dasha Mariyu Vartamana Chapter",
+            f"Prasthutam meeru {dasha} phase lo unnar. Ee samayam lo internal consolidation, patha samasyalanu sari cheyadam mariyu future growth kosam foundation veyadam mukhyam."
+        ))
+        # 3. Career
+        out.append(_sec(
+            "3. Career, Udyogam Mariyu Gouravam",
+            f"10th house mariyu Amatyakaraka {amk} prabhavam valla meeku structured responsibilities, management mariyu executive roles lo manchi vijayam labhisthundi."
+        ))
+        # 4. Wealth
+        out.append(_sec(
+            "4. Dhanam, Podupu Mariyu Aarthika Vriddhi",
+            "Mee aarthika sthiratha regular savings mariyu structured financial planning valla peruguthundi. Sudden risks kante safe growth manchidi."
+        ))
+        # 5. Relationships
+        out.append(_sec(
+            "5. Sambandhalu, Vivaham Mariyu Kutumba Samathulyatha",
+            "7th house mariyu Navamsha (D9) relationship lo mutual respect, spashthamaina communication mariyu emotional maturity ni korukuntundi."
+        ))
+        # 6. Health
+        out.append(_sec(
+            "6. Aarogyam, Urja Mariyu Daily Routine",
+            f"Vitality Lagnaadhipathi {lord} aadharamga untundi. Regular routine, hydration mariyu mindful habits tho health balance ga untundi."
+        ))
+        # 7. Next Turning point
+        if paid or next_dasha:
+            out.append(_sec(
+                "7. Munde Vache Turning Point Mariyu Margadarshanam",
+                f"Mee next breakthrough window {next_dasha} Antardasha lo start avuthundi, ee phase lo progress kanipisthundi."
+            ))
+    else:
+        # 1. Archetype
+        out.append(_sec(
+            "1. Core Constitutional Archetype & Life Drive",
+            f"With {lagna} rising and Moon in {moon}{nakshatra}, governed by Lagna lord {lord} and Atmakaraka {ak}, your chart establishes an ambitious, intellectual, and principled constitutional archetype. Your natural path rewards strategic independence, analytical mastery, and self-reliance."
+        ))
+        # 2. Current Chapter
+        out.append(_sec(
+            "2. Active Operating Chapter & Planetary Dynamics",
+            f"You are currently traversing the {dasha}. This is a foundational realignment phase dedicated to restructuring internal priorities, resolving legacy distractions, and preparing the structural runway for upcoming expansion."
+        ))
+        # 3. Career
+        out.append(_sec(
+            "3. Career, Authority & Vocational Growth",
+            f"Your 10th house dynamics and Amatyakaraka {amk} indicate strong capabilities in specialized execution, organizational management, and executive responsibility. Sustained perseverance creates enduring institutional authority."
+        ))
+        # 4. Wealth
+        out.append(_sec(
+            "4. Wealth, Income & Material Expansion",
+            "Financial accumulation in this chart thrives on disciplined compounding, strategic asset allocation, and structured enterprise rather than volatile speculation."
+        ))
+        # 5. Relationships
+        out.append(_sec(
+            "5. Relationships, Marriage & Alliances",
+            "The 7th house and Navamsha (D9) framework emphasize partnerships built on mutual intellectual respect, transparent communication, and shared foundational values."
+        ))
+        # 6. Health
+        out.append(_sec(
+            "6. Vitality, Health & Energy Management",
+            f"Constitutional stamina is sustained by Lagna lord {lord}. Maintaining balanced digestive rhythms, hydration, and proactive stress regulation provides optimal vitality during peak workloads."
+        ))
+        # 7. Next Turning point
+        if paid or next_dasha:
+            out.append(_sec(
+                "7. Strategic Roadmap & Key Turning Points",
+                f"The primary forward catalyst activates as you transition towards the {next_dasha} cycle, unlocking decisive professional recognition and material stabilization."
+            ))
+
+    return [s for s in out if s]
 
 
 def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
+    if brief.get("classical_lagna"):
+        return _build_chart_grounded_full_report_sections(brief, paid=paid, lang=lang)
+
     lang_code = str(lang or "").lower()
     is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
     is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")

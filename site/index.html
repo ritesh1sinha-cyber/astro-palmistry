@@ -3043,13 +3043,26 @@ function openPlainSummary(){
     return;
   }
 
+  function cleanSummaryText(t){
+    if(!t) return '';
+    return String(t)
+      .replace(/<[^>]+>/g, '')
+      .replace(/&mdash;/g, '—')
+      .replace(/&ndash;/g, '–')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+  }
+
   let sections = ps.sections.slice();
   if(!unlocked){
     const freeDate = /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2}\b|\b20\d{2}\b/i;
     const seenSentences = new Set();
     sections = sections.map(s=>{
       if((s.role || 'insight') !== 'insight') return s;
-      const body = String(s.body || '').split(/(?<=[.!?])\s+/)
+      const cleanBody = cleanSummaryText(s.body);
+      const body = cleanBody.split(/(?<=[.!?])\s+/)
         .filter(sentence => !freeDate.test(sentence))
         .filter(sentence=>{
           const key = sentence.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -3057,9 +3070,15 @@ function openPlainSummary(){
           seenSentences.add(key);
           return true;
         }).join(' ').trim();
-      return {...s, body};
+      return {...s, title: cleanSummaryText(s.title), body: body || cleanBody};
     }).filter(s => (s.role || 'insight') !== 'insight' || s.body);
     if(freeDate.test(ps.headline || '')) ps = {...ps, headline: ''};
+  } else {
+    sections = sections.map(s => ({
+      ...s,
+      title: cleanSummaryText(s.title),
+      body: cleanSummaryText(s.body)
+    }));
   }
   if(unlocked){
     // A paid reader is never pitched to, whichever half we ended up rendering.
@@ -3069,22 +3088,24 @@ function openPlainSummary(){
 
   const lockedItems = (ps.locked && Array.isArray(ps.locked.items)) ? ps.locked.items : [];
   const parts = [];
-  if(ps.headline) parts.push(`<p class="ps-lead">${esc(ps.headline)}</p>`);
+  if(ps.headline) parts.push(`<p class="ps-lead">${esc(cleanSummaryText(ps.headline))}</p>`);
 
   let cta = null;
   sections.forEach(s => {
     const role = s.role || 'insight';
     if(role === 'cta'){ cta = s; return; }
+    const titleText = esc(cleanSummaryText(s.title || copy('Saransh', 'Saramsam', 'Overview')));
+    const bodyText = esc(cleanSummaryText(s.body || ''));
     if(role === 'locked' && !unlocked){
       const bullets = lockedItems.length
-        ? `<ul class="ps-list">${lockedItems.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`
+        ? `<ul class="ps-list">${lockedItems.map(i => `<li>${esc(cleanSummaryText(i))}</li>`).join('')}</ul>`
         : '';
-      parts.push(`<section class="ps-sec ps-locked"><h4>${esc(s.title || copy('Poori Report Unlock Karne Par Kya Milega', 'Sampoorna Report Unlock Chesinappudu Emi Untundi', 'What the full report adds'))}</h4>`
-        + `<p>${esc(s.body||'')}</p>${bullets}</section>`);
+      parts.push(`<section class="ps-sec ps-locked"><h4>${titleText || copy('Poori Report Unlock Karne Par Kya Milega', 'Sampoorna Report Unlock Chesinappudu Emi Untundi', 'What the full report adds')}</h4>`
+        + `<p>${bodyText}</p>${bullets}</section>`);
       return;
     }
-    parts.push(`<section class="ps-sec"><h4>${esc(s.title || copy('Saransh', 'Saramsam', 'Overview'))}</h4>`
-      + `<p>${esc(s.body||'')}</p></section>`);
+    parts.push(`<section class="ps-sec"><h4>${titleText}</h4>`
+      + `<p>${bodyText}</p></section>`);
   });
 
   if(unlocked){
