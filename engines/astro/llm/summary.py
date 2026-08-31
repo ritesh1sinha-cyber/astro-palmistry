@@ -2089,11 +2089,15 @@ def _fb_palm(brief: dict, meta: dict, text: str, *, paid: bool, lang: str = "en"
     if brief.get("both_hands_summary"):
         if is_hinglish:
             sec_title = "Dono Hatho Ka Tulnatmak Vishleshan"
+            # English both_hands_summary produces code-mixed gibberish in Hinglish
+            body = "Aapke dono haathon ka tulanatmak vishleshan darshata hai ki daayein haath mein vartaman abhivyakti aur baayein haath mein antarnihit pravritti hai."
         elif is_tenglish:
             sec_title = "Rendu Chethula Thulanathmaka Vishleshana"
+            body = "Mee rendu chethula thulanathmaka vishleshana daayina chethilo prastutha abhivyakthi mariyu edama chethilo antarnihitha pravruthi ni chupisthundi."
         else:
             sec_title = "Both hands together"
-        sections.append(_sec(sec_title, str(brief["both_hands_summary"])))
+            body = str(brief["both_hands_summary"])
+        sections.append(_sec(sec_title, body))
     return [s for s in sections if s]
 
 
