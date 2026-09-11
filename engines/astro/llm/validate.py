@@ -970,6 +970,71 @@ _OUTCOME_PROMISE = re.compile(
 )
 
 
+# Third-person referents. The reading belongs to the person reading it, so
+# any of these means the model slipped back into textbook register.
+_THIRD_PERSON = re.compile(
+    r"\bthe (?:native|seeker|querent|client|subject|individual|person)\b|"
+    r"\bthis chart indicates\b|\bthe chart holder\b", re.I,
+)
+
+# Technical vocabulary that means nothing to a reader on its own. Allowed only
+# when a plain-word gloss sits nearby in the same sentence.
+_JARGON_GLOSS = (
+    ("kendradhipati", ("angle", "angular", "benefic owning", "quadrant")),
+    ("dusthana", ("difficult house", "6th", "8th", "12th", "hard house")),
+    ("maraka", ("ending", "cut short", "harm", "death-dealing")),
+    ("badhaka", ("obstruct", "blocking", "hindrance")),
+    ("trikona", ("trine", "fortunate house", "1st", "5th", "9th")),
+    ("sav", ("strength", "point", "score", "bindu")),
+    ("bindu", ("point", "strength", "score")),
+    ("gochar", ("transit", "moving", "current position")),
+    ("graha yuddha", ("planetary war", "clash", "fight")),
+    ("gandanta", ("knot", "junction", "cusp", "vulnerable")),
+    ("kemadruma", ("isolat", "unsupported", "alone")),
+    ("sade sati", ("seven", "7.5", "pressure", "saturn cycle")),
+    ("antardasha", ("sub-period", "sub period", "phase within")),
+    ("vimshottari", ("period", "cycle", "timeline")),
+    ("ashtakavarga", ("strength", "point", "score")),
+)
+
+
+def enforce_user_voice(text: str) -> list[str]:
+    """Reasons the answer does not read as one person talking to another.
+
+    Empty list means it passes. Callers give the model one chance to rewrite
+    against these reasons before falling back to deterministic prose.
+    """
+    body = (text or "").strip()
+    if not body:
+        return ["empty_answer"]
+
+    problems: list[str] = []
+    hit = _THIRD_PERSON.search(body)
+    if hit:
+        problems.append(f"you wrote '{hit.group(0)}' instead of 'you'")
+
+    if not re.search(r"\byou\b|\byour\b|\baap\b|\bmee(?:ru)?\b", body, re.I):
+        problems.append("the reply never addresses the reader as 'you'")
+
+    low = body.lower()
+    for term, glosses in _JARGON_GLOSS:
+        if term not in low:
+            continue
+        # Look for a plain-word explanation inside the sentence that used it.
+        idx = low.find(term)
+        start = max(0, low.rfind(".", 0, idx) + 1)
+        stop = low.find(".", idx)
+        sentence = low[start:stop if stop != -1 else len(low)]
+        if not any(g in sentence for g in glosses):
+            problems.append(f"'{term}' is used without a plain-English gloss")
+
+    words = len(body.split())
+    if words > 600:
+        problems.append("the reply is far longer than 350 words")
+
+    return problems[:4]
+
+
 def validate_chat_answer(prose: Any, facts: Any) -> list[str]:
     if getattr(prose, "out_of_scope", False):
         return []

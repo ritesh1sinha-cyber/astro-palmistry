@@ -372,6 +372,16 @@ def _links(rid: str, uid: str, paid: bool) -> dict:
     return out
 
 
+def _owns_report(rep: dict, uid: str) -> bool:
+    """Ownership, never payment.
+
+    ``_report_unlocked`` answers "may this half be shown at all", and it says
+    yes for every paid row — so it can never stand in for an ownership check.
+    Reading one as the other hands any signed-in reader somebody else's chart.
+    """
+    return str(rep.get("user_id")) == str(uid) or has_full_access_id(uid)
+
+
 def _report_unlocked(rep: dict, uid: str) -> bool:
     if bool(rep.get("paid")) or has_full_access_id(uid):
         return True
@@ -419,7 +429,7 @@ def serve_file(token: str):
     rep = report_get(rid)
     if not rep:
         raise HTTPException(404, "no such report")
-    if str(rep.get("user_id")) != str(uid) and not has_full_access_id(uid) and not rep.get("paid"):
+    if not _owns_report(rep, uid):
         raise HTTPException(403, "not authorized")
     if half == "paid" and not _report_unlocked(rep, uid):
         raise HTTPException(402, "payment required")
@@ -503,11 +513,9 @@ def my_reports(paid: Optional[int] = None, user: dict = Depends(current_user)):
 @app.get("/api/reports/{rid}")
 def one_report(rid: str, user: dict = Depends(current_user)):
     rep = report_get(rid)
-    if not rep:
+    if not rep or not _owns_report(rep, user["id"]):
         raise HTTPException(404, "no such report")
     unlocked = _report_unlocked(rep, user["id"])
-    if not unlocked and not has_full_access(user) and str(rep.get("user_id")) != str(user["id"]):
-        raise HTTPException(404, "no such report")
     return {"reportId": rep["id"], "kind": rep["kind"], "paid": unlocked,
             "title": report_title(rep["kind"], rep.get("meta") or {}),
             "meta": _gate_meta(rep["kind"], rep["meta"], unlocked),
@@ -557,13 +565,10 @@ def report_pdf(rid: str, summary: bool = True, user: dict = Depends(current_user
     passes summary=0 — most readers want the crux before the detail.
     """
     rep = report_get(rid)
-    if not rep:
+    if not rep or not _owns_report(rep, user["id"]):
         raise HTTPException(404, "no such report")
-    unlocked = _report_unlocked(rep, user["id"])
-    if not unlocked:
+    if not _report_unlocked(rep, user["id"]):
         raise HTTPException(402, "payment required")
-    if not has_full_access(user) and str(rep.get("user_id")) != str(user["id"]) and not rep.get("paid"):
-        raise HTTPException(403, "not authorized")
     key = rep.get("paid_key") or ""
     if not key:
         raise HTTPException(404, "nothing stored for that half")
@@ -648,7 +653,7 @@ def report_chat_history(rid: str, user: dict = Depends(current_user)):
     """Return recent chat turns for a paid report."""
     _require_chat_enabled()
     rep = report_get(rid)
-    if not rep:
+    if not rep or not _owns_report(rep, user["id"]):
         raise HTTPException(404, "no such report")
     if not _report_unlocked(rep, user["id"]):
         raise HTTPException(402, "payment required")
@@ -663,7 +668,7 @@ def report_chat(rid: str, body: ChatIn, user: dict = Depends(current_user)):
     """
     _require_chat_enabled()
     rep = report_get(rid)
-    if not rep:
+    if not rep or not _owns_report(rep, user["id"]):
         raise HTTPException(404, "no such report")
     if not _report_unlocked(rep, user["id"]):
         raise HTTPException(402, "payment required")

@@ -855,9 +855,41 @@ class PalmProse(BaseModel):
 class ChatAnswer(BaseModel):
     """Phase-2 paid follow-up chat response."""
     model_config = ConfigDict(extra="forbid")
-    answer: str = Field(..., min_length=4, max_length=4000)
+    # The chat prompt asks for up to 800 words, which overruns 4000 characters
+    # and used to fail validation on exactly the longest, most useful answers.
+    answer: str = Field(..., min_length=4, max_length=6000)
     used_fact_ids: list[str] = Field(default_factory=list, max_length=12)
     out_of_scope: bool = False
+
+
+class ToolArgs(BaseModel):
+    """Arguments the planner may pass to a tool.
+
+    Flat and typed rather than an open dict: strict ``json_schema`` mode
+    rejects unconstrained ``additionalProperties``, so an open mapping would
+    force every call down the ``guided_json`` fallback.
+    """
+    model_config = ConfigDict(extra="forbid")
+    area: str = ""
+    planet: str = ""
+    event: str = ""
+    topic: str = ""
+
+
+class ToolRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: str = Field(..., max_length=60)
+    args: ToolArgs = Field(default_factory=ToolArgs)
+
+
+class QuestionPlan(BaseModel):
+    """What the model understood, and which engines it wants run."""
+    model_config = ConfigDict(extra="forbid")
+    restated_intent: str = Field(default="", max_length=300)
+    in_scope: bool = True
+    life_area: str = Field(default="general_destiny", max_length=60)
+    target_planet: str = Field(default="", max_length=20)
+    tools: list[ToolRequest] = Field(default_factory=list, max_length=4)
 
 
 class PlainSummarySection(BaseModel):
