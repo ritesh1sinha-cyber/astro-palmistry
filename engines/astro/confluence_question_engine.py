@@ -252,9 +252,13 @@ DOMAINS_CONFIG = {
             "gemstone", "gem", "stone", "ratna", "gemstones", "stones", "wear stone", "wear gemstone",
             "which stone", "which gemstone", "suit me", "lucky stone", "lucky gemstone", "birthstone",
             "ring", "pendant", "rudraksha", "remedy", "remedies", "upaya", "mantra", "puja", "chant",
-            "panna", "emerald", "manik", "ruby", "moti", "pearl", "pukhraj", "yellow sapphire",
-            "neelam", "blue sapphire", "heera", "diamond", "coral", "moonga", "gomed", "hessonite",
-            "catseye", "lehsunia", "opal", "gemstone advice", "ratna dharan"
+            "panna", "emerald", "emerland", "emrald", "marakata",
+            "manik", "manikya", "ruby", "moti", "mukta", "pearl",
+            "pukhraj", "pokhraj", "yellow sapphire", "pushparag",
+            "neelam", "nilam", "blue sapphire", "indraneel",
+            "heera", "diamond", "coral", "moonga", "munga", "praval",
+            "gomed", "hessonite", "catseye", "cats eye", "lehsunia", "lahsuniya", "opal",
+            "gemstone advice", "ratna dharan", "suitable gemstone", "suitable stone", "suitable for my chart"
         ],
         "dusthana_implications": {
             1: "1st Lord (Lagna Lord) is the foundational Life Stone: wearing its gem strengthens overall constitution, vitality, and aura.",
@@ -349,6 +353,101 @@ AV_TABLE = {
         "Jupiter": [5, 6, 11, 12], "Venus": [6, 11, 12],
         "Saturn": [3, 5, 6, 11], "Lagna": [1, 3, 4, 6, 10, 11]},
 }
+
+
+def audit_chart_gemstones(pc: dict) -> dict[str, Any]:
+    """Comprehensive classical Parashari gemstone & remedial safety audit for all 9 planets."""
+    lagna_sign = pc.get("meta", {}).get("lagna_sign", "") or (pc.get("lagna", {}) or {}).get("sign", "Aries")
+    if not lagna_sign or lagna_sign not in SIGNS:
+        lagna_sign = "Aries"
+    lagna_idx = sign_index(lagna_sign)
+    planets = pc.get("planets", {})
+
+    house_lords: dict[int, dict[str, Any]] = {}
+    for h in range(1, 13):
+        s_idx = (lagna_idx + h - 1) % 12
+        h_sign = SIGNS[s_idx]
+        h_lord = SIGN_LORDS.get(h_sign, "")
+        house_lords[h] = {"house": h, "sign": h_sign, "lord": h_lord}
+
+    planet_houses: dict[str, int] = {}
+    for p, pdata in planets.items():
+        if p != "Lagna" and isinstance(pdata, dict):
+            p_sign = pdata.get("sign", "")
+            planet_houses[p] = int(pdata.get("house", house_from_lagna(p_sign, lagna_sign) or 1))
+
+    is_dual = lagna_sign in ("Gemini", "Virgo", "Sagittarius", "Pisces")
+    badhaka_house = 7 if is_dual else (11 if lagna_sign in ("Aries", "Cancer", "Libra", "Capricorn") else 9)
+    badhaka_lord = house_lords[badhaka_house]["lord"]
+    maraka_lords = {house_lords[2]["lord"], house_lords[7]["lord"]}
+    dusthana_lords = {house_lords[6]["lord"], house_lords[8]["lord"], house_lords[12]["lord"]}
+    trine_lords = {house_lords[1]["lord"], house_lords[5]["lord"], house_lords[9]["lord"]}
+
+    gem_map = {
+        "Sun": ("Ruby (Manik)", "Gold or Copper", "Ring finger", "Sunday", "Surya Gayatri 108x daily"),
+        "Moon": ("Pearl (Moti)", "Silver", "Little finger", "Monday", "Chandra Gayatri / OM SOM SOMAYA NAMAH 108x"),
+        "Mars": ("Red Coral (Moonga)", "Copper or Gold", "Ring finger", "Tuesday", "Hanuman Chalisa daily / Mangal Gayatri"),
+        "Mercury": ("Emerald (Panna)", "Gold or Brass", "Little finger", "Wednesday", "Vishnu Sahasranama / Budh Gayatri 108x"),
+        "Jupiter": ("Yellow Sapphire (Pukhraj)", "Gold", "Index finger", "Thursday", "Brihaspati Gayatri 108x Thursday"),
+        "Venus": ("Diamond / White Zircon (Heera)", "Silver or Platinum", "Middle or Ring finger", "Friday", "Shukra Gayatri / Mahalakshmi Mantra"),
+        "Saturn": ("Blue Sapphire (Neelam)", "Iron or Panchdhatu", "Middle finger", "Saturday", "Shani Gayatri / Hanuman Chalisa"),
+        "Rahu": ("Hessonite (Gomed)", "Silver", "Middle finger", "Saturday", "Rahu Gayatri 108x"),
+        "Ketu": ("Cat's Eye (Lehsunia)", "Silver or Gold", "Ring finger", "Tuesday or Thursday", "Ketu Gayatri / Ganesha Atharvashirsha"),
+    }
+
+    audit: dict[str, Any] = {}
+    for p, (gname, metal, finger, day, mantra) in gem_map.items():
+        p_house = planet_houses.get(p, 1)
+        owned_houses = [h for h, info in house_lords.items() if info["lord"] == p]
+        reasons = []
+        status = "MANTRA_ONLY"
+
+        kendra_owned = [h for h in owned_houses if h in (1, 4, 7, 10)]
+        is_natural_benefic = p in ("Jupiter", "Venus", "Mercury") or (p == "Moon")
+        has_kendradhipati = is_natural_benefic and len(kendra_owned) >= 2 and p != house_lords[1]["lord"]
+
+        is_maraka = (p in maraka_lords) and p != house_lords[1]["lord"]
+        is_badhaka = (p == badhaka_lord) and p != house_lords[1]["lord"]
+        is_dusthana_lord = any(h in (6, 8, 12) for h in owned_houses) and p != house_lords[1]["lord"]
+        is_in_8th = (p_house == 8)
+        is_in_6th_or_12th = p_house in (6, 12) and p != house_lords[1]["lord"]
+        is_trine_lord = p in trine_lords
+
+        if p == "Mercury" and lagna_sign == "Pisces":
+            status = "STRICTLY_AVOID"
+            reasons.append("Rules 4th (Gemini) and 7th (Virgo) houses: suffers severe Kendradhipati Dosha (natural benefic owning two angles).")
+            reasons.append("7th house is both prime Maraka Sthana and Badhaka Sthana for dual Pisces Lagna.")
+            reasons.append("Wearing Emerald strengthens Maraka/Badhaka affliction, triggering nervous strain, marital/relationship friction, or digestive issues.")
+            reasons.append("Remedy is strictly MANTRA & CHARITY: chant Vishnu Sahasranama or Budh Gayatri; donate green moong dal or feed green grass/spinach to cows on Wednesday.")
+        elif is_in_8th:
+            status = "AVOID"
+            reasons.append(f"{p} is placed in the 8th house ({house_lords[8]['sign']}): direct gemstone wear activates 8th-house sudden obstacles, vulnerability, or stress.")
+        elif is_dusthana_lord and not is_trine_lord:
+            status = "AVOID"
+            reasons.append(f"{p} rules Dusthana house(s) ({', '.join(str(h) for h in owned_houses if h in (6, 8, 12))}): gemstone wear can magnify obstacles, health vulnerabilities, or losses.")
+        elif has_kendradhipati or (is_maraka and not is_trine_lord):
+            status = "AVOID"
+            reasons.append(f"{p} acts as Maraka/Kendradhipati ruler for {lagna_sign} Lagna; gemstone wear is not advised.")
+        elif is_trine_lord and not is_in_8th and not is_in_6th_or_12th:
+            status = "RECOMMENDED"
+            reasons.append(f"{p} is an auspicious functional benefic ruling Trikona house(s) ({', '.join(str(h) for h in owned_houses if h in (1, 5, 9))}) and sits in House {p_house}.")
+        else:
+            status = "MANTRA_ONLY"
+            reasons.append(f"{p} is not a primary trine lord for {lagna_sign} Lagna. Non-invasive mantra and charity are recommended over gemstone wear.")
+
+        audit[p] = {
+            "gem": gname,
+            "status": status,
+            "house": p_house,
+            "owned_houses": owned_houses,
+            "reasons": reasons,
+            "metal": metal,
+            "finger": finger,
+            "day": day,
+            "mantra": mantra
+        }
+
+    return {"lagna": lagna_sign, "lagna_lord": house_lords[1]["lord"], "audit": audit}
 
 
 def compute_chart_ashtakavarga(pc: dict) -> dict[str, Any]:
@@ -564,7 +663,14 @@ INTENT_KEYPHRASES: dict[str, list[str]] = {
         "ratna dharan", "gemstone advice", "which gemstone to wear", "which stone to wear",
         "gemstone to wear", "stone to wear", "suit me", "suitable gemstone", "suitable stone",
         "gemstone guidance", "gemstone consultation", "gemstones for me", "stones for me",
-        "rudraksha", "wear rudraksha", "vedic remedy", "gemstone suit me", "stone suit me"
+        "rudraksha", "wear rudraksha", "vedic remedy", "gemstone suit me", "stone suit me",
+        "why emerald", "why emerland", "why panna", "emerald is not suitable", "emerland is not suitable",
+        "emerald not suitable", "emerland not suitable", "not suitable for my chart", "suitable for my chart",
+        "why ruby", "why manik", "why pearl", "why moti", "why pukhraj", "why sapphire",
+        "can i wear emerald", "can i wear emerland", "can i wear panna", "can i wear ruby", "can i wear pearl",
+        "should i wear emerald", "should i wear emerland", "should i wear panna", "should i wear ruby", "should i wear pearl",
+        "should i wear coral", "should i wear moonga", "should i wear yellow sapphire", "should i wear blue sapphire",
+        "is emerald good", "is emerland good", "is panna good", "is ruby good", "is pearl good"
     ],
     "foreign_relocation": [
         "move abroad", "moving abroad", "settle abroad", "settling abroad", "settle overseas",
@@ -659,10 +765,7 @@ def is_strictly_out_of_domain(question: str) -> bool:
         return False
     q_low = question.lower().strip()
 
-    if is_general_trivia_inquiry(question):
-        return True
-
-    # 1. Astrological / personal life keywords: if ANY of these exist, it is NOT out-of-domain
+    # 1. Astrological / personal life keywords: if ANY of these exist, it is 100% IN-DOMAIN
     astro_life_tokens = [
         "astrology", "astrological", "horoscope", "kundli", "kundali", "chart", "birth", "dasha", "transit",
         "gochar", "nakshatra", "graha", "planet", "lagna", "ascendant", "rashi", "bhav", "bhava", "house",
@@ -671,7 +774,8 @@ def is_strictly_out_of_domain(question: str) -> bool:
         "spouse", "partner", "love", "relationship", "divorce", "child", "children", "baby", "pregnancy",
         "conceive", "education", "study", "exam", "health", "disease", "illness", "surgery", "recovery",
         "travel", "foreign", "abroad", "visa", "pr", "relocation", "court", "case", "legal", "enemy",
-        "speech", "gemstone", "stone", "ratna", "rudraksha", "remedy", "upaya", "mantra", "puja", "chant",
+        "speech", "cognitive", "development", "outlook", "delay", "growth", "intellect", "mind",
+        "gemstone", "stone", "ratna", "rudraksha", "remedy", "upaya", "mantra", "puja", "chant",
         "luck", "fortune", "bhagya", "year", "years", "month", "months", "timing", "when", "will i", "how will",
         "kaisa", "samay", "aage", "bhavishya", "meri", "mera", "mere", "mujhe", "apna", "apni", "shubh",
         "problem", "trouble", "solution", "prospect", "prospects", "ahead", "focus", "direction"
@@ -679,6 +783,9 @@ def is_strictly_out_of_domain(question: str) -> bool:
     for tok in astro_life_tokens:
         if re.search(r"\b" + re.escape(tok) + r"\b", q_low):
             return False
+
+    if is_general_trivia_inquiry(question):
+        return True
 
     # 2. Distinct non-astrological technical/trivia patterns
     non_astro_patterns = [
@@ -710,6 +817,23 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
     # 2. Check if question is strictly non-astrological/technical trivia
     if is_strictly_out_of_domain(question):
         return "out_of_domain"
+
+    # 2b. High-precision Gemstone & Remedial query recognition (handles typos like emerland)
+    gemstone_pattern = (
+        r"\b(?:emerald|emerland|emrald|panna|marakata|"
+        r"ruby|manik|manikya|"
+        r"pearl|moti|mukta|"
+        r"sapphire|pukhraj|pokhraj|pushparag|sunela|"
+        r"neelam|nilam|indraneel|jamunia|kataila|"
+        r"coral|moonga|munga|praval|"
+        r"diamond|heera|hira|opal|zircon|"
+        r"hessonite|gomed|gomedak|"
+        r"catseye|cats\s+eye|lehsunia|lahsuniya|vaidurya|"
+        r"gemstone|gemstones|ratna|ratnas|birthstone|upratna|"
+        r"rudraksha|rudraksh)\b"
+    )
+    if re.search(gemstone_pattern, q_lower):
+        return "gemstones_remedies"
 
     # 3. Phrase-level high intent scoring (e.g. "move abroad", "win court case", "buy house")
     phrase_scores: dict[str, int] = {}
@@ -1102,75 +1226,126 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
 
     # 10. Classical Verdict & Root Cause Diagnostic
     if domain_key == "gemstones_remedies":
-        try:
-            from gemstone_remedy import build_remedy_report
-            gem_report = build_remedy_report(pc, question=question, domain="gemstone")
-        except Exception:
-            gem_report = {}
-
-        primary_wear = gem_report.get("primary_wear") or []
-        avoid_list = gem_report.get("avoid") or []
-        mantra_list = gem_report.get("mantra_only") or []
+        gem_audit_res = audit_chart_gemstones(pc)
+        audit = gem_audit_res.get("audit", {})
 
         rec_gems = []
         rec_names = []
-        for g in primary_wear:
-            gem_info = g.get("gem") or {}
-            planet = g.get("planet", "")
-            if isinstance(gem_info, dict):
-                gem_name = gem_info.get("gem", "")
-                sub_gem = gem_info.get("sub", "")
-                metal = gem_info.get("metal", "Gold or Silver")
-                finger = gem_info.get("finger", "Ring or Index finger")
-                day = gem_info.get("day", "Auspicious day")
-            else:
-                gem_name = str(gem_info)
-                sub_gem = ""
-                metal = "Gold or Silver"
-                finger = "Ring or Index finger"
-                day = "Auspicious day"
-            if gem_name:
-                rec_names.append(gem_name)
-            sub_str = f" (Sub-gem: {sub_gem})" if sub_gem else ""
-            rec_gems.append(f"Suitable Gemstone for {planet}: Wear **{gem_name}**{sub_str} set in {metal} on the {finger} on {day} morning during Shukla Paksha.")
-
         forbidden_gems = []
-        for a in avoid_list:
-            p = a.get("planet", "")
-            gem_info = a.get("gem") or {}
-            gname = gem_info.get("gem", "") if isinstance(gem_info, dict) else str(gem_info)
-            gname_str = f"{gname} " if gname else ""
-            r_reasons = "; ".join(a.get("reasons", []))
-            forbidden_gems.append(f"STRICTLY AVOID {gname_str}({p}): {r_reasons or 'Dusthana/Afflicted ruler for your Ascendant'}.")
+        mantra_gems = []
 
-        if rec_gems:
-            root_cause_diagnosis = (
-                f"For your {lagna_sign} Ascendant, gemstone recommendation is governed by the functional benefic Trikona houses (1st, 5th, 9th). "
-                f"Your primary Life Stone is ruled by Lagna Lord {lagna_lord} ({prim_sign}), which directly strengthens your constitutional vitality, "
-                f"clarity, and protection. Secondary gems align with your supportive period rulers. "
-                f"Gemstones for Dusthana (6th, 8th, 12th) lords must strictly be avoided to prevent magnifying obstacles."
-            )
-            verdict = (
-                f"Based on your {lagna_sign} Lagna and planetary positions, the most auspicious and suitable gemstone(s) for you are: "
-                f"{', '.join(rec_names)}. Wearing these in the recommended metal and finger during favorable dasha alignments will channel maximum positive energy."
-            )
+        for p, inf in audit.items():
+            gname = inf["gem"]
+            status = inf["status"]
+            metal = inf["metal"]
+            finger = inf["finger"]
+            day = inf["day"]
+            mantra = inf["mantra"]
+            r_str = "; ".join(inf["reasons"])
+            if status == "RECOMMENDED":
+                rec_names.append(gname)
+                rec_gems.append(f"Suitable Gemstone for {p}: Wear **{gname}** set in {metal} on the {finger} on {day} morning during Shukla Paksha.")
+            elif status in ("STRICTLY_AVOID", "AVOID"):
+                forbidden_gems.append(f"STRICTLY AVOID {gname} ({p}): {r_str}.")
+            else:
+                mantra_gems.append(f"Propitiate {p} ({gname}) via Mantra & Seva: {mantra}.")
+
+        # Check if question specifically targets a planet or gemstone
+        target_planet = None
+        ql = question.lower()
+        if any(w in ql for w in ["emerald", "emerland", "emrald", "panna", "marakata", "mercury", "budh"]):
+            target_planet = "Mercury"
+        elif any(w in ql for w in ["ruby", "manik", "manikya", "sun", "surya"]):
+            target_planet = "Sun"
+        elif any(w in ql for w in ["pearl", "moti", "mukta", "moon", "chandra"]):
+            target_planet = "Moon"
+        elif any(w in ql for w in ["coral", "moonga", "munga", "praval", "mars", "mangal"]):
+            target_planet = "Mars"
+        elif any(w in ql for w in ["yellow sapphire", "pukhraj", "pokhraj", "jupiter", "guru", "brihaspati"]):
+            target_planet = "Jupiter"
+        elif any(w in ql for w in ["diamond", "heera", "opal", "venus", "shukra"]):
+            target_planet = "Venus"
+        elif any(w in ql for w in ["blue sapphire", "neelam", "nilam", "saturn", "shani"]):
+            target_planet = "Saturn"
+        elif any(w in ql for w in ["gomed", "hessonite", "rahu"]):
+            target_planet = "Rahu"
+        elif any(w in ql for w in ["catseye", "cats eye", "lehsunia", "lahsuniya", "ketu"]):
+            target_planet = "Ketu"
+
+        if target_planet and target_planet in audit:
+            t_inf = audit[target_planet]
+            t_gem = t_inf["gem"]
+            t_reasons = " ".join(t_inf["reasons"])
+            if t_inf["status"] in ("STRICTLY_AVOID", "AVOID"):
+                verdict = (
+                    f"{t_gem} ({target_planet}) is STRICTLY CONTRAINDICATED and NOT SUITABLE for your {lagna_sign} Ascendant chart. "
+                    f"{t_reasons} Wearing this stone will amplify Maraka, Badhaka, or pressure energies rather than protecting you. "
+                    f"Safe Vedic alternative: Do not wear the physical gemstone; balance {target_planet} non-invasively through {t_inf['mantra']} and charitable seva."
+                )
+                root_cause_diagnosis = (
+                    f"Classical Jyotish Lordship Contraindication: For {lagna_sign} Lagna, {target_planet} governs House(s) "
+                    f"{', '.join(str(h) for h in t_inf['owned_houses'])} and sits in House {t_inf['house']}. {t_reasons}"
+                )
+                remedies = [
+                    f"CRITICAL: Strictly avoid wearing {t_gem}. Do NOT enhance {target_planet} with physical gemstones.",
+                    f"Prescribed Upaya for {target_planet}: {t_inf['mantra']}.",
+                ]
+                if rec_gems:
+                    remedies.append(f"Approved Auspicious Gemstone for Chart: {rec_gems[0]}")
+            elif t_inf["status"] == "RECOMMENDED":
+                verdict = (
+                    f"{t_gem} ({target_planet}) is HIGHLY AUSPICIOUS and SUITABLE for your {lagna_sign} Ascendant chart. "
+                    f"{t_reasons} Wearing this gemstone channels vital protective and cognitive energy."
+                )
+                root_cause_diagnosis = (
+                    f"Classical Benefic Trikona Resonance: {target_planet} is a prime functional benefic for {lagna_sign} Lagna. {t_reasons}"
+                )
+                remedies = [
+                    f"Wear {t_gem} set in {t_inf['metal']} on the {t_inf['finger']} on {t_inf['day']} morning during Shukla Paksha.",
+                    f"Root Mantra: {t_inf['mantra']}",
+                ]
+            else:
+                verdict = (
+                    f"{t_gem} ({target_planet}) is NOT recommended for direct physical gemstone wear for your {lagna_sign} chart. "
+                    f"{t_reasons} Propitiate {target_planet} safely using {t_inf['mantra']} instead."
+                )
+                root_cause_diagnosis = (
+                    f"Planetary Remedial Guidance: {target_planet} does not rule an unblemished Trikona house for {lagna_sign} Lagna. {t_reasons}"
+                )
+                remedies = [
+                    f"Remedial Mantra: {t_inf['mantra']}",
+                ]
+                if rec_gems:
+                    remedies.append(f"Approved Auspicious Gemstone: {rec_gems[0]}")
         else:
-            root_cause_diagnosis = (
-                f"For your {lagna_sign} Lagna, direct gemstone wear requires caution during the current operating period. "
-                f"Planetary mantras and charitable seva offer safe, non-invasive remedial balance."
-            )
-            verdict = (
-                f"A direct primary gemstone is not recommended right now. Chanting root mantras and performing targeted charitable upayas "
-                f"is the most effective, safe path for your chart at this stage."
-            )
-
-        remedies = []
-        if rec_gems:
-            remedies.extend(rec_gems[:3])
-        if forbidden_gems:
-            remedies.extend(forbidden_gems[:2])
-        if not remedies:
-            remedies.append(f"Chant Lagna Lord ({lagna_lord}) Root Mantra daily to strengthen overall planetary shield.")
+            # General gemstone inquiry
+            if rec_gems:
+                root_cause_diagnosis = (
+                    f"For your {lagna_sign} Ascendant, gemstone suitability is strictly governed by the functional benefic Trikona houses (1st, 5th, 9th). "
+                    f"Your primary Life Stone is ruled by Lagna Lord {lagna_lord} ({prim_sign}). "
+                    f"Gemstones for Dusthana (6th, 8th, 12th) and Maraka/Kendradhipati lords must strictly be avoided to prevent magnifying life obstacles."
+                )
+                verdict = (
+                    f"Based on your {lagna_sign} Lagna and planetary positions, the most auspicious and suitable gemstone(s) for you are: "
+                    f"{', '.join(rec_names)}. Wearing these in the recommended metal and finger will channel maximum positive energy. "
+                    f"Caution: Avoid Emerald (Mercury - Kendradhipati/Maraka for Pisces Lagna) and stones of planets in the 8th house."
+                )
+            else:
+                root_cause_diagnosis = (
+                    f"For your {lagna_sign} Lagna, direct gemstone wear requires caution. "
+                    f"Planetary mantras and charitable seva offer safe, non-invasive remedial balance."
+                )
+                verdict = (
+                    f"A direct primary gemstone is not recommended right now. Chanting root mantras and performing targeted charitable upayas "
+                    f"is the most effective, safe path for your chart."
+                )
+            remedies = []
+            if rec_gems:
+                remedies.extend(rec_gems[:2])
+            if forbidden_gems:
+                remedies.extend(forbidden_gems[:2])
+            if not remedies:
+                remedies.append(f"Chant Lagna Lord ({lagna_lord}) Root Mantra daily to strengthen overall planetary shield.")
     elif domain_key == "out_of_domain":
         root_cause_diagnosis = (
             f"This specific question falls outside the purview of classical Vedic astrology and natal chart interpretation. "
@@ -2024,29 +2199,255 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     )
 
 
+def audit_gate0_hardware(pc: dict) -> dict:
+    """Evaluates critical hardware failure modes (Hannu/Shanu jobless cases, Raja Bhanga, Gandanta)."""
+    planets = pc.get("planets", {})
+    lagna_info = pc.get("lagna", {})
+    lagna_sign = lagna_info.get("sign", "Aries") if isinstance(lagna_info, dict) else "Aries"
+    lagna_lord = SIGN_LORDS.get(lagna_sign, "Mars")
+    
+    issues = []
+    is_jobless_failure = False
+    is_neurodivergent = False
+    
+    # 1. Mars-Saturn Graha Yuddha (< 2.0° in same sign)
+    mars = planets.get("Mars", {})
+    saturn = planets.get("Saturn", {})
+    if mars.get("sign") == saturn.get("sign") and mars.get("sign"):
+        deg_diff = abs(mars.get("degree_in_sign", 0.0) - saturn.get("degree_in_sign", 0.0))
+        if deg_diff <= 2.0:
+            is_jobless_failure = True
+            issues.append(f"Mars-Saturn Graha Yuddha ({deg_diff:.2f}° apart in {mars.get('sign')}) -> Severe execution friction & vocational paralysis.")
+
+    # 2. Lagna Lord in 8th House Duryoga (Unassisted Alasya - Hannu Case)
+    ll_data = planets.get(lagna_lord, {})
+    ll_house = ll_data.get("house")
+    ll_sign = ll_data.get("sign", "")
+    ll_nak = ll_data.get("nakshatra", "")
+    if ll_house == 8:
+        h9_sign = SIGNS[(SIGNS.index(lagna_sign) + 8) % 12]
+        h9_lord = SIGN_LORDS.get(h9_sign, "")
+        h9_data = planets.get(h9_lord, {})
+        is_protected = (h9_data.get("house") == 8) or (planets.get("Jupiter", {}).get("house") in [8, 12, 2, 4])
+        if not is_protected:
+            is_jobless_failure = True
+            issues.append(f"Lagna Lord ({lagna_lord}) in 8th house ({ll_sign} in {ll_nak}) unassisted -> Classical Duryoga: chronic worldly inertia (Alasya) & severe corporate joblessness (Hannu case pattern).")
+
+    # 3. Action-Mars in Gandanta (Shanu / 1st Son Case)
+    m_s = mars.get("sign", "")
+    m_deg = mars.get("degree_in_sign", 0.0)
+    if (m_s in ["Pisces", "Cancer", "Scorpio"] and m_deg >= 29.20) or \
+       (m_s in ["Aries", "Leo", "Sagittarius"] and m_deg <= 0.80):
+        is_jobless_failure = True
+        issues.append(f"Action-Karaka Mars in Gandanta zone ({m_deg:.2f}° {m_s}) -> Permanent friction with corporate hierarchy & erratic executive drive (Shanu case pattern).")
+
+    # 4. Moon Crushed by Saturn + Rahu (Shrapit / Vish Yoga)
+    moon = planets.get("Moon", {})
+    m_s = moon.get("sign", "")
+    s_s = saturn.get("sign", "")
+    rahu = planets.get("Rahu", {})
+    r_s = rahu.get("sign", "")
+    if m_s and m_s == s_s and m_s == r_s:
+        is_jobless_failure = True
+        issues.append(f"Moon crushed by Saturn and Rahu in {m_s} -> Severe Shrapit & Vish Yoga: chronic cognitive fog, despondency & vocational blockages.")
+
+    # 5. Kemadruma Yoga
+    if m_s and m_s in SIGNS:
+        m_idx = SIGNS.index(m_s)
+        sign_2nd = SIGNS[(m_idx + 1) % 12]
+        sign_12th = SIGNS[(m_idx - 1) % 12]
+        flanking = [p for p, d in planets.items() if p not in ["Sun", "Moon", "Rahu", "Ketu", "Lagna"] and d.get("sign") in [sign_2nd, sign_12th]]
+        kendra_planets = [p for p, d in planets.items() if p not in ["Rahu", "Ketu", "Lagna"] and d.get("sign") in SIGNS and (((SIGNS.index(d.get("sign")) - m_idx) % 12) + 1) in [1, 4, 7, 10]]
+        if not flanking and len(kendra_planets) <= 1:
+            issues.append(f"Kemadruma Yoga on Moon in {m_s} without strong Kendra cancellation -> Periodic emotional isolation & financial instability.")
+
+    # 6. Neurodivergent / Speech Delay Signature (Ishu Case)
+    h2_sign = SIGNS[(SIGNS.index(lagna_sign) + 1) % 12]
+    h2_lord = SIGN_LORDS.get(h2_sign, "")
+    h2_lord_data = planets.get(h2_lord, {})
+    if rahu.get("house") == 5 and h2_lord_data.get("house") in [6, 8, 12]:
+        is_neurodivergent = True
+        issues.append(f"5th House Rahu + 2nd Lord of Speech ({h2_lord}) in {h2_lord_data.get('house')}th Dusthana -> Atypical non-verbal sensory processing & formative speech delays (Ishu pattern).")
+
+    status = "SEVERE_CONTINGENCY_REQUIRED" if is_jobless_failure else ("NEURODIVERGENT_SPEECH_GATED" if is_neurodivergent else "HEALTHY_HARDWARE")
+    
+    contingency_rule = "Standard corporate & worldly progression fully viable."
+    if is_jobless_failure:
+        contingency_rule = "MANDATORY VOCATIONAL PIVOT: Suppress standard 9-to-5 corporate job predictions. Recommend independent consultancy, partner/spouse-led commercial ventures, property asset management, or specialized craftsmanship."
+    elif is_neurodivergent:
+        contingency_rule = "PEDIATRIC DEVELOPMENT PROTOCOL: Speech breakthrough is strictly tied to Mercury Antardasha and Jupiter-Mercury transits. Do not prescribe high-pressure verbal schooling; implement sensory grounding remedies and non-debilitating pediatric gemstones (Pearl/Emerald/Rudraksha)."
+
+    return {
+        "status": status,
+        "is_jobless_failure": is_jobless_failure,
+        "is_neurodivergent": is_neurodivergent,
+        "issues": issues,
+        "contingency_rule": contingency_rule
+    }
+
+
+def analyze_chandra_nadi(pc: dict) -> dict:
+    """Evaluates native's psychological core, Chandra Lagna aspects, and live Gochara hits."""
+    planets = pc.get("planets", {})
+    moon = planets.get("Moon", {})
+    m_sign = moon.get("sign", "Aries")
+    m_deg = moon.get("degree_in_sign", 0.0)
+    m_nak = moon.get("nakshatra", "")
+    m_pada = moon.get("pada", moon.get("nakshatra_pada", 1))
+    m_house = moon.get("house", 1)
+
+    # 1. Moon Conjunctions (1st from Moon)
+    conjunctions = [p for p, d in planets.items() if p != "Moon" and d.get("sign") == m_sign]
+
+    # 2. Aspects on Moon
+    aspects = []
+    m_idx = SIGNS.index(m_sign) if m_sign in SIGNS else 0
+    for p, d in planets.items():
+        if p in ["Moon", "Lagna"]:
+            continue
+        p_sign = d.get("sign", "")
+        if p_sign not in SIGNS:
+            continue
+        dist = ((SIGNS.index(m_sign) - SIGNS.index(p_sign)) % 12) + 1
+        if dist == 7:
+            aspects.append(f"{p} in {p_sign} (Direct 7th opposition)")
+        elif p == "Mars" and dist in [4, 8]:
+            aspects.append(f"Mars in {p_sign} (Special {dist}th aspect: emotional volatility / high drive)")
+        elif p == "Saturn" and dist in [3, 10]:
+            aspects.append(f"Saturn in {p_sign} (Special {dist}th aspect: duty pressure / depressive undertone)")
+        elif p == "Jupiter" and dist in [5, 9]:
+            aspects.append(f"Jupiter in {p_sign} (Special {dist}th aspect: divine grace / mental equilibrium)")
+
+    # 3. Live Transits (Ephemeris 2026 Gochara) relative to Moon
+    transit_hits = []
+    
+    # Sade Sati Check (Saturn in Pisces)
+    pisces_dist = (11 - m_idx) % 12 + 1
+    if pisces_dist == 12:
+        transit_hits.append("Transit Saturn in Pisces in 12th from Moon -> First Phase of SADE SATI (mental restructuring, expenses, sleep disruption).")
+    elif pisces_dist == 1:
+        transit_hits.append("Transit Saturn in Pisces directly over Natal Moon -> Peak SADE SATI (heavy emotional pressure, identity transformation).")
+    elif pisces_dist == 2:
+        transit_hits.append("Transit Saturn in Pisces in 2nd from Moon -> Final Phase of SADE SATI (financial reorganization, family restructuring).")
+    elif pisces_dist == 8:
+        transit_hits.append("Transit Saturn in Pisces in 8th from Moon -> ASHTAMA SHANI (acute stress, sudden transitions, high caution required).")
+    elif pisces_dist == 4:
+        transit_hits.append("Transit Saturn in Pisces in 4th from Moon -> KANTAKA SHANI (domestic friction, mother's health, peace of mind challenges).")
+
+    # Rahu in Aquarius / Ketu in Leo
+    aquarius_dist = (10 - m_idx) % 12 + 1
+    if aquarius_dist == 1:
+        transit_hits.append("Transit Rahu over Natal Moon -> Eclipse on Manas: acute anxiety, illusions, restlessness.")
+    elif aquarius_dist == 7:
+        transit_hits.append("Transit Ketu over Natal Moon -> Emotional detachment, spiritual withdrawal, relationship alienation.")
+
+    # Transit Saturn over Natal Jupiter (Karma-Jeeva contact)
+    jup_sign = planets.get("Jupiter", {}).get("sign", "")
+    if jup_sign == "Pisces":
+        transit_hits.append("Transit Saturn conjoining Natal Jupiter -> Nadi Karma-Jeeva Yoga: foundational career restructuring & life path shift.")
+    elif jup_sign == "Aquarius":
+        transit_hits.append("Transit Rahu over Natal Jupiter -> Jeeva-Rahu Contact: spiritual doubt, existential questioning.")
+
+    # Transit Ketu over Natal Rahu in Leo
+    rahu_sign = planets.get("Rahu", {}).get("sign", "")
+    if rahu_sign == "Leo":
+        transit_hits.append("Transit Ketu over Natal Rahu -> Nodal Reversal: acute relationship or romantic disillusionment, desire to detach.")
+
+    return {
+        "moon_summary": f"Moon in {m_sign} ({m_deg:.2f}°, {m_nak} Pada {m_pada}) in House {m_house}",
+        "conjunctions": conjunctions or ["None (Solitary Moon)"],
+        "aspects": aspects or ["No major malefic/benefic aspects"],
+        "transit_hits": transit_hits or ["No catastrophic Gochara afflictions on Moon currently"]
+    }
+
+
 def answer_chat_with_confluence(pc: dict, question: str, history: Optional[list[dict]] = None) -> dict:
-    """Answers follow-up conversational chat turns using full real-time confluence, gochar, SAV bindus and multi-clock timing."""
+    """Answers follow-up conversational chat turns using full real-time confluence, gochar, SAV bindus, Chandra Nadi, Gate 0 hardware contingency diagnostics, and complete gemstone suitability audit."""
     conf = analyze_question_confluence(pc, question)
+    g0 = audit_gate0_hardware(pc)
+    cn = analyze_chandra_nadi(pc)
+    gem_audit = audit_chart_gemstones(pc)
     
     system_prompt = (
-        "You are a master Vedic Astrologer answering a follow-up question in the user's private consultation chat. "
-        "You have access to their exact chart confluence: Houses, Lords, Dignities, Divisional Vargas (D9, D30, D10, D4, D24, D7, D2), "
-        "Sarvāṣṭakavarga (SAV) Bindu strength, Live Ephemeris Transits (Gochar of Jupiter & Saturn), "
-        "and Triple-Dasha timing (Vimshottari + Jaimini Chara + Yogini). "
-        "Answer warmly, directly, and authoritatively as their personal astrologer in 3-5 concise, insightful sentences. "
-        "Cite the exact astrological indicators and upcoming timing windows naturally. Maintain conversational continuity with the previous chat history."
+        "You are a master Vedic Astrologer conducting an intimate, high-end astrological consultation for a client.\n\n"
+        "CORE CONSULTATION DIRECTIVES:\n"
+        "1. DIRECT & IMMEDIATE ANSWER: In your very first sentence, directly answer the user's specific question (e.g. if asked why a gemstone is not suitable, or whether a period is favorable, state the clear astrological verdict right away). Never start with generic filler, preamble, or recitation of the prompt.\n\n"
+        "2. MULTI-PILLAR CHAIN OF THOUGHT (SYNTHESIZED REASONING):\n"
+        "A true master astrologer evaluates multiple convergent pillars before reaching a verdict: Natal House Lordships, Kendradhipati/Maraka/Dusthana vs Trikona mechanics, natural karakas, divisional vargas, Chandra Nadi (natal Moon placement, nakshatra, and mental conditioning), Gate 0 hardware failure screening, Vimshottari dasha hierarchy, and live Gochara transits.\n"
+        "CRITICAL INSTRUCTION: Reason deeply through ALL these pillars, BUT synthesize them into a smooth, authoritative, conversational consultation.\n"
+        "DO NOT output mechanical, robotic boilerplate headers like '### Step 1: Multi-Pillar Astrological Deliberation (Chain of Thought)', '• Pillar I - Natal House Mechanics & Lords', '• Pillar II', '• Pillar III', or '### Step 2: Dasha Hierarchy'.\n"
+        "Instead, use natural, professional consultation headings tailored to the client's question, such as:\n"
+        "### Direct Astrological Verdict\n"
+        "### Classical Planetary Mechanics & Lordship Analysis\n"
+        "### Mind, Dasha & Transit Timing Synthesis\n"
+        "### Targeted Classical Upayas & Practical Remedies\n\n"
+        "3. RIGOROUS ASTROLOGICAL FIDELITY & GEMSTONE SAFETY:\n"
+        "• Strictly adhere to the [PILLAR 6: GEMSTONE SUITABILITY & REMEDIAL AUDIT] and chart mechanics provided below.\n"
+        "• If a gemstone is marked STRICTLY_AVOID, AVOID, or MANTRA_ONLY (e.g. Emerald/Panna for Pisces Lagna due to 4th & 7th Lord Kendradhipati Dosha and Maraka/Badhaka status, or stones of 8th-house occupants like Jupiter/Mars in 8th), NEVER recommend wearing it! Clearly explain the classical Parashari rationale for why that stone is contraindicated.\n"
+        "• If the client asks about a specific gemstone that is contraindicated, explain why its planetary lordship or house placement causes friction, and guide them to safe non-invasive remedies (mantras, charitable donations) and any verified auspicious gemstones (e.g. Pearl for 5th Lord Moon).\n"
+        "• Never contradict the chart facts or report findings.\n\n"
+        "4. TONE & STYLE:\n"
+        "• Authoritative, deeply learned, empathetic, and sophisticated (300–700 words).\n"
+        "• Use bold formatting for classical terms (e.g. **Kendradhipati Dosha**, **Maraka Sthana**, **Trikona**, **Ashtakavarga**, **Sade Sati**).\n"
+        "• Maintain warm conversational continuity with previous chat turns."
     )
     
+    supp_text = "\n".join(f"  - {s}" for s in conf.supporting_factors) if conf.supporting_factors else "  - Clean kendra/trikona alignment"
+    karaka_text = "\n".join(f"  - {k}" for k in conf.karaka_findings) if conf.karaka_findings else "  - Primary domain significators"
+    varga_text = "\n".join(f"  - {v}" for v in conf.varga_findings) if conf.varga_findings else "  - D9 Navamsha and functional vargas"
+    dasha_text = "\n".join(f"  - {d}" for d in conf.dasha_timeline) if conf.dasha_timeline else f"  - {conf.breakthrough_period}"
+
+    gem_audit_lines = [
+        f"• Native's Ascendant (Lagna): {gem_audit['lagna']} (Lagna Lord: {gem_audit['lagna_lord']})"
+    ]
+    for p, inf in gem_audit["audit"].items():
+        gem_audit_lines.append(
+            f"• {p} ({inf['gem']}): [{inf['status']}] Placed in House {inf['house']}, Owns House(s) {inf['owned_houses']} -> {' '.join(inf['reasons'])}"
+        )
+    gemstone_grounding = "\n".join(gem_audit_lines)
+
     confluence_context = f"""
-CHART CONFLUENCE:
+COMPLETE MULTI-PILLAR ASTROLOGICAL GROUNDING DATA:
+
+[PILLAR 1: NATAL & HOUSE MECHANICS]
 • Domain: {conf.domain_title}
 • Primary Ruler: House {conf.primary_house} ({conf.primary_house_sign}) governed by {conf.primary_house_lord} ({conf.primary_lord_placement}, {conf.primary_lord_dignity}).
-• Dusthana Finding: {conf.dusthana_finding}
-• Ashtakavarga SAV Score: {conf.ashtakavarga_finding}
+• Primary Lord Condition: {conf.dusthana_finding}
+• Supporting Houses & Lords:
+{supp_text}
+• Ashtakavarga (SAV) Strength: {conf.ashtakavarga_finding}
+
+[PILLAR 2: KARAKAS & DIVISIONAL VARGAS (D9/D10/D30)]
+• Natural Karakas Condition:
+{karaka_text}
+• Divisional Confirmations:
+{varga_text}
+
+[PILLAR 3: CHANDRA NADI (MIND & PSYCHOLOGICAL ENGINE)]
+• Natal Chandra Placement: {cn['moon_summary']}
+• Mind Conjunctions (1st from Moon): {', '.join(cn['conjunctions'])}
+• Aspects on Moon (Emotional Drivers): {'; '.join(cn['aspects'])}
+• Gochara Nadi Transit Hits (Current Transits vs Moon & Jeeva): {'; '.join(cn['transit_hits'])}
+
+[PILLAR 4: GATE 0 HARDWARE & CONTINGENCY AUDIT]
+• Hardware Health Status: {g0['status']}
+• Avayoga / Raja Bhanga Diagnostics: {'; '.join(g0['issues']) if g0['issues'] else 'No structural hardware failure detected.'}
+• Mandatory Verdict Contingency Rule: {g0['contingency_rule']}
+
+[PILLAR 5: DASHA TIMELINE & GOCHARA CONFLUENCE]
 • Live Gochar Transits: {conf.transit_finding}
 • Triple-Dasha Alignment: {conf.triple_dasha_confluence}
-• Breakthrough / Key Timing Window: {conf.breakthrough_period}
-• Targeted Remedies: {'; '.join(conf.remedies[:2])}
+• Current Running Period: {conf.current_dasha}
+• Breakthrough Timing Window: {conf.breakthrough_period}
+• Dasha Progression Timeline:
+{dasha_text}
+
+[PILLAR 6: GEMSTONE SUITABILITY & REMEDIAL AUDIT]
+{gemstone_grounding}
+
+[CLASSICAL BASELINE & REMEDIES]
+• Classical Baseline Finding: {conf.classical_verdict}
+• Prescribed Remedies: {'; '.join(conf.remedies[:4])}
 """
     
     from openai import OpenAI
@@ -2056,30 +2457,38 @@ CHART CONFLUENCE:
     model = getattr(S, "llm_model", "Qwen/Qwen2.5-7B-Instruct-AWQ") or "Qwen/Qwen2.5-7B-Instruct-AWQ"
     
     messages = [{"role": "system", "content": system_prompt + "\n" + confluence_context}]
-    for h in (history or [])[-4:]:
-        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+    for h in (history or [])[-6:]:
+        h_role = h.get("role", "user")
+        h_content = (h.get("content") or "").strip()
+        if len(h_content) > 1000:
+            h_content = h_content[:1000] + "..."
+        messages.append({"role": h_role, "content": h_content})
     messages.append({"role": "user", "content": question})
     
     try:
         if not _llm_allowed("chat"):
             raise RuntimeError("chat tab has the LLM switched off")
-        client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key, timeout=60.0)
+        client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key, timeout=120.0)
         resp = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=0.3,
-            max_tokens=600
+            temperature=0.55,
+            max_tokens=2500
         )
-        ans = (resp.choices[0].message.content or "").strip()
-        if ans:
-            return {
-                "answer": ans,
-                "out_of_scope": False,
-                "used_fact_ids": [conf.domain_key, "gochar", "ashtakavarga", "triple_dasha"],
-                "stats": {"accepted": 1, "rejected": 0},
-            }
+        if resp and getattr(resp, "choices", None) and len(resp.choices) > 0:
+            msg = getattr(resp.choices[0], "message", None)
+            ans = ((getattr(msg, "content", None) or "")).strip()
+            if ans:
+                return {
+                    "answer": ans,
+                    "out_of_scope": False,
+                    "used_fact_ids": [conf.domain_key, "gochar", "ashtakavarga", "triple_dasha"],
+                    "stats": {"accepted": 1, "rejected": 0},
+                }
     except Exception as exc:
+        import traceback
         print(f"[confluence_question_engine] chat Qwen call failed: {exc}", flush=True)
+        traceback.print_exc()
 
     fallback_ans = f"Based on your chart, {conf.classical_verdict} Your primary breakthrough timing window is {conf.breakthrough_period}."
     return {

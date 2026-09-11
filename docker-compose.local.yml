@@ -66,7 +66,7 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}
-      LLM_TABS: ${LLM_TABS:-full_report,user_question,horary,palm,summary}
+      LLM_TABS: ${LLM_TABS:-full_report,user_question,horary,palm,chat,summary}
     ports: ["8080:8080"]          # direct API access for curl / e2e_check
     volumes:
       - storage:/data

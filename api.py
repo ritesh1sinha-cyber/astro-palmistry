@@ -416,9 +416,11 @@ def serve_file(token: str):
         raise HTTPException(403, "invalid link")
     if int(exp) < time.time():
         raise HTTPException(410, "this link has expired — reopen the report")
-    rep = report_get(rid, uid)
+    rep = report_get(rid)
     if not rep:
         raise HTTPException(404, "no such report")
+    if str(rep.get("user_id")) != str(uid) and not has_full_access_id(uid) and not rep.get("paid"):
+        raise HTTPException(403, "not authorized")
     if half == "paid" and not _report_unlocked(rep, uid):
         raise HTTPException(402, "payment required")
     key = rep["paid_key"] if half == "paid" else rep["free_key"]
@@ -500,10 +502,12 @@ def my_reports(paid: Optional[int] = None, user: dict = Depends(current_user)):
 
 @app.get("/api/reports/{rid}")
 def one_report(rid: str, user: dict = Depends(current_user)):
-    rep = report_get(rid, user["id"])
+    rep = report_get(rid)
     if not rep:
         raise HTTPException(404, "no such report")
     unlocked = _report_unlocked(rep, user["id"])
+    if not unlocked and not has_full_access(user) and str(rep.get("user_id")) != str(user["id"]):
+        raise HTTPException(404, "no such report")
     return {"reportId": rep["id"], "kind": rep["kind"], "paid": unlocked,
             "title": report_title(rep["kind"], rep.get("meta") or {}),
             "meta": _gate_meta(rep["kind"], rep["meta"], unlocked),
@@ -552,12 +556,14 @@ def report_pdf(rid: str, summary: bool = True, user: dict = Depends(current_user
     The plain-English summary rides along as the first page unless the caller
     passes summary=0 — most readers want the crux before the detail.
     """
-    rep = report_get(rid, user["id"])
+    rep = report_get(rid)
     if not rep:
         raise HTTPException(404, "no such report")
     unlocked = _report_unlocked(rep, user["id"])
     if not unlocked:
         raise HTTPException(402, "payment required")
+    if not has_full_access(user) and str(rep.get("user_id")) != str(user["id"]) and not rep.get("paid"):
+        raise HTTPException(403, "not authorized")
     key = rep.get("paid_key") or ""
     if not key:
         raise HTTPException(404, "nothing stored for that half")
@@ -625,7 +631,7 @@ def delete_one_report(rid: str, user: dict = Depends(current_user)):
 
 
 class ChatIn(BaseModel):
-    message: str = Field(..., min_length=1, max_length=600)
+    message: str = Field(..., min_length=1, max_length=1200)
 
 
 def _require_chat_enabled() -> None:
@@ -641,7 +647,7 @@ def _require_chat_enabled() -> None:
 def report_chat_history(rid: str, user: dict = Depends(current_user)):
     """Return recent chat turns for a paid report."""
     _require_chat_enabled()
-    rep = report_get(rid, user["id"])
+    rep = report_get(rid)
     if not rep:
         raise HTTPException(404, "no such report")
     if not _report_unlocked(rep, user["id"]):
@@ -656,7 +662,7 @@ def report_chat(rid: str, body: ChatIn, user: dict = Depends(current_user)):
     Never invents predictions outside the persisted facts. Rate-limited.
     """
     _require_chat_enabled()
-    rep = report_get(rid, user["id"])
+    rep = report_get(rid)
     if not rep:
         raise HTTPException(404, "no such report")
     if not _report_unlocked(rep, user["id"]):
@@ -694,7 +700,7 @@ def report_chat(rid: str, body: ChatIn, user: dict = Depends(current_user)):
     chat_append(rid, user["id"], "user", question)
     history = [
         {"role": m["role"], "content": m["content"]}
-        for m in chat_history(rid, user["id"], limit=12)
+        for m in chat_history(rid, user["id"], limit=20)
     ]
 
     refusal = (

@@ -372,9 +372,13 @@ def _keyword_topic(q: str) -> str:
         gemstone_kws = (
             "gemstone", "gemstones", "ratna", "rashi ratna", "stone to wear",
             "which stone", "suitable stone", "wear a stone", "wear gemstone",
-            "panna", "manik", "moti", "moonga", "pukhraj", "heera", "neelam",
-            "gomed", "lahsuniya", "cats eye", "cat's eye", "remedy", "remedies",
-            "upay", "upayam", "mantra", "rudraksha", "yantra", "puja", "pariharam"
+            "emerald", "emerland", "emrald", "panna",
+            "ruby", "manik", "manikya", "pearl", "moti", "mukta",
+            "moonga", "coral", "red coral", "pukhraj", "sapphire", "yellow sapphire",
+            "neelam", "blue sapphire", "heera", "diamond",
+            "gomed", "hessonite", "lahsuniya", "lehsunia", "cats eye", "cat's eye",
+            "remedy", "remedies", "upay", "upayam", "mantra", "rudraksha",
+            "yantra", "puja", "pariharam"
         )
         if any(kw in ql for kw in gemstone_kws):
             return "gemstone"
@@ -457,6 +461,12 @@ def route(question: str, *, area: str = "", min_score: float = 0.28) -> Semantic
         (5, "children", ("pregnancy", "conceive", "childbirth")),
         (4, "property", ("real estate", "apartment", "property purchase")),
         (9, "travel", ("visa", "immigration", "abroad study")),
+        (1, "remedy", (
+            "gemstone", "gemstones", "emerald", "emerland", "emrald", "panna", "ruby", "manik",
+            "pearl", "moti", "sapphire", "pukhraj", "neelam", "coral", "moonga",
+            "diamond", "heera", "hessonite", "gomed", "catseye", "lehsunia",
+            "rudraksha", "ratna", "rashi ratna", "wear stone", "wear gemstone",
+        )),
     )
     ql = q.lower()
     # Skip strong-token override when the reader already named the area —

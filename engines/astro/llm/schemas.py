@@ -855,7 +855,7 @@ class PalmProse(BaseModel):
 class ChatAnswer(BaseModel):
     """Phase-2 paid follow-up chat response."""
     model_config = ConfigDict(extra="forbid")
-    answer: str = Field(..., min_length=4, max_length=600)
+    answer: str = Field(..., min_length=4, max_length=4000)
     used_fact_ids: list[str] = Field(default_factory=list, max_length=12)
     out_of_scope: bool = False
 

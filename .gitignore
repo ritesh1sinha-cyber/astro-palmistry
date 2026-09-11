@@ -70,3 +70,6 @@ ci-storage/verify_*.py
 ci-storage/sample_chart_*
 ci-storage/d1_anticlock_preview.html
 
+# PyJHora library (installed via pip in Docker / venv)
+engines/astro/pyjhora/
+pyjhora/

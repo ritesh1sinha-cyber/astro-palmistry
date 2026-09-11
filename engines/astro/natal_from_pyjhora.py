@@ -65,12 +65,35 @@ class BirthInput:
 
 
 def _ensure_pyjhora(src: Path | None = None) -> Path:
-    src = src or Path(os.environ.get("PYJHORA_SRC", DEFAULT_PYJHORA_SRC))
-    if not src.is_dir():
-        raise FileNotFoundError(
-            f"PyJHora source not found at {src}. "
-            "Copy PyJHora to pyjhora/ in the workspace or set PYJHORA_SRC."
-        )
+    env_src = os.environ.get("PYJHORA_SRC")
+    if env_src and Path(env_src).is_dir():
+        src = Path(env_src)
+    elif src and src.is_dir():
+        pass
+    elif DEFAULT_PYJHORA_SRC.is_dir():
+        src = DEFAULT_PYJHORA_SRC
+    else:
+        try:
+            import jhora
+            src = Path(jhora.__file__).resolve().parent.parent
+        except ImportError:
+            import site
+            sp_found = None
+            try:
+                candidate_dirs = site.getsitepackages() + [site.getusersitepackages()]
+            except Exception:
+                candidate_dirs = []
+            for p in candidate_dirs:
+                if (Path(p) / "jhora").is_dir():
+                    sp_found = Path(p)
+                    break
+            if sp_found:
+                src = sp_found
+            else:
+                raise FileNotFoundError(
+                    f"PyJHora source not found at {src or DEFAULT_PYJHORA_SRC}. "
+                    "Install via pip (pip install PyJHora) or set PYJHORA_SRC."
+                )
     s = str(src)
     if s not in sys.path:
         sys.path.insert(0, s)

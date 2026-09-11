@@ -1082,7 +1082,7 @@ def humanize_chat(
         ),
         facts,
         validate_chat_answer,
-        temperature=0.3,
+        temperature=0.55,
     )
     on_topic = followup_is_on_asked_topic(facts, question)
     is_palm = str(

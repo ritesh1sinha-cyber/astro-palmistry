@@ -609,13 +609,25 @@ input[type=file]{display:none}
   border-radius:12px;background:#faf8f4}
 .report-chat-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
 .report-chat-head .hint{font-size:.8rem;color:var(--muted,#6b7280)}
-.report-chat-log{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:8px;
-  margin-bottom:10px;font-size:.9rem}
-.chat-msg{padding:8px 10px;border-radius:8px;background:#fff;border:1px solid rgba(0,0,0,.06)}
+.report-chat-log{max-height:600px;overflow:auto;display:flex;flex-direction:column;gap:8px;
+  margin-bottom:10px;font-size:.9rem;scroll-behavior:smooth}
+.chat-msg{padding:10px 14px;border-radius:8px;background:#fff;border:1px solid rgba(0,0,0,.06);
+  white-space:pre-wrap;word-wrap:break-word;line-height:1.6}
 .chat-msg.me{background:#eef6ff}
+.chat-msg.bot{max-height:none}
+.chat-msg strong,.chat-msg b{font-weight:600}
+.chat-msg ul,.chat-msg ol{margin:6px 0;padding-left:20px}
+.chat-msg li{margin:2px 0}
+.chat-msg table{border-collapse:collapse;width:100%;margin:8px 0;font-size:.85rem}
+.chat-msg th,.chat-msg td{border:1px solid rgba(0,0,0,.12);padding:4px 8px;text-align:left}
+.chat-msg th{background:#f5f3ef;font-weight:600}
+.chat-msg h3,.chat-msg h4{margin:10px 0 4px;font-size:1rem;font-weight:600}
+.chat-msg code{background:#f0ede8;padding:1px 4px;border-radius:3px;font-size:.85em}
+.chat-msg pre{background:#f0ede8;padding:8px 10px;border-radius:6px;overflow-x:auto;font-size:.82rem;margin:6px 0}
 .report-chat-form{display:flex;gap:8px}
-.report-chat-form input{flex:1;min-width:0;padding:8px 10px;border-radius:8px;
-  border:1px solid rgba(0,0,0,.15)}
+.report-chat-form textarea{flex:1;min-width:0;padding:8px 10px;border-radius:8px;
+  border:1px solid rgba(0,0,0,.15);resize:vertical;min-height:38px;max-height:120px;
+  font-family:inherit;font-size:.9rem;line-height:1.4}
 .dailycard h4{font-family:var(--serif);font-size:20px;margin:0 0 8px}
 .dolist{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px}
 .dolist li{display:flex;gap:9px;font-size:14px;color:var(--muted)}
@@ -668,6 +680,10 @@ footer{border-top:1px solid var(--line);padding:36px 0 24px;color:var(--muted-2)
 .readacts{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:nowrap}
 .readacts .btn-summary{background:linear-gradient(135deg,var(--gold),#d9a544);color:#1b1405;font-weight:600;border-color:rgba(201,162,39,.6);box-shadow:0 2px 8px rgba(201,162,39,.25)}
 .readacts .btn-summary:hover{background:linear-gradient(135deg,#d9a544,#c89332);color:#140e02}
+.readacts .btn-chat-action{background:#f3f0e8;color:var(--ink);font-weight:600;border:1px solid rgba(0,0,0,.12)}
+.readacts .btn-chat-action:hover{background:#e8e4dc;color:var(--ink)}
+.sheet .report-chat{margin:0;padding:6px 0 0;border:0;background:transparent}
+.sheet .report-chat-log{max-height:min(52vh,420px)}
 /* Plain-English summary sheet. On a locked reading this panel is also the
    pitch, so the account of what is still waiting and the unlock button are
    part of the layout rather than a paragraph at the bottom. */
@@ -2128,7 +2144,7 @@ const CONFIG = {
   turnstileSiteKey: '',
   turnstileRequired: false,
   llmEnabled:   false,               // from /api/public-config
-  chatEnabled:  false,               // true only when LLM on + chat in LLM_TABS
+  chatEnabled:  true,                // true only when LLM on + chat in LLM_TABS
   price:        298,
   priceStrike:  298,
   currency:     '₹',
@@ -2296,11 +2312,11 @@ function applyHash(){
   const parts = (location.hash||'').replace(/^#\/?/, '').split('/').filter(Boolean);
   const v = parts[0] || 'home';
   if(v === 'reading'){
-    // A report cannot be rebuilt from the URL alone. If the rendered document
-    // is still in the DOM, reopen it; otherwise send them somewhere useful.
     if($('#readingBody') && $('#readingBody').innerHTML.trim()){
       READING.open = true;
       go('reading', {silent:true, instant:true});
+    }else if(parts[1] && /^[0-9a-fA-F-]{36}$/.test(parts[1])){
+      openSavedReport(parts[1]);
     }else{
       go(S.user ? 'reports' : 'home', {silent:true, instant:true});
     }
@@ -2476,18 +2492,18 @@ function reportToolbar(reportId, link){
     <a class="btn btn-ghost btn-sm" href="${href}" target="_blank" rel="noopener noreferrer">Open full screen</a>
   </div>`;
 }
-function reportChatPanel(reportId){
+function reportChatPanel(reportId, customBoxId){
   const rid = esc(reportId||'');
-  const boxId = 'chat-'+Math.random().toString(36).slice(2, 9);
+  const boxId = customBoxId || ('chat-'+Math.random().toString(36).slice(2, 9));
   setTimeout(()=>initReportChat(boxId, reportId), 0);
   return `<div class="report-chat" id="${boxId}" data-rid="${rid}">
     <div class="report-chat-head">
-      <strong>Ask about this reading</strong>
-      <span class="hint">Paid follow-up — answers stay inside your report facts.</span>
+      <strong>Ask your astrologer</strong>
+      <span class="hint">Private consultation — ask anything about your chart, dashas, remedies, or life events.</span>
     </div>
     <div class="report-chat-log" data-role="log"></div>
     <form class="report-chat-form" onsubmit="return sendReportChat(event,'${boxId}')">
-      <input type="text" name="q" maxlength="600" placeholder="e.g. What does my career card say about timing?" required autocomplete="off"/>
+      <textarea name="q" maxlength="1200" placeholder="e.g. What gemstone should I wear? What does my current dasha mean for career?" required rows="2" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit()}"></textarea>
       <button class="btn btn-sm" type="submit">Ask</button>
     </form>
   </div>`;
@@ -2500,32 +2516,72 @@ async function initReportChat(boxId, reportId){
     const data = await api('/api/reports/'+reportId+'/chat');
     const msgs = (data && data.messages) || [];
     log.innerHTML = msgs.map(m =>
-      `<div class="chat-msg ${m.role==='user'?'me':'bot'}"><b>${m.role==='user'?'You':'Reading'}:</b> ${esc(m.content||'')}</div>`
-    ).join('') || '<div class="hint">Ask a follow-up about something already in this report.</div>';
+      `<div class="chat-msg ${m.role==='user'?'me':'bot'}"><b>${m.role==='user'?'You':'Astrologer'}:</b> ${m.role==='user'?esc(m.content||''):miniMd(m.content||'')}</div>`
+    ).join('') || '<div class="hint">Ask anything about your chart — dashas, transits, remedies, gemstones, relationships, career, or health timing.</div>';
     log.scrollTop = log.scrollHeight;
   }catch(e){
     log.innerHTML = '<div class="hint">Chat is unavailable for this report right now.</div>';
   }
+}
+function miniMd(t){
+  if(!t) return '';
+  // Escape HTML entities first
+  let s = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Code blocks (triple backtick)
+  s = s.replace(/```([^`]*?)```/gs, '<pre><code>$1</code></pre>');
+  // Inline code
+  s = s.replace(/`([^`]+?)`/g, '<code>$1</code>');
+  // Headers (### and ####)
+  s = s.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+  s = s.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+  // Bold (**text**)
+  s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+  // Italic (*text*)
+  s = s.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<em>$1</em>');
+  // Bullet lists (• or - or *)
+  s = s.replace(/^[•\-\*]\s+(.+)$/gm, '<li>$1</li>');
+  s = s.replace(/(<li>.*<\/li>\n?)+/gs, m => '<ul>'+m+'</ul>');
+  // Numbered lists
+  s = s.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+  // Simple table rows (pipes)
+  s = s.replace(/^\|(.+)\|$/gm, (m, inner) => {
+    const cells = inner.split('|').map(c => c.trim());
+    if(cells.every(c => /^[-:]+$/.test(c))) return '';
+    const tag = cells.some(c => /^\*\*/.test(c)) ? 'th' : 'td';
+    return '<tr>' + cells.map(c => `<${tag}>${c.replace(/\*\*/g,'')}</${tag}>`).join('') + '</tr>';
+  });
+  s = s.replace(/(<tr>.*<\/tr>\n?)+/gs, m => '<table>'+m+'</table>');
+  // Line breaks
+  s = s.replace(/\n/g, '<br>');
+  // Clean up double <br> around block elements
+  s = s.replace(/<br>\s*(<(?:h[34]|ul|ol|table|pre))/g, '$1');
+  s = s.replace(/(<\/(?:h[34]|ul|ol|table|pre)>)\s*<br>/g, '$1');
+  return s;
 }
 async function sendReportChat(ev, boxId){
   ev.preventDefault();
   const root = document.getElementById(boxId);
   if(!root) return false;
   const rid = root.getAttribute('data-rid');
-  const input = root.querySelector('input[name="q"]');
+  const input = root.querySelector('textarea[name="q"]');
   const log = root.querySelector('[data-role="log"]');
   const q = (input && input.value || '').trim();
   if(!q || !rid) return false;
   input.value = '';
   log.innerHTML += `<div class="chat-msg me"><b>You:</b> ${esc(q)}</div>`;
+  log.innerHTML += `<div class="chat-msg bot typing"><b>Astrologer:</b> <em>Analyzing your chart...</em></div>`;
   log.scrollTop = log.scrollHeight;
   try{
     const data = await api('/api/reports/'+rid+'/chat', {
       method:'POST', body: JSON.stringify({message:q})
     });
-    log.innerHTML += `<div class="chat-msg bot"><b>Reading:</b> ${esc((data&&data.answer)||'')}</div>`;
+    const typing = log.querySelector('.typing');
+    if(typing) typing.remove();
+    log.innerHTML += `<div class="chat-msg bot"><b>Astrologer:</b> ${miniMd((data&&data.answer)||'')}</div>`;
   }catch(e){
-    log.innerHTML += `<div class="chat-msg bot"><b>Reading:</b> ${esc(e.message||'Could not answer right now.')}</div>`;
+    const typing = log.querySelector('.typing');
+    if(typing) typing.remove();
+    log.innerHTML += `<div class="chat-msg bot"><b>Astrologer:</b> ${esc(e.message||'Could not answer right now.')}</div>`;
   }
   log.scrollTop = log.scrollHeight;
   return false;
@@ -2570,26 +2626,32 @@ function autosizeReportFrame(f){
   // Cross-origin, or a document we cannot measure: let the frame fill the
   // viewport instead, so there is still only one scrollbar in play.
   const giveUp = ()=>{ f.classList.remove('rf-auto'); f.classList.add('rf-fill'); };
-    const measure = ()=>{
+  const measure = ()=>{
     pending = 0;
     let d;
     try{ d = f.contentDocument; }catch(e){ giveUp(); return; }
     if(!d || !d.body || !d.documentElement) return;
-    const de = d.documentElement;
-    const wrap = d.querySelector('.wrap') || d.querySelector('.confluence-consultation-wrap') || d.body.firstElementChild || d.body;
-    const scrollbar = Math.max(0, de.offsetHeight - de.clientHeight);
-    const wrapH = wrap && wrap.getBoundingClientRect ? Math.ceil(wrap.getBoundingClientRect().height) : (wrap ? wrap.offsetHeight : 0);
-    const h = Math.max(wrapH, d.body.offsetHeight, d.body.scrollHeight) + scrollbar + 16;
-    if(h > 0 && Math.abs(h - last) > 4){ last = h; f.style.height = h + 'px'; }
+    const wrap = d.querySelector('.wrap') || d.querySelector('.confluence-consultation-wrap');
+    let contentH = 0;
+    if(wrap){
+      contentH = Math.ceil(wrap.getBoundingClientRect().height);
+    }else{
+      let maxBottom = 0;
+      Array.from(d.body.children).forEach(el => {
+        if(el.classList && el.classList.contains('secnav')) return;
+        const r = el.getBoundingClientRect();
+        if(r.bottom > maxBottom) maxBottom = r.bottom;
+      });
+      contentH = Math.ceil(maxBottom);
+    }
+    const h = Math.max(contentH + 30, 400);
+    if(Math.abs(h - last) > 8){
+      last = h;
+      f.style.height = h + 'px';
+    }
   };
-  // A backgrounded tab never runs its animation frames, and a report left to
-  // size itself there would still be 70vh with its own scrollbar when the
-  // reader came back to it. Measure straight away instead of never.
   const fit = ()=>{
     if(pending) return;
-    // Measuring straight from the resize callback makes the observer complain
-    // about undelivered notifications, so a hidden tab still defers — just on
-    // a timer, since it will not be given an animation frame.
     pending = document.hidden ? setTimeout(measure, 0)
                               : requestAnimationFrame(measure);
   };
@@ -2598,20 +2660,16 @@ function autosizeReportFrame(f){
     try{ d = f.contentDocument; }catch(e){ giveUp(); return; }
     if(!d || !d.body || !d.head){ giveUp(); return; }
     try{
-      // The report ships its own contents rail, pinned to the frame's
-      // viewport. The frame no longer has one — it is as tall as the report —
-      // so that rail would scroll away after the first screen. The host takes
-      // the list over and keeps it on screen for the whole document.
       const st = d.createElement('style');
-      st.textContent = 'html,body{overflow:visible!important;height:auto!important}'
+      st.textContent = 'html,body{overflow:visible!important;height:auto!important;min-height:0!important}'
         + '.secnav{display:none!important}';
       d.head.appendChild(st);
       adoptReportToc(f, d);
       hostAnchorScroll(f, d);
-      if(window.ResizeObserver){
+      const wrap = d.querySelector('.wrap') || d.querySelector('.confluence-consultation-wrap');
+      if(window.ResizeObserver && wrap){
         const ro = new ResizeObserver(fit);
-        ro.observe(d.documentElement);
-        ro.observe(d.body);
+        ro.observe(wrap);
       }
       d.addEventListener('click', ()=>{ fit(); setTimeout(fit, 90); setTimeout(fit, 400); });
       if(d.fonts && d.fonts.ready) d.fonts.ready.then(fit).catch(()=>{});
@@ -2750,11 +2808,42 @@ function readingActions(){
   h += `<button class="btn btn-ghost btn-sm tocbtn" id="tocBtn" type="button" onclick="openTocSheet()" hidden title="Table of contents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="btn-lbl-extra">Contents</span></button>`;
   // 2. Summary button - ALWAYS present for every reading (free & paid)
   h += `<button class="btn btn-gold btn-sm btn-summary" type="button" onclick="openPlainSummary()" title="Plain-English summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px;margin-right:4px;flex:0 0 auto"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg><span>Summary</span></button>`;
-  // 3. Download PDF
+  // 3. Ask Astrologer button
+  if(rid && (CONFIG.chatEnabled || READING.unlocked)){
+    h += `<button class="btn btn-sm btn-chat-action" type="button" onclick="openReportChatSheet()" title="Ask your astrologer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px;margin-right:4px;flex:0 0 auto"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span class="btn-lbl-extra">Ask </span>Astrologer</button>`;
+  }
+  // 4. Download PDF
   if(rid) h += `<button class="btn btn-ghost btn-sm" type="button" onclick="downloadReportPdf('${esc(rid)}')" title="Download report PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px;margin-right:4px;flex:0 0 auto"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span class="btn-lbl-extra">Download </span>PDF</button>`;
-  // 4. Open full screen link (desktop only)
+  // 5. Open full screen link (desktop only)
   if(href) h += `<a class="btn btn-ghost btn-sm act-full" href="${href}" target="_blank" rel="noopener noreferrer"><span class="btn-lbl-extra">Open </span>full screen</a>`;
   return h;
+}
+
+function openReportChatSheet(){
+  const rid = READING.reportId;
+  if(!rid){ toast('Chat is available for your unlocked reading.'); return; }
+  const boxId = 'chat-sheet-' + Math.random().toString(36).slice(2, 9);
+  openSheet('Ask your astrologer', reportChatPanel(rid, boxId));
+}
+
+function scrollToReportChat(){
+  let el = document.querySelector('#readingAside .report-chat');
+  if(!el && READING.reportId){
+    const aside = $('#readingAside');
+    if(aside){
+      aside.innerHTML = reportChatPanel(READING.reportId);
+      el = document.querySelector('#readingAside .report-chat');
+    }
+  }
+  if(el){
+    const rect = el.getBoundingClientRect();
+    const top = rect.top + window.scrollY - readingOffset();
+    window.scrollTo({top: Math.max(0, top), behavior:'smooth'});
+    const txt = el.querySelector('textarea[name="q"]');
+    if(txt) setTimeout(()=>txt.focus(), 600);
+  }else{
+    openReportChatSheet();
+  }
 }
 
 function extractSummaryFromActiveReading(){
@@ -3162,7 +3251,7 @@ function openReading(o){
   $('#readingHead').innerHTML    = o.headHtml || '';
   $('#readingBody').innerHTML    = o.link ? readingFrame(o.link) : (o.bodyHtml || '');
   $('#readingAside').innerHTML   = (o.asideHtml || '')
-    + ((READING.reportId && CONFIG.chatEnabled) ? reportChatPanel(READING.reportId) : '');
+    + ((READING.reportId && (CONFIG.chatEnabled || READING.unlocked)) ? reportChatPanel(READING.reportId) : '');
   READING.open = true;
   go('reading', {instant:true});
 }
@@ -3189,7 +3278,7 @@ function openAstroReading(kind, r, o){
   openReading({
     kind, link,
     unlocked: open,
-    reportId: open ? (r.reportId || ASTRO.lastReportId) : null,
+    reportId: open ? (r.reportId || r.id || ASTRO.lastReportId) : null,
     meta: r.meta || {},
     title: o.title || label,
     subtitle: o.subtitle || (open ? 'Unlocked · full reading' : 'Free half'),
@@ -3584,6 +3673,7 @@ async function openSavedReport(reportId, kind){
   if(!reportId) return;
   try{
     const r = await api('/api/reports/'+reportId);
+    kind = kind || (r && r.kind) || 'full_report';
     // Reopening from the library always returns you to the library.
     const origin = {view:'reports'};
     if(kind === 'palm'){
@@ -4086,6 +4176,14 @@ async function loadPublicConfig(){
     CONFIG.turnstileRequired = !!j.turnstileRequired;
     CONFIG.llmEnabled = !!j.llmEnabled;
     CONFIG.chatEnabled = !!j.chatEnabled;
+    if(READING.open && READING.reportId && CONFIG.chatEnabled){
+      if(!document.querySelector('.report-chat')){
+        const aside = $('#readingAside');
+        if(aside) aside.insertAdjacentHTML('beforeend', reportChatPanel(READING.reportId));
+      }
+      const acts = $('#readActs');
+      if(acts && !acts.querySelector('.btn-chat-action')) acts.innerHTML = readingActions();
+    }
     preloadTurnstile();
   }catch(e){}
 }
@@ -5836,6 +5934,7 @@ function enrichReport(r, kind){
   if(price != null && meta.price == null) meta.price = price;
   meta.price = price;
   return Object.assign({}, r, {
+    reportId: r.reportId || r.id,
     paid: !!(r.paid),
     price,
     kind: k,

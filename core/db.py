@@ -273,6 +273,12 @@ def get_or_create_chart(user_id: str, p: dict) -> dict:
                              {"i": cid}).fetchone())
 
 
+def chart_get(chart_id: str) -> Optional[dict]:
+    with tx() as c:
+        row = c.execute(text("SELECT * FROM charts WHERE id=:i"), {"i": chart_id}).fetchone()
+        return jrow(row) if row else None
+
+
 def precompute_get(chart_hash_: str) -> Optional[dict]:
     with tx() as c:
         row = c.execute(text("SELECT payload, payload_key FROM precomputes"

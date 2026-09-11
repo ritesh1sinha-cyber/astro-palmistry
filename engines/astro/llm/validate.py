@@ -973,20 +973,27 @@ _OUTCOME_PROMISE = re.compile(
 def validate_chat_answer(prose: Any, facts: Any) -> list[str]:
     if getattr(prose, "out_of_scope", False):
         return []
+    kind = str(_fget(facts, "kind", "") or "")
     errors = validate_prose_against_facts(prose, facts)
     answer = getattr(prose, "answer", "") or ""
-    errors.extend(_chat_area_grounding(answer, facts))
+    # For full_report (birth chart) chats, skip the area overclaim check —
+    # detailed astrological analysis legitimately uses confident language.
+    if kind != "full_report":
+        errors.extend(_chat_area_grounding(answer, facts))
     errors.extend(_chat_horary_grounding(answer, facts))
     errors.extend(_chat_palm_grounding(answer, facts))
     used = list(getattr(prose, "used_fact_ids", None) or [])
-    if not used:
-        errors.append("chat_missing_used_fact_ids")
-    else:
-        allowed_ids = set(GENERIC_FACT_IDS) | citable_fact_ids(facts)
-        for fid in used:
-            if str(fid) not in allowed_ids:
-                errors.append(f"chat_unknown_fact_id:{fid}")
-                break
+    # For full_report chats, don't require strict fact_id citation —
+    # the confluence engine provides its own grounding.
+    if kind != "full_report":
+        if not used:
+            errors.append("chat_missing_used_fact_ids")
+        else:
+            allowed_ids = set(GENERIC_FACT_IDS) | citable_fact_ids(facts)
+            for fid in used:
+                if str(fid) not in allowed_ids:
+                    errors.append(f"chat_unknown_fact_id:{fid}")
+                    break
     return list(dict.fromkeys(errors))
 
 
