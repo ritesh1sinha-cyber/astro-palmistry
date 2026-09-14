@@ -1259,6 +1259,65 @@ def question_chat_fallback(facts: Any) -> str:
     return line[:600]
 
 
+_HORARY_ASKS_TIMING = re.compile(
+    r"\b(when|what date|which date|date|month|how long|how soon|by when|timing)\b",
+    re.I)
+_HORARY_ASKS_ACTION = re.compile(
+    r"\b(what (?:should|do) i|what can i|remedy|remedies|advice|suggest|"
+    r"how do i|what next|next step)\b", re.I)
+
+
+def horary_chat_fallback(facts: Any, question: str) -> str:
+    """Answer a horary follow-up from the three lines already on the page.
+
+    The reading is one question with one verdict, one window and one remedy,
+    so a follow-up never needs to be refused or deferred — the worst honest
+    answer is to repeat what the page said, pointed at what they just asked.
+    """
+    from .facts import public_fact_payload
+
+    payload = public_fact_payload(facts) or {}
+    if not isinstance(payload, dict):
+        payload = {}
+    verdict = str(payload.get("plain_answer") or "").strip()
+    timing = str(payload.get("plain_timing") or "").strip()
+    remedy = str(payload.get("plain_remedy") or "").strip()
+    known = bool(payload.get("window_known"))
+    q = (question or "").strip()
+
+    if not (verdict or timing or remedy):
+        # Pre-KP horary reports have no plain lines stored; fall back to the
+        # verdict label rather than pretending there is nothing on the page.
+        label = str(payload.get("label") or "").strip()
+        return (f"On the question you asked, the reading came out: {label}."
+                if label else
+                "I can only go on the answer already in your reading, and it "
+                "does not go further than what is on the page.")
+
+    # Lead with the part they asked about, then give the rest so the reply is
+    # a complete answer on its own rather than a pointer back to the report.
+    lead: list[str] = []
+    if _HORARY_ASKS_TIMING.search(q):
+        lead.append(timing if timing else
+                    "The chart does not mark out a clear window for this.")
+        if not known and verdict:
+            lead.append(verdict)
+    elif _HORARY_ASKS_ACTION.search(q):
+        if remedy:
+            lead.append(remedy)
+        if verdict:
+            lead.append(verdict)
+    else:
+        if verdict:
+            lead.append(verdict)
+        if timing:
+            lead.append(timing)
+
+    rest = [s for s in (verdict, timing, remedy) if s and s not in lead]
+    out = " ".join(lead + rest).strip()
+    return out[:600]
+
+
 def palm_chat_fallback(facts: Any, question: str) -> str:
     """Deterministic palm follow-up answer when the model answer fails QA.
 

@@ -454,7 +454,18 @@ def h_classical_report(user: dict, p: dict) -> dict:
 
 
 def h_horary(user: dict, p: dict) -> dict:
-    # Question → house / topic. Optional life-area dropdown pins the domain.
+    # KP horary: the querent names 1–249; Python casts Chart A/B; the model
+    # judges and writes. Western Lilly is no longer the live engine.
+    q = (p.get("question") or "").strip()
+    if not q:
+        raise UserError("Type your question first.")
+    try:
+        kp_num = int(str(p.get("kpNumber") or p.get("kp_number") or "").strip())
+    except (TypeError, ValueError):
+        kp_num = 0
+    if not 1 <= kp_num <= 249:
+        raise UserError("Pick a KP number from 1 to 249.")
+
     area = ""
     try:
         import semantic_fallback
@@ -467,33 +478,43 @@ def h_horary(user: dict, p: dict) -> dict:
     except Exception as exc:  # noqa: BLE001
         print(f"[horary] area normalize skipped: {exc}", flush=True)
 
-    # Vedic vs Western: the user can tick "I am also a Vedic customer" or the
-    # system can detect it from their past reports.
-    vedic_customer = bool(p.get("vedicCustomer"))
+    import sys
+    from pathlib import Path
+    eng = Path(__file__).resolve().parents[1] / "engines" / "astro"
+    if str(eng) not in sys.path:
+        sys.path.insert(0, str(eng))
+    from horary_precompute import precompute_horary
+    from llm.horary_judge import (
+        judge_kp_horary, judgement_as_verdict, kp_evidence, kp_timing,
+        write_plain_answer,
+    )
 
-    htmls = {}
-    verdicts = {}
-    western_judgment = None
-    try:
-        from western_horary_report import generate_western_horary_html as wgen
-        qh = None
-        if area:
-            try:
-                from horary_answer import _AREA_TO_HOUSE
-                qh = _AREA_TO_HOUSE.get(area)
-            except Exception:
-                qh = None
-        h, j = wgen(p["question"], p["qDate"], p["qTime"],
-                    p.get("location", "New Delhi"), quesited_house=qh)
-        htmls["western"] = h
-        verdicts["western"] = {k: j.get(k) for k in ("verdict", "confidence", "score")}
-        western_judgment = j
-    except Exception as exc:                                          # noqa: BLE001
-        verdicts["western"] = {"error": f"{type(exc).__name__}: {exc}"}
-    if not htmls:
-        raise RuntimeError("western horary failed: " + json.dumps(verdicts))
+    lang = str(p.get("language") or "en")
+    data = precompute_horary(
+        q, str(p.get("qDate") or ""), str(p.get("qTime") or ""),
+        p.get("location") or "New Delhi",
+        str(kp_num), area=area,
+        lat=p.get("lat"), lon=p.get("lon"))
+    judgement = judge_kp_horary(q, data, area=area)
+    kp_verdict = judgement_as_verdict(judgement)
+    evidence = kp_evidence(data)
+    # The chart promised it: date the running period, as the book does. It did
+    # not: the running period is the one being ruled out, so look past it.
+    timing = kp_timing(
+        data, evidence,
+        exclude_running=str(getattr(judgement, "label", "")) != "yes")
+    plain = write_plain_answer(q, judgement, evidence, timing, lang=lang)
+    verdicts = {"kp": kp_verdict}
+    western_judgment = {
+        "asc_lord": evidence.get("cusp_sub_lord") or "",
+        "q_lord": evidence.get("star_lord") or "",
+        "area": evidence.get("topic") or area,
+        "house": evidence.get("primary_bhava") or 0,
+        "timing": [],
+        "kp_number": kp_num,
+    }
 
-    ctx = {"name": user.get("name") or "Seeker", "question": p["question"],
+    ctx = {"name": user.get("name") or "Seeker", "question": q,
            "asked": f"{p['qDate']} {p['qTime']}", "place": p.get("location", "")}
 
     paid = entitled(user["id"], "horary")
@@ -503,17 +524,19 @@ def h_horary(user: dict, p: dict) -> dict:
 
     import report_render as RD
     horary_price = S.price("horary") // 100
-    lang = str(p.get("language") or "en")
     free_html, paid_html, hmeta = RD.horary(
-        question=p["question"], verdicts=verdicts,
+        question=q, verdicts=verdicts,
         western_judgment=western_judgment, asked=ctx["asked"],
         name=user.get("name") or "",
         horary_price=horary_price,
         full_report_price=S.price("full_report") // 100,
-        vedic_customer=vedic_customer,
-        lang=lang)
+        vedic_customer=None,
+        lang=lang,
+        kp_evidence=evidence,
+        plain=plain, timing=timing)
 
-    meta = {**hmeta, "verdicts": verdicts, "price": horary_price, "language": lang}
+    meta = {**hmeta, "verdicts": verdicts, "price": horary_price,
+            "language": lang, "kpNumber": kp_num}
     saved = _save_report(user["id"], None, "horary", free_html, paid_html,
                          meta, paid)
     saved["price"] = meta["price"]

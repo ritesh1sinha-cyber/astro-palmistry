@@ -297,6 +297,13 @@ def _public_fact_payload(facts: Any) -> Any:
         "best", "nearest", "n_methods", "n_up", "n_down", "support_n", "caution_n",
         "route", "subject", "label", "contradicted", "favourable",
         "special_mark_ids", "allowed_dates",
+        "querent_planet", "quesited_planet", "aspect_description",
+        "moon_description", "hindering_planet", "supportive_planet",
+        "hindering_remedy", "supportive_remedy", "language",
+        "kp_number", "cusp_sub_lord", "star_lord", "ruling_planets",
+        "significations", "is_yes_no",
+        "plain_answer", "plain_timing", "plain_remedy",
+        "window_open", "window_close", "window_known",
         "truth_source", "canonical_area_key", "canonical_promise_status",
         "canonical_activation_status", "canonical_direction", "canonical_confidence",
         "canonical_agreement", "canonical_evidence", "canonical_manifestations",
@@ -2791,19 +2798,26 @@ def build_horary_facts(
     western_judgment: Optional[dict] = None,
     vedic_customer: Optional[dict] = None,
     language: str = "en",
+    kp_evidence: Optional[dict] = None,
+    plain: Any = None,
+    timing: Optional[dict] = None,
 ) -> HoraryFacts:
     summary = summary or {}
     wj = western_judgment or {}
     vc = vedic_customer or {}
+    ev = kp_evidence or {}
+    tm = timing or {}
     lanes: list[HoraryLaneFact] = []
-    block = (verdicts or {}).get("western") or {}
+    kp_block = (verdicts or {}).get("kp") or {}
+    west_block = (verdicts or {}).get("western") or {}
+    block = kp_block if kp_block.get("verdict") else west_block
     if isinstance(block, dict) and block.get("verdict"):
         lanes.append(HoraryLaneFact(
-            lane="western",  # type: ignore[arg-type]
+            lane="kp" if kp_block.get("verdict") else "western",  # type: ignore[arg-type]
             verdict=str(block.get("verdict") or block.get("label") or "")[:40],
             confidence=_conf(block.get("confidence") or "low"),  # type: ignore[arg-type]
             score=float(block.get("score") or 0.0),
-            systems=[],
+            systems=["kp"] if kp_block.get("verdict") else [],
         ))
 
     # Planets extraction
@@ -2812,6 +2826,22 @@ def build_horary_facts(
     # Dates extraction
     allowed_dates: list[str] = []
     timing_windows: list[str] = []
+    # KP path: the window the reader was shown is the only date chat may name.
+    for key in ("starts", "ends"):
+        d = tm.get(key)
+        if hasattr(d, "strftime"):
+            for fmt in ("%B %Y", "%b %Y", "%d %B %Y", "%d %b %Y"):
+                d_fmt = d.strftime(fmt).lstrip("0")
+                if d_fmt not in allowed_dates:
+                    allowed_dates.append(d_fmt)
+    for key in ("window", "until"):
+        d_str = str(tm.get(key) or "")
+        if d_str and d_str not in allowed_dates:
+            allowed_dates.append(d_str)
+    plain_timing_line = str(getattr(plain, "timing", "") or "")
+    if plain_timing_line:
+        timing_windows.append(plain_timing_line)
+
     timing_items = wj.get("timing") or []
     for item in timing_items:
         if isinstance(item, (list, tuple)) and len(item) >= 2:
@@ -2830,26 +2860,34 @@ def build_horary_facts(
     supportive_planet = ""
     hindering_remedy = ""
     supportive_remedy = ""
-    try:
-        from horary_answer import _blocking_planet, REMEDIES, GENERAL_REMEDY
-        blk = _blocking_planet(wj)
-        if blk:
-            hindering_planet = blk
-            rem = REMEDIES.get(blk, GENERAL_REMEDY)
-            hindering_remedy = f"Pacify {blk}: {rem.get('practical', '')} Mantra: {rem.get('mantra', '')}"
-            remedy_text = hindering_remedy
-        
-        asc = str(wj.get("asc_lord") or "")
-        if asc and asc != hindering_planet:
-            supportive_planet = asc
-            rem_s = REMEDIES.get(asc, {})
-            if rem_s:
-                supportive_remedy = f"Strengthen {asc}: {rem_s.get('practical', '')} Mantra: {rem_s.get('mantra', '')}"
-    except Exception as exc:
-        print(f"[build_horary_facts] remedy extraction failed: {exc}", flush=True)
+    # On the KP path the reader was given a jargon-free remedy. Rebuilding the
+    # Western "Pacify Moon … Om Chandraya Namah" string here would put the
+    # planet names straight back into follow-up chat.
+    if plain is not None:
+        remedy_text = str(getattr(plain, "remedy", "") or "")
+    else:
+        try:
+            from horary_answer import _blocking_planet, REMEDIES, GENERAL_REMEDY
+            blk = _blocking_planet(wj)
+            if blk:
+                hindering_planet = blk
+                rem = REMEDIES.get(blk, GENERAL_REMEDY)
+                hindering_remedy = f"Pacify {blk}: {rem.get('practical', '')} Mantra: {rem.get('mantra', '')}"
+                remedy_text = hindering_remedy
 
-    asc_l = str(wj.get("asc_lord") or "")
-    q_l = str(wj.get("q_lord") or "")
+            asc = str(wj.get("asc_lord") or "")
+            if asc and asc != hindering_planet:
+                supportive_planet = asc
+                rem_s = REMEDIES.get(asc, {})
+                if rem_s:
+                    supportive_remedy = f"Strengthen {asc}: {rem_s.get('practical', '')} Mantra: {rem_s.get('mantra', '')}"
+        except Exception as exc:
+            print(f"[build_horary_facts] remedy extraction failed: {exc}", flush=True)
+
+    # Lordship names are Western framing and pure jargon to the reader. The KP
+    # answer never mentions them, so chat must not be handed them either.
+    asc_l = "" if plain is not None else str(wj.get("asc_lord") or ev.get("cusp_sub_lord") or "")
+    q_l = "" if plain is not None else str(wj.get("q_lord") or ev.get("star_lord") or "")
     perf = wj.get("perfection")
     aspect_desc = ""
     if isinstance(perf, dict) and perf.get("aspect"):
@@ -2857,10 +2895,14 @@ def build_horary_facts(
         aspect_desc = f"{perf.get('aspect')} ({app})"
     
     moon_desc = ""
-    if wj.get("moon_void"):
+    if plain is not None:
+        moon_desc = ""
+    elif wj.get("moon_void"):
         moon_desc = "Moon void of course"
     elif isinstance(wj.get("moon_next"), dict) and wj["moon_next"].get("planet"):
         moon_desc = f"Moon applies to {wj['moon_next']['planet']}"
+    elif ev.get("ruling_planets"):
+        moon_desc = "Ruling planets: " + ", ".join(str(p) for p in ev["ruling_planets"][:6])
 
     facts = HoraryFacts(
         first_name=_first_name(name),
@@ -2888,6 +2930,23 @@ def build_horary_facts(
         hindering_remedy=hindering_remedy[:250],
         supportive_remedy=supportive_remedy[:250],
         language=language,
+        kp_number=int(ev.get("kp_number") or 0),
+        # The chart mechanics stay out of the KP payload: everything the reader
+        # is owed is in the three plain lines below, and anything else here is
+        # only material for the model to pad an answer with.
+        cusp_sub_lord="" if plain is not None else str(ev.get("cusp_sub_lord") or "")[:20],
+        star_lord="" if plain is not None else str(ev.get("star_lord") or "")[:20],
+        ruling_planets=([] if plain is not None else
+                        [str(p)[:20] for p in (ev.get("ruling_planets") or [])][:12]),
+        significations=([] if plain is not None else
+                        [str(s)[:20] for s in (ev.get("significations") or [])][:16]),
+        is_yes_no=bool(summary.get("is_yes_no", True)),
+        plain_answer=str(getattr(plain, "answer", "") or "")[:400],
+        plain_timing=plain_timing_line[:300],
+        plain_remedy=str(getattr(plain, "remedy", "") or "")[:300],
+        window_open=str(tm.get("window") or "")[:40],
+        window_close=str(tm.get("until") or "")[:40],
+        window_known=bool(tm.get("window")) and not bool(tm.get("beyond_horizon")),
     )
     return project_for_access(seal_facts(facts, report_id=report_id), access)
 

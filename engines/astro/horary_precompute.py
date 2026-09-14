@@ -1345,6 +1345,8 @@ def precompute_horary(
     location: str = "New Delhi",
     kp_number: str = "",
     area: str = "",
+    lat: float | None = None,
+    lon: float | None = None,
 ) -> dict:
     """
     Master function: compute all horary/prashna math and return structured JSON.
@@ -1354,9 +1356,14 @@ def precompute_horary(
     year, month, day = map(int, q_date_str.split("-"))
     q_date_obj = Date(year, month, day)
 
-    # Get lat/lon for location
+    # Get lat/lon for location — prefer the coordinates the site already resolved.
     loc_key = location.lower().split(",")[0].strip()
-    lat, lon = LOCATIONS.get(loc_key, LOCATIONS["delhi"])  # default New Delhi
+    default_lat, default_lon = LOCATIONS.get(loc_key, LOCATIONS["delhi"])
+    try:
+        lat = float(lat) if lat is not None else default_lat
+        lon = float(lon) if lon is not None else default_lon
+    except (TypeError, ValueError):
+        lat, lon = default_lat, default_lon
 
     # UT from IST
     ut_hour = ist_to_ut(hour, minute)

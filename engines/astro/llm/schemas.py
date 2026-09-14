@@ -530,7 +530,7 @@ class QuestionFacts(BaseModel):
 
 class HoraryLaneFact(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    lane: Literal["vedic", "western"] = "vedic"
+    lane: Literal["vedic", "western", "kp"] = "vedic"
     verdict: str = ""
     confidence: Confidence = "low"
     score: float = 0.0
@@ -569,6 +569,20 @@ class HoraryFacts(BaseModel):
     hindering_remedy: str = Field(default="", max_length=250)
     supportive_remedy: str = Field(default="", max_length=250)
     language: str = "en"
+    kp_number: int = 0
+    cusp_sub_lord: str = Field(default="", max_length=20)
+    star_lord: str = Field(default="", max_length=20)
+    ruling_planets: list[str] = Field(default_factory=list, max_length=12)
+    significations: list[str] = Field(default_factory=list, max_length=16)
+    is_yes_no: bool = True
+    # The three lines the reader actually saw. Follow-up chat has to answer
+    # from these or it drifts away from the page it is sitting under.
+    plain_answer: str = Field(default="", max_length=400)
+    plain_timing: str = Field(default="", max_length=300)
+    plain_remedy: str = Field(default="", max_length=300)
+    window_open: str = Field(default="", max_length=40)
+    window_close: str = Field(default="", max_length=40)
+    window_known: bool = False
 
 
 class PalmAspectFacts(BaseModel):
@@ -890,6 +904,28 @@ class QuestionPlan(BaseModel):
     life_area: str = Field(default="general_destiny", max_length=60)
     target_planet: str = Field(default="", max_length=20)
     tools: list[ToolRequest] = Field(default_factory=list, max_length=4)
+
+
+class HoraryJudgement(BaseModel):
+    """KP horary decision. The model judges; it does not write the answer."""
+    model_config = ConfigDict(extra="forbid")
+    restated_intent: str = Field(default="", max_length=300)
+    in_scope: bool = True
+    is_yes_no: bool = True
+    # What the reader wants back. A chart can settle occurrence and timing;
+    # it cannot return a quantity, so that has to be said rather than dodged.
+    asks: Literal["yes_no", "timing", "quantity", "other"] = "other"
+    label: Literal["yes", "no", "conditional", "open", "out_of_scope"] = "open"
+    confidence: Literal["low", "moderate", "good"] = "low"
+    reason: str = Field(default="", max_length=400)
+
+
+class HoraryPlainAnswer(BaseModel):
+    """The whole horary reply: a verdict, a date, a remedy. Nothing else."""
+    model_config = ConfigDict(extra="forbid")
+    answer: str = Field(..., min_length=10, max_length=220)
+    timing: str = Field(default="", max_length=200)
+    remedy: str = Field(default="", max_length=220)
 
 
 class PlainSummarySection(BaseModel):

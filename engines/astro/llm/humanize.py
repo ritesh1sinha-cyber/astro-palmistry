@@ -1071,9 +1071,14 @@ def humanize_chat(
         available_fact_ids |= citable_fact_ids(facts)
     except Exception:  # noqa: BLE001
         pass
+    kind = str(
+        facts.get("kind") if isinstance(facts, dict) else getattr(facts, "kind", "")
+    )
+    is_palm = kind == "palm"
+    is_horary = kind == "horary"
     prose, _retries, errs = _complete_validated(
         ChatAnswer,
-        system_prompt_for("chat"),
+        system_prompt_for("chat_horary" if is_horary else "chat"),
         chat_user_prompt(
             facts,
             question,
@@ -1082,23 +1087,28 @@ def humanize_chat(
         ),
         facts,
         validate_chat_answer,
-        temperature=0.55,
+        # A horary follow-up has one right answer already on the page; warmth
+        # here only buys drift away from it.
+        temperature=0.3 if is_horary else 0.55,
     )
     on_topic = followup_is_on_asked_topic(facts, question)
-    is_palm = str(
-        facts.get("kind") if isinstance(facts, dict) else getattr(facts, "kind", "")
-    ) == "palm"
+
+    def _grounded_fallback() -> str:
+        if is_palm:
+            return FB.palm_chat_fallback(facts, question)
+        if is_horary:
+            return FB.horary_chat_fallback(facts, question)
+        return FB.question_chat_fallback(facts)
     if prose is None:
         result["stats"]["rejected"] = 1
         # Keep why it was rejected: a refusal the customer sees for a fair
         # question is a bug, and without the reasons it is invisible in logs.
         result["stats"]["rejection_reasons"] = list(errs or [])
         result["fallback_used"] = True
-        if on_topic:
-            if is_palm:
-                result["answer"] = FB.palm_chat_fallback(facts, question)
-            else:
-                result["answer"] = FB.question_chat_fallback(facts)
+        # A horary report *is* the question they asked, so there is always a
+        # concrete answer to give — never fall through to the refusal.
+        if on_topic or is_horary:
+            result["answer"] = _grounded_fallback()
             result["out_of_scope"] = False
             result["used_fact_ids"] = ["question", "direction", "timing"]
             return result
@@ -1112,10 +1122,7 @@ def humanize_chat(
         # the prompt used to describe every non-palm/horary reading as a
         # life-area chart. This report is that question; answer from facts.
         if on_topic:
-            if is_palm:
-                result["answer"] = FB.palm_chat_fallback(facts, question)
-            else:
-                result["answer"] = FB.question_chat_fallback(facts)
+            result["answer"] = _grounded_fallback()
             result["out_of_scope"] = False
             result["used_fact_ids"] = ["question", "direction", "timing"]
             result["fallback_used"] = True

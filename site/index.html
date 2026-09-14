@@ -1424,8 +1424,8 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
     <span class="admin-gen-stat" data-stat-kind="horary"></span>
     <div class="eyebrow">Prashna · horary</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Ask one question. Get one clear answer.</h3>
-    <p style="color:var(--muted);font-size:14.5px">No birth chart needed — horary reads the moment you ask.
-       Each method's own reading is free. The verdict they add up to, the timing and the remedy are ₹298.</p>
+    <p style="color:var(--muted);font-size:14.5px">No birth chart needed — KP horary reads the number you name
+       and the moment you ask. The working is free. The verdict, timing and remedy are ₹298.</p>
     <div class="field" style="margin-top:14px"><label for="hArea">Area of life</label>
      <select class="inp" id="hArea">
       <option value="">Let it work out from your question</option>
@@ -1455,9 +1455,18 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
      <div class="err">Required</div>
      <p class="placenote" id="hPlaceNote">We fill coordinates from the city you pick.</p></div>
     <input type="hidden" id="hLat"><input type="hidden" id="hLon"><input type="hidden" id="hTz" value="5.5">
+    <div class="field" style="margin-top:4px">
+     <label for="hKp">KP number <span class="hint">(1–249 · pick any number that comes to mind)</span></label>
+     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input class="inp" id="hKp" type="number" min="1" max="249" step="1" placeholder="e.g. 108" style="max-width:140px">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="pickKpNumber()">Pick random number</button>
+     </div>
+     <div class="err">Enter a number from 1 to 249</div>
+     <p class="hint" style="margin-top:8px">In KP horary you name a number at random — it sets the rising point for this question.</p>
+    </div>
     <p class="hint" style="margin:8px 0 14px">Your question is read for the moment you tap submit — no need to enter the time.</p>
     <button class="btn btn-gold btn-block" onclick="astroJob('horary')">Read my question — free</button>
-    <p class="hint" style="text-align:center">Takes ~1–2 minutes. Western horary reads the moment you ask — then gives one answer.</p>
+    <p class="hint" style="text-align:center">Takes ~1–2 minutes. KP horary reads the number you name, then one answer.</p>
    </div>
   </div>
 
@@ -5656,6 +5665,12 @@ function horaryPayload(){
     return null;
   }
   bad('#hLoc', false);
+  const kpRaw=($('#hKp')?$('#hKp').value:'').trim();
+  const kpNum=parseInt(kpRaw,10);
+  if(!bad('#hKp', !(kpRaw && kpNum>=1 && kpNum<=249))){
+    toast('Pick a KP number from 1 to 249 (use “Pick random number” if you like).');
+    return null;
+  }
   S.horaryPlace = captureHoraryPlace(); save();
   const now=new Date(), pad=n=>String(n).padStart(2,'0');
   const area = ($('#hArea')?$('#hArea').value:'').trim();
@@ -5665,7 +5680,14 @@ function horaryPayload(){
     qTime: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
     location: place,
     lat: parseFloat(lat), lon: parseFloat(lon),
-    tz: parseFloat($('#hTz').value||'5.5') };
+    tz: parseFloat($('#hTz').value||'5.5'),
+    kpNumber: String(kpNum) };
+}
+function pickKpNumber(){
+  const n = Math.floor(Math.random() * 249) + 1;
+  const el = $('#hKp');
+  if(el){ el.value = n; bad('#hKp', false); }
+  toast('KP number '+n+' — use this one, or type your own.');
 }
 
 async function astroSummary(){

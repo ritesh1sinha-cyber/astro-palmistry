@@ -254,7 +254,20 @@ def _label_from_western(west: dict) -> tuple[str, bool | None, float]:
 
 
 def reconcile(verdicts: dict) -> dict:
-    """Return the Western horary verdict as the single customer answer."""
+    """Return the KP (or legacy Western) horary verdict as the customer answer."""
+    kp = verdicts.get("kp") or {}
+    if "error" not in kp and kp.get("verdict"):
+        label, favourable, score = _label_from_western(kp)
+        conf_raw = str(kp.get("confidence") or "moderate").strip().lower()
+        confidence = conf_raw if conf_raw in ("good", "moderate", "low") else "moderate"
+        return {
+            "label": label, "score": score, "confidence": confidence,
+            "favourable": favourable, "contradicted": False,
+            "western": {}, "vedic": {}, "kp": kp,
+            "is_yes_no": bool(kp.get("is_yes_no", True)),
+            "weights": dict(WEIGHTS), "usable": True,
+        }
+
     west = verdicts.get("western") or {}
     west_ok = "error" not in west and west.get("verdict")
 
@@ -753,7 +766,7 @@ def _locked_block(*, price: int, n_windows: int, has_remedy: bool, lang: str = "
     return f"""
 <div class="qa-window locked" data-unlock="1" role="button" tabindex="0" style="margin:14px 0;cursor:pointer;">
   <div class="qa-wlabel">The Verdict — moment-chart outcome & confidence</div>
-  <p class="blurred">The Western horary chart delivers a direct verdict on whether this matter reaches completion, the strength of the opening, and the key obstacles to expect.</p>
+  <p class="blurred">The moment chart delivers a direct verdict on this question, the strength of the opening, and the key obstacles to expect.</p>
   <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>The horary verdict is locked.</b> Unlock to read the direct answer, confidence assessment, and chart reasoning.</p>
 </div>
 

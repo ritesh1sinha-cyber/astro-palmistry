@@ -726,15 +726,123 @@ def _bundle(bundle_price: int) -> str:
 # ---------------------------------------------------------------------------
 # horary — one answer, not two engines arguing
 # ---------------------------------------------------------------------------
+_PLAIN_TEASERS = {
+    "en": ("When this opens", "The month the chart points to for this.",
+           "What to do about it", "The one thing that helps this along.",
+           "Unlock the full answer",
+           "Your question is judged. Unlock the timing and the remedy.",
+           "Unlock · ₹{price}"),
+    "hi": ("Yeh kab khulega", "Kundli jis mahine ki taraf ishara karti hai.",
+           "Iske liye kya karein", "Ek cheez jo is kaam mein madad karegi.",
+           "Poora uttar unlock karein",
+           "Aapka prashna dekh liya gaya hai. Timing aur upay unlock karein.",
+           "Unlock karein · ₹{price}"),
+    "te": ("Idi eppudu jarugutundi", "Kundali soochinche nela.",
+           "Emi cheyali", "Ee panikî sahayapade oka vishayam.",
+           "Poorthi samadhanam unlock cheyandi",
+           "Mee prashna theerpu ayyindi. Timing mariyu parihara unlock cheyandi.",
+           "Unlock cheyandi · ₹{price}"),
+}
+
+
+def _plain_locked(price: int, lang_key: str) -> str:
+    """Two cards and a CTA — matching what the paid view actually holds."""
+    from horary_answer import _e
+
+    w_t, w_b, r_t, r_b, cta_h, cta_p, cta_a = _PLAIN_TEASERS[lang_key]
+    card = ('<div class="qa-window locked" data-unlock="1" role="button" '
+            'tabindex="0" style="margin:14px 0;cursor:pointer;">'
+            '<div class="qa-wlabel">{t}</div>'
+            '<p class="blurred">{b}</p></div>')
+    return (card.format(t=_e(w_t), b=_e(w_b))
+            + card.format(t=_e(r_t), b=_e(r_b))
+            + f'<div class="buy" style="margin-top:20px;"><h3>{_e(cta_h)}</h3>'
+              f'<p>{_e(cta_p)}</p>'
+              f'<a class="cta" href="#unlock" data-unlock="1">'
+              f'{_e(cta_a.format(price=price))}</a></div>')
+
+
+def _plain_horary_body(*, question: str, asked: str, plain: Any,
+                       verdict_flag: str, paid: bool, price: int,
+                       lang: str = "en") -> str:
+    """The whole horary reply: verdict, date, remedy. No chart machinery."""
+    from horary_answer import _e
+
+    lang_code = str(lang or "").lower().strip()
+    lang_key = ("hi" if lang_code in ("hi_en", "hinglish", "hi", "hindi")
+                else "te" if lang_code in ("te_en", "tenglish", "te", "telugu")
+                else "en")
+    asked_lbl = {"hi": "Aapka Prashna:", "te": "Mee Prashna:",
+                 "en": "You asked:"}[lang_key]
+
+    answer = (getattr(plain, "answer", "") or "").strip()
+    timing = (getattr(plain, "timing", "") or "").strip()
+    remedy = (getattr(plain, "remedy", "") or "").strip()
+
+    lines = [f'<p class="lede">{_e(answer)}</p>']
+    if paid:
+        if timing:
+            lines.append(f'<p class="qa-timing">{_e(timing)}</p>')
+        if remedy:
+            lines.append(f'<p class="qa-action">{_e(remedy)}</p>')
+    tail = "" if (paid or not (timing or remedy)) else _plain_locked(price, lang_key)
+
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<title>Your question — answered</title></head><body>
+<article class="horary-answer">
+<section class="section answer-lead" data-verdict="{verdict_flag}">
+  <div class="asked"><strong>{asked_lbl}</strong> {_e(question)}
+  {f'<span class="when">· {_e(asked)}</span>' if asked else ''}</div>
+  {''.join(lines)}
+</section>
+{tail}
+</article></body></html>"""
+
+
 def horary(*, question: str, verdicts: dict, western_judgment: dict,
            asked: str, name: str = "", horary_price: int = 298,
            full_report_price: int = 298,
            vedic_customer: Optional[dict] = None,
-           lang: str = "en") -> tuple:
+           lang: str = "en",
+           kp_evidence: Optional[dict] = None,
+           plain: Any = None,
+           timing: Optional[dict] = None) -> tuple:
     from horary_answer import build_answer_html, reconcile
     prose_overlay: dict = {}
     llm_meta: dict = {"enabled": False}
     facts_payload: dict = {}
+
+    if plain is not None:
+        # KP path: the model already judged and wrote. Skip the Western
+        # narrative builder — it was the source of the chart-jargon wall.
+        summary = reconcile(verdicts)
+        flag = ("up" if summary.get("favourable") else
+                "down" if summary.get("favourable") is False else "mixed")
+        try:
+            from llm.facts import build_horary_facts, public_fact_payload
+            facts_payload = public_fact_payload(build_horary_facts(
+                question=question, verdicts=verdicts, summary=summary,
+                name=name, access="paid", western_judgment=western_judgment,
+                vedic_customer=vedic_customer, language=lang,
+                kp_evidence=kp_evidence, plain=plain, timing=timing))
+        except Exception as exc:                                     # noqa: BLE001
+            print(f"[report_render] horary facts skipped: {exc}", flush=True)
+        common = dict(question=question, asked=asked, plain=plain,
+                      verdict_flag=flag, price=horary_price, lang=lang)
+        title = (f"Aapka Prashna — {question[:60]}"
+                 if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+                 else f"Your question — {question[:60]}")
+        free = RS.page(title, _scrub(_plain_horary_body(**common, paid=False)))
+        paid = RS.page(title, _scrub(_plain_horary_body(**common, paid=True)))
+        meta = {"design": "cards-v2", "answer": summary.get("label", ""),
+                "question": question, "asked": asked, "price": horary_price,
+                "language": lang, "llm": {"enabled": True, "mode": "kp-plain"},
+                "_facts": facts_payload,
+                "freeSections": ["Your answer"],
+                "paidSections": ["When it opens", "What to do"],
+                "teasers": {}}
+        return free, paid, meta
+
     try:
         from llm.facts import build_horary_facts, project_for_access, public_fact_payload
         from llm.humanize import humanize
@@ -744,7 +852,8 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
             summary=summary_preview, name=name, access="paid",
             western_judgment=western_judgment,
             vedic_customer=vedic_customer,
-            language=lang)
+            language=lang,
+            kp_evidence=kp_evidence)
         hfacts_free = project_for_access(hfacts_paid, "free")
         facts_payload = public_fact_payload(hfacts_paid)
         free_llm = humanize("horary", hfacts_free, access="free", lang=lang)
@@ -789,8 +898,8 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
             "_facts": facts_payload,
             "freeSections": ["Question & moment chart context",
                              "Preview of locked consultation verdict & timeline"],
-            "paidSections": ["The verdict — Western horary judgment",
-                             "Planetary dynamics & supporting influences",
+            "paidSections": ["The verdict — KP horary judgment",
+                             "Cuspal sub-lord & ruling planets",
                              "Key timing & dated windows",
                              "Targeted remedies & immediate relief"],
             "teasers": {}}

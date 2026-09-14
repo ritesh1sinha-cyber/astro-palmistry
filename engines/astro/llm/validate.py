@@ -892,6 +892,71 @@ _CHAT_ASSERTS_NO = re.compile(
 )
 
 
+_CHAT_STALL = re.compile(
+    r"\b(?:let'?s|let us|we(?:'ll| will| can| should)?|i(?:'ll| will| can)?)\s+"
+    r"(?:now\s+|first\s+|start by\s+|begin by\s+)?"
+    r"(?:delve|dive|explore|examine|unpack|analyse|analyze|"
+    r"break (?:it|this|them) down|look (?:at|into)|consider|"
+    r"take a (?:closer )?look|walk through|go through|review)\b", re.I)
+# A promise is only a problem when nothing follows it. A long answer that
+# opens with "let's look at this" then delivers is ordinary consultation prose.
+_STALL_MIN_WORDS = 90
+
+
+def _chat_stalls(text: str) -> list[str]:
+    """Catch the reply that announces an analysis instead of giving one.
+
+    Handed a thin report and a prompt asking for 200-800 authoritative words,
+    the model writes "Let's delve into the chart" and stops. It reads as a
+    truncated answer to the customer, and there is no next message coming.
+    """
+    body = (text or "").strip()
+    if not body or not _CHAT_STALL.search(body):
+        return []
+    if len(body.split()) >= _STALL_MIN_WORDS:
+        return []
+    return ["chat_promise_without_answer"]
+
+
+# Chart mechanics the horary reader was never shown and cannot act on.
+_HORARY_CHAT_JARGON = re.compile(
+    r"\b(?:querent|quesited|sub[- ]?lord|star ?lord|cusp(?:al)?|"
+    r"ruling planets?|significators?|nakshatra|dasha|bhukti|antara|"
+    r"retrograde|conjunct|trine|sextile|applying aspect|"
+    r"sun|moon|mars|mercury|jupiter|venus|saturn|rahu|ketu)\b", re.I)
+
+
+def _chat_horary_jargon(text: str) -> list[str]:
+    return (["chat_horary_jargon"]
+            if _HORARY_CHAT_JARGON.search(text or "") else [])
+
+
+_MONTH_WORD = re.compile(
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b", re.I)
+_YEAR_WORD = re.compile(r"\b(19|20)\d{2}\b")
+
+
+def _chat_horary_dates(text: str, facts: Any) -> list[str]:
+    """A follow-up may repeat the window it was given — never invent another.
+
+    "When?" is the commonest horary follow-up, so a model with no date to hand
+    is exactly the one most tempted to produce a plausible-looking month.
+    """
+    body = text or ""
+    allowed = " ".join(
+        str(d) for d in (_fget(facts, "allowed_dates", None) or [])).lower()
+    bad: list[str] = []
+    for m in _MONTH_WORD.findall(body):
+        if m.lower()[:3] not in allowed:
+            bad.append("chat_horary_invented_date")
+            break
+    for y in _YEAR_WORD.finditer(body):
+        if y.group(0) not in allowed:
+            bad.append("chat_horary_invented_date")
+            break
+    return list(dict.fromkeys(bad))
+
+
 def _chat_horary_grounding(text: str, facts: Any) -> list[str]:
     """A horary follow-up may explain the verdict — never reverse it.
 
@@ -1079,10 +1144,17 @@ def validate_chat_answer(prose: Any, facts: Any) -> list[str]:
         errors.extend(_chat_area_grounding(answer, facts))
     errors.extend(_chat_horary_grounding(answer, facts))
     errors.extend(_chat_palm_grounding(answer, facts))
+    errors.extend(_chat_stalls(answer))
+    if kind == "horary":
+        errors.extend(_chat_horary_jargon(answer))
+        errors.extend(_chat_horary_dates(answer, facts))
     used = list(getattr(prose, "used_fact_ids", None) or [])
     # For full_report chats, don't require strict fact_id citation —
-    # the confluence engine provides its own grounding.
-    if kind != "full_report":
+    # the confluence engine provides its own grounding. Horary is the same
+    # case for the opposite reason: the payload is three lines, the verdict,
+    # jargon and date checks above already pin the answer to them, and a
+    # mangled citation string was throwing away otherwise correct answers.
+    if kind not in ("full_report", "horary"):
         if not used:
             errors.append("chat_missing_used_fact_ids")
         else:
