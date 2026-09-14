@@ -27,6 +27,76 @@ def _e(value: Any) -> str:
     return _html.escape(str(value or ""), quote=True)
 
 
+_SPECIALIST_LABELS = {
+    "chandra_naadi": {
+        "en": "Moon cycle (Chandra Naadi)",
+        "hi_en": "Chandra Naadi",
+        "te_en": "Chandra Naadi",
+        "line_en": "A Moon-linked chart pattern is active in this chapter.",
+        "line_hi": "Chandra se juda ek chart pattern active hai is samay.",
+        "line_te": "Chandra tho sambandhincina pattern ee chapter lo active ga undi.",
+    },
+    "lal_kitab": {
+        "en": "Lal Kitab remedies",
+        "hi_en": "Lal Kitab",
+        "te_en": "Lal Kitab",
+        "line_en": "A practical Lal Kitab remedy applies to this placement.",
+        "line_hi": "Is sthan ke liye ek Lal Kitab upay lagu hota hai.",
+        "line_te": "Ee sthaanam kosam oka Lal Kitab upayam apply avuthundi.",
+    },
+}
+
+
+def _specialist_readings_html(analysis: Any, *, paid: bool = True,
+                              lang: str = "en") -> str:
+    """Customer-safe specialist strip. Localized; never leaks engine English."""
+    data = analysis if isinstance(analysis, dict) else {}
+    if hasattr(analysis, "model_dump"):
+        try:
+            data = analysis.model_dump(mode="json")
+        except Exception:  # noqa: BLE001
+            data = {}
+    bundle = data.get("specialist_readings") or data
+    if not isinstance(bundle, dict):
+        return ""
+    lang_code = str(lang or "en").lower()
+    is_hi = lang_code in ("hi_en", "hinglish", "hi", "hindi")
+    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
+    items = []
+    for key in ("chandra_naadi", "lal_kitab"):
+        block = bundle.get(key)
+        if not isinstance(block, dict):
+            continue
+        findings = block.get("findings") or []
+        if not findings:
+            continue
+        meta = _SPECIALIST_LABELS[key]
+        if is_hi:
+            title, line = meta["hi_en"], meta["line_hi"]
+        elif is_te:
+            title, line = meta["te_en"], meta["line_te"]
+        else:
+            title, line = meta["en"], meta["line_en"]
+        items.append(
+            f'<div class="specialist-item"><b>{_e(title)}</b>'
+            f'<p>{_e(line)}</p></div>'
+        )
+    if not items:
+        return ""
+    if not paid:
+        return ""
+    hdr = (
+        "Chandra Naadi Aur Lal Kitab" if is_hi
+        else "Chandra Naadi Mariyu Lal Kitab" if is_te
+        else "Chandra Naadi & Lal Kitab"
+    )
+    return (
+        f'<section class="conv-block specialist-block">'
+        f'<div class="section-kicker">{_e(hdr)}</div>'
+        f'{"".join(items)}</section>'
+    )
+
+
 # Shared by the life-area cards and the question answer, which is rendered
 # through a different shell.
 TRANSITION_MAP_CSS = """
@@ -1538,51 +1608,32 @@ def _build_unified_current_chapter_html(
         from vedic_consultation_reading import generate_consultation_reading
         g_raw = ((pc.get("meta") or {}).get("gender") or "male")
         g_str = "female" if g_raw in (1, "female", "f") else "male"
-        # Deterministic: use report's `today` instead of datetime.now(), and
-        # pass lang so the engine can return localized strings when available.
-        try:
-            cr_res = generate_consultation_reading(pc, gender=g_str, analysis_datetime=datetime.combine(today, datetime.min.time()), lang=lang)  # type: ignore[call-arg]
-        except TypeError:
-            cr_res = generate_consultation_reading(pc, gender=g_str, analysis_datetime=datetime.combine(today, datetime.min.time()))
+        cr_res = generate_consultation_reading(pc, gender=g_str)
         
-        m_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("mind_state", []))
+        m_items = "".join(f"<li>{it}</li>" for it in cr_res.get("mind_state", []))
         if m_items:
-            m_badge = (
-                "1. Abhi Aapke Man Mein Kya Chal Raha Hai" if is_hinglish else
-                "1. Ippudu Mee Manassulo Em Jaruguthondi" if is_tenglish else
-                "1. What Is in Your Mind Right Now (The Immediate Trigger)"
-            )
             mind_card_html = (
-                f'<div class="chapter-consultation-card" style="background:#fffcf8;border:1px solid #cde0f7;border-left:5px solid #1a5f9e;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
-                f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#e1effe;color:#1a5f9e;display:inline-block;margin-bottom:10px;">'
-                f'    {_e(m_badge)}'
-                f'  </div>'
-                f'  <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
-                f'    {m_items}'
-                f'  </ul>'
-                f'</div>'
+                f'<div class="summary-card info">\n'
+                f'  <h2>1. What Is in Your Mind Right Now (The Immediate Trigger)</h2>\n'
+                f'  <ul class="bullet-list info">\n'
+                f'    {m_items}\n'
+                f'  </ul>\n'
+                f'</div>\n'
             )
             
-        p_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("past_6_months", []))
+        p_items = "".join(f"<li>{it}</li>" for it in cr_res.get("past_6_months", []))
         if p_items:
-            p_badge = (
-                "2. Pichhle 6 Mahino Mein Kya Hua (Timeline & Majbooti)" if is_hinglish else
-                "2. Gatha 6 Nelallo Em Jarigindi (Timeline & Balapadadam)" if is_tenglish else
-                "2. What Happened in the Last 6 Months (Timeline & Building Real Strength)"
-            )
             past_card_html = (
-                f'<div class="chapter-consultation-card" style="background:#fffcf8;border:1px solid #ebd4cc;border-left:5px solid #b57c38;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
-                f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#fdf2e3;color:#b57c38;display:inline-block;margin-bottom:10px;">'
-                f'    {_e(p_badge)}'
-                f'  </div>'
-                f'  <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
-                f'    {p_items}'
-                f'  </ul>'
-                f'</div>'
+                f'<div class="summary-card warn">\n'
+                f'  <h2>2. What Happened in the Last 6 Months (Timeline &amp; Building Real Strength)</h2>\n'
+                f'  <ul class="bullet-list warn">\n'
+                f'    {p_items}\n'
+                f'  </ul>\n'
+                f'</div>\n'
             )
 
         roadmap_card_html = ""
-        r_items = "".join(f"<li style='margin-bottom:10px;'>{it}</li>" for it in cr_res.get("roadmap_ahead", []))
+        r_items = "".join(f"<li>{it}</li>" for it in cr_res.get("roadmap_ahead", []))
         if r_items:
             if is_hinglish:
                 r_badge = "3. Aane Wala Jyotishiya Roadmap Aur Exact Turning Point Date"
@@ -1596,28 +1647,24 @@ def _build_unified_current_chapter_html(
 
             if paid:
                 roadmap_card_html = (
-                    f'<div class="chapter-consultation-card" style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:5px solid #1c6b45;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
-                    f'  <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#e3f5ec;color:#1c6b45;display:inline-block;margin-bottom:10px;">'
-                    f'    {r_badge}'
-                    f'  </div>'
-                    f'  <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
-                    f'    {r_items}'
-                    f'  </ul>'
-                    f'</div>'
+                    f'<div class="summary-card pos">\n'
+                    f'  <h2>{r_badge}</h2>\n'
+                    f'  <ul class="bullet-list pos">\n'
+                    f'    {r_items}\n'
+                    f'  </ul>\n'
+                    f'</div>\n'
                 )
             else:
                 roadmap_card_html = (
-                    f'<div class="chapter-consultation-card lock-wrap" style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:5px solid #1c6b45;border-radius:12px;margin-bottom:16px;position:relative;overflow:hidden;">'
-                    f'  <div class="lock-blur" style="padding:18px 20px;">'
-                    f'    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 10px;border-radius:99px;background:#e3f5ec;color:#1c6b45;display:inline-block;margin-bottom:10px;">'
-                    f'      {r_badge}'
-                    f'    </div>'
-                    f'    <ul style="margin:0;padding-left:18px;font-size:0.88rem;line-height:1.62;color:#2c3140;">'
-                    f'      {r_items}'
-                    f'    </ul>'
-                    f'  </div>'
-                    f'  <div class="lock-over"><span class="lock-chip" style="font-size:0.75rem;padding:7px 18px;">{r_lock}</span></div>'
-                    f'</div>'
+                    f'<div class="summary-card pos lock-wrap">\n'
+                    f'  <div class="lock-blur">\n'
+                    f'    <h2>{r_badge}</h2>\n'
+                    f'    <ul class="bullet-list pos">\n'
+                    f'      {r_items}\n'
+                    f'    </ul>\n'
+                    f'  </div>\n'
+                    f'  <div class="lock-over"><span class="lock-chip">{r_lock}</span></div>\n'
+                    f'</div>\n'
                 )
     except Exception as exc:
         print(f"[report_conversational] consultation cards skipped: {exc}", flush=True)
@@ -1833,17 +1880,17 @@ def _build_unified_current_chapter_html(
         easing_when = f" ({next_date_str})" if paid else " — exact date poori reading mein shamil hai"
         avoid_until = f"{next_date_str} se pehle" if paid else "is antardasha ke pura hone tak"
         moon_aspect_note = f", Janma Rashi (Moon in {moon_sign}) par drishti" if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else ""
-        sat_root = f"Shani Dev aapke <b>{t_sat_house}th house ({t_sat_sign})</b> mein transit kar rahe hain" + (f" (SAV: <b>{t_sat_sav} bindus</b>)" if paid else "") + moon_aspect_note
+        sat_root = f"Shani Dev aapke <b>{t_sat_house}th house ({t_sat_sign})</b> mein transit kar rahe hain" + moon_aspect_note
     elif is_tenglish:
         easing_when = f" ({next_date_str})" if paid else " — exact date sampoorna reading lo undi"
         avoid_until = f"{next_date_str} kante mundu" if paid else "ee antardasha poorthi ayye varaku"
         moon_aspect_note = f", Janma Rashi (Moon in {moon_sign}) meeda drushti" if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else ""
-        sat_root = f"Shani Bhagavan mee <b>{t_sat_house}th house ({t_sat_sign})</b> lo transit chesthunnaru" + (f" (SAV: <b>{t_sat_sav} bindus</b>)" if paid else "") + moon_aspect_note
+        sat_root = f"Shani Bhagavan mee <b>{t_sat_house}th house ({t_sat_sign})</b> lo transit chesthunnaru" + moon_aspect_note
     else:
         easing_when = f" ({next_date_str})" if paid else " — the exact handover date is in the full reading"
         avoid_until = f"before {next_date_str}" if paid else "until this sub-period hands over"
         moon_aspect_note = f", casting a direct aspect onto your Janma Rashi (Moon in {moon_sign})" if moon_sign in SIGNS and t_sat_moon_house in (1, 4, 7, 10) else ""
-        sat_root = f"Saturn (Shani) is transiting your <b>{t_sat_house}th house ({t_sat_sign})</b>" + (f" with an Ashtakavarga score of <b>{t_sat_sav} bindus</b> (critical threshold is 28)" if paid else "") + moon_aspect_note
+        sat_root = f"Saturn is transiting your <b>{t_sat_house}th house ({t_sat_sign})</b>" + moon_aspect_note
 
     if is_hinglish:
         root_label = "Astrological Mool Adhar:"
@@ -1883,12 +1930,11 @@ def _build_unified_current_chapter_html(
     default_jup = ("Dhanam Mariyu Aarthika Sthiratha" if is_tenglish else ("Dhan Aur Aarthik Sthirta" if is_hinglish else "Financial & Resource Base"), "material resources")
     jup_domain, jup_desc = h_domains_dict.get(t_jup_house, default_jup)
     protective_title = jup_domain
-    jup_score = (f" (SAV: <b>{t_jup_sav} bindus</b>)" if paid else "")
     
     if is_hinglish:
         protective_body = f"""
         <p style="margin:0 0 6px;">
-          <b>Astrological Sahyog:</b> Guru (Jupiter) aapke <b>{t_jup_house}th house ({t_jup_sign})</b> mein transit kar rahe hain{jup_score}.
+          <b>Astrological Sahyog:</b> Guru (Jupiter) aapke <b>{t_jup_house}th house ({t_jup_sign})</b> mein transit kar rahe hain.
         </p>
         <p style="margin:0;color:#1c6b45;">
           <b>Suraksha Kavach:</b> Yeh aapke aarthik adhar, bachat aur parivar ki suraksha ko majboot sahara deta hai. Karyakshetra mein der ke bawajood aapka mool aarthik santulan surakshit rehta hai.
@@ -1897,7 +1943,7 @@ def _build_unified_current_chapter_html(
     elif is_tenglish:
         protective_body = f"""
         <p style="margin:0 0 6px;">
-          <b>Astrological Sahayam:</b> Guru (Jupiter) mee <b>{t_jup_house}th house ({t_jup_sign})</b> lo transit chesthunnaru{jup_score}.
+          <b>Astrological Sahayam:</b> Guru (Jupiter) mee <b>{t_jup_house}th house ({t_jup_sign})</b> lo transit chesthunnaru.
         </p>
         <p style="margin:0;color:#1c6b45;">
           <b>Rakshana Kavacham:</b> Idi mee aarthika sthiratha, podupu mariyu kutumba surakshithathaku balamaina aadharam isthundi. Career lo aalasyam unna, mee moola aarthika balam surakshithanga untundi.
@@ -1906,7 +1952,7 @@ def _build_unified_current_chapter_html(
     else:
         protective_body = f"""
         <p style="margin:0 0 6px;">
-          <b>Astrological Grace:</b> While your {domain_name.lower()} is under pressure, Jupiter (Guru) transits your <b>{t_jup_house}th house ({t_jup_sign})</b>{jup_score}.
+          <b>Astrological Grace:</b> While your {domain_name.lower()} is under pressure, Jupiter transits your <b>{t_jup_house}th house ({t_jup_sign})</b>.
         </p>
         <p style="margin:0;color:#1c6b45;">
           <b>Your Safety Anchor:</b> This provides powerful insulation for your financial baseline, liquidity, and family security. Regardless of professional delays, your fundamental material solvency and resources remain strongly protected.
@@ -2042,14 +2088,8 @@ def _build_unified_current_chapter_html(
     else:
         next_ad_date = "Munde Vachedi" if is_tenglish else ("Aane Wala" if is_hinglish else "Upcoming")
 
-    gochar_line = (
-        f"Jup in {t_jup_sign} ({t_jup_sav} SAV) · Sat in {t_sat_sign} ({t_sat_sav} SAV)"
-        if paid else
-        f"Jup in {t_jup_sign} · Sat in {t_sat_sign}")
-    sat_header = (
-        f"Saturn in {t_sat_sign} ({t_sat_sav} SAV) · {cur_md}–{ad_lord}"
-        if paid else
-        f"Saturn in {t_sat_sign} · {cur_md}–{ad_lord}")
+    gochar_line = f"Jupiter in {t_jup_sign} · Saturn in {t_sat_sign}"
+    sat_header = f"Saturn in {t_sat_sign} · {cur_md}–{ad_lord}"
     
     bindu_working = ""
     if not paid:
@@ -2109,381 +2149,26 @@ def _build_unified_current_chapter_html(
     else:
         ch_kicker = "ACTIVE JYOTISH PERIOD &amp; RECENT MILESTONES"
         ch_heading = "Your Current Life Chapter: Planetary Influences &amp; Trajectory"
-        lbl_dasha = "Planetary Period (Dasha):"
-        lbl_shift = "Major Breakthrough Shift:"
-        lbl_clocks = "Multi-Clock Alignment:"
-        lbl_gochar = "Live Gochar (Transits):"
+        lbl_dasha = "Active Operating Dasha:"
+        lbl_shift = "Upcoming Turning Point:"
+        lbl_clocks = "Cosmic Alignment:"
+        lbl_gochar = "Guiding Transits:"
         astrologer_p = (
             f"As a Vedic Astrologer examining your birth chart (<b>{lagna} Lagna</b> governed by <b>{lagna_lord}</b>), your life is currently operating under the dual governance of <b>{cur_md} (Mahadasha)</b> and <b>{ad_lord} (Antardasha)</b>. "
             f"While {cur_md} sets the overarching 16-year curriculum of expansion, wisdom, and vocational status, {ad_lord} acts as the immediate operating lens—directing focus toward inward restructuring, clearing legacy distractions, and establishing rock-solid foundations for the upcoming breakthrough."
         )
         reality_title = "Lived Reality: Core Tensions &amp; Pillars"
-        pressure_badge = "⚠️ Primary Structural Pressure Axis"
-        grace_badge = "🛡️ Active Protective Grace Anchor"
-        mind_badge = "🧘 Mental Resilience, Rest &amp; Restorative Axis"
+        pressure_badge = "⚠️ Current Testing &amp; Focus Area"
+        grace_badge = "🛡️ Active Protective Financial Anchor"
+        mind_badge = "🧘 Rest, Stamina &amp; Mental Balance"
         strategy_title = "How to Play This Chapter: Strategic Astrologer Advisory"
         timeline_title = "Chronological Dasha Sequence &amp; Phase Transitions"
 
     return f"""
-    <section class="conv-block current-block" style="margin:28px 0;">
-      <div class="section-kicker" style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#8a6a1f;font-weight:800;margin-bottom:6px;">{ch_kicker}</div>
-      <h2 id="sec-your-current-chapter" data-nav="Current chapter" style="font-family:Georgia,serif;font-size:1.35rem;color:#1f2430;margin:0 0 14px;font-weight:600;">{ch_heading}</h2>
-      
-      <div class="chapter-overview-board" style="background:#fcfbf8;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;margin-bottom:18px;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;font-size:0.85rem;line-height:1.45;color:#2c3140;">
-          <div><b>{lbl_dasha}</b> <span style="color:#7a4b18;font-weight:700;">{cur_md} MD · {ad_lord} AD</span> ({cur_dates})</div>
-          <div><b>{lbl_shift}</b> <span style="color:#1c6b45;font-weight:700;">{next_ad_title}</span> ({next_ad_date})</div>
-          <div><b>{lbl_clocks}</b> Chara: {chara_str} | Yogini: {yogini_str}</div>
-          <div><b>{lbl_gochar}</b> {gochar_line}</div>
-        </div>
-      </div>
-
-      <div class="chapter-astrologer-note" style="margin-bottom:20px;font-size:0.93rem;line-height:1.65;color:#2c3140;">
-        <p style="margin:0 0 10px;">
-          {astrologer_p}
-        </p>
-      </div>
-
-      {mind_card_html}
-      {past_card_html}
-      {roadmap_card_html}
-
-      <!-- KEY PROBLEM AREA & ASTROLOGICAL PILLARS -->
-      <div class="chapter-domains-wrap" style="margin:22px 0;">
-        <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:12px;">
-          {reality_title}
-        </div>
-        
-        <!-- Primary Friction / Problem Area (Full Width Red/Amber Card) -->
-        <div class="chapter-problem-card" style="background:#fffcfb;border:1px solid #ebd4cc;border-left:5px solid #c84b31;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-            <span style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:3px 9px;border-radius:99px;background:#fce8e6;color:#a8321d;">
-              {pressure_badge}
-            </span>
-            <span style="font-size:0.78rem;font-weight:700;color:#8f301e;">{sat_header}</span>
-          </div>
-          <h3 style="font-family:Georgia,serif;font-size:1.1rem;color:#1f2430;margin:0 0 8px;font-weight:600;">{primary_tension_title}</h3>
-          {primary_tension_body}
-          {bindu_working}
-        </div>
-
-        <!-- Two Column Grid for Protective Pillar & Mental Resilience -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:14px;">
-          
-          <!-- Protective Pillar (Green Card) -->
-          <div class="chapter-protective-card" style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:12px;padding:15px 16px;">
-            <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;background:#e3f5ec;color:#1c6b45;display:inline-block;margin-bottom:8px;">
-              {grace_badge}
-            </div>
-            <h4 style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{protective_title}</h4>
-            <div style="font-size:0.85rem;line-height:1.55;color:#2c3140;">
-              {protective_body}
-            </div>
-          </div>
-
-          <!-- Mental & Physical Resilience Card -->
-          <div class="chapter-resilience-card" style="background:#fffcf8;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:15px 16px;">
-            <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:8px;background:#fdf2e3;color:#b57c38;display:inline-block;">
-              {mind_badge}
-            </div>
-            <h4 style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;margin:0 0 6px;font-weight:600;">{secondary_title}</h4>
-            <div style="font-size:0.85rem;line-height:1.55;color:#2c3140;">
-              {secondary_body}
-            </div>
-          </div>
-        </div>
-
-        <!-- Strategic Astrologer Advisory Box -->
-        <div class="chapter-counsel-card" style="background:#fcfbf8;border:1px solid #e8e4dc;border-radius:11px;padding:14px 16px;">
-          <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#7a4b18;margin-bottom:6px;">
-            {strategy_title}
-          </div>
-          {counsel_body}
-        </div>
-      </div>
-
-      <!-- TIMELINE -->
-      <div class="chapter-timeline-wrap" style="margin:20px 0;">
-        <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">{timeline_title}</div>
-        <div style="display:grid;gap:10px;">
-          {"".join(chronology_items)}
-        </div>
-      </div>
-
-      {remedy_block}
-    </section>
+    {mind_card_html}
+    {past_card_html}
+    {roadmap_card_html}
     """
-
-
-def _build_executive_summary_crux_html(
-    pc: dict,
-    analysis: Any = None,
-    cards: Optional[list] = None,
-    *,
-    paid: bool = False,
-    today: Optional[date] = None,
-    lang: str = "en",
-) -> str:
-    """Build a comprehensive, authoritative Executive Summary & Crux section covering all core life areas and timing."""
-    lang_code = str(lang or "").lower().strip()
-    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
-    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
-
-    lagna = ((pc.get("lagna") or {}).get("sign") or "Aries")
-    moon_sign = ""
-    if pc:
-        moon_sign = (
-            str(((pc.get("planets") or {}).get("Moon") or {}).get("sign") or "")
-            or str((pc.get("meta") or {}).get("moon_sign") or "")
-            or str((pc.get("moon") or {}).get("sign") or ""))
-    nakshatra = (pc.get("nakshatra") or (pc.get("meta") or {}).get("nakshatra") or "")
-    
-    from astro_precompute import SIGN_LORDS, get_dignity
-    lord = SIGN_LORDS.get(lagna, "Sun")
-    lord_data = pc.get("planets", {}).get(lord, {}) if isinstance(pc, dict) else {}
-    lord_s = str(lord_data.get("sign") or "")
-    lord_h = int(lord_data.get("house") or 1)
-    lord_d = get_dignity(lord, lord_s) if lord_s else ""
-    
-    ordinals = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th", 7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th"}
-    h_str = ordinals.get(lord_h, f"House {lord_h}")
-    
-    # Accurate Dasha extraction from pc / analysis
-    vim = pc.get("vimshottari", {}) if isinstance(pc, dict) else {}
-    raw_cur_md = vim.get("current_md") or {}
-    cur_md = raw_cur_md.get("md_lord") if isinstance(raw_cur_md, dict) else str(raw_cur_md or "")
-    all_ads = vim.get("current_md_antardashas", [])
-    
-    cur_ad = ""
-    next_lord = ""
-    
-    # 1. Check if analysis has current_vimshottari
-    if isinstance(analysis, dict):
-        cv = analysis.get("current_vimshottari") or analysis.get("vimshottari")
-        if isinstance(cv, str) and ("-" in cv or "—" in cv):
-            delimiter = "-" if "-" in cv else "—"
-            parts = [p.strip() for p in cv.split(delimiter)]
-            if len(parts) >= 2:
-                if not cur_md:
-                    cur_md = parts[0]
-                cur_ad = parts[1]
-
-    # 2. Extract current and next Antardasha from current_md_antardashas
-    if all_ads:
-        cur_ad_idx = next((i for i, a in enumerate(all_ads) if isinstance(a, dict) and a.get("status") == "current"), -1)
-        if cur_ad_idx >= 0:
-            if not cur_ad:
-                cur_ad = str(all_ads[cur_ad_idx].get("ad_lord") or "")
-            if cur_ad_idx + 1 < len(all_ads):
-                next_lord = str(all_ads[cur_ad_idx + 1].get("ad_lord") or "")
-        else:
-            from datetime import date
-            check_d = str(today or date.today())
-            for i, a in enumerate(all_ads):
-                if isinstance(a, dict):
-                    s = str(a.get("start") or "")
-                    e = str(a.get("end") or "")
-                    if s and e and s <= check_d <= e:
-                        if not cur_ad:
-                            cur_ad = str(a.get("ad_lord") or "")
-                        if i + 1 < len(all_ads):
-                            next_lord = str(all_ads[i + 1].get("ad_lord") or "")
-                        break
-            if not cur_ad and all_ads:
-                cur_ad = str(all_ads[0].get("ad_lord") or "")
-                if len(all_ads) > 1:
-                    next_lord = str(all_ads[1].get("ad_lord") or "")
-
-    if not cur_md:
-        cur_md = "Jupiter"
-    if not cur_ad:
-        cur_ad = "Ketu"
-    if not next_lord:
-        next_lord = "Venus"
-
-    # Jaimini Karakas (defensive parsing)
-    ak = "Moon"
-    amk = "Jupiter"
-    jai_raw = pc.get("jaimini") if isinstance(pc, dict) else None
-    if isinstance(jai_raw, dict):
-        karakas = jai_raw.get("karakas")
-        if isinstance(karakas, dict):
-            ak = str(karakas.get("AK") or "Moon")
-            amk = str(karakas.get("AmK") or "Jupiter")
-        elif isinstance(karakas, list):
-            for item in karakas:
-                if isinstance(item, dict):
-                    k_name = item.get("karaka") or item.get("role")
-                    p_name = item.get("planet")
-                    if k_name == "AK" and p_name:
-                        ak = str(p_name)
-                    elif k_name == "AmK" and p_name:
-                        amk = str(p_name)
-    elif isinstance(jai_raw, list):
-        for item in jai_raw:
-            if isinstance(item, dict):
-                k_name = item.get("karaka") or item.get("role")
-                p_name = item.get("planet")
-                if k_name == "AK" and p_name:
-                    ak = str(p_name)
-                elif k_name == "AmK" and p_name:
-                    amk = str(p_name)
-            elif isinstance(item, (list, tuple)) and len(item) >= 2:
-                if item[0] == "AK":
-                    ak = str(item[1])
-                elif item[0] == "AmK":
-                    amk = str(item[1])
-                elif item[1] == "AK":
-                    ak = str(item[0])
-                elif item[1] == "AmK":
-                    amk = str(item[0])
-
-    from astro_precompute import SIGNS, SIGN_LORDS
-    lagna_idx = SIGNS.index(lagna) if lagna in SIGNS else 0
-    
-    def get_h(h_num: int) -> tuple[str, str]:
-        s = SIGNS[(lagna_idx + h_num - 1) % 12]
-        l = SIGN_LORDS.get(s, "Jupiter")
-        return s, l
-
-    h2_sign, h2_lord = get_h(2)
-    h6_sign, h6_lord = get_h(6)
-    h7_sign, h7_lord = get_h(7)
-    h8_sign, h8_lord = get_h(8)
-    h10_sign, h10_lord = get_h(10)
-    h11_sign, h11_lord = get_h(11)
-
-    placement_hi = f"{lord_s}, {h_str} bhav" if lord_s else f"{h_str} bhav"
-    placement_te = f"{lord_s}, {h_str} bhavam" if lord_s else f"{h_str} bhavam"
-    placement_en = f"in the {h_str} house ({lord_s})" if lord_s else f"in the {h_str} house"
-
-    if is_hinglish:
-        sec_kicker = "MUKHYA KUNDLI SARANSH (EXECUTIVE SUMMARY)"
-        sec_title = "Aapki Kundli Ka Sampoorna Nichod Aur Mukhya Kshetra"
-        sec_sub = "Aapke mool vyaktitva, chalu dasha chakra aur sabhi pramukh jeevan kshetron ka vishleshatmak saransh."
-        
-        c1_title = "1. Mool Swabhav Aur Jeevan Disha"
-        c1_body = f"Aapka <b>{lagna} Lagna</b> aur <b>{moon_sign} Chandra</b> hai. Lagnesh <b>{lord}</b> ({placement_hi}) mein sthit hain, jo aapko strategic vision aur nischit lakshya ki disha mein aage badhate hain. Atmakaraka <b>{ak}</b> aantarik atmavishwas aur naitik sthirta pradan karta hai."
-        
-        c2_title = "2. Chalu Dasha Aur Vartaman Chapter"
-        c2_body = f"Vartaman mein aap <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b> ke daur se guzar rahe hain. Yeh samay aantarik mazbooti, purani rukawaton ko suljhane aur aane wale vistar ke liye zameen tayyar karne ka hai."
-        
-        c3_title = "3. Career, Rozgar Aur Pratishtha (10th House & D10)"
-        c3_body = f"10th house ({h10_sign}) ke swami <b>{h10_lord}</b> aur Amatyakaraka <b>{amk}</b> ke prabhav se aapko structured responsibilities, management aur executive roles mein vishesh safalta milti hai. Mehnat aur consistency se career mein sthirta aur samman prapt hota hai."
-        
-        c4_title = "4. Dhan, Bachat Aur Aarthik Vriddhi (2nd & 11th Bhav)"
-        c4_body = f"Dhanesh <b>{h2_lord}</b> (2nd house, {h2_sign}) aur Labhesh <b>{h11_lord}</b> (11th house, {h11_sign}) ka sanket hai ki aapki aarthik sthirta anushasit bachat aur structured planning se majboot hoti hai. Speculative risk ke bajay steady compounding labhkari hai."
-        
-        c5_title = "5. Rishte, Vivah Aur Parivarik Santulan (7th House & D9 Navamsha)"
-        c5_body = f"7th house ({h7_sign}) ke swami <b>{h7_lord}</b> aur Navamsha (D9) sambandhon mein aapsi samman, spasht communication aur bhavnatmak paripakvata ki maang karte hain. Understanding aur patience se parivarik jeevan mein santulan bana rehta hai."
-        
-        c6_title = "6. Swasthya, Urja Aur Daily Routine (1st, 6th & 8th Bhav)"
-        c6_body = f"Sharirik urja Lagnesh <b>{lord}</b> dwara sanchalit hai, jabki 6th lord <b>{h6_lord}</b> ({h6_sign}) aur 8th lord <b>{h8_lord}</b> workload ke dauran regular diet, hydration aur walking routine banaye rakhne ka sanket dete hain."
-        
-        c7_title = "7. Aane Wala Turning Point Aur Disha"
-        c7_body = f"Agla mukhya breakthrough window <b>{cur_md}&mdash;{next_lord}</b> Antardasha mein khulta hai. Is dauran pichli mehnat ka uchit samman aur aarthik unnati ka yog banta hai."
-    elif is_tenglish:
-        sec_kicker = "MUKHYA KUNDALI SARAMSAM (EXECUTIVE SUMMARY)"
-        sec_title = "Mee Kundali Sampoorna Saramsam Mariyu Mukhya Rangalu"
-        sec_sub = "Mee moola swabhavam, nadusthuna dasha chakra mariyu anni mukhya jeevitha rangala vishleshana saramsam."
-        
-        c1_title = "1. Moola Swabhavam Mariyu Jeevitha Disha"
-        c1_body = f"Mee <b>{lagna} Lagnam</b> mariyu <b>{moon_sign} Chandra</b> unnai. Lagnaadhipathi <b>{lord}</b> ({placement_te}) lo sthitamga unnar, idi meeku strategic vision mariyu spashthamaina lakshyam vaipu nadipisthundi. Atmakaraka <b>{ak}</b> aantarika aathmavishwasam isthundi."
-        
-        c2_title = "2. Nadusthuna Dasha Mariyu Vartamana Chapter"
-        c2_body = f"Prasthutam meeru <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b> phase lo unnar. Ee samayam lo internal consolidation, patha samasyalanu sari cheyadam mariyu future growth kosam foundation veyadam mukhyam."
-        
-        c3_title = "3. Career, Udyogam Mariyu Gouravam (10th House & D10)"
-        c3_body = f"10th house ({h10_sign}) adhipathi <b>{h10_lord}</b> mariyu Amatyakaraka <b>{amk}</b> prabhavam valla meeku structured responsibilities, management mariyu executive roles lo manchi vijayam labhisthundi. Discipline tho career sthirapaduthundi."
-        
-        c4_title = "4. Dhanam, Podupu Mariyu Aarthika Vriddhi (2nd & 11th Bhavalu)"
-        c4_body = f"Dhanaadhipathi <b>{h2_lord}</b> (2nd house, {h2_sign}) mariyu Labhaadhipathi <b>{h11_lord}</b> (11th house, {h11_sign}) sankethala prakaram mee aarthika sthiratha regular savings mariyu structured financial planning valla peruguthundi."
-        
-        c5_title = "5. Sambandhalu, Vivaham Mariyu Kutumba Samathulyatha (7th House & D9 Navamsha)"
-        c5_body = f"7th house ({h7_sign}) adhipathi <b>{h7_lord}</b> mariyu Navamsha (D9) relationship lo mutual respect, spashthamaina communication mariyu emotional maturity ni korukuntundi."
-        
-        c6_title = "6. Aarogyam, Urja Mariyu Daily Routine (1st, 6th & 8th Bhavalu)"
-        c6_body = f"Vitality Lagnaadhipathi <b>{lord}</b> aadharamga untundi, mariyu 6th lord <b>{h6_lord}</b> ({h6_sign}) tatha 8th lord <b>{h8_lord}</b> workload ekkuva unnapudu regular routine, water intake mariyu sleep balance maintain cheyali ani chupisthayi."
-        
-        c7_title = "7. Munde Vache Turning Point Mariyu Margadarshanam"
-        c7_body = f"Mee next breakthrough window <b>{cur_md}&mdash;{next_lord}</b> Antardasha lo start avuthundi. Ee phase lo mundu chesina kashtaniki tagga gouravam mariyu progress kanipisthundi."
-    else:
-        sec_kicker = "EXECUTIVE SUMMARY & REPORT CRUX"
-        sec_title = "Crux of Your Kundli & Key Life Domains"
-        sec_sub = "An authoritative executive synthesis summarizing your core archetype, active operating chapter, and domain-by-domain astrological outlook."
-        
-        c1_title = "1. Core Constitutional Archetype & Life Drive"
-        c1_body = f"With <b>{lagna} rising</b> and <b>Moon in {moon_sign}</b> ({nakshatra}), your chart establishes an ambitious, principled constitutional archetype. Governed by Lagna lord <b>{lord} {placement_en}</b> and Atmakaraka <b>{ak}</b>, your natural path rewards intellectual mastery, strategic independence, and dignified self-reliance."
-        
-        c2_title = "2. Active Operating Chapter & Planetary Dynamics"
-        c2_body = f"You are currently traversing the <b>{cur_md} Mahadasha &mdash; {cur_ad} Antardasha</b>. This is a foundational realignment phase dedicated to restructuring internal priorities, resolving residual friction, and preparing the structural runway for upcoming expansion."
-        
-        c3_title = "3. Career, Authority & Vocational Growth (10th House & D10)"
-        c3_body = f"Governed by 10th lord <b>{h10_lord}</b> ({h10_sign}) and Amatyakaraka <b>{amk}</b>, your vocational trajectory rewards executive responsibility, organizational management, and specialized execution. Sustained perseverance creates enduring institutional authority."
-        
-        c4_title = "4. Wealth, Income & Material Expansion (2nd & 11th Houses)"
-        c4_body = f"Financial expansion is anchored by 2nd lord <b>{h2_lord}</b> ({h2_sign}) and 11th lord <b>{h11_lord}</b> ({h11_sign}). Capital accumulation thrives on disciplined compounding, strategic asset allocation, and structured enterprise rather than volatile speculation."
-        
-        c5_title = "5. Relationships, Marriage & Alliances (7th House & D9 Navamsha)"
-        c5_body = f"Governed by 7th lord <b>{h7_lord}</b> ({h7_sign}) and the Navamsha (D9) framework, partnerships flourish on mutual intellectual respect, transparent communication, and shared foundational values."
-        
-        c6_title = "6. Vitality, Health & Energy Management (1st, 6th & 8th Houses)"
-        c6_body = f"Constitutional stamina is sustained by Lagna lord <b>{lord}</b>, while 6th lord <b>{h6_lord}</b> ({h6_sign}) and 8th lord <b>{h8_lord}</b> advise maintaining balanced digestive rhythms, hydration, and proactive stress regulation during peak workloads."
-        
-        c7_title = "7. Strategic Roadmap & Key Turning Points"
-        c7_body = f"The primary forward catalyst activates as you transition towards the <b>{cur_md}&mdash;{next_lord}</b> cycle, unlocking decisive professional recognition, financial elevation, and material stabilization."
-
-    return f"""
-    <section class="conv-block executive-summary-block" style="background:#fffcf8;border:1px solid #e2dccf;border-left:5px solid #8a6a1f;border-radius:14px;padding:22px 24px;margin:22px 0 26px;box-shadow:0 3px 12px rgba(0,0,0,0.03);">
-      <div class="section-kicker" style="font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:8px;">{sec_kicker}</div>
-      <h2 id="sec-executive-summary" data-nav="Executive Summary" style="font-family:Georgia,serif;font-size:1.35rem;color:#1f2430;margin:0 0 6px;font-weight:700;">{sec_title}</h2>
-      <p class="sec-note" style="font-size:0.86rem;color:#656a74;margin:0 0 18px;line-height:1.5;">{sec_sub}</p>
-      
-      <div class="summary-crux-grid" style="display:grid;grid-template-columns:1fr;gap:12px;">
-        <div style="background:#ffffff;border:1px solid #ebd4cc;border-left:4px solid #b57c38;border-radius:10px;padding:14px 16px;">
-          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#b57c38;margin-bottom:5px;">{c1_title}</div>
-          <div style="font-size:0.88rem;line-height:1.6;color:#2c3140;">{c1_body}</div>
-        </div>
-        
-        <div style="background:#ffffff;border:1px solid #cde0f7;border-left:4px solid #1a5f9e;border-radius:10px;padding:14px 16px;">
-          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1a5f9e;margin-bottom:5px;">{c2_title}</div>
-          <div style="font-size:0.88rem;line-height:1.6;color:#2c3140;">{c2_body}</div>
-        </div>
-        
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
-          <div style="background:#ffffff;border:1px solid #e4ded3;border-left:4px solid #2f5d4a;border-radius:10px;padding:13px 15px;">
-            <div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#2f5d4a;margin-bottom:4px;">{c3_title}</div>
-            <div style="font-size:0.86rem;line-height:1.58;color:#2c3140;">{c3_body}</div>
-          </div>
-          <div style="background:#ffffff;border:1px solid #e4ded3;border-left:4px solid #8a6a1f;border-radius:10px;padding:13px 15px;">
-            <div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#8a6a1f;margin-bottom:4px;">{c4_title}</div>
-            <div style="font-size:0.86rem;line-height:1.58;color:#2c3140;">{c4_body}</div>
-          </div>
-        </div>
-        
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
-          <div style="background:#ffffff;border:1px solid #e4ded3;border-left:4px solid #5c4a7a;border-radius:10px;padding:13px 15px;">
-            <div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#5c4a7a;margin-bottom:4px;">{c5_title}</div>
-            <div style="font-size:0.86rem;line-height:1.58;color:#2c3140;">{c5_body}</div>
-          </div>
-          <div style="background:#ffffff;border:1px solid #e4ded3;border-left:4px solid #a3341f;border-radius:10px;padding:13px 15px;">
-            <div style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#a3341f;margin-bottom:4px;">{c6_title}</div>
-            <div style="font-size:0.86rem;line-height:1.58;color:#2c3140;">{c6_body}</div>
-          </div>
-        </div>
-        
-        <div style="background:#f8fbf9;border:1px solid #d4e8dc;border-left:4px solid #1c6b45;border-radius:10px;padding:14px 16px;">
-          <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1c6b45;margin-bottom:5px;">{c7_title}</div>
-          <div style="font-size:0.88rem;line-height:1.6;color:#2c3140;">{c7_body}</div>
-        </div>
-      </div>
-    </section>
-    """
-
-
-def _specialist_readings_html(analysis: Any, *, paid: bool, lang: str) -> str:
-    """Specialist chart findings removed — return empty string."""
-    return ""
 
 
 def render(
@@ -2585,6 +2270,9 @@ def render(
         authoritative_timing_text += (
             (" " if authoritative_timing_text else "") + f"After that, the {next_vim} period begins.")
 
+    cur_md = md_lord or "Jupiter"
+    ad_lord = ad_lord or "Ketu"
+
     chips = []
     if lagna:
         chips.append(f"{lagna} rising")
@@ -2592,8 +2280,8 @@ def render(
         chips.append(f"Moon in {moon_sign}")
     if nakshatra:
         chips.append(f"Nakshatra: {nakshatra}")
-    if md_lord:
-        chips.append(f"{md_lord} Mahadasha")
+    if cur_md:
+        chips.append(f"{cur_md} Mahadasha")
     if ad_lord:
         chips.append(f"{ad_lord} Antardasha")
     chips = chips[:6]
@@ -2680,8 +2368,8 @@ def render(
         for i, line in enumerate(family_note[:limit]):
             label = labels[i] if i < len(labels) else ("Kutumbam" if is_tenglish else ("Parivar" if is_hinglish else "Family"))
             line_txt = str(line).strip()
+            low = line_txt.lower()
             if is_hinglish:
-                low = line_txt.lower()
                 if any(w in low for w in ("father", "paternal", "sun in", "disciplined", "duty", "traditional")):
                     line_txt = "Pita ka vyaktitva anushasit aur sankalpatmak approach ko darshata hai, jisme parivarik sanskaro aur jimmedariyon ka mahatva rehta hai."
                 elif any(w in low for w in ("mother", "maternal", "moon in", "anchor", "emotional", "grounding")):
@@ -2691,7 +2379,6 @@ def render(
                 elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
                     line_txt = "Ghar aur parivar ka vatavaran bachpan se hi sthirta, shanti aur acche sanskaro ki majboot buniyad deta hai."
             elif is_tenglish:
-                low = line_txt.lower()
                 if any(w in low for w in ("father", "paternal", "sun in", "disciplined", "duty", "traditional")):
                     line_txt = "Thandri garu anushasanam mariyu sankalpa balanni chupistharu, kutumba sanskaralu mariyu badhyathalu mukhya sthanam vahisthayi."
                 elif any(w in low for w in ("mother", "maternal", "moon in", "anchor", "emotional", "grounding")):
@@ -2700,6 +2387,15 @@ def render(
                     line_txt = "Sahodharulatho sambandhalu dynamic mariyu independent ga unnai, paraspara gouravam untundi."
                 elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
                     line_txt = "Illu mariyu kutumba vatavaranam chinnapatinunche sthiratha, shanti mariyu manchi viluvala balamaina neev isthundi."
+            else:
+                if any(w in low for w in ("father", "paternal", "sun in", "disciplined", "duty", "traditional")):
+                    line_txt = "Your chart indicates a strong paternal heritage of discipline, traditional values, and structured guidance, emphasizing duty and ethical principles."
+                elif any(w in low for w in ("mother", "maternal", "moon in", "anchor", "emotional", "grounding")):
+                    line_txt = "Your chart reflects deep maternal care, emotional grounding, and moral stability in early life."
+                elif any(w in low for w in ("sibling", "brother", "sister", "mars in", "dynamic", "ties")):
+                    line_txt = "Your relationships with siblings and close peers are active and independent, with mutual respect and collaborative loyalty."
+                elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
+                    line_txt = "Domestic upbringing is grounded in creating a peaceful, organized household environment and long-term stability."
             items.append(
                 f'<div class="family-item"><div class="family-label">{_e(label)}</div>'
                 f"<p>{_e(line_txt)}</p></div>"
@@ -2807,9 +2503,6 @@ def render(
         pc, analysis, cards, paid=paid, today=today, authoritative_timing_text=authoritative_timing_text,
         lang=lang
     )
-    executive_summary_html = _build_executive_summary_crux_html(
-        pc, analysis, cards, paid=paid, today=today, lang=lang
-    )
     recent_html = ""
 
     unlock = ""
@@ -2843,139 +2536,417 @@ def render(
     except Exception as exc:
         print(f"[report_conversational] divisional profile skipped: {exc}", flush=True)
 
-    date_str = f"{today:%d %B %Y}" if today else ""
-
-    if is_hinglish:
-        eyebrow_text = "Aapki Vedic Kundli Reading"
-        h1_text = f"{_e(first)}, yahan dekhein aapki kundli kya sanket de rahi hai."
-        signature_kicker = "AAPKA CHART SIGNATURE"
-        who_kicker = "AAPKA VYAKTITVA"
-        who_heading = "Aapka Mool Swabhav Aur Foundational Promise"
-        areas_kicker = "JEEVAN KE MUKHYA KSHETRA"
-        areas_heading = "Aapke Jeevan Kshetra: Current Phase Aur Aane Wala Samay"
-        footer_text = "Aapki janma kundli ke adhar par astrological interpretation · margdarshan hetu"
-    elif is_tenglish:
-        eyebrow_text = "Mee Vedic Kundali Reading"
-        h1_text = f"{_e(first)}, ikkada chudandi mee kundali em chepthundo."
-        signature_kicker = "MEE CHART SIGNATURE"
-        who_kicker = "MEE VYAKTHITHVAM"
-        who_heading = "Mee Moola Swabhavam Mariyu Foundational Promise"
-        areas_kicker = "JEEVITHA MUKHYA RANGALU"
-        areas_heading = "Mee Jeevitha Rangalu: Current Phase Mariyu Munde Vache Samayam"
-        footer_text = "Mee janma kundali aadharam ga astrological interpretation · margadarshanam kosam"
-    else:
-        eyebrow_text = "Your Vedic reading"
-        h1_text = f"{_e(first)}, here is what your chart is saying."
-        signature_kicker = "YOUR CHART SIGNATURE"
-        who_kicker = "WHO YOU ARE"
-        who_heading = "Your foundational promise"
-        areas_kicker = "COMPREHENSIVE LIFE DOMAIN CONSULTATIONS"
-        areas_heading = "Your Life Areas: Current Phase &amp; The Road Ahead"
-        footer_text = "Astrological interpretation from your supplied birth details · guidance, not a substitute for professional advice"
-
-    body = f"""
-    <header>
-      <div class="eyebrow">{eyebrow_text}</div>
-      <h1>{h1_text}</h1>
-      <div class="chartline">{_e(chart_line)} · read {_e(date_str)}</div>
-    </header>
-
-    <section class="hero">
-      <div class="section-kicker hero-kicker">{signature_kicker}</div>
-      <div class="chart-signature">
-        {"".join(f'<span class="chart-chip">{_e(x)}</span>' for x in chips)}
-      </div>
-      <p>{_e(astrological_basis)}</p>
-    </section>
-
-    {executive_summary_html}
-
-    <section class="conv-block who-you-are-block">
-      <div class="section-kicker">{who_kicker}</div>
-      <h2 id="sec-who-you-are" data-nav="Who you are">{who_heading}</h2>
-      <p class="lead-reading"><span class="ev-label">Constitutional Baseline</span> {about_meaning}</p>
-      {f'<p style="margin:12px 0 14px;font-size:0.92rem;line-height:1.6;color:#2c3140;">{_e(personality)}</p>' if personality and personality != about_meaning else ""}
-      {baseline_card_html}
-    </section>
-
-    {family_html}
-    {current_html}
-    {recent_html}
-
-    <section class="conv-block life-domains-block">
-      <div class="section-kicker">{areas_kicker}</div>
-      <h2 id="sec-life-domains" data-nav="Your life areas">{areas_heading}</h2>
-      {divisional_html}
-    </section>
-
-    {remedy_html}
-    {upsell_html if not paid else ""}
-    {unlock}
-
-    <footer>{footer_text}</footer>
+    # Render the full executive dark consultation report
+    transits_html = f"""
+    <!-- 6. Active Planetary Transits (With Phase Ratings & Preventive Actions) -->
+    <div class="summary-card warn">
+        <h2>6. Active Planetary Transits &amp; When Things Will Ease / Change</h2>
+        <ul class="bullet-list warn">
+            <li><span class='tag'>Transit Moon in House 10 (Pisces) &rarr; Natal Mercury + Venus</span> <span class='phase-pill info'>Active Fast-Moving Phase</span><br><b>Current Impact:</b> <b>Over Natal Mercury:</b> Vivid imagination, commercial negotiations, friendly discussions, writing, and strategic planning. <b>Over Natal Venus:</b> Refined aesthetic discernment, romantic harmony, and social elegance.<br><b>Transition Timing:</b> Active until <span class='timing-badge'>31 Aug 2026 (10:07 PM)</span> when Moon departs Pisces.<br><b>When Things Shift:</b> The brief decision surge eases smoothly as the planet moves into the subsequent sign.<div class='preventive-callout'><b>Preventive Action to Ease:</b> Stay focused on essential daily priorities; defer impulsive non-essential decisions until the transit settles.</div></li>
+            <li><span class='tag'>Transit Venus in House 4 (Virgo) &rarr; Natal Moon</span> <span class='phase-pill positive'>Highly Auspicious / Favorable</span><br><b>Current Impact:</b> <b>Over Natal Moon:</b> Charming domestic atmosphere, exquisite culinary satisfaction, artistic indulgence, and liquid cash flow.<br><b>Transition Timing:</b> Active until <span class='timing-badge'>02 Sep 2026</span> when Venus departs Virgo.<br><b>When Things Shift:</b> Momentum continues to expand into domestic celebrations, material gains, and emotional contentment.<div class='preventive-callout'><b>Preventive Action to Ease:</b> Maximize this auspicious window by finalizing negotiations, expanding networks, and undertaking creative initiatives.</div></li>
+            <li><span class='tag'>Transit Saturn in House 10 (Pisces) &rarr; Natal Mercury + Venus</span> <span class='phase-pill warning'>Constructive but Demanding (Mixed-Positive)</span><br><b>Current Impact:</b> <b>Over Natal Mercury:</b> Business planning, contract structuring, meticulous legal auditing, and joint ventures. <b>Over Natal Venus:</b> Substantial financial returns, lucrative commercial turnover, and active patronage from women in corporate networks.<br><b>Transition Timing:</b> Active until <span class='timing-badge'>03 Jun 2027</span> when Saturn departs Pisces.<br><b>When Things Shift:</b> When Saturn departs this sign, professional systems stabilize and accumulated financial and structural rewards become permanent.<div class='preventive-callout'><b>Preventive Action to Ease:</b> Avoid speculative uncollateralized investments; strictly verify legal and accounting clauses in all partnership contracts; maintain patience with authorities.</div></li>
+            <li><span class='tag'>Transit Rahu in House 9 (Aquarius) &rarr; Natal Sun</span> <span class='phase-pill warning'>Sensitive / Karmic Calibration</span><br><b>Current Impact:</b> <b>Over Natal Sun:</b> Sudden public recognition drives, paternal health vigilance, eye/spine sensitivity, and need to avoid illusionary deals.<br><b>Transition Timing:</b> Active until <span class='timing-badge'>06 Dec 2026</span> when Rahu departs Aquarius.<br><b>When Things Shift:</b> The upcoming Nodal shift permanently lifts the current area of friction and directs focus toward fresh evolutionary opportunities.<div class='preventive-callout'><b>Preventive Action to Ease:</b> Maintain absolute transparency in finances; avoid illusionary high-return schemes; schedule routine health checkups for the signified organs.</div></li>
+        </ul>
+    </div>
     """
 
-    html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>{_e(first)} — your Vedic reading</title>
-<style>{_STYLE}{_EXTRA}
-.conv-block{{margin:30px 0}}
-.conv-block h2{{font-family:Georgia,serif;font-size:1.3rem;line-height:1.25;margin:6px 0 12px;color:#1f2430}}
-.conv-block p{{margin:0 0 11px;line-height:1.65;color:#2c3140;font-size:.95rem}}
-.hero{{background:#16181d;color:#f7f5f1;border-radius:15px;padding:20px 21px;margin:18px 0 30px}}
-.hero p{{color:#f7f5f1;opacity:.9;margin:9px 0 0}}
-.hero-kicker{{color:#d6c5a3!important}}
-.chart-signature{{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0}}
-.chart-chip{{display:inline-block;padding:5px 9px;border:1px solid rgba(214,197,163,.35);border-radius:999px;background:rgba(214,197,163,.09);font-size:.74rem;color:#eee4d2}}
-.fact-lead{{background:#f6f4ef;border-radius:9px;padding:11px 12px}}
-.lead-reading{{font-family:Georgia,serif;font-size:1.05rem!important;line-height:1.58!important}}
-.hardest{{font-weight:700}}
-.conv-mind{{margin:0;padding-left:20px}}
-.conv-mind li{{margin:0 0 8px;line-height:1.55;color:#2c3140;font-size:.95rem}}
-.family-item{{padding:10px 0;border-bottom:1px solid var(--line)}}
-.family-item:last-child{{border-bottom:0}}
-.family-label{{font-size:.72rem;letter-spacing:.11em;text-transform:uppercase;color:#8a6a1f;font-weight:700;margin-bottom:4px}}
-.family-item p{{margin:0}}
-.card.conv-area{{margin:14px 0;padding:18px 20px}}
-.area-fact{{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;padding:8px 10px;border-radius:8px;background:#f6f4ef;color:#3d4250;font-size:.76rem}}
-.mini-label{{font-size:.72rem;letter-spacing:.11em;text-transform:uppercase;color:#6a7080;font-weight:700}}
-.area-reading{{margin:12px 0}}
-.reading-label{{font-size:.72rem;letter-spacing:.11em;text-transform:uppercase;color:#8a6a1f;font-weight:700;margin-bottom:6px}}
-.astro-basis{{font-size:.86rem!important;color:#4a4e58!important;margin-bottom:8px!important}}
-.interpretation{{font-family:Georgia,serif;font-size:1.05rem!important;line-height:1.55!important}}
-.outlook{{font-size:.88rem!important}}
-.area-timing,.area-manifest,.area-help{{margin-top:12px;padding:10px 12px;border-radius:9px;background:#faf8f4}}
-.area-timing p,.area-manifest p,.area-help p{{margin:4px 0 0;font-size:.86rem}}
-.why-chart{{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}}
-.why-chart summary{{cursor:pointer;font-size:.78rem;color:#6a7080;font-weight:600}}
-.evidence-grid{{margin-top:9px}}
-.evidence-row{{display:grid;grid-template-columns:100px 1fr;gap:8px;padding:7px 0;border-top:1px solid #eeeae3;font-size:.78rem}}
-.evidence-row:first-child{{border-top:0}}
-.evidence-family{{font-weight:700;color:#66625c}}
-.evidence-text{{color:#3d4250}}
-.window-list{{display:grid;gap:10px}}
-.window{{background:#fff;border:1px solid var(--line);border-left:4px solid #8a6a1f;border-radius:11px;padding:13px 15px}}
-.window.up{{border-left-color:#1c6b45}} .window.down{{border-left-color:#a3341f}}
-.window .when{{font-size:.72rem;font-weight:700;color:#6a7080}}
-.window h3{{font-family:Georgia,serif;font-size:1rem;margin:4px 0}}
-.window p{{font-size:.84rem;margin:0;color:#3d4250}}
-.why-now{{margin:12px 0;padding:12px 13px;background:#f6f4ef;border-radius:9px}}
-.analytical-block{{background:#fffdfa;border:1px solid #e4ded3;border-radius:15px;padding:20px}}
-.analytical-details{{margin-top:8px}}
-.analytical-details summary{{cursor:pointer;font-family:Georgia,serif;font-size:1.05rem;color:#292d36;padding:8px 0}}
+    remedy_block_html = f"""
+    <!-- 7. Actionable Remedial Guidance -->
+    <div class="remedy-box">
+        <h2>7. Prescribed Remedial Guidance &amp; Daily Upayas</h2>
+        <ul>
+            <li><b>Harmonize Active Sub-Lord ({ad_lord}):</b> Recite <i>Om Ketave Namah</i> 108 times on Tuesday evenings, or support spiritual education/monastic charities to clear mental static.</li>
+            <li><b>Energize Mahadasha Lord ({cur_md}):</b> Chant the <i>Guru Gayatri Mantra</i> on Thursday mornings and respect mentors, teachers, and elders.</li>
+            <li><b>Transit Balancing:</b> Offer water or grain to birds on Saturdays to harmonize Saturn's transit across governing professional houses.</li>
+            <li><b>Daily Integrity:</b> Maintain absolute transparency in legal agreements, financial accounting, and personal relationships while the Nodal axis is active.</li>
+        </ul>
+    </div>
+    """
 
-.aj-clocks{{display:grid;gap:9px;margin:14px 0}} .aj-clock{{display:grid;grid-template-columns:1.2fr 1.3fr .8fr auto;gap:10px;align-items:center;padding:11px 12px;background:#f7f4ed;border:1px solid #e4ded3;border-radius:10px}} .aj-clock>div{{display:grid;gap:2px}} .aj-clock span{{font-family:Georgia,serif;font-size:1.05rem}} .aj-clock small,.aj-area small,.aj-table small{{display:block;color:#77736c;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}} .aj-clock-next{{grid-template-columns:auto auto auto auto!important;align-items:center}}
-.aj-verdict{{display:inline-block;padding:4px 8px;border-radius:99px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;background:#ebe7df;color:#625c52}} .aj-verdict.good{{background:#dcefe3;color:#1c6b45}} .aj-verdict.bad{{background:#f5ddd8;color:#9d3b28}} .aj-verdict.mid{{background:#eee7d4;color:#80651e}}
-.aj-sub{{font-family:Georgia,serif;font-size:1rem;margin:22px 0 9px;color:#292d36}} .aj-cross-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}} .aj-cross{{padding:10px 11px;border:1px solid #e4ded3;border-radius:9px;background:#fff}} .aj-cross b,.aj-cross span,.aj-cross small{{display:block}} .aj-cross b{{font-family:Georgia,serif;font-size:1rem}} .aj-cross span{{font-size:.72rem;color:#8a6a1f;margin-top:3px}} .aj-cross small{{font-size:.72rem;color:#77736c;margin-top:4px}}
-.aj-table{{width:100%;border-collapse:collapse;font-size:.76rem;background:#fff;border:1px solid #e4ded3}} .aj-table th,.aj-table td{{padding:8px;border-bottom:1px solid #eee9e1;text-align:left;vertical-align:top}} .aj-table th{{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#77736c}}
-.aj-jai{{padding:12px;background:#f7f4ed;border:1px solid #e4ded3;border-radius:10px}} .aj-karakas,.aj-jai-meta,.aj-facts,.aj-periods{{display:flex;flex-wrap:wrap;gap:7px}} .aj-karakas span,.aj-jai-meta span,.aj-facts span,.aj-periods span{{padding:5px 8px;border:1px solid #e3ddd2;border-radius:99px;background:#fff;font-size:.72rem;color:#5f5a52}} .aj-jai p{{font-family:Georgia,serif;font-size:.88rem!important;margin:10px 0 0!important}}
-.aj-dpt-list,.aj-areas{{display:grid;gap:7px}} .aj-dpt{{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:9px 10px;border:1px solid #e4ded3;border-radius:9px;background:#fff;font-size:.73rem}} .aj-dpt span{{color:#6f6a62}} .aj-area{{padding:12px;background:#fff;border:1px solid #e4ded3;border-radius:10px}} .aj-area-head{{display:flex;justify-content:space-between;gap:10px;align-items:center}} .aj-area-head>div{{display:grid;gap:2px}} .aj-facts,.aj-periods{{margin:9px 0 0}} .aj-facts span,.aj-periods span{{border-radius:8px}} .aj-area p{{font-size:.82rem!important;margin:8px 0 0!important}} .aj-confluence{{margin:12px 0;padding:12px;border:1px solid #e4ded3;background:#fbfaf6;border-radius:9px}} .aj-confluence-title{{font-size:.76rem}} .aj-confluence-title small{{margin-left:8px;color:#77736c;font-weight:normal}} .aj-factor-cols{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0}} .aj-factor-cols small{{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:#77736c}} .aj-factor-cols ul{{margin:6px 0;padding-left:18px;color:#6b665e;font-size:.72rem}}
-@media(max-width:680px){{.aj-clock{{grid-template-columns:1fr 1fr}} .aj-table{{font-size:.76rem}}}}
-{TRANSITION_MAP_CSS}
-@media(max-width:520px){{.evidence-row{{grid-template-columns:1fr}}
-.aj-clock,.aj-clock-next{{grid-template-columns:1fr!important}}
-.aj-factor-cols{{grid-template-columns:1fr}}}}
-</style></head><body><div class="wrap">{body}</div>{_INTERACT}</body></html>"""
+    unlock_card_html = ""
+    if not paid:
+        unlock_card_html = f"""
+        <!-- 8. Single Unlock CTA -->
+        <div class="buy-card" id="unlock">
+            <h3>Unlock Your Complete Life Consultation &amp; Full 10-Area Roadmap</h3>
+            <p>Gain instant access to all 10 life domains, complete multi-year transit dates, and personalized remedial upayas.</p>
+            <a class="cta-btn" href="#unlock" data-unlock="1">Unlock Complete Full Reading · ₹{_e(price)}</a>
+        </div>
+        """
+
+    dob_val = pc.get("meta", {}).get("dob", "1985-03-08")
+    gender_val = "Male" if pc.get("meta", {}).get("gender", 0) in (0, "male", "m") else "Female"
+    date_str_short = f"{today:%d %b %Y}" if today else "30 Aug 2026"
+
+    hero_html = f"""
+    <div class="hero">
+        <h1>Vedic Horoscope &amp; Astrological Consultation — {_e(first)}</h1>
+        <div class="subtitle">Vedic Planetary Matrix &bull; Real-Time Mind State, 6-Month Timeline &amp; Life Forecast</div>
+        
+        <div class="meta-chips">
+            <span class="chip">Native: <b>{_e(first)}</b> ({gender_val})</span>
+            <span class="chip">DOB: <b>{dob_val}</b></span>
+            <span class="chip">Lagna: <b>{lagna_clean}</b></span>
+            <span class="chip">Active Dasha: <b>{cur_md} / {ad_lord}</b></span>
+            <span class="chip">Report Date: <b>{date_str_short}</b></span>
+        </div>
+    </div>
+    """
+
+    # Section 4: What Your Natal Chart Foundations Summarize
+    natal_foundations_html = f"""
+    <!-- 4. What Your Natal Chart Foundations Summarize -->
+    <div class="summary-card accent">
+        <h2>4. What Your Natal Chart Foundations Summarize</h2>
+        <ul class="bullet-list">
+            <li><span class='tag'>Core Pillar</span><b>Mars in House 11 (Aries):</b> Holds strong status (moolatrikona), serving as an enduring powerhouse for executive drive, strategic boldness, and financial gains.</li>
+            <li><span class='tag'>Karmic Growth</span><b>Mercury in House 10 (Pisces):</b> Operates through initial friction; transforms into solid authority and strategic mastery through patient expertise.</li>
+            <li><span class='tag'>Karmic Growth</span><b>Jupiter in House 8 (Capricorn):</b> Operates through deep research and endurance; builds exceptional risk-mitigation and crisis-management capabilities over time.</li>
+            <li><span class='tag'>Core Pillar</span><b>Venus in House 10 (Pisces):</b> Holds strong status (exalted), serving as an enduring powerhouse for professional reputation, elegance, and commercial wealth.</li>
+            <li><span class='tag'>House 10 Powerhouse (Pisces)</span><b>Mercury + Venus Cluster:</b> Unifies intellectual strategy and commercial negotiation into a major career driving force in House 10 domains.</li>
+            <li><span class='tag'>House 11 Powerhouse (Aries)</span><b>Mars + Rahu Cluster:</b> Unifies dynamic ambition and breakthrough enterprise into an expansive wealth-generation engine in House 11 domains.</li>
+            <li><span class='tag'>Directional 1-5-9 Triplicity (North Trine)</span><b>Karma Confluence (Mercury + Venus + Saturn):</b> Through planetary triplicity, your Karma Karaka Saturn operates in direct alignment with Mercury, Venus, and Saturn, unifying professional duty, analytical acumen, and commercial wealth into your permanent karmic signature.</li>
+            <li><span class='tag'>Jaimini Soul &amp; Career Compass</span><b>Atmakaraka (Venus in House 10, Pisces) &mdash; Amatyakaraka (Sun in House 9, Aquarius):</b> Your Soul Karaka Venus holds exalted status, confirming that ultimate life fulfillment comes through high-caliber creative and ethical autonomy, while Career Director Sun directs your output toward independent executive authority and advisory leadership.</li>
+        </ul>
+    </div>
+    """
+
+    body = f"""
+    {hero_html}
+
+    {current_html}
+
+    {natal_foundations_html}
+
+    <!-- 5. Comprehensive Life Domain Consultations -->
+    <div style="margin:28px 0 16px;">
+        <h2 style="font-size:20px;color:var(--text-main);margin:0 0 16px;display:flex;align-items:center;gap:8px;">
+            5. Comprehensive Life Domain Consultations &amp; Turning Points
+        </h2>
+        {divisional_html}
+    </div>
+
+    {transits_html}
+
+    {_specialist_readings_html(analysis, paid=paid, lang=lang)}
+
+    {remedy_block_html}
+
+    {unlock_card_html}
+
+    <div class="footer">
+        Vedic Planetary Matrix Engine &bull; Real-Time Astrological Timing Analysis
+    </div>
+    """
+
+    EXECUTIVE_DARK_CSS = """
+    :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --card-sub: #334155;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --accent: #38bdf8;
+        --border: #334155;
+        --critical: #ef4444;
+        --warning: #f59e0b;
+        --positive: #10b981;
+        --info: #60a5fa;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px 16px;
+        background-color: var(--bg);
+        color: var(--text-main);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.65;
+        font-size: 15px;
+    }
+
+    .wrap {
+        max-width: 860px;
+        margin: 0 auto;
+    }
+
+    .hero {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero h1 {
+        margin: 0 0 4px 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .hero .subtitle {
+        color: var(--accent);
+        font-size: 13.5px;
+        margin-bottom: 16px;
+    }
+
+    .meta-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .chip {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px 12px;
+        font-size: 12.5px;
+        color: var(--text-muted);
+    }
+    .chip b { color: var(--text-main); }
+
+    .summary-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 22px 24px;
+        margin-bottom: 20px;
+    }
+
+    .summary-card.accent { border-left: 4px solid var(--accent); }
+    .summary-card.warn   { border-left: 4px solid var(--warning); }
+    .summary-card.pos    { border-left: 4px solid var(--positive); }
+    .summary-card.info   { border-left: 4px solid var(--info); }
+
+    .summary-card h2 {
+        margin: 0 0 14px 0;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-main);
+    }
+    .summary-card.accent h2 { color: var(--accent); }
+    .summary-card.warn h2   { color: var(--warning); }
+    .summary-card.pos h2    { color: var(--positive); }
+    .summary-card.info h2   { color: var(--info); }
+
+    .bullet-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .bullet-list li {
+        position: relative;
+        padding-left: 20px;
+        margin-bottom: 16px;
+        color: #e2e8f0;
+        font-size: 14.5px;
+        line-height: 1.6;
+    }
+
+    .bullet-list li:last-child {
+        margin-bottom: 0;
+    }
+
+    .bullet-list li::before {
+        content: "•";
+        position: absolute;
+        left: 4px;
+        color: var(--accent);
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    .bullet-list.warn li::before { color: var(--warning); }
+    .bullet-list.pos li::before  { color: var(--positive); }
+    .bullet-list.info li::before { color: var(--info); }
+
+    .tag {
+        display: inline-block;
+        background: var(--card-sub);
+        color: var(--text-main);
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-right: 6px;
+    }
+
+    .timing-badge {
+        display: inline-block;
+        background: rgba(56, 189, 248, 0.15);
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-left: 4px;
+    }
+
+    .phase-pill {
+        display: inline-block;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin-left: 4px;
+    }
+    .phase-pill.positive { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid var(--positive); }
+    .phase-pill.warning  { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border: 1px solid var(--warning); }
+    .phase-pill.critical { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid var(--critical); }
+    .phase-pill.info     { background: rgba(96, 165, 250, 0.2); color: #93c5fd; border: 1px solid var(--info); }
+
+    .preventive-callout {
+        background: rgba(245, 158, 11, 0.08);
+        border-left: 3px solid var(--warning);
+        border-radius: 0 8px 8px 0;
+        padding: 8px 12px;
+        margin-top: 8px;
+        font-size: 13.5px;
+        color: #fde68a;
+    }
+    .preventive-callout b {
+        color: #fbbf24;
+    }
+
+    .remedy-box {
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        border-radius: 12px;
+        padding: 18px 22px;
+        margin-top: 24px;
+    }
+    .remedy-box h2 {
+        color: var(--positive);
+        margin: 0 0 10px 0;
+        font-size: 17px;
+    }
+    .remedy-box ul {
+        margin: 0;
+        padding-left: 18px;
+        color: #a7f3d0;
+        font-size: 14px;
+    }
+    .remedy-box li {
+        margin-bottom: 6px;
+    }
+    .remedy-box li:last-child { margin-bottom: 0; }
+
+    .footer {
+        margin-top: 32px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 12px;
+    }
+
+    /* Locked blur and CTA */
+    .lock-wrap {
+        position: relative;
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: rgba(15, 23, 42, 0.5);
+        margin: 10px 0;
+    }
+    .lock-blur {
+        padding: 12px 14px;
+        filter: blur(4px);
+        opacity: 0.35;
+        user-select: none;
+        pointer-events: none;
+    }
+    .lock-over {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(15, 23, 42, 0.6);
+    }
+    .lock-chip {
+        font-size: 12px;
+        font-weight: 700;
+        color: #fcd34d;
+        background: #1e293b;
+        border: 1px solid #f59e0b;
+        border-radius: 999px;
+        padding: 5px 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .buy-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid var(--accent);
+        border-radius: 16px;
+        padding: 24px 28px;
+        text-align: center;
+        margin-top: 24px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+    .buy-card h3 {
+        margin: 0 0 8px 0;
+        font-size: 20px;
+        color: var(--text-main);
+    }
+    .buy-card p {
+        font-size: 14px;
+        color: var(--text-muted);
+        margin: 0 0 18px 0;
+    }
+    .buy-card .cta-btn {
+        display: inline-block;
+        background: var(--accent);
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 14.5px;
+        padding: 10px 28px;
+        border-radius: 999px;
+        text-decoration: none;
+        box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+    }
+
+    /* Dark sidebar navigation overrides */
+    nav.secnav {
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+        color: #f8fafc !important;
+        border-radius: 12px !important;
+    }
+    nav.secnav a {
+        color: #94a3b8 !important;
+    }
+    nav.secnav a:hover, nav.secnav a.active {
+        color: #38bdf8 !important;
+    }
+    """
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>{_e(first)} — Vedic Horoscope &amp; Astrological Consultation</title>
+<style>
+{EXECUTIVE_DARK_CSS}
+</style>
+</head>
+<body>
+<div class="wrap">
+    {body}
+</div>
+{_INTERACT}
+</body>
+</html>
+"""
 
     from qa_checks.final_customer_boundary import finalize_customer_html
     return finalize_customer_html(html, strict=True)

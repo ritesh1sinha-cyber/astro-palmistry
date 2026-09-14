@@ -44,6 +44,17 @@ from chandra_naadi_book_data import (
     TRANSIT_SATURN_EFFECTS,
     YOGA_DEFINITIONS,
 )
+from chandra_naadi_2_book_data import (
+    BADHAKA_RULES,
+    ASCENDANT_MODES,
+    CONJUNCTION_RULES_VOL2,
+    MULTI_PLANET_VOCATIONS_VOL2,
+    MARS_PROPERTY_SIGNATURES,
+    MANTHI_BHAVA_EFFECTS,
+    MANTHI_PLANET_CONJUNCTIONS,
+    CHANDRASHTAMA_BHAVA_MANIFESTATIONS,
+    TRANSIT_STRENGTH_MODULATION_TABLE,
+)
 
 PLANETS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
 PLANETS_7 = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
@@ -581,13 +592,10 @@ def analyze_debts(pc: dict) -> list[ChandraNaadiReading]:
     readings = []
     rahu_sign = pc.get("planets", {}).get("Rahu", {}).get("sign")
     ketu_sign = pc.get("planets", {}).get("Ketu", {}).get("sign")
-    node_signs = {s for s in (rahu_sign, ketu_sign) if s}
-    if not node_signs:
-        return readings
 
     for p in PLANETS_7:
         p_sign = pc.get("planets", {}).get(p, {}).get("sign")
-        if p_sign and p_sign in node_signs:
+        if p_sign in [rahu_sign, ketu_sign]:
             node = "Rahu" if p_sign == rahu_sign else "Ketu"
             fs = frozenset({p, node})
             causes = DEBT_MATRIX.get(fs, [])
@@ -614,8 +622,6 @@ def analyze_marriage(pc: dict, gender: str) -> list[ChandraNaadiReading]:
     v_s = pc.get("planets", {}).get("Venus", {}).get("sign")
     ma_s = pc.get("planets", {}).get("Mars", {}).get("sign")
     me_s = pc.get("planets", {}).get("Mercury", {}).get("sign")
-    if not (v_s or ma_s or me_s):
-        return readings
 
     if gender.lower() == "male":
         v_strong = is_strong("Venus", v_s) if v_s else False
@@ -697,8 +703,6 @@ def analyze_death_danger(pc: dict) -> list[ChandraNaadiReading]:
     dob = pc.get("meta", {}).get("dob", "1990-01-01")
     bt = pc.get("meta", {}).get("birth_time", "12:00")
     sun_deg = pc.get("planets", {}).get("Sun", {}).get("abs_degree", 0.0)
-    if not dob or not pc.get("planets", {}).get("Sun"):
-        return readings
 
     weekday = get_birth_weekday(dob)
     daytime = is_daytime_birth(bt)
@@ -779,6 +783,305 @@ def analyze_transits(pc: dict, transit: dict) -> list[ChandraNaadiReading]:
     return readings
 
 
+def analyze_badhaka(pc: dict, transit: dict) -> list[ChandraNaadiReading]:
+    """Evaluate Badhaka (Lord of Obstacles) rules based on ascendant mode (Vol 2)."""
+    readings = []
+    lagna = pc.get("meta", {}).get("lagna_sign", "Gemini")
+    mode = ASCENDANT_MODES.get(lagna, "Dual")
+    badhaka_info = BADHAKA_RULES.get(mode, {"badhaka_house": 7, "description": "Obstruction house"})
+    b_house = int(badhaka_info["badhaka_house"])
+    b_sign = house_sign(b_house, lagna)
+    b_lord = SIGN_LORDS.get(b_sign, "")
+
+    occupants = natal_planets_in_sign(pc, b_sign)
+    t_moon_s = transit.get("Moon", {}).get("sign", "")
+    t_moon_in_badhaka = (t_moon_s == b_sign)
+
+    desc = f"Lagna {lagna} is {mode} mode, making House {b_house} ({b_sign}) the Badhaka domain (ruled by {b_lord})."
+    if occupants:
+        desc += f" Occupied natally by {', '.join(occupants)}."
+    if t_moon_in_badhaka:
+        desc += f" Transit Moon currently transits this Badhaka sign ({b_sign})."
+
+    pred = (
+        f"For {lagna} ascendant, the {b_house}th house ({b_sign}) acts as the karmic obstacle/filter point. "
+        f"Projects connected with {b_sign} require extra verification and contingency planning."
+    )
+    if t_moon_in_badhaka:
+        pred += f" Immediate caution: Transit Moon activates this obstruction sign, advising against hasty commitments today."
+
+    readings.append(ChandraNaadiReading(
+        rule_id=f"V2_BADHAKA_{lagna.upper()}",
+        category="Obstacles",
+        title=f"Badhaka Sthana Calibration (House {b_house}, {b_sign})",
+        condition_met=True,
+        condition_desc=desc,
+        prediction=pred,
+        severity="caution" if t_moon_in_badhaka else "info",
+        planets_involved=[b_lord] + occupants,
+        houses_involved=[b_house],
+        chapter_ref="Vol 2 Ch. 1 & 7",
+        modifiers=[f"Badhaka Lord: {b_lord}"],
+        remedies=["Offer sincere prayers to tutelary deity before initiating major legal or contract milestones."]
+    ))
+
+    return readings
+
+
+def analyze_punarpoo_deep(pc: dict, transit: dict) -> list[ChandraNaadiReading]:
+    """Deep analysis of Punarpoo Dosha (Moon-Saturn connection) across signs, aspects, and transits (Vol 2 Ch. 11-12)."""
+    readings = []
+    planets = pc.get("planets", {})
+    moon_info = planets.get("Moon", {})
+    sat_info = planets.get("Saturn", {})
+
+    moon_s = moon_info.get("sign", "")
+    sat_s = sat_info.get("sign", "")
+
+    is_conjunct = (moon_s == sat_s and bool(moon_s))
+    is_aspect = (planet_aspects_sign("Saturn", sat_s, moon_s) or planet_aspects_sign("Moon", moon_s, sat_s))
+    
+    t_moon_s = transit.get("Moon", {}).get("sign", "")
+    t_sat_s = transit.get("Saturn", {}).get("sign", "")
+    t_activates = (t_moon_s == sat_s or t_sat_s == moon_s or t_moon_s == moon_s)
+
+    if is_conjunct or is_aspect:
+        cond_desc = f"Natal Moon in {moon_s} and Saturn in {sat_s} form a direct Punarpoo link ({'Conjunction' if is_conjunct else 'Mutual Aspect'})."
+        if t_activates:
+            cond_desc += f" Currently activated by transit dynamics (Transit Moon in {t_moon_s}, Transit Saturn in {t_sat_s})."
+        
+        pred = (
+            "Punarpoo Signature: Every significant endeavor, property acquisition, or auspicious celebration "
+            "encounters initial postponements, false starts, or sudden uncertainties right before final realization. "
+            "However, persistent follow-through ensures solid, grand manifestation after the initial delay."
+        )
+        readings.append(ChandraNaadiReading(
+            rule_id="V2_PUNARPOO_DEEP",
+            category="Dosha",
+            title="Punarpoo Dosha (Moon-Saturn Endurance Dynamic)",
+            condition_met=True,
+            condition_desc=cond_desc,
+            prediction=pred,
+            severity="caution" if t_activates else "info",
+            planets_involved=["Moon", "Saturn"],
+            houses_involved=[moon_info.get("house", 4), sat_info.get("house", 6)],
+            chapter_ref="Vol 2 Ch. 11, 12 & 15",
+            remedies=[
+                "Maintain patience during project negotiations; avoid premature panic during initial roadblocks.",
+                "Perform Saturday service or feed birds to harmonize Saturn's testing frequency."
+            ]
+        ))
+
+    return readings
+
+
+def analyze_property_signatures(pc: dict) -> list[ChandraNaadiReading]:
+    """Identify precise real estate & landed property signatures based on Mars combinations (Vol 2 Ch. 17 & 32)."""
+    readings = []
+    planets = pc.get("planets", {})
+    mars_info = planets.get("Mars", {})
+    mars_s = mars_info.get("sign", "")
+    mars_h = mars_info.get("house", 11)
+
+    if not mars_s:
+        return readings
+
+    co_planets = [p for p, d in planets.items() if p != "Mars" and d.get("sign") == mars_s]
+    for p in co_planets:
+        sig = MARS_PROPERTY_SIGNATURES.get(p)
+        if sig:
+            readings.append(ChandraNaadiReading(
+                rule_id=f"V2_MARS_PROP_{p.upper()}",
+                category="Property",
+                title=f"Landed Property Archetype (Mars + {p} in {mars_s})",
+                condition_met=True,
+                condition_desc=f"Natal Mars conjoins {p} in {mars_s} (House {mars_h}).",
+                prediction=f"Property Signature: {sig}",
+                severity="positive" if p in ["Jupiter", "Venus", "Mercury", "Sun"] else "caution",
+                planets_involved=["Mars", p],
+                houses_involved=[mars_h],
+                chapter_ref="Vol 2 Ch. 17 & 32"
+            ))
+
+    return readings
+
+
+def analyze_multi_planet_vocations(pc: dict) -> list[ChandraNaadiReading]:
+    """Identify specialized multi-planet professional signatures (Vol 2 Ch. 10)."""
+    readings = []
+    planets = pc.get("planets", {})
+    
+    # Check sign clusters
+    sign_groups = {}
+    for p, d in planets.items():
+        s = d.get("sign", "")
+        if s:
+            sign_groups.setdefault(s, set()).add(p)
+
+    for s, group in sign_groups.items():
+        for voc in MULTI_PLANET_VOCATIONS_VOL2:
+            req = voc["planets"]
+            if req.issubset(group):
+                p_list = sorted(list(req))
+                readings.append(ChandraNaadiReading(
+                    rule_id=f"V2_VOC_{'_'.join(p_list)}",
+                    category="Vocation",
+                    title=f"High Vocation Cluster ({' + '.join(p_list)} in {s})",
+                    condition_met=True,
+                    condition_desc=f"Planetary cluster {' + '.join(p_list)} unites in {s}.",
+                    prediction=f"Professional Manifestation: Prominent success in {voc['vocation']}.",
+                    severity="positive",
+                    planets_involved=p_list,
+                    houses_involved=[planets[p_list[0]].get("house", 10)],
+                    chapter_ref="Vol 2 Ch. 10"
+                ))
+
+    return readings
+
+
+def analyze_manthi_deep(pc: dict, transit: dict) -> list[ChandraNaadiReading]:
+    """Comprehensive Manthi Bhava & Conjunction Analysis (Vol 2 Ch. 4-6)."""
+    readings = []
+    dob = pc.get("meta", {}).get("dob", "")
+    sun_deg = pc.get("planets", {}).get("Sun", {}).get("abs_degree", 0.0)
+    weekday = get_birth_weekday(dob)
+    daytime = is_daytime_birth(pc.get("meta", {}).get("birth_time", "12:00"))
+    
+    maandi_lon = compute_maandi(sun_deg, weekday, daytime)
+    maandi_sign = SIGNS[int(maandi_lon // 30) % 12]
+    lagna = pc.get("meta", {}).get("lagna_sign", "Gemini")
+    maandi_house = house_from_lagna(lagna, maandi_sign)
+
+    bhava_eff = MANTHI_BHAVA_EFFECTS.get(maandi_house, {})
+    if bhava_eff:
+        readings.append(ChandraNaadiReading(
+            rule_id=f"V2_MANTHI_H{maandi_house}",
+            category="Karmic Blemish",
+            title=f"Manthi in House {maandi_house} ({maandi_sign})",
+            condition_met=True,
+            condition_desc=f"Calculated Manthi longitude ({maandi_lon:.1f}°) posited in House {maandi_house} ({maandi_sign}).",
+            prediction=f"Karmic Tendency: {bhava_eff['effect']}",
+            severity="info" if maandi_house in [3, 6, 11] else "caution",
+            planets_involved=[],
+            houses_involved=[maandi_house],
+            chapter_ref="Vol 2 Ch. 6",
+            remedies=[
+                "Chant planetary mantras for Saturn or recite Hanuman Chalisa regularly.",
+                "Sudarshana Homa or community charity to relieve hereditary ancestral stresses."
+            ]
+        ))
+
+    # Check planets co-occupying Maandi sign
+    co_planets = natal_planets_in_sign(pc, maandi_sign)
+    for p in co_planets:
+        c_eff = MANTHI_PLANET_CONJUNCTIONS.get(p)
+        if c_eff:
+            readings.append(ChandraNaadiReading(
+                rule_id=f"V2_MANTHI_{p.upper()}",
+                category="Karmic Blemish",
+                title=f"Manthi Conjunction with Natal {p}",
+                condition_met=True,
+                condition_desc=f"Manthi shares {maandi_sign} with natal {p}.",
+                prediction=f"Planetary Karmic Sensitivity: {c_eff}",
+                severity="caution",
+                planets_involved=[p],
+                houses_involved=[maandi_house],
+                chapter_ref="Vol 2 Ch. 5"
+            ))
+
+    # Check active transit Moon over Maandi
+    t_moon_s = transit.get("Moon", {}).get("sign")
+    if t_moon_s == maandi_sign:
+        readings.append(ChandraNaadiReading(
+            rule_id="V2_TRANSIT_MOON_OVER_MANTHI",
+            category="Transit Alert",
+            title="Transit Moon Over Natal Manthi (Critical Filter)",
+            condition_met=True,
+            condition_desc=f"Transit Moon is currently transiting over natal Manthi in {maandi_sign}.",
+            prediction="High sensitivity window: Defer major financial outlays or unvetted disputes until the Moon departs this sign.",
+            severity="warning",
+            planets_involved=["Moon"],
+            houses_involved=[maandi_house],
+            chapter_ref="Vol 2 Ch. 4 & 18"
+        ))
+
+    return readings
+
+
+def analyze_chandrashtama(pc: dict, transit: dict) -> list[ChandraNaadiReading]:
+    """Evaluate Chandrashtama (Transit Moon in 8th house from Moon/Lagna) (Vol 2 Ch. 26)."""
+    readings = []
+    planets = pc.get("planets", {})
+    moon_s = planets.get("Moon", {}).get("sign", "")
+    t_moon_s = transit.get("Moon", {}).get("sign", "")
+
+    if not moon_s or not t_moon_s:
+        return readings
+
+    h_from_moon = ((sign_index(t_moon_s) - sign_index(moon_s)) % 12) + 1
+    if h_from_moon == 8:
+        manifestation = CHANDRASHTAMA_BHAVA_MANIFESTATIONS.get(h_from_moon, "General sensitivity and delay.")
+        readings.append(ChandraNaadiReading(
+            rule_id="V2_CHANDRASHTAMA_ACTIVE",
+            category="Transit Alert",
+            title="Active Chandrashtama Phase (Transit Moon in 8th from Janma Rashi)",
+            condition_met=True,
+            condition_desc=f"Transit Moon in {t_moon_s} is in the 8th house from natal Moon ({moon_s}).",
+            prediction=f"Immediate Focus: {manifestation} Maintain calm focus and defer impulsive confrontations.",
+            severity="warning",
+            planets_involved=["Moon"],
+            houses_involved=[8],
+            chapter_ref="Vol 2 Ch. 26",
+            remedies=["Chant the Shiva Panchakshari Mantra or practice quiet meditation during these 2.25 days."]
+        ))
+
+    return readings
+
+
+def analyze_transit_modulation(pc: dict, transit: dict) -> list[ChandraNaadiReading]:
+    """Evaluate Transit Strength Modulation of Natal Planets (Vol 2 Ch. 9 & 28)."""
+    readings = []
+    planets = pc.get("planets", {})
+
+    for p, mod_data in TRANSIT_STRENGTH_MODULATION_TABLE.items():
+        if p not in planets or p not in transit:
+            continue
+        n_sign = planets[p].get("sign", "")
+        t_sign = transit[p].get("sign", "")
+
+        if not n_sign or not t_sign:
+            continue
+
+        if t_sign == mod_data["exalted_sign"]:
+            readings.append(ChandraNaadiReading(
+                rule_id=f"V2_MOD_EXALTED_{p.upper()}",
+                category="Transit Modulation",
+                title=f"Transit {p} Exalted ({t_sign}) — Amplified Strength",
+                condition_met=True,
+                condition_desc=f"Transit {p} reaches its peak exaltation sign ({t_sign}), supercharging natal {p} in {n_sign}.",
+                prediction=f"Planetary Potential Amplification: Natal {p} functions with 250%–500% enhanced executive drive and auspicious yields.",
+                severity="positive",
+                planets_involved=[p],
+                houses_involved=[planets[p].get("house", 1)],
+                chapter_ref="Vol 2 Ch. 9 & 28"
+            ))
+        elif t_sign == mod_data["debilitated_sign"]:
+            readings.append(ChandraNaadiReading(
+                rule_id=f"V2_MOD_DEBILITATED_{p.upper()}",
+                category="Transit Modulation",
+                title=f"Transit {p} Debilitated ({t_sign}) — Conservation Phase",
+                condition_met=True,
+                condition_desc=f"Transit {p} occupies its debilitation sign ({t_sign}), temporarily lowering external throughput.",
+                prediction=f"Planetary Calibration: Natal {p} in {n_sign} requires conservative handling; focus on internal consolidation.",
+                severity="caution",
+                planets_involved=[p],
+                houses_involved=[planets[p].get("house", 1)],
+                chapter_ref="Vol 2 Ch. 9 & 28"
+            ))
+
+    return readings
+
+
 # ══════════════════════════════════════════════════════════════════
 #  MASTER ORCHESTRATOR
 # ══════════════════════════════════════════════════════════════════
@@ -790,13 +1093,15 @@ def analyze_chandra_naadi(
     gender: str = "male",
 ) -> dict:
     """
-    Master orchestrator for Chandra Naadi analysis.
-    Takes precomputed chart dict (from compute_chart) and evaluates all book rules.
+    Master orchestrator for Chandra Naadi analysis (Parts 1 & 2).
+    Takes precomputed chart dict (from compute_chart) and evaluates all classical rules.
     """
     if analysis_datetime is None:
         analysis_datetime = datetime.now()
 
     transit = get_transit_positions(analysis_datetime)
+    
+    # Part 1 Analysis
     core_readings, connected_planets = analyze_core_methodology(pc, transit)
     conjunction_readings = analyze_conjunctions(pc, gender)
     aspect_readings = analyze_aspects(pc)
@@ -809,6 +1114,15 @@ def analyze_chandra_naadi(
     death_readings = analyze_death_danger(pc)
     business_readings = analyze_business(pc, transit)
     transit_readings = analyze_transits(pc, transit)
+
+    # Part 2 Analysis
+    badhaka_readings = analyze_badhaka(pc, transit)
+    punarpoo_readings = analyze_punarpoo_deep(pc, transit)
+    property_readings = analyze_property_signatures(pc)
+    vocation_readings = analyze_multi_planet_vocations(pc)
+    manthi_readings = analyze_manthi_deep(pc, transit)
+    chandrashtama_readings = analyze_chandrashtama(pc, transit)
+    modulation_readings = analyze_transit_modulation(pc, transit)
 
     all_readings = (
         core_readings
@@ -823,6 +1137,13 @@ def analyze_chandra_naadi(
         + death_readings
         + business_readings
         + transit_readings
+        + badhaka_readings
+        + punarpoo_readings
+        + property_readings
+        + vocation_readings
+        + manthi_readings
+        + chandrashtama_readings
+        + modulation_readings
     )
 
     fired_readings = [r for r in all_readings if r.condition_met]
@@ -863,6 +1184,13 @@ def analyze_chandra_naadi(
         "death_readings": death_readings,
         "business_readings": business_readings,
         "transit_readings": transit_readings,
+        "badhaka_readings": badhaka_readings,
+        "punarpoo_readings": punarpoo_readings,
+        "property_readings": property_readings,
+        "vocation_readings": vocation_readings,
+        "manthi_readings": manthi_readings,
+        "chandrashtama_readings": chandrashtama_readings,
+        "modulation_readings": modulation_readings,
         "all_readings": all_readings,
         "summary": {
             "total_rules_evaluated": len(all_readings),

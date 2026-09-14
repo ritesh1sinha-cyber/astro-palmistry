@@ -164,8 +164,43 @@ def _t_live_transits(pc: dict, **_: Any) -> Any:
 
 
 def _t_mind_and_transits(pc: dict, **_: Any) -> Any:
-    from confluence_question_engine import analyze_chandra_nadi
-    return analyze_chandra_nadi(pc)
+    """Chandra Naadi Parts 1+2 (incl. Badhaka, Punarpoo, Manthi, modulation)."""
+    from specialist_readings import build_specialist_readings
+
+    gender = "female" if str((pc.get("meta") or {}).get("gender", "")).lower().startswith("f") else "male"
+    bundle = build_specialist_readings(pc, gender=gender)
+    block = bundle.get("chandra_naadi") or {}
+    # Keep a compact Moon-pressure note from the lighter helper when available.
+    thin: dict[str, Any] = {}
+    try:
+        from confluence_question_engine import analyze_chandra_nadi
+        thin = analyze_chandra_nadi(pc) or {}
+    except Exception:  # noqa: BLE001
+        thin = {}
+    return {
+        "status": block.get("status", "unavailable"),
+        "findings": block.get("findings") or [],
+        "moon_summary": thin.get("moon_summary", ""),
+        "conjunctions": thin.get("conjunctions") or [],
+        "aspects": thin.get("aspects") or [],
+        "transit_hits": thin.get("transit_hits") or [],
+        "source": "chandra_naadi_vol1_vol2",
+    }
+
+
+def _t_lal_kitab(pc: dict, **_: Any) -> Any:
+    """Lal Kitab diagnostics, upayas and precautions for this chart."""
+    from specialist_readings import build_specialist_readings
+
+    gender = "female" if str((pc.get("meta") or {}).get("gender", "")).lower().startswith("f") else "male"
+    bundle = build_specialist_readings(pc, gender=gender)
+    block = bundle.get("lal_kitab") or {}
+    return {
+        "status": block.get("status", "unavailable"),
+        "findings": block.get("findings") or [],
+        "precautions": block.get("precautions") or [],
+        "source": "lal_kitab",
+    }
 
 
 def _t_chart_strength(pc: dict, **_: Any) -> Any:
@@ -277,10 +312,19 @@ ASTRO_TOOLS: dict[str, AstroTool] = {
         ),
         AstroTool(
             "mind_and_transits",
-            "Emotional and mental state: the Moon's placement, what aspects "
-            "it, and the current pressure transits over it. Use for stress, "
-            "anxiety, confidence, motivation and sleep questions.",
+            "Emotional and mental state from Chandra Naadi (Parts 1 and 2): "
+            "Moon placement, Badhaka obstacles, Punarpoo delays, Manthi, "
+            "Chandrashtama and current transit pressure. Use for stress, "
+            "anxiety, confidence, motivation, sleep, and obstacle questions.",
             _t_mind_and_transits,
+        ),
+        AstroTool(
+            "lal_kitab",
+            "Lal Kitab house/planet diagnostics with practical upayas "
+            "(remedies) and precautions (parhez). Use when the reader asks "
+            "for Lal Kitab remedies, sleeping planets, ancestral debt, "
+            "Takkar/Dhoka friction, or what to give in charity.",
+            _t_lal_kitab,
         ),
         AstroTool(
             "chart_strength",
@@ -335,12 +379,38 @@ def describe_tools() -> str:
     return "\n".join(lines)
 
 
+ALWAYS_ON_PROBLEM_TOOLS = ("mind_and_transits", "lal_kitab", "structural_audit")
+
+
+def always_on_problem_evidence(pc: dict, *, question: str = "",
+                               lang: str = "en") -> dict[str, Any]:
+    """Chandra Naadi + Lal Kitab + Gate-0 judgement for every life problem.
+
+    These sit outside the planner's 4-tool cap so a career/marriage/health
+    question still gets all three lenses even when the model never names them.
+    """
+    results: dict[str, Any] = {}
+    kwargs = {"question": question, "lang": lang}
+    for name in ALWAYS_ON_PROBLEM_TOOLS:
+        tool = ASTRO_TOOLS.get(name)
+        if tool is None:
+            continue
+        try:
+            results[name] = jsonable(tool.fn(pc, **kwargs))
+        except Exception as exc:                                      # noqa: BLE001
+            print(f"[astro_tools] always-on {name} failed: "
+                  f"{type(exc).__name__}: {exc}", flush=True)
+    return results
+
+
 def run_tools(pc: dict, calls: list[dict], *, question: str = "",
               lang: str = "en") -> dict[str, Any]:
     """Execute the planner's chosen tools.
 
     Unknown names are dropped rather than raising: a model that invents a tool
     should cost us one missing evidence block, not the whole answer.
+    Chandra Naadi, Lal Kitab and the structural chart audit are then merged
+    in so every in-scope problem is judged on those lenses.
     """
     results: dict[str, Any] = {}
     for call in (calls or [])[:MAX_TOOLS_PER_QUESTION]:
@@ -356,6 +426,9 @@ def run_tools(pc: dict, calls: list[dict], *, question: str = "",
         except Exception as exc:                                      # noqa: BLE001
             print(f"[astro_tools] {name} failed: {type(exc).__name__}: {exc}",
                   flush=True)
+    for name, payload in always_on_problem_evidence(
+            pc, question=question, lang=lang).items():
+        results.setdefault(name, payload)
     return results
 
 

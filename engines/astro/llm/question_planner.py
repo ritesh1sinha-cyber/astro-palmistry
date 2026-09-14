@@ -27,10 +27,9 @@ from astro_tools import (                                             # noqa: E4
     ASTRO_TOOLS,
     MAX_TOOLS_PER_QUESTION,
     describe_tools,
-    evidence_block,
 )
 
-VOICE_REPAIR_LIMIT = 1
+VOICE_REPAIR_LIMIT = 2
 
 
 def _areas() -> list[tuple[str, str]]:
@@ -78,9 +77,12 @@ A reader has asked a question in their own words. Do not answer it. Decide:
    sapphire / pukhraj are Jupiter, diamond / heera / opal are Venus, blue
    sapphire / neelam are Saturn, hessonite / gomed is Rahu, cat's eye /
    lehsunia is Ketu.
-5. tools — up to {max_tools} engines to run, most important first. Always
+5. tools — up to {max_tools} extra engines to run, most important first. Always
    include life_area_confluence unless the question is purely about a
    gemstone. Only pass arguments a tool actually declares.
+   Chandra Naadi (mind_and_transits), Lal Kitab (lal_kitab) and the
+   structural chart-judgement audit already run on every in-scope question
+   — you do not need to request them.
 
 LIFE AREA KEYS
 {areas}
@@ -215,11 +217,17 @@ HOW TO WRITE
   it, and say what to do about it.
 
 WHAT YOU MAY SAY
-- Only what the EVIDENCE below contains. Never name a gemstone, a date, a
-  planet or a period that is not in it.
+- Only what ALLOWED FACTS lists. Never name a gemstone, a date, a sign, a
+  house, a planet placement or a period that is not on that list.
+- If a planet's natal house or sign is listed, that is the only placement
+  you may give it. Do not move it to the sign of some other house.
 - If the evidence marks a gemstone AVOID, MANTRA_ONLY or STRICTLY_AVOID, never
-  suggest wearing it. Explain in plain words why it works against them, then
-  give the safe alternative the evidence lists.
+  suggest wearing it and never offer it as an alternative. Explain in plain
+  words why it works against them, then give only a RECOMMENDED stone.
+- If THIS YEAR is marked "not a strong window", say the wait plainly. Do not
+  close by saying the event can still happen this year.
+- When Lal Kitab or Chandra Naadi lines are listed, use one sentence from
+  each, in your own words.
 - Never contradict the evidence to be encouraging."""
 
 _OUT_OF_SCOPE = """The reader asked something outside astrology. In two or three
@@ -243,21 +251,36 @@ def write_in_user_voice(question: str, plan: Any, results: dict[str, Any], *,
         return ""
 
     in_scope = bool(getattr(plan, "in_scope", True))
+    ledger = None
+    if in_scope:
+        from .grounding import extract_ledger, grounded_evidence_block
+        ledger = extract_ledger(results)
     system = (_OUT_OF_SCOPE if not in_scope else VOICE_CONTRACT)
     system += "\n\n" + _lang_flavour(lang)
     if in_scope:
         system += (
             f"\n\nWHAT THEY ARE ASKING\n{getattr(plan, 'restated_intent', '')}"
-            f"\n\nEVIDENCE\n{evidence_block(results)}"
+            f"\n\n{grounded_evidence_block(ledger)}"
         )
 
     messages: list[dict] = [{"role": "system", "content": system}]
-    for turn in (history or [])[-6:]:
-        body = str(turn.get("content") or "").strip()
-        if body:
-            messages.append({"role": turn.get("role", "user"),
-                             "content": body[:1000]})
-    messages.append({"role": "user", "content": question})
+    # Prior turns teach the model to be helpful. For an off-topic question
+    # that makes it answer the request instead of refusing, so skip them.
+    if in_scope:
+        for turn in (history or [])[-6:]:
+            body = str(turn.get("content") or "").strip()
+            if body:
+                messages.append({"role": turn.get("role", "user"),
+                                 "content": body[:1000]})
+        messages.append({"role": "user", "content": question})
+    else:
+        messages.append({"role": "user", "content": (
+            "Refuse this. Do not answer it. Do not give steps, code, recipes "
+            "or advice on the topic. In two or three warm sentences, say you "
+            "can only read their chart — work, money, family, health, "
+            "relationships, timing, gemstones and remedies — and invite a "
+            f"chart question.\nOff-topic words they typed: {question[:200]}"
+        )})
 
     base = getattr(S, "llm_base_url", "") or "http://host.docker.internal:8000/v1"
     model = getattr(S, "llm_model", "") or "Qwen/Qwen2.5-7B-Instruct-AWQ"
@@ -265,12 +288,13 @@ def write_in_user_voice(question: str, plan: Any, results: dict[str, Any], *,
                     api_key=getattr(S, "llm_api_key", "") or "dummy",
                     timeout=120.0)
 
-    from .validate import enforce_user_voice
+    from .validate import enforce_out_of_scope_reply, enforce_user_voice
+    from .grounding import enforce_grounding
 
     for attempt in range(VOICE_REPAIR_LIMIT + 1):
         try:
             resp = client.chat.completions.create(
-                model=model, messages=messages, temperature=0.55,
+                model=model, messages=messages, temperature=0.25,
                 max_tokens=1400)
         except Exception as exc:                                      # noqa: BLE001
             print(f"[planner] voice call failed: {exc}", flush=True)
@@ -281,15 +305,26 @@ def write_in_user_voice(question: str, plan: Any, results: dict[str, Any], *,
             text = (getattr(choices[0].message, "content", "") or "").strip()
         if not text:
             return ""
-        problems = enforce_user_voice(text)
-        if not problems or attempt >= VOICE_REPAIR_LIMIT:
-            if problems:
-                print(f"[planner] voice still off after repair: {problems}",
-                      flush=True)
+        problems = (enforce_out_of_scope_reply(text) if not in_scope
+                    else enforce_user_voice(text))
+        if in_scope and ledger is not None:
+            problems.extend(enforce_grounding(text, ledger, question))
+        if not problems:
             return text
+        if attempt >= VOICE_REPAIR_LIMIT:
+            print(f"[planner] voice still off after repair: {problems}",
+                  flush=True)
+            return ""
         messages.append({"role": "assistant", "content": text})
-        messages.append({"role": "user", "content": (
-            "Rewrite that reply. Problems: " + "; ".join(problems) + ". "
-            "Speak to me directly as 'you', and explain any technical term in "
-            "plain words in the same sentence. Keep every fact the same.")})
+        if not in_scope:
+            messages.append({"role": "user", "content": (
+                "Rewrite as a short refusal only. Problems: "
+                + "; ".join(problems) + ". Do not answer their request.")})
+        else:
+            messages.append({"role": "user", "content": (
+                "Rewrite that reply. Problems: " + "; ".join(problems) + ". "
+                "Speak to me directly as 'you'. Use only ALLOWED FACTS. "
+                "Do not move a planet to another house or sign. "
+                "Do not invent a date or gemstone. Keep every remaining fact "
+                "the same.")})
     return ""

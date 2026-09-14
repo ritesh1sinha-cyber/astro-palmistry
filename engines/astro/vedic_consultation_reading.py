@@ -97,7 +97,6 @@ def generate_consultation_reading(
     *,
     analysis_datetime: datetime | None = None,
     gender: str = "male",
-    lang: str = "en",
 ) -> dict:
     """
     Synthesizes a deep, generalized consultation-level astrological reading:
@@ -358,7 +357,7 @@ def generate_consultation_reading(
     if len(sat_confluence) >= 2:
         c_str = " + ".join(sat_confluence)
         foundation_points.append(
-            f"<span class='tag'>BNN 1-5-9 Triplicity ({sat_trine_key} Trine)</span><b>Karma Confluence ({c_str}):</b> In Bhrigu Nandi Nadi, your Karma Karaka Saturn operates in direct mutual triplicity with {c_str}, unifying professional duty, analytical acumen, and commercial wealth into your permanent karmic signature."
+            f"<span class='tag'>Directional 1-5-9 Triplicity ({sat_trine_key} Trine)</span><b>Karma Confluence ({c_str}):</b> Through planetary triplicity, your Karma Karaka Saturn operates in direct alignment with {c_str}, unifying professional duty, analytical acumen, and commercial wealth into your permanent karmic signature."
         )
 
     # Jaimini Chara Karakas

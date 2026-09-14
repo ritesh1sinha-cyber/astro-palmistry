@@ -64,6 +64,11 @@ def _customer_finding(item: Any) -> dict[str, Any] | None:
         return None
     if not title or not prediction:
         return None
+    upayas = _value(item, "upayas", None) or _value(item, "remedies", None) or []
+    if isinstance(upayas, (list, tuple)) and upayas:
+        first = str(upayas[0] or "").strip()
+        if first and first.lower() not in prediction.lower():
+            prediction = f"{prediction} Remedy: {first}"
     return {
         "category": category[:60],
         "title": title[:160],
@@ -102,6 +107,7 @@ def build_specialist_readings(
     result: dict[str, Any] = {
         "evaluation_date": eval_date.isoformat(),
         "chandra_naadi": {"status": "unavailable", "findings": []},
+        "lal_kitab": {"status": "unavailable", "findings": []},
         "rahu_ketu": {"status": "unavailable", "findings": []},
         "transit_matrix": {"status": "unavailable", "findings": []},
     }
@@ -118,6 +124,37 @@ def build_specialist_readings(
         }
     except Exception as exc:  # noqa: BLE001
         print(f"[specialist_readings] Chandra Naadi unavailable: {exc}", flush=True)
+
+    try:
+        from lal_kitab_analysis import analyze_lal_kitab
+
+        raw = analyze_lal_kitab(
+            pc, analysis_datetime=analysis_datetime, gender=gender
+        )
+        findings = _project(raw.get("all_readings"), limit=8)
+        # Surface a few actionable upayas even when reading titles are sparse.
+        if len(findings) < 8:
+            for upaya in (raw.get("remedies") or [])[: 8 - len(findings)]:
+                text = str(upaya or "").strip()
+                if not text:
+                    continue
+                findings.append({
+                    "category": "Upaya",
+                    "title": "Lal Kitab remedy",
+                    "summary": text[:600],
+                    "severity": "info",
+                    "planet": "",
+                    "house": 0,
+                })
+        result["lal_kitab"] = {
+            "status": "available",
+            "findings": findings,
+            "precautions": [
+                str(p)[:300] for p in (raw.get("precautions") or [])[:4] if p
+            ],
+        }
+    except Exception as exc:  # noqa: BLE001
+        print(f"[specialist_readings] Lal Kitab unavailable: {exc}", flush=True)
 
     try:
         from rahu_ketu_analysis import analyze_rahu_ketu

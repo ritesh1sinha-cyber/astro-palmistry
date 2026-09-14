@@ -995,6 +995,7 @@ _JARGON_GLOSS = (
     ("antardasha", ("sub-period", "sub period", "phase within")),
     ("vimshottari", ("period", "cycle", "timeline")),
     ("ashtakavarga", ("strength", "point", "score")),
+    ("karaka", ("significator", "natural ruler", "stands for")),
 )
 
 
@@ -1032,6 +1033,37 @@ def enforce_user_voice(text: str) -> list[str]:
     if words > 600:
         problems.append("the reply is far longer than 350 words")
 
+    if re.search(
+        r"^#{1,4}\s+\w+|^\*\*(?:key points?|timing|recommendations?|conclusion)\*\*",
+        body, re.I | re.M,
+    ):
+        problems.append("used report-style headings instead of short paragraphs")
+
+    return problems[:4]
+
+
+_OOS_REFUSAL = re.compile(
+    r"\b(can't|cannot|outside|beyond|not (something I|able to)|"
+    r"don't (do|cover|handle)|isn't (something|what I)|"
+    r"only (talk|read|speak).{0,40}(chart|astrology))\b",
+    re.I,
+)
+_OOS_ANSWERED = re.compile(
+    r"```|\bdef |\bclass |\bimport |\bfunction\b|\bsudo\b|\bnpm\b|\bpip\b",
+    re.I,
+)
+
+
+def enforce_out_of_scope_reply(text: str) -> list[str]:
+    """An off-topic question must be refused, not answered."""
+    problems = enforce_user_voice(text)
+    body = (text or "").strip()
+    if _OOS_ANSWERED.search(body):
+        problems.append("answered the off-topic request instead of refusing")
+    if len(body.split()) > 140:
+        problems.append("refusal is far too long")
+    if not _OOS_REFUSAL.search(body):
+        problems.append("did not actually refuse the off-topic request")
     return problems[:4]
 
 

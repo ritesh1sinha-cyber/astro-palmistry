@@ -734,7 +734,9 @@ def report_chat(rid: str, body: ChatIn, user: dict = Depends(current_user)):
 
         if pc and str(facts.get("kind") if isinstance(facts, dict) else "") != "palm":
             from confluence_question_engine import answer_chat_with_confluence
-            result = answer_chat_with_confluence(pc, question, history=history[:-1])
+            lang = str(meta.get("language") or "en")
+            result = answer_chat_with_confluence(
+                pc, question, history=history[:-1], lang=lang)
         else:
             from llm.humanize import humanize_chat
             from llm.rules import OUT_OF_SCOPE_REFUSAL

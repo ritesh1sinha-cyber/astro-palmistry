@@ -652,7 +652,7 @@ def _summary_brief(kind: str, meta: dict, facts: Any, *, paid: bool) -> dict:
         specialist = f.get("specialist_readings")
         if isinstance(specialist, dict):
             specialist_brief: dict[str, Any] = {}
-            for engine_key in ("chandra_naadi", "rahu_ketu", "transit_matrix"):
+            for engine_key in ("chandra_naadi", "lal_kitab", "rahu_ketu", "transit_matrix"):
                 block = specialist.get(engine_key)
                 if not isinstance(block, dict):
                     continue

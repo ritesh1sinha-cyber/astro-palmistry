@@ -530,6 +530,7 @@ class QuestionConfluenceReport:
     root_cause_diagnosis: str = ""
     remedies: list[str] = field(default_factory=list)
     llm_synthesis: str = ""
+    specialist_readings: dict = field(default_factory=dict)
 
 
 AREA_TO_CONFLUENCE_DOMAIN: dict[str, str] = {
@@ -664,13 +665,7 @@ INTENT_KEYPHRASES: dict[str, list[str]] = {
         "gemstone to wear", "stone to wear", "suit me", "suitable gemstone", "suitable stone",
         "gemstone guidance", "gemstone consultation", "gemstones for me", "stones for me",
         "rudraksha", "wear rudraksha", "vedic remedy", "gemstone suit me", "stone suit me",
-        "why emerald", "why emerland", "why panna", "emerald is not suitable", "emerland is not suitable",
-        "emerald not suitable", "emerland not suitable", "not suitable for my chart", "suitable for my chart",
-        "why ruby", "why manik", "why pearl", "why moti", "why pukhraj", "why sapphire",
-        "can i wear emerald", "can i wear emerland", "can i wear panna", "can i wear ruby", "can i wear pearl",
-        "should i wear emerald", "should i wear emerland", "should i wear panna", "should i wear ruby", "should i wear pearl",
-        "should i wear coral", "should i wear moonga", "should i wear yellow sapphire", "should i wear blue sapphire",
-        "is emerald good", "is emerland good", "is panna good", "is ruby good", "is pearl good"
+        "not suitable for my chart", "suitable for my chart",
     ],
     "foreign_relocation": [
         "move abroad", "moving abroad", "settle abroad", "settling abroad", "settle overseas",
@@ -760,34 +755,19 @@ def is_general_trivia_inquiry(question: str) -> bool:
 
 
 def is_strictly_out_of_domain(question: str) -> bool:
-    """Returns True if the question is unequivocally outside astrological consultation."""
+    """True only when the question is unequivocally outside life/astrology.
+
+    Trivia and technical patterns run first. Over-generic tokens such as
+    ``when`` / ``year`` / ``problem`` are not treated as in-domain on their
+    own — they used to short-circuit every question before the trivia check.
+    """
     if not question:
         return False
     q_low = question.lower().strip()
 
-    # 1. Astrological / personal life keywords: if ANY of these exist, it is 100% IN-DOMAIN
-    astro_life_tokens = [
-        "astrology", "astrological", "horoscope", "kundli", "kundali", "chart", "birth", "dasha", "transit",
-        "gochar", "nakshatra", "graha", "planet", "lagna", "ascendant", "rashi", "bhav", "bhava", "house",
-        "life", "future", "destiny", "career", "job", "work", "business", "promotion", "money", "wealth",
-        "finance", "salary", "debt", "loan", "property", "marriage", "marry", "wedding", "husband", "wife",
-        "spouse", "partner", "love", "relationship", "divorce", "child", "children", "baby", "pregnancy",
-        "conceive", "education", "study", "exam", "health", "disease", "illness", "surgery", "recovery",
-        "travel", "foreign", "abroad", "visa", "pr", "relocation", "court", "case", "legal", "enemy",
-        "speech", "cognitive", "development", "outlook", "delay", "growth", "intellect", "mind",
-        "gemstone", "stone", "ratna", "rudraksha", "remedy", "upaya", "mantra", "puja", "chant",
-        "luck", "fortune", "bhagya", "year", "years", "month", "months", "timing", "when", "will i", "how will",
-        "kaisa", "samay", "aage", "bhavishya", "meri", "mera", "mere", "mujhe", "apna", "apni", "shubh",
-        "problem", "trouble", "solution", "prospect", "prospects", "ahead", "focus", "direction"
-    ]
-    for tok in astro_life_tokens:
-        if re.search(r"\b" + re.escape(tok) + r"\b", q_low):
-            return False
-
     if is_general_trivia_inquiry(question):
         return True
 
-    # 2. Distinct non-astrological technical/trivia patterns
     non_astro_patterns = [
         r"\b(python|javascript|java|c\+\+|html|css|sql|docker|kubernetes|api|backend|frontend|react|fastapi|django)\b",
         r"\b(write\s+code|debug|function|algorithm|binary\s+search|regular\s+expression|regex|git\s+push|compile)\b",
@@ -801,12 +781,30 @@ def is_strictly_out_of_domain(question: str) -> bool:
         if re.search(pat, q_low):
             return True
 
+    # Personal / astrological life tokens: any hit means IN-DOMAIN.
+    astro_life_tokens = [
+        "astrology", "astrological", "horoscope", "kundli", "kundali", "chart", "birth", "dasha", "transit",
+        "gochar", "nakshatra", "graha", "planet", "lagna", "ascendant", "rashi", "bhav", "bhava", "house",
+        "life", "future", "destiny", "career", "job", "work", "business", "promotion", "money", "wealth",
+        "finance", "salary", "debt", "loan", "property", "marriage", "marry", "wedding", "husband", "wife",
+        "spouse", "partner", "love", "relationship", "divorce", "child", "children", "baby", "pregnancy",
+        "conceive", "education", "study", "exam", "health", "disease", "illness", "surgery", "recovery",
+        "travel", "foreign", "abroad", "visa", "relocation", "court", "case", "legal", "enemy",
+        "speech", "cognitive", "development", "outlook", "delay", "growth", "intellect", "mind",
+        "gemstone", "stone", "ratna", "rudraksha", "remedy", "upaya", "mantra", "puja", "chant",
+        "luck", "fortune", "bhagya", "timing", "will i", "how will",
+        "kaisa", "samay", "aage", "bhavishya", "meri", "mera", "mere", "mujhe", "apna", "apni", "shubh",
+        "trouble", "solution", "prospect", "prospects", "ahead", "focus",
+    ]
+    for tok in astro_life_tokens:
+        if re.search(r"\b" + re.escape(tok) + r"\b", q_low):
+            return False
+
     return False
 
 
-def detect_domain(question: str, route: Any = None, area: str = "") -> str:
-    """Classifies user question into the most accurate astrological domain."""
-    # 1. If explicit area provided by user dropdown, use direct mapping
+def _fallback_detect_domain(question: str, route: Any = None, area: str = "") -> str:
+    """Keyword / MiniLM domain routing used only when the LLM planner is down."""
     if area:
         mapped = AREA_TO_CONFLUENCE_DOMAIN.get(area.lower().strip())
         if mapped:
@@ -814,28 +812,10 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
 
     q_lower = (question or "").lower().strip()
 
-    # 2. Check if question is strictly non-astrological/technical trivia
     if is_strictly_out_of_domain(question):
         return "out_of_domain"
 
-    # 2b. High-precision Gemstone & Remedial query recognition (handles typos like emerland)
-    gemstone_pattern = (
-        r"\b(?:emerald|emerland|emrald|panna|marakata|"
-        r"ruby|manik|manikya|"
-        r"pearl|moti|mukta|"
-        r"sapphire|pukhraj|pokhraj|pushparag|sunela|"
-        r"neelam|nilam|indraneel|jamunia|kataila|"
-        r"coral|moonga|munga|praval|"
-        r"diamond|heera|hira|opal|zircon|"
-        r"hessonite|gomed|gomedak|"
-        r"catseye|cats\s+eye|lehsunia|lahsuniya|vaidurya|"
-        r"gemstone|gemstones|ratna|ratnas|birthstone|upratna|"
-        r"rudraksha|rudraksh)\b"
-    )
-    if re.search(gemstone_pattern, q_lower):
-        return "gemstones_remedies"
-
-    # 3. Phrase-level high intent scoring (e.g. "move abroad", "win court case", "buy house")
+    # Phrase-level high intent scoring (e.g. "move abroad", "win court case")
     phrase_scores: dict[str, int] = {}
     for d_key, phrases in INTENT_KEYPHRASES.items():
         for phrase in phrases:
@@ -844,7 +824,6 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
     if phrase_scores:
         return max(phrase_scores, key=phrase_scores.get)
 
-    # 4. If semantic route provided, check its topic first (more specific), then domain
     if route is not None:
         r_topic = getattr(route, "topic", "")
         if r_topic and r_topic not in ("general", "general_destiny"):
@@ -857,7 +836,6 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
             if mapped:
                 return mapped
 
-    # 5. Try running semantic_question directly if question is non-empty
     if q_lower:
         try:
             import semantic_question as SQ
@@ -874,7 +852,6 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
         except Exception:
             pass
 
-    # 6. Keyword scoring
     scores: dict[str, int] = {}
     for d_key, d_cfg in DOMAINS_CONFIG.items():
         if d_key in ("out_of_domain", "general_destiny"):
@@ -887,6 +864,11 @@ def detect_domain(question: str, route: Any = None, area: str = "") -> str:
         return "general_destiny"
 
     return max(scores, key=scores.get)
+
+
+def detect_domain(question: str, route: Any = None, area: str = "") -> str:
+    """Back-compat alias for the keyword fallback path."""
+    return _fallback_detect_domain(question, route=route, area=area)
 
 
 def _normalize_dropdown_area(area: str) -> str:
@@ -911,16 +893,28 @@ def _resolve_confluence_domain(
 
     Dropdown values are short keys like ``travel`` — never pass them straight
     into ``DOMAINS_CONFIG`` (that used to fall back to health_vitality).
+    Planner life_area keys land here already canonical.
     """
+    raw = (domain_override or "").strip()
+    if raw in DOMAINS_CONFIG:
+        return raw
     area = _normalize_dropdown_area(domain_override)
     if area:
         mapped = AREA_TO_CONFLUENCE_DOMAIN.get(area)
         if mapped:
             return mapped
-    return detect_domain(question, route=route, area=area or domain_override)
+        if area in DOMAINS_CONFIG:
+            return area
+    return _fallback_detect_domain(question, route=route, area=area or domain_override)
 
 
-def analyze_question_confluence(pc: dict, question: str, domain_override: str = "", route: Any = None) -> QuestionConfluenceReport:
+def analyze_question_confluence(
+    pc: dict,
+    question: str,
+    domain_override: str = "",
+    route: Any = None,
+    target_planet: str = "",
+) -> QuestionConfluenceReport:
     """Rigorous classical Vedic confluence analyzer for ANY life question."""
     domain_key = _resolve_confluence_domain(question, domain_override=domain_override, route=route)
 
@@ -1250,55 +1244,41 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
             else:
                 mantra_gems.append(f"Propitiate {p} ({gname}) via Mantra & Seva: {mantra}.")
 
-        # Check if question specifically targets a planet or gemstone
-        target_planet = None
-        ql = question.lower()
-        if any(w in ql for w in ["emerald", "emerland", "emrald", "panna", "marakata", "mercury", "budh"]):
-            target_planet = "Mercury"
-        elif any(w in ql for w in ["ruby", "manik", "manikya", "sun", "surya"]):
-            target_planet = "Sun"
-        elif any(w in ql for w in ["pearl", "moti", "mukta", "moon", "chandra"]):
-            target_planet = "Moon"
-        elif any(w in ql for w in ["coral", "moonga", "munga", "praval", "mars", "mangal"]):
-            target_planet = "Mars"
-        elif any(w in ql for w in ["yellow sapphire", "pukhraj", "pokhraj", "jupiter", "guru", "brihaspati"]):
-            target_planet = "Jupiter"
-        elif any(w in ql for w in ["diamond", "heera", "opal", "venus", "shukra"]):
-            target_planet = "Venus"
-        elif any(w in ql for w in ["blue sapphire", "neelam", "nilam", "saturn", "shani"]):
-            target_planet = "Saturn"
-        elif any(w in ql for w in ["gomed", "hessonite", "rahu"]):
-            target_planet = "Rahu"
-        elif any(w in ql for w in ["catseye", "cats eye", "lehsunia", "lahsuniya", "ketu"]):
-            target_planet = "Ketu"
+        # Specific stone/planet comes from the planner (or caller), not a regex.
+        planet_by_lower = {
+            "sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury",
+            "jupiter": "Jupiter", "venus": "Venus", "saturn": "Saturn",
+            "rahu": "Rahu", "ketu": "Ketu",
+        }
+        chosen = planet_by_lower.get(str(target_planet or "").strip().lower(), "")
 
-        if target_planet and target_planet in audit:
-            t_inf = audit[target_planet]
+        if chosen and chosen in audit:
+            t_inf = audit[chosen]
             t_gem = t_inf["gem"]
             t_reasons = " ".join(t_inf["reasons"])
             if t_inf["status"] in ("STRICTLY_AVOID", "AVOID"):
                 verdict = (
-                    f"{t_gem} ({target_planet}) is STRICTLY CONTRAINDICATED and NOT SUITABLE for your {lagna_sign} Ascendant chart. "
+                    f"{t_gem} ({chosen}) is STRICTLY CONTRAINDICATED and NOT SUITABLE for your {lagna_sign} Ascendant chart. "
                     f"{t_reasons} Wearing this stone will amplify Maraka, Badhaka, or pressure energies rather than protecting you. "
-                    f"Safe Vedic alternative: Do not wear the physical gemstone; balance {target_planet} non-invasively through {t_inf['mantra']} and charitable seva."
+                    f"Safe Vedic alternative: Do not wear the physical gemstone; balance {chosen} non-invasively through {t_inf['mantra']} and charitable seva."
                 )
                 root_cause_diagnosis = (
-                    f"Classical Jyotish Lordship Contraindication: For {lagna_sign} Lagna, {target_planet} governs House(s) "
+                    f"Classical Jyotish Lordship Contraindication: For {lagna_sign} Lagna, {chosen} governs House(s) "
                     f"{', '.join(str(h) for h in t_inf['owned_houses'])} and sits in House {t_inf['house']}. {t_reasons}"
                 )
                 remedies = [
-                    f"CRITICAL: Strictly avoid wearing {t_gem}. Do NOT enhance {target_planet} with physical gemstones.",
-                    f"Prescribed Upaya for {target_planet}: {t_inf['mantra']}.",
+                    f"CRITICAL: Strictly avoid wearing {t_gem}. Do NOT enhance {chosen} with physical gemstones.",
+                    f"Prescribed Upaya for {chosen}: {t_inf['mantra']}.",
                 ]
                 if rec_gems:
                     remedies.append(f"Approved Auspicious Gemstone for Chart: {rec_gems[0]}")
             elif t_inf["status"] == "RECOMMENDED":
                 verdict = (
-                    f"{t_gem} ({target_planet}) is HIGHLY AUSPICIOUS and SUITABLE for your {lagna_sign} Ascendant chart. "
+                    f"{t_gem} ({chosen}) is HIGHLY AUSPICIOUS and SUITABLE for your {lagna_sign} Ascendant chart. "
                     f"{t_reasons} Wearing this gemstone channels vital protective and cognitive energy."
                 )
                 root_cause_diagnosis = (
-                    f"Classical Benefic Trikona Resonance: {target_planet} is a prime functional benefic for {lagna_sign} Lagna. {t_reasons}"
+                    f"Classical Benefic Trikona Resonance: {chosen} is a prime functional benefic for {lagna_sign} Lagna. {t_reasons}"
                 )
                 remedies = [
                     f"Wear {t_gem} set in {t_inf['metal']} on the {t_inf['finger']} on {t_inf['day']} morning during Shukla Paksha.",
@@ -1306,11 +1286,11 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
                 ]
             else:
                 verdict = (
-                    f"{t_gem} ({target_planet}) is NOT recommended for direct physical gemstone wear for your {lagna_sign} chart. "
-                    f"{t_reasons} Propitiate {target_planet} safely using {t_inf['mantra']} instead."
+                    f"{t_gem} ({chosen}) is NOT recommended for direct physical gemstone wear for your {lagna_sign} chart. "
+                    f"{t_reasons} Propitiate {chosen} safely using {t_inf['mantra']} instead."
                 )
                 root_cause_diagnosis = (
-                    f"Planetary Remedial Guidance: {target_planet} does not rule an unblemished Trikona house for {lagna_sign} Lagna. {t_reasons}"
+                    f"Planetary Remedial Guidance: {chosen} does not rule an unblemished Trikona house for {lagna_sign} Lagna. {t_reasons}"
                 )
                 remedies = [
                     f"Remedial Mantra: {t_inf['mantra']}",
@@ -1318,7 +1298,18 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
                 if rec_gems:
                     remedies.append(f"Approved Auspicious Gemstone: {rec_gems[0]}")
         else:
-            # General gemstone inquiry
+            # General gemstone inquiry — caution list from THIS chart's AVOID set.
+            avoid_names = [
+                f"{inf['gem']} ({p})"
+                for p, inf in audit.items()
+                if inf.get("status") in ("STRICTLY_AVOID", "AVOID")
+            ]
+            caution = ""
+            if avoid_names:
+                caution = (
+                    f" Caution: Avoid {', '.join(avoid_names[:3])}"
+                    f"{' and stones of planets in the 8th house' if len(avoid_names) > 3 else ''}."
+                )
             if rec_gems:
                 root_cause_diagnosis = (
                     f"For your {lagna_sign} Ascendant, gemstone suitability is strictly governed by the functional benefic Trikona houses (1st, 5th, 9th). "
@@ -1327,8 +1318,8 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
                 )
                 verdict = (
                     f"Based on your {lagna_sign} Lagna and planetary positions, the most auspicious and suitable gemstone(s) for you are: "
-                    f"{', '.join(rec_names)}. Wearing these in the recommended metal and finger will channel maximum positive energy. "
-                    f"Caution: Avoid Emerald (Mercury - Kendradhipati/Maraka for Pisces Lagna) and stones of planets in the 8th house."
+                    f"{', '.join(rec_names)}. Wearing these in the recommended metal and finger will channel maximum positive energy."
+                    f"{caution}"
                 )
             else:
                 root_cause_diagnosis = (
@@ -1338,6 +1329,7 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
                 verdict = (
                     f"A direct primary gemstone is not recommended right now. Chanting root mantras and performing targeted charitable upayas "
                     f"is the most effective, safe path for your chart."
+                    f"{caution}"
                 )
             remedies = []
             if rec_gems:
@@ -1426,6 +1418,41 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
             remedies.append(f"Strengthen Natural Karaka ({top_k}): Chant the {top_k} Gayatri Mantra or perform charitable seva (e.g. green fodder to cows for Mercury, Surya Arghya for Sun, Jal Abhishek for Moon).")
         remedies.append(f"Energize Lagna Lord ({lagna_lord}): Daily spiritual grounding, meditation, and chanting the Lagna lord's root mantra to fortify overall constitutional resilience.")
 
+    specialist_bundle: dict = {}
+    try:
+        from specialist_readings import build_specialist_readings
+        raw_gender = (pc.get("meta") or {}).get("gender", "male")
+        gender = "female" if str(raw_gender).lower() in ("1", "female", "f") else "male"
+        specialist_bundle = build_specialist_readings(pc, gender=gender)
+        lk = specialist_bundle.get("lal_kitab") or {}
+        cn = specialist_bundle.get("chandra_naadi") or {}
+        if lk.get("status") == "available":
+            for finding in (lk.get("findings") or [])[:2]:
+                title = str((finding or {}).get("title") or "").strip()
+                summary = str((finding or {}).get("summary") or "").strip()
+                if title and summary:
+                    line = f"Lal Kitab — {title}: {summary}"
+                    if line not in remedies:
+                        remedies.append(line)
+            for prec in (lk.get("precautions") or [])[:1]:
+                text = str(prec or "").strip()
+                if text:
+                    remedies.append(f"Lal Kitab precaution: {text}")
+        if cn.get("status") == "available":
+            for finding in (cn.get("findings") or [])[:1]:
+                title = str((finding or {}).get("title") or "").strip()
+                summary = str((finding or {}).get("summary") or "").strip()
+                if title and summary:
+                    extra = f"Chandra Naadi — {title}: {summary}"
+                    if extra not in remedies:
+                        remedies.append(extra)
+        g0 = audit_gate0_hardware(pc)
+        if g0.get("status") not in ("", "HEALTHY_HARDWARE") and g0.get("contingency_rule"):
+            verdict = f"{verdict} Chart-judgement note: {g0['contingency_rule']}"
+    except Exception as exc:  # noqa: BLE001
+        print(f"[confluence_question_engine] specialist lenses skipped: {exc}",
+              flush=True)
+
     return QuestionConfluenceReport(
         question=question,
         domain_key=domain_key,
@@ -1453,6 +1480,7 @@ def analyze_question_confluence(pc: dict, question: str, domain_override: str = 
         classical_verdict=verdict,
         root_cause_diagnosis=root_cause_diagnosis,
         remedies=remedies,
+        specialist_readings=specialist_bundle,
     )
 
 
@@ -1466,7 +1494,44 @@ class QuestionConsultationOutput(BaseModel):
     remedial_actions: str = Field(description="Step-by-step practical and spiritual remedies for immediate and long-term relief.")
 
 
-def synthesize_with_qwen(confluence: QuestionConfluenceReport, lang: str = "en") -> str:
+def _format_specialist_evidence(specialist_readings: Optional[dict]) -> str:
+    """Compact Chandra Naadi / Lal Kitab / nodes evidence for the consultation prompt."""
+    if not isinstance(specialist_readings, dict) or not specialist_readings:
+        return ""
+    lines: list[str] = []
+    labels = {
+        "chandra_naadi": "Chandra Naadi (mind, obstacles, timing pressure)",
+        "lal_kitab": "Lal Kitab (upayas & precautions)",
+        "rahu_ketu": "Rahu–Ketu nodal reading",
+        "transit_matrix": "Live transit matrix",
+    }
+    for key, label in labels.items():
+        block = specialist_readings.get(key)
+        if not isinstance(block, dict) or block.get("status") != "available":
+            continue
+        findings = block.get("findings") or []
+        if not findings:
+            continue
+        lines.append(f"12+. {label}:")
+        for finding in findings[:4]:
+            if not isinstance(finding, dict):
+                continue
+            title = str(finding.get("title") or "").strip()
+            summary = str(finding.get("summary") or "").strip()
+            if title and summary:
+                lines.append(f"   • {title}: {summary}")
+        for prec in (block.get("precautions") or [])[:2]:
+            text = str(prec or "").strip()
+            if text:
+                lines.append(f"   • Precaution: {text}")
+    return ("\n" + "\n".join(lines)) if lines else ""
+
+
+def synthesize_with_qwen(
+    confluence: QuestionConfluenceReport,
+    lang: str = "en",
+    specialist_readings: Optional[dict] = None,
+) -> str:
     """Prompts Qwen LLM using the structured confluence payload to produce an authoritative consultation response."""
     if not _llm_allowed():
         return _deterministic_consultation(confluence, lang=lang)
@@ -1480,18 +1545,19 @@ def synthesize_with_qwen(confluence: QuestionConfluenceReport, lang: str = "en")
         if is_hinglish:
             system_prompt = (
                 "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
-                "and deeply insightful consultation reading for the seeker's question. "
+                "and deeply insightful consultation reading for the reader's question. "
                 "Write the entire consultation response in conversational Hindi using the English/Latin alphabet (Hinglish / Roman Hindi). "
                 "DO NOT use Devanagari script. Use clear, fluent Roman Hindi words (e.g. 'Aapki kundli ke anusar...', 'Breakthrough period...', 'Grahon ki sthiti...'). "
                 "You have been provided with rigorous, verified classical confluence facts (Houses, Lords, Dignities, "
                 "Natural Karakas, Divisional Charts D9/D30, Sarvashtakavarga SAV Bindu strength, Live Planetary Transits Gochar, "
                 "Triple Dashas Vimshottari + Jaimini Chara + Yogini, and Vedic Upaya). "
-                "Speak directly to the seeker as 'Aap' like an experienced astrologer.\n\n"
+                "Speak directly to the reader as 'Aap'. Never write 'the native', 'the seeker', 'the querent', or 'the client'. "
+                "A Sanskrit or technical term is allowed only with a plain-word gloss in the same sentence.\n\n"
                 "SPECIAL JUDGMENT RULES:\n"
                 "1. AMBIGUOUS / BROAD QUESTIONS: If the question is broad, general, or ambiguous (e.g. 'what is in store for my future?', 'kaisa rahega aane wala samay?'), "
                 "synthesize the Lagna, running Dasha chronology, SAV strength, and transit Gochar to deliver a comprehensive, deeply insightful reading on their overall life trajectory, key focus areas, and timing windows.\n"
                 "2. OUT-OF-DOMAIN QUESTIONS: If the question is entirely outside the scope of human life and Vedic astrology (e.g. coding, technical trivia, recipes, hardware repair), "
-                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite the seeker to ask about their personal life path or chart guidance."
+                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite them to ask about their personal life path or chart guidance."
             )
             instructions_text = """INSTRUCTIONS:
 Write a comprehensive, professional Vedic consultation response in natural conversational Hindi using English letters (Hinglish / Roman Hindi) containing:
@@ -1509,18 +1575,19 @@ FEW-SHOT HINGLISH EXAMPLES:
         elif is_tenglish:
             system_prompt = (
                 "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
-                "and deeply insightful consultation reading for the seeker's question. "
+                "and deeply insightful consultation reading for the reader's question. "
                 "Write the entire consultation response in conversational Telugu using the English/Latin alphabet (Tenglish / Roman Telugu). "
                 "DO NOT use Telugu script characters. Use clear, fluent Roman Telugu words (e.g. 'Mee kundali prakaram...', 'Breakthrough period...', 'Grahala sthiti...'). "
                 "You have been provided with rigorous, verified classical confluence facts (Houses, Lords, Dignities, "
                 "Natural Karakas, Divisional Charts D9/D30, Sarvashtakavarga SAV Bindu strength, Live Planetary Transits Gochar, "
                 "Triple Dashas Vimshottari + Jaimini Chara + Yogini, and Vedic Upaya). "
-                "Speak directly to the seeker respectfully as 'Meeru' / 'Mee' like an experienced astrologer.\n\n"
+                "Speak directly to the reader as 'Meeru' / 'Mee'. Never write 'the native', 'the seeker', 'the querent', or 'the client'. "
+                "A Sanskrit or technical term is allowed only with a plain-word gloss in the same sentence.\n\n"
                 "SPECIAL JUDGMENT RULES:\n"
                 "1. AMBIGUOUS / BROAD QUESTIONS: If the question is broad, general, or ambiguous (e.g. 'what is in store for my future?', 'bhavishyath ela untundi?'), "
                 "synthesize the Lagna, running Dasha chronology, SAV strength, and transit Gochar to deliver a comprehensive, deeply insightful reading on their overall life trajectory, key focus areas, and timing windows.\n"
                 "2. OUT-OF-DOMAIN QUESTIONS: If the question is entirely outside the scope of human life and Vedic astrology (e.g. coding, technical trivia, recipes, hardware repair), "
-                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite the seeker to ask about their personal life path or chart guidance."
+                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite them to ask about their personal life path or chart guidance."
             )
             instructions_text = """INSTRUCTIONS:
 Write a comprehensive, professional Vedic consultation response in natural conversational Telugu using English letters (Tenglish / Roman Telugu) containing:
@@ -1538,18 +1605,20 @@ FEW-SHOT TENGLISH EXAMPLES:
         else:
             system_prompt = (
                 "You are a master Vedic Astrologer (Jyotish Acharya) providing an authoritative, compassionate, "
-                "and deeply insightful consultation reading for the seeker's question. "
+                "and deeply insightful consultation reading for the reader's question. "
                 "You have been provided with rigorous, verified classical confluence facts (Houses, Lords, Dignities, "
                 "Natural Karakas, Divisional Charts D9/D30, Sarvashtakavarga SAV Bindu strength, Live Planetary Transits Gochar, "
                 "Triple Dashas Vimshottari + Jaimini Chara + Yogini, and Vedic Upaya). "
                 "Write a beautifully articulated, structured consultation response in clear, fluent English that directly answers the question, "
                 "explains the exact astrological mechanics clearly, provides the precise timing milestone, and details actionable remedies. "
-                "DO NOT use raw JSON keys or robotic phrasing. Speak directly to the seeker as an experienced astrologer.\n\n"
+                "DO NOT use raw JSON keys or robotic phrasing. Speak directly as 'you' / 'your'. Never write 'the native', "
+                "'the seeker', 'the querent', 'the client', or 'this chart indicates'. A Sanskrit or technical term is "
+                "allowed only with a plain-English gloss in the same sentence.\n\n"
                 "SPECIAL JUDGMENT RULES:\n"
                 "1. AMBIGUOUS / BROAD QUESTIONS: If the question is broad, general, or ambiguous (e.g. 'what does my future hold?', 'how will things be?'), "
                 "synthesize the Lagna, running Dasha chronology, SAV strength, and transit Gochar to deliver a comprehensive, deeply insightful reading on their overall life trajectory, key focus areas, and timing windows.\n"
                 "2. OUT-OF-DOMAIN QUESTIONS: If the question is entirely outside the scope of human life and Vedic astrology (e.g. coding, technical trivia, recipes, hardware repair), "
-                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite the seeker to ask about their personal life path or chart guidance."
+                "politely and respectfully explain that astrology guides life dimensions (career, health, relationships, finances, family, spiritual remedies) and invite them to ask about their personal life path or chart guidance."
             )
             instructions_text = """INSTRUCTIONS:
 Write a comprehensive, professional Vedic consultation response containing:
@@ -1586,28 +1655,64 @@ VERIFIED ASTROLOGICAL CONFLUENCE FACTS:
 {chr(10).join('     - ' + t for t in confluence.dasha_timeline)}
 11. Targeted Vedic Remedies (Upaya):
 {chr(10).join('   • ' + r for r in confluence.remedies)}
+{_format_specialist_evidence(specialist_readings)}
 
 {instructions_text}
 """
 
+        from dataclasses import asdict
+
         from openai import OpenAI
         from core.config import S
+        from llm.grounding import enforce_grounding, extract_ledger
+        from llm.validate import enforce_user_voice
         base_url = getattr(S, "llm_base_url", "http://host.docker.internal:8000/v1") or "http://host.docker.internal:8000/v1"
         api_key = getattr(S, "llm_api_key", "dummy") or "dummy"
         model = getattr(S, "llm_model", "Qwen/Qwen2.5-7B-Instruct-AWQ") or "Qwen/Qwen2.5-7B-Instruct-AWQ"
-        
+
+        spec = specialist_readings or confluence.specialist_readings or {}
+        conf_data = asdict(confluence)
+        conf_data.pop("llm_synthesis", None)
+        conf_data.pop("specialist_readings", None)
+        ledger = extract_ledger({
+            "life_area_confluence": conf_data,
+            "mind_and_transits": spec.get("chandra_naadi") or {},
+            "lal_kitab": spec.get("lal_kitab") or {},
+        })
+
         client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key, timeout=90.0)
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content}
-            ],
-            temperature=0.3,
-            max_tokens=1500
-        )
-        raw = (resp.choices[0].message.content or "").strip()
-        if raw:
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+        raw = ""
+        for attempt in range(2):
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=0.25,
+                max_tokens=1500,
+            )
+            raw = (resp.choices[0].message.content or "").strip()
+            if not raw:
+                break
+            problems = enforce_user_voice(raw)
+            problems.extend(enforce_grounding(raw, ledger, confluence.question))
+            if not problems:
+                return raw
+            if attempt >= 1:
+                print(f"[confluence_question_engine] voice still off after repair: {problems}",
+                      flush=True)
+                break
+            messages.append({"role": "assistant", "content": raw})
+            messages.append({"role": "user", "content": (
+                "Rewrite that consultation. Problems: " + "; ".join(problems) + ". "
+                "Speak to the reader as 'you' (or Aap / Meeru). Use only the "
+                "verified facts already given. Do not move a planet to another "
+                "house or sign, and do not invent a date or gemstone."
+            )})
+        if raw and not enforce_user_voice(raw) and not enforce_grounding(
+                raw, ledger, confluence.question):
             return raw
     except Exception as exc:
         print(f"[confluence_question_engine] Qwen call failed: {exc}", flush=True)
@@ -1905,6 +2010,52 @@ def _format_consultation_markdown(md_text: str) -> str:
     return "\n".join(html_lines)
 
 
+def _specialist_lenses_html(bundle: dict, *, lang: str, clean) -> str:
+    """Paid confluence strip: Chandra Naadi + Lal Kitab findings."""
+    if not isinstance(bundle, dict):
+        return ""
+    is_hinglish = lang in ("hi_en", "hinglish", "hi", "hindi")
+    is_tenglish = lang in ("te_en", "tenglish", "te", "telugu")
+    labels = {
+        "chandra_naadi": (
+            "Chandra Naadi (mann aur rukawat)" if is_hinglish
+            else "Chandra Naadi (manasu mariyu avarodhalu)" if is_tenglish
+            else "Chandra Naadi (mind and obstacles)"
+        ),
+        "lal_kitab": "Lal Kitab",
+    }
+    blocks = []
+    for key, title in labels.items():
+        findings = ((bundle.get(key) or {}).get("findings") or [])[:3]
+        items = []
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            ft = str(finding.get("title") or "").strip()
+            fs = str(finding.get("summary") or "").strip()
+            if ft and fs:
+                items.append(f"<li style='margin-bottom:6px;'><b>{clean(ft)}</b> — {clean(fs)}</li>")
+        if items:
+            blocks.append(
+                f"<div style='margin-bottom:10px;'><b>{title}</b>"
+                f"<ul style='margin:6px 0 0;padding-left:18px;'>{''.join(items)}</ul></div>"
+            )
+    if not blocks:
+        return ""
+    hdr = (
+        "Chandra Naadi Aur Lal Kitab" if is_hinglish
+        else "Chandra Naadi Mariyu Lal Kitab" if is_tenglish
+        else "Chandra Naadi & Lal Kitab on this problem"
+    )
+    return (
+        f'<article class="card" style="background:#fff;border:1px solid #e8e4dc;'
+        f'border-left:4px solid #5c4a7a;border-radius:12px;padding:16px 18px;margin:14px 0;">'
+        f'<div style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;'
+        f'font-weight:800;color:#4a3d63;margin-bottom:8px;">{hdr}</div>'
+        f'{"".join(blocks)}</article>'
+    )
+
+
 def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: bool = True, qwen_text: str = "", lang: str = "en") -> str:
     """Renders the comprehensive Vedic Astrological Consultation document in clean HTML."""
     import html
@@ -1938,6 +2089,12 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
     vargas_html = "".join(f"<li style='margin-bottom:6px;'>{_clean_html_item(v)}</li>" for v in confluence.varga_findings)
     timeline_html = "".join(f"<li style='margin-bottom:6px;'>{_clean_html_item(t)}</li>" for t in confluence.dasha_timeline)
     remedies_html = "".join(f"<li style='margin-bottom:8px;padding-left:4px;'><b>•</b> {_clean_html_item(r)}</li>" for r in confluence.remedies)
+
+    specialist_html = ""
+    if paid:
+        specialist_html = _specialist_lenses_html(
+            getattr(confluence, "specialist_readings", None) or {},
+            lang=lang_code, clean=_clean_html_item)
 
     qwen_block = ""
     if paid and qwen_text:
@@ -2190,6 +2347,7 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
         f'    </div>\n'
         f'  </article>\n'
         f'  {confluence_bar}\n'
+        f'  {specialist_html}\n'
         f'  {qwen_block}\n'
         f'  {timing_section}\n'
         f'  {remedy_section}\n'
@@ -2200,7 +2358,7 @@ def render_confluence_card_html(confluence: QuestionConfluenceReport, *, paid: b
 
 
 def audit_gate0_hardware(pc: dict) -> dict:
-    """Evaluates critical hardware failure modes (Hannu/Shanu jobless cases, Raja Bhanga, Gandanta)."""
+    """Evaluates critical hardware failure modes (joblessness, Raja Bhanga, Gandanta)."""
     planets = pc.get("planets", {})
     lagna_info = pc.get("lagna", {})
     lagna_sign = lagna_info.get("sign", "Aries") if isinstance(lagna_info, dict) else "Aries"
@@ -2219,7 +2377,7 @@ def audit_gate0_hardware(pc: dict) -> dict:
             is_jobless_failure = True
             issues.append(f"Mars-Saturn Graha Yuddha ({deg_diff:.2f}° apart in {mars.get('sign')}) -> Severe execution friction & vocational paralysis.")
 
-    # 2. Lagna Lord in 8th House Duryoga (Unassisted Alasya - Hannu Case)
+    # 2. Lagna Lord in 8th House Duryoga (Unassisted Alasya)
     ll_data = planets.get(lagna_lord, {})
     ll_house = ll_data.get("house")
     ll_sign = ll_data.get("sign", "")
@@ -2231,15 +2389,15 @@ def audit_gate0_hardware(pc: dict) -> dict:
         is_protected = (h9_data.get("house") == 8) or (planets.get("Jupiter", {}).get("house") in [8, 12, 2, 4])
         if not is_protected:
             is_jobless_failure = True
-            issues.append(f"Lagna Lord ({lagna_lord}) in 8th house ({ll_sign} in {ll_nak}) unassisted -> Classical Duryoga: chronic worldly inertia (Alasya) & severe corporate joblessness (Hannu case pattern).")
+            issues.append(f"Lagna Lord ({lagna_lord}) in 8th house ({ll_sign} in {ll_nak}) unassisted -> Classical Duryoga: chronic worldly inertia (Alasya) & severe corporate joblessness.")
 
-    # 3. Action-Mars in Gandanta (Shanu / 1st Son Case)
+    # 3. Action-Mars in Gandanta
     m_s = mars.get("sign", "")
     m_deg = mars.get("degree_in_sign", 0.0)
     if (m_s in ["Pisces", "Cancer", "Scorpio"] and m_deg >= 29.20) or \
        (m_s in ["Aries", "Leo", "Sagittarius"] and m_deg <= 0.80):
         is_jobless_failure = True
-        issues.append(f"Action-Karaka Mars in Gandanta zone ({m_deg:.2f}° {m_s}) -> Permanent friction with corporate hierarchy & erratic executive drive (Shanu case pattern).")
+        issues.append(f"Action-Karaka Mars in Gandanta zone ({m_deg:.2f}° {m_s}) -> Permanent friction with corporate hierarchy & erratic executive drive.")
 
     # 4. Moon Crushed by Saturn + Rahu (Shrapit / Vish Yoga)
     moon = planets.get("Moon", {})
@@ -2261,13 +2419,13 @@ def audit_gate0_hardware(pc: dict) -> dict:
         if not flanking and len(kendra_planets) <= 1:
             issues.append(f"Kemadruma Yoga on Moon in {m_s} without strong Kendra cancellation -> Periodic emotional isolation & financial instability.")
 
-    # 6. Neurodivergent / Speech Delay Signature (Ishu Case)
+    # 6. Neurodivergent / Speech Delay Signature
     h2_sign = SIGNS[(SIGNS.index(lagna_sign) + 1) % 12]
     h2_lord = SIGN_LORDS.get(h2_sign, "")
     h2_lord_data = planets.get(h2_lord, {})
     if rahu.get("house") == 5 and h2_lord_data.get("house") in [6, 8, 12]:
         is_neurodivergent = True
-        issues.append(f"5th House Rahu + 2nd Lord of Speech ({h2_lord}) in {h2_lord_data.get('house')}th Dusthana -> Atypical non-verbal sensory processing & formative speech delays (Ishu pattern).")
+        issues.append(f"5th House Rahu + 2nd Lord of Speech ({h2_lord}) in {h2_lord_data.get('house')}th Dusthana -> Atypical non-verbal sensory processing & formative speech delays.")
 
     status = "SEVERE_CONTINGENCY_REQUIRED" if is_jobless_failure else ("NEURODIVERGENT_SPEECH_GATED" if is_neurodivergent else "HEALTHY_HARDWARE")
     
@@ -2318,40 +2476,54 @@ def analyze_chandra_nadi(pc: dict) -> dict:
         elif p == "Jupiter" and dist in [5, 9]:
             aspects.append(f"Jupiter in {p_sign} (Special {dist}th aspect: divine grace / mental equilibrium)")
 
-    # 3. Live Transits (Ephemeris 2026 Gochara) relative to Moon
+    # 3. Live transits from the current ephemeris (never hardcode a year's signs)
     transit_hits = []
-    
-    # Sade Sati Check (Saturn in Pisces)
-    pisces_dist = (11 - m_idx) % 12 + 1
-    if pisces_dist == 12:
-        transit_hits.append("Transit Saturn in Pisces in 12th from Moon -> First Phase of SADE SATI (mental restructuring, expenses, sleep disruption).")
-    elif pisces_dist == 1:
-        transit_hits.append("Transit Saturn in Pisces directly over Natal Moon -> Peak SADE SATI (heavy emotional pressure, identity transformation).")
-    elif pisces_dist == 2:
-        transit_hits.append("Transit Saturn in Pisces in 2nd from Moon -> Final Phase of SADE SATI (financial reorganization, family restructuring).")
-    elif pisces_dist == 8:
-        transit_hits.append("Transit Saturn in Pisces in 8th from Moon -> ASHTAMA SHANI (acute stress, sudden transitions, high caution required).")
-    elif pisces_dist == 4:
-        transit_hits.append("Transit Saturn in Pisces in 4th from Moon -> KANTAKA SHANI (domestic friction, mother's health, peace of mind challenges).")
+    transit: dict = {}
+    try:
+        from datetime import datetime as _dt
+        from transit_planet_analysis import get_transit_positions
+        transit = get_transit_positions(_dt.now()) or {}
+    except Exception as exc:  # noqa: BLE001
+        print(f"[confluence_question_engine] live transit lookup failed: {exc}", flush=True)
 
-    # Rahu in Aquarius / Ketu in Leo
-    aquarius_dist = (10 - m_idx) % 12 + 1
-    if aquarius_dist == 1:
-        transit_hits.append("Transit Rahu over Natal Moon -> Eclipse on Manas: acute anxiety, illusions, restlessness.")
-    elif aquarius_dist == 7:
-        transit_hits.append("Transit Ketu over Natal Moon -> Emotional detachment, spiritual withdrawal, relationship alienation.")
+    sat_sign = str((transit.get("Saturn") or {}).get("sign") or "")
+    rahu_t_sign = str((transit.get("Rahu") or {}).get("sign") or "")
+    ketu_t_sign = str((transit.get("Ketu") or {}).get("sign") or "")
 
-    # Transit Saturn over Natal Jupiter (Karma-Jeeva contact)
+    if sat_sign in SIGNS:
+        sat_from_moon = ((SIGNS.index(sat_sign) - m_idx) % 12) + 1
+        if sat_from_moon == 12:
+            transit_hits.append(f"Transit Saturn in {sat_sign} in 12th from Moon -> First Phase of SADE SATI (mental restructuring, expenses, sleep disruption).")
+        elif sat_from_moon == 1:
+            transit_hits.append(f"Transit Saturn in {sat_sign} directly over Natal Moon -> Peak SADE SATI (heavy emotional pressure, identity transformation).")
+        elif sat_from_moon == 2:
+            transit_hits.append(f"Transit Saturn in {sat_sign} in 2nd from Moon -> Final Phase of SADE SATI (financial reorganization, family restructuring).")
+        elif sat_from_moon == 8:
+            transit_hits.append(f"Transit Saturn in {sat_sign} in 8th from Moon -> ASHTAMA SHANI (acute stress, sudden transitions, high caution required).")
+        elif sat_from_moon == 4:
+            transit_hits.append(f"Transit Saturn in {sat_sign} in 4th from Moon -> KANTAKA SHANI (domestic friction, mother's health, peace of mind challenges).")
+
+    if rahu_t_sign in SIGNS:
+        rahu_from_moon = ((SIGNS.index(rahu_t_sign) - m_idx) % 12) + 1
+        if rahu_from_moon == 1:
+            transit_hits.append(f"Transit Rahu in {rahu_t_sign} over Natal Moon -> Eclipse on Manas: acute anxiety, illusions, restlessness.")
+        elif rahu_from_moon == 7:
+            transit_hits.append(f"Transit Ketu opposing Natal Moon -> Emotional detachment, spiritual withdrawal, relationship alienation.")
+
+    if ketu_t_sign in SIGNS:
+        ketu_from_moon = ((SIGNS.index(ketu_t_sign) - m_idx) % 12) + 1
+        if ketu_from_moon == 1:
+            transit_hits.append(f"Transit Ketu in {ketu_t_sign} over Natal Moon -> Emotional detachment, spiritual withdrawal, relationship alienation.")
+
     jup_sign = planets.get("Jupiter", {}).get("sign", "")
-    if jup_sign == "Pisces":
-        transit_hits.append("Transit Saturn conjoining Natal Jupiter -> Nadi Karma-Jeeva Yoga: foundational career restructuring & life path shift.")
-    elif jup_sign == "Aquarius":
-        transit_hits.append("Transit Rahu over Natal Jupiter -> Jeeva-Rahu Contact: spiritual doubt, existential questioning.")
+    if jup_sign and sat_sign and jup_sign == sat_sign:
+        transit_hits.append(f"Transit Saturn conjoining Natal Jupiter in {jup_sign} -> Nadi Karma-Jeeva Yoga: foundational career restructuring & life path shift.")
+    elif jup_sign and rahu_t_sign and jup_sign == rahu_t_sign:
+        transit_hits.append(f"Transit Rahu over Natal Jupiter in {jup_sign} -> Jeeva-Rahu Contact: spiritual doubt, existential questioning.")
 
-    # Transit Ketu over Natal Rahu in Leo
-    rahu_sign = planets.get("Rahu", {}).get("sign", "")
-    if rahu_sign == "Leo":
-        transit_hits.append("Transit Ketu over Natal Rahu -> Nodal Reversal: acute relationship or romantic disillusionment, desire to detach.")
+    natal_rahu = planets.get("Rahu", {}).get("sign", "")
+    if natal_rahu and ketu_t_sign and natal_rahu == ketu_t_sign:
+        transit_hits.append(f"Transit Ketu over Natal Rahu in {natal_rahu} -> Nodal Reversal: acute relationship or romantic disillusionment, desire to detach.")
 
     return {
         "moon_summary": f"Moon in {m_sign} ({m_deg:.2f}°, {m_nak} Pada {m_pada}) in House {m_house}",
@@ -2361,141 +2533,159 @@ def analyze_chandra_nadi(pc: dict) -> dict:
     }
 
 
-def answer_chat_with_confluence(pc: dict, question: str, history: Optional[list[dict]] = None) -> dict:
-    """Answers follow-up conversational chat turns using full real-time confluence, gochar, SAV bindus, Chandra Nadi, Gate 0 hardware contingency diagnostics, and complete gemstone suitability audit."""
-    conf = analyze_question_confluence(pc, question)
-    g0 = audit_gate0_hardware(pc)
-    cn = analyze_chandra_nadi(pc)
-    gem_audit = audit_chart_gemstones(pc)
-    
-    system_prompt = (
-        "You are a master Vedic Astrologer conducting an intimate, high-end astrological consultation for a client.\n\n"
-        "CORE CONSULTATION DIRECTIVES:\n"
-        "1. DIRECT & IMMEDIATE ANSWER: In your very first sentence, directly answer the user's specific question (e.g. if asked why a gemstone is not suitable, or whether a period is favorable, state the clear astrological verdict right away). Never start with generic filler, preamble, or recitation of the prompt.\n\n"
-        "2. MULTI-PILLAR CHAIN OF THOUGHT (SYNTHESIZED REASONING):\n"
-        "A true master astrologer evaluates multiple convergent pillars before reaching a verdict: Natal House Lordships, Kendradhipati/Maraka/Dusthana vs Trikona mechanics, natural karakas, divisional vargas, Chandra Nadi (natal Moon placement, nakshatra, and mental conditioning), Gate 0 hardware failure screening, Vimshottari dasha hierarchy, and live Gochara transits.\n"
-        "CRITICAL INSTRUCTION: Reason deeply through ALL these pillars, BUT synthesize them into a smooth, authoritative, conversational consultation.\n"
-        "DO NOT output mechanical, robotic boilerplate headers like '### Step 1: Multi-Pillar Astrological Deliberation (Chain of Thought)', '• Pillar I - Natal House Mechanics & Lords', '• Pillar II', '• Pillar III', or '### Step 2: Dasha Hierarchy'.\n"
-        "Instead, use natural, professional consultation headings tailored to the client's question, such as:\n"
-        "### Direct Astrological Verdict\n"
-        "### Classical Planetary Mechanics & Lordship Analysis\n"
-        "### Mind, Dasha & Transit Timing Synthesis\n"
-        "### Targeted Classical Upayas & Practical Remedies\n\n"
-        "3. RIGOROUS ASTROLOGICAL FIDELITY & GEMSTONE SAFETY:\n"
-        "• Strictly adhere to the [PILLAR 6: GEMSTONE SUITABILITY & REMEDIAL AUDIT] and chart mechanics provided below.\n"
-        "• If a gemstone is marked STRICTLY_AVOID, AVOID, or MANTRA_ONLY (e.g. Emerald/Panna for Pisces Lagna due to 4th & 7th Lord Kendradhipati Dosha and Maraka/Badhaka status, or stones of 8th-house occupants like Jupiter/Mars in 8th), NEVER recommend wearing it! Clearly explain the classical Parashari rationale for why that stone is contraindicated.\n"
-        "• If the client asks about a specific gemstone that is contraindicated, explain why its planetary lordship or house placement causes friction, and guide them to safe non-invasive remedies (mantras, charitable donations) and any verified auspicious gemstones (e.g. Pearl for 5th Lord Moon).\n"
-        "• Never contradict the chart facts or report findings.\n\n"
-        "4. TONE & STYLE:\n"
-        "• Authoritative, deeply learned, empathetic, and sophisticated (300–700 words).\n"
-        "• Use bold formatting for classical terms (e.g. **Kendradhipati Dosha**, **Maraka Sthana**, **Trikona**, **Ashtakavarga**, **Sade Sati**).\n"
-        "• Maintain warm conversational continuity with previous chat turns."
+def _deterministic_chat_fallback(pc: dict, question: str, *,
+                                  domain_override: str = "",
+                                  target_planet: str = "",
+                                  route: Any = None) -> dict:
+    """Plain prose when the planner or voice pass is unavailable."""
+    conf = analyze_question_confluence(
+        pc, question, domain_override=domain_override, route=route,
+        target_planet=target_planet)
+    if conf.domain_key == "out_of_domain":
+        ans = (
+            "That question sits outside what I can read from your chart. "
+            "Ask me about your work, money, family, health, relationships, "
+            "timing, gemstones or remedies, and I will answer from the "
+            "facts in your reading."
+        )
+        return {
+            "answer": ans,
+            "out_of_scope": True,
+            "used_fact_ids": ["out_of_domain"],
+            "stats": {"accepted": 1, "rejected": 0, "fallback": "deterministic"},
+        }
+    ans = (
+        f"{conf.classical_verdict} Your primary breakthrough window is "
+        f"{conf.breakthrough_period}."
     )
-    
-    supp_text = "\n".join(f"  - {s}" for s in conf.supporting_factors) if conf.supporting_factors else "  - Clean kendra/trikona alignment"
-    karaka_text = "\n".join(f"  - {k}" for k in conf.karaka_findings) if conf.karaka_findings else "  - Primary domain significators"
-    varga_text = "\n".join(f"  - {v}" for v in conf.varga_findings) if conf.varga_findings else "  - D9 Navamsha and functional vargas"
-    dasha_text = "\n".join(f"  - {d}" for d in conf.dasha_timeline) if conf.dasha_timeline else f"  - {conf.breakthrough_period}"
-
-    gem_audit_lines = [
-        f"• Native's Ascendant (Lagna): {gem_audit['lagna']} (Lagna Lord: {gem_audit['lagna_lord']})"
-    ]
-    for p, inf in gem_audit["audit"].items():
-        gem_audit_lines.append(
-            f"• {p} ({inf['gem']}): [{inf['status']}] Placed in House {inf['house']}, Owns House(s) {inf['owned_houses']} -> {' '.join(inf['reasons'])}"
-        )
-    gemstone_grounding = "\n".join(gem_audit_lines)
-
-    confluence_context = f"""
-COMPLETE MULTI-PILLAR ASTROLOGICAL GROUNDING DATA:
-
-[PILLAR 1: NATAL & HOUSE MECHANICS]
-• Domain: {conf.domain_title}
-• Primary Ruler: House {conf.primary_house} ({conf.primary_house_sign}) governed by {conf.primary_house_lord} ({conf.primary_lord_placement}, {conf.primary_lord_dignity}).
-• Primary Lord Condition: {conf.dusthana_finding}
-• Supporting Houses & Lords:
-{supp_text}
-• Ashtakavarga (SAV) Strength: {conf.ashtakavarga_finding}
-
-[PILLAR 2: KARAKAS & DIVISIONAL VARGAS (D9/D10/D30)]
-• Natural Karakas Condition:
-{karaka_text}
-• Divisional Confirmations:
-{varga_text}
-
-[PILLAR 3: CHANDRA NADI (MIND & PSYCHOLOGICAL ENGINE)]
-• Natal Chandra Placement: {cn['moon_summary']}
-• Mind Conjunctions (1st from Moon): {', '.join(cn['conjunctions'])}
-• Aspects on Moon (Emotional Drivers): {'; '.join(cn['aspects'])}
-• Gochara Nadi Transit Hits (Current Transits vs Moon & Jeeva): {'; '.join(cn['transit_hits'])}
-
-[PILLAR 4: GATE 0 HARDWARE & CONTINGENCY AUDIT]
-• Hardware Health Status: {g0['status']}
-• Avayoga / Raja Bhanga Diagnostics: {'; '.join(g0['issues']) if g0['issues'] else 'No structural hardware failure detected.'}
-• Mandatory Verdict Contingency Rule: {g0['contingency_rule']}
-
-[PILLAR 5: DASHA TIMELINE & GOCHARA CONFLUENCE]
-• Live Gochar Transits: {conf.transit_finding}
-• Triple-Dasha Alignment: {conf.triple_dasha_confluence}
-• Current Running Period: {conf.current_dasha}
-• Breakthrough Timing Window: {conf.breakthrough_period}
-• Dasha Progression Timeline:
-{dasha_text}
-
-[PILLAR 6: GEMSTONE SUITABILITY & REMEDIAL AUDIT]
-{gemstone_grounding}
-
-[CLASSICAL BASELINE & REMEDIES]
-• Classical Baseline Finding: {conf.classical_verdict}
-• Prescribed Remedies: {'; '.join(conf.remedies[:4])}
-"""
-    
-    from openai import OpenAI
-    from core.config import S
-    base_url = getattr(S, "llm_base_url", "http://host.docker.internal:8000/v1") or "http://host.docker.internal:8000/v1"
-    api_key = getattr(S, "llm_api_key", "dummy") or "dummy"
-    model = getattr(S, "llm_model", "Qwen/Qwen2.5-7B-Instruct-AWQ") or "Qwen/Qwen2.5-7B-Instruct-AWQ"
-    
-    messages = [{"role": "system", "content": system_prompt + "\n" + confluence_context}]
-    for h in (history or [])[-6:]:
-        h_role = h.get("role", "user")
-        h_content = (h.get("content") or "").strip()
-        if len(h_content) > 1000:
-            h_content = h_content[:1000] + "..."
-        messages.append({"role": h_role, "content": h_content})
-    messages.append({"role": "user", "content": question})
-    
-    try:
-        if not _llm_allowed("chat"):
-            raise RuntimeError("chat tab has the LLM switched off")
-        client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key, timeout=120.0)
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=0.55,
-            max_tokens=2500
-        )
-        if resp and getattr(resp, "choices", None) and len(resp.choices) > 0:
-            msg = getattr(resp.choices[0], "message", None)
-            ans = ((getattr(msg, "content", None) or "")).strip()
-            if ans:
-                return {
-                    "answer": ans,
-                    "out_of_scope": False,
-                    "used_fact_ids": [conf.domain_key, "gochar", "ashtakavarga", "triple_dasha"],
-                    "stats": {"accepted": 1, "rejected": 0},
-                }
-    except Exception as exc:
-        import traceback
-        print(f"[confluence_question_engine] chat Qwen call failed: {exc}", flush=True)
-        traceback.print_exc()
-
-    fallback_ans = f"Based on your chart, {conf.classical_verdict} Your primary breakthrough timing window is {conf.breakthrough_period}."
+    extra = []
+    for r in (conf.remedies or []):
+        if r.startswith("Lal Kitab") or r.startswith("Chandra Naadi"):
+            extra.append(r)
+    if extra:
+        ans += " " + extra[0]
+    elif conf.remedies:
+        ans += " " + conf.remedies[0]
     return {
-        "answer": fallback_ans,
+        "answer": ans,
         "out_of_scope": False,
         "used_fact_ids": [conf.domain_key, "breakthrough_period"],
-        "stats": {"accepted": 1, "rejected": 0},
+        "stats": {"accepted": 1, "rejected": 0, "fallback": "deterministic"},
     }
 
+
+def answer_chat_with_confluence(pc: dict, question: str,
+                                history: Optional[list[dict]] = None,
+                                lang: str = "en") -> dict:
+    """Plan → run tools → write in the reader's voice → validate.
+
+    When the planner is unavailable the older MiniLM / keyword path still
+    answers, so chat never goes silent with the LLM switched off.
+    """
+    history = history or []
+    question = (question or "").strip()
+    if not question:
+        return {
+            "answer": "Ask me something about your chart and I will answer from it.",
+            "out_of_scope": False,
+            "used_fact_ids": [],
+            "stats": {"accepted": 0, "rejected": 0},
+        }
+
+    plan = None
+    try:
+        from llm.question_planner import (
+            plan_as_calls,
+            plan_question,
+            write_in_user_voice,
+        )
+        plan = plan_question(question, history=history)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[confluence_question_engine] planner failed: {exc}", flush=True)
+        plan = None
+
+    if plan is not None:
+        if not plan.in_scope:
+            voice = ""
+            try:
+                voice = write_in_user_voice(
+                    question, plan, {}, history=history, lang=lang)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[confluence_question_engine] voice (oos) failed: {exc}",
+                      flush=True)
+            if voice and ("```" in voice or "def " in voice):
+                voice = ""
+            if not voice:
+                voice = (
+                    "That one sits outside astrology. I can read your chart "
+                    "for work, money, family, health, relationships, timing, "
+                    "gemstones and remedies — ask me about any of those."
+                )
+            return {
+                "answer": voice,
+                "out_of_scope": True,
+                "used_fact_ids": ["out_of_domain"],
+                "stats": {"accepted": 1, "rejected": 0, "path": "planner"},
+            }
+
+        try:
+            from astro_tools import run_tools
+            results = run_tools(
+                pc, plan_as_calls(plan), question=question, lang=lang)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[confluence_question_engine] run_tools failed: {exc}",
+                  flush=True)
+            results = {}
+
+        voice = ""
+        try:
+            voice = write_in_user_voice(
+                question, plan, results, history=history, lang=lang)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[confluence_question_engine] voice failed: {exc}",
+                  flush=True)
+
+        if voice:
+            from llm.grounding import extract_ledger, enforce_grounding
+            leftover = enforce_grounding(
+                voice, extract_ledger(results), question)
+            if leftover:
+                print(f"[confluence_question_engine] grounded reject: "
+                      f"{leftover}", flush=True)
+                voice = ""
+
+        if voice:
+            return {
+                "answer": voice,
+                "out_of_scope": False,
+                "used_fact_ids": list(results.keys()) or [plan.life_area],
+                "stats": {"accepted": 1, "rejected": 0, "path": "planner"},
+            }
+
+        from llm.grounding import deterministic_from_results
+        det = deterministic_from_results(results, question)
+        if det:
+            return {
+                "answer": det,
+                "out_of_scope": False,
+                "used_fact_ids": list(results.keys()) or [plan.life_area],
+                "stats": {"accepted": 1, "rejected": 0, "path": "grounded"},
+            }
+
+        return _deterministic_chat_fallback(
+            pc, question,
+            domain_override=plan.life_area,
+            target_planet=getattr(plan, "target_planet", "") or "",
+        )
+
+    # Planner unavailable — MiniLM first, then keyword tables.
+    route = None
+    try:
+        import semantic_question as SQ
+        route = SQ.route(question, area="")
+    except Exception:  # noqa: BLE001
+        route = None
+    domain = _fallback_detect_domain(question, route=route)
+    return _deterministic_chat_fallback(
+        pc, question, domain_override=domain, route=route)
 

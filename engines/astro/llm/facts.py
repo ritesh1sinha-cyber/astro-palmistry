@@ -350,7 +350,7 @@ def _public_fact_payload(facts: Any) -> Any:
         "findings", "category", "severity", "planet", "sign", "house",
         "evaluation_date", "status", "state_description", "sign_occupied",
         "nakshatra_occupied", "summary", "consultation",
-        "chandra_naadi", "rahu_ketu", "transit_matrix", "core_persona",
+        "chandra_naadi", "lal_kitab", "rahu_ketu", "transit_matrix", "core_persona",
         "mind_architecture", "career_trajectory", "vitality_shield",
         "heart_equilibrium", "minor_power_lines", "wealth_vault",
         "dual_hand_synthesis", "palmist_counsel", "scientific_secrets",
@@ -358,7 +358,7 @@ def _public_fact_payload(facts: Any) -> Any:
         "points", "lines", "name", "age_landmark", "period", "significance",
         "subtitle", "scientific_fact", "entertainment_insight", "hand_shape",
         "client_name", "gender", "strength", "reinforced_in_both_hands",
-        "measured", "quality_note",
+        "measured", "quality_note", "precautions", "upayas", "remedies",
     }
 
     def clean(obj: Any, root: bool = False) -> Any:

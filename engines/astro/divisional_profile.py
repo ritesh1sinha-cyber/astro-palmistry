@@ -74,64 +74,64 @@ class DivisionalInsight:
 #: is looking for — "Career", not "Career Growth, Status & Public Respect".
 VARGA_META: dict[str, dict[str, str]] = {
     "D1": {
-        "name": "Birth Chart (D1)",
-        "governs": "Core Nature & Personal Vitality",
+        "name": "Your Personal Nature & Vitality",
+        "governs": "Core Character, Mindset & Innate Strengths",
         "nav": "Self & vitality",
-        "desc": "Your foundational personality, physical vitality, and overall life orientation.",
+        "desc": "Your foundational personality, physical vitality, and natural approach to life.",
     },
     "D2": {
-        "name": "Wealth Division (D2 · Hora)",
-        "governs": "Wealth, Savings & Financial Stability",
+        "name": "Money, Savings & Wealth Growth",
+        "governs": "Wealth Accumulation, Income Flow & Financial Stability",
         "nav": "Money & wealth",
-        "desc": "Your wealth accumulation instincts, asset building, and liquid resource holding power.",
+        "desc": "Your financial instincts, asset retention power, and wealth building capacity.",
     },
     "D3": {
-        "name": "Courage, Siblings & Initiative (D3 · Drekkana)",
-        "governs": "Siblings, Courage & Initiative",
-        "nav": "Siblings & courage",
-        "desc": "Your courage, everyday initiative, sibling relationships, and physical execution drive.",
+        "name": "Initiative, Courage & Everyday Drive",
+        "governs": "Courage, Communication & Execution Stamina",
+        "nav": "Drive & initiative",
+        "desc": "Your courage, everyday initiative, sibling relationships, and execution stamina.",
     },
     "D4": {
-        "name": "Property, Residence & Relocation (D4 · Chaturthamsha)",
-        "governs": "Home, Land, Vehicles, Relocation & Living Abroad",
+        "name": "Home, Property & Domestic Peace",
+        "governs": "Real Estate, Vehicles & Living Environment",
         "nav": "Home & property",
-        "desc": "Fixed property ownership, residential stability, geographical relocation, and foreign settlement potential.",
+        "desc": "Fixed property ownership, residential peace, and relocation prospects.",
     },
     "D7": {
-        "name": "Children & Lineage (D7 · Saptamsha)",
-        "governs": "Children, Family Continuation & Legacy",
-        "nav": "Children",
-        "desc": "Your progeny prospects, reproductive vitality, family continuation, and children's dharma.",
+        "name": "Children, Family Continuity & Legacy",
+        "governs": "Children, Creative Progeny & Family Future",
+        "nav": "Children & legacy",
+        "desc": "Your progeny prospects, parenting dynamics, and family continuity.",
     },
     "D9": {
-        "name": "Marriage & Soul Journey (D9 · Navamsha)",
-        "governs": "Life Partner, Marriage & Inner Growth",
+        "name": "Marriage, Life Partner & Harmony",
+        "governs": "Spouse Compatibility, Marital Bliss & Inner Growth",
         "nav": "Marriage & partner",
         "desc": "Your inner spiritual maturity, spouse compatibility, and lifelong partnership harmony.",
     },
     "D10": {
-        "name": "Career & Profession (D10 · Dasamsha)",
-        "governs": "Career Growth, Status & Public Respect",
+        "name": "Career, Business & Public Standing",
+        "governs": "Professional Trajectory, Authority & Work Success",
         "nav": "Career & status",
-        "desc": "Your professional karma, public recognition, authority, and vocational trajectory.",
+        "desc": "Your professional trajectory, executive authority, public respect, and career breakthroughs.",
     },
     "D12": {
-        "name": "Family Roots (D12 · Dwadashamsha)",
-        "governs": "Parents & Ancestral Blessings",
+        "name": "Parents, Lineage & Family Roots",
+        "governs": "Parental Heritage & Ancestral Blessings",
         "nav": "Parents & roots",
         "desc": "Your ancestral foundation, parental heritage, and inherited moral grounding.",
     },
     "D24": {
-        "name": "Higher Learning (D24 · Chaturvimshamsha)",
-        "governs": "Education, Memory & Intellectual Skills",
-        "nav": "Learning & study",
+        "name": "Education, Knowledge & Skill Mastery",
+        "governs": "Learning Potential, Memory & Strategic Acumen",
+        "nav": "Learning & skills",
         "desc": "Your higher learning potential, analytical skills, and capacity to master complex disciplines.",
     },
     "D30": {
-        "name": "Health, Physical Stamina & Resilience (D30 · Trimsamsha & D27 · Bhamsha)",
-        "governs": "Physical Stamina, Health Sensitivities & Inner Immunity",
+        "name": "Health, Energy & Inner Resilience",
+        "governs": "Physical Stamina, Immunity & Stress Management",
         "nav": "Health & stamina",
-        "desc": "Your cellular stamina (D27), anatomical vulnerability patterns, and inner resilience to overcome obstacles (D30).",
+        "desc": "Your bodily stamina, anatomical sensitivities, and inner resilience to overcome stress.",
     },
 }
 
@@ -730,20 +730,17 @@ def _build_domain_specific_timeline(
             launch_yr = this_yr + (22 - current_age)
             peak_yr = this_yr + (28 - current_age)
             return (
-                f"{active_clocks}<br>"
-                f"<b>Vocational Incubation Phase:</b> Currently building academic curiosity and intellectual discipline under {curr_md}-{curr_ad_lord}.<br>"
-                f"<b>Key Career Milestones:</b> <b>Career Launch Window:</b> <span style='color:#b57c38;font-weight:700;'>{launch_yr}–{launch_yr+4} (Ages 22–26)</span> | "
-                f"<b>Executive Promotion & Authority Surge:</b> <span style='color:#b57c38;font-weight:700;'>{peak_yr}–{peak_yr+6} (Ages 28–34)</span>."
+                f"<b>Current Foundation Phase ({curr_md}–{curr_ad_lord}):</b> Building curiosity, academic focus, and early discipline.<br>"
+                f"<b>Key Career Launch Window:</b> <span style='color:#1c6b45;font-weight:700;'>{launch_yr}–{launch_yr+4} (Ages 22–26)</span> | "
+                f"<b>Executive Leadership Window:</b> <span style='color:#1c6b45;font-weight:700;'>{peak_yr}–{peak_yr+6} (Ages 28–34)</span>."
             )
         else:
             c_lord, c_st, c_en, c_st_d, c_en_d = find_target_ad(["Venus", amk, "Sun", h10_lord, "Jupiter", "Mars"])
-            chara_note, yog_note = get_overlapping_confluence_notes(c_st_d, c_en_d, ["Venus", "Siddha", amk, "Sun", "Pingala", "Mercury", "Bhadrika", "Jupiter", "Dhanya"])
-            transit_note = get_transit_ashtakavarga_domain_note("D10", c_st_d, c_en_d, pc, av_data)
             return (
-                f"{active_clocks}<br>"
-                f"<b>Active Career Momentum:</b> Strategic consolidation and positioning under {curr_md}-{curr_ad_lord} (running until {curr_ad_end_fmt}).<br>"
-                f"<b>Career Surge & Executive Elevation Window:</b> <span style='color:#b57c38;font-weight:700;'>{c_st} – {c_en}</span> under <b>{curr_md}-{c_lord}</b> "
-                f"(activating 10th house executive authority and significators){yog_note}.{chara_note}{transit_note}"
+                f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+                f"Quiet consolidation, refining specialized skills, and establishing solid internal systems without forcing hasty career pivots.<br>"
+                f"<b>Upcoming Major Breakthrough:</b> <span style='color:#1c6b45;font-weight:700;'>{c_st} – {c_en} ({curr_md}–{c_lord})</span> — "
+                f"Major executive recognition, leadership promotion, and substantial career elevation."
             )
 
     elif code == "D9":
@@ -751,31 +748,26 @@ def _build_domain_specific_timeline(
         if is_child:
             m_yr = this_yr + (26 - current_age)
             return (
-                f"{active_clocks}<br>"
-                f"<b>Partnership Horizon:</b> <b>Prime Marriage Window:</b> <span style='color:#b57c38;font-weight:700;'>{m_yr}–{m_yr+5} (Ages 26–31)</span> "
-                f"under supportive Venus and 7th house planetary activations."
+                f"<b>Partnership Horizon:</b> <span style='color:#1c6b45;font-weight:700;'>{m_yr}–{m_yr+5} (Ages 26–31)</span> — "
+                f"Auspicious timing for marriage, life partnership, and mutual emotional maturity."
             )
         else:
             m_lord, m_st, m_en, m_st_d, m_en_d = find_target_ad(["Venus", dk, h7_lord, "Jupiter"])
-            chara_note, yog_note = get_overlapping_confluence_notes(m_st_d, m_en_d, ["Venus", "Siddha", "Jupiter", "Dhanya", dk])
-            transit_note = get_transit_ashtakavarga_domain_note("D9", m_st_d, m_en_d, pc, av_data)
             return (
-                f"{active_clocks}<br>"
-                f"<b>Relationship Dynamics:</b> Emotional grounding and mutual understanding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-                f"<b>Marital Fruition & Relational Harmony Window:</b> <span style='color:#b57c38;font-weight:700;'>{m_st} – {m_en}</span> under <b>{curr_md}-{m_lord}</b> "
-                f"(activating Kalatrakaraka {m_lord} and 7th house partnership dynamics){yog_note}.{chara_note}{transit_note}"
+                f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+                f"Deepening mutual emotional grounding, patience, and clear communication in relationships.<br>"
+                f"<b>Relational Harmony & Partnership Window:</b> <span style='color:#1c6b45;font-weight:700;'>{m_st} – {m_en} ({curr_md}–{m_lord})</span> — "
+                f"Warm emotional alignment, shared happiness, and elevated domestic harmony."
             )
 
     elif code == "D2":
         # Wealth
         w_lord, w_st, w_en, w_st_d, w_en_d = find_target_ad(["Venus", "Jupiter", h2_lord, h11_lord, "Mercury"])
-        chara_note, yog_note = get_overlapping_confluence_notes(w_st_d, w_en_d, ["Venus", "Siddha", "Jupiter", "Dhanya", "Mercury", "Bhadrika"])
-        transit_note = get_transit_ashtakavarga_domain_note("D2", w_st_d, w_en_d, pc, av_data)
         return (
-            f"{active_clocks}<br>"
-            f"<b>Financial Rhythm:</b> Structured capital preservation and disciplined compounding under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-            f"<b>Major Asset Accumulation & Liquidity Window:</b> <span style='color:#b57c38;font-weight:700;'>{w_st} – {w_en}</span> under <b>{curr_md}-{w_lord}</b>, "
-            f"favoring high-yield compounding, asset acquisitions, and expanding income streams{yog_note}.{chara_note}{transit_note}"
+            f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+            f"Disciplined budgeting, capital preservation, and avoiding unvetted speculative risks.<br>"
+            f"<b>Major Wealth Surge & Asset Accumulation:</b> <span style='color:#1c6b45;font-weight:700;'>{w_st} – {w_en} ({curr_md}–{w_lord})</span> — "
+            f"Accelerated savings, lucrative income flow, and strong financial stability."
         )
 
     elif code == "D7":
@@ -783,110 +775,93 @@ def _build_domain_specific_timeline(
         if is_child:
             p_yr = this_yr + (28 - current_age)
             return (
-                f"{active_clocks}<br>"
-                f"<b>Family Continuation Horizon:</b> <b>Primary Progeny Window:</b> <span style='color:#b57c38;font-weight:700;'>{p_yr}–{p_yr+5} (Ages 28–33)</span> "
-                f"when Putrakaraka and 5th house significators activate."
+                f"<b>Family Continuation Window:</b> <span style='color:#1c6b45;font-weight:700;'>{p_yr}–{p_yr+5} (Ages 28–33)</span> — "
+                f"Supportive period for parenthood and family continuation."
             )
         else:
             p_lord, p_st, p_en, p_st_d, p_en_d = find_target_ad([pk, h5_lord, "Jupiter", "Moon", "Venus"])
-            chara_note, yog_note = get_overlapping_confluence_notes(p_st_d, p_en_d, ["Jupiter", "Dhanya", "Moon", "Mangala", "Venus", "Siddha", pk])
-            transit_note = get_transit_ashtakavarga_domain_note("D7", p_st_d, p_en_d, pc, av_data)
             return (
-                f"{active_clocks}<br>"
-                f"<b>Family Continuation Dynamics:</b> Foundational family nurturing under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-                f"<b>Progeny Blessing & Family Expansion Window:</b> <span style='color:#b57c38;font-weight:700;'>{p_st} – {p_en}</span> under <b>{curr_md}-{p_lord}</b> "
-                f"(activating Putrakaraka {pk} and 5th house fertility guardians){yog_note}.{chara_note}{transit_note}"
+                f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+                f"Supportive family foundation and patient, attentive parenting.<br>"
+                f"<b>Family Expansion & Joyful Milestones:</b> <span style='color:#1c6b45;font-weight:700;'>{p_st} – {p_en} ({curr_md}–{p_lord})</span> — "
+                f"Auspicious family milestones, children's accomplishments, and domestic happiness."
             )
 
     elif code == "D24":
         # Learning
         l_lord, l_st, l_en, l_st_d, l_en_d = find_target_ad(["Mercury", "Jupiter", h5_lord, h4_lord, "Sun"])
-        chara_note, yog_note = get_overlapping_confluence_notes(l_st_d, l_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Sun", "Pingala"])
-        transit_note = get_transit_ashtakavarga_domain_note("D24", l_st_d, l_en_d, pc, av_data)
         return (
-            f"{active_clocks}<br>"
-            f"<b>Intellectual Grasping Power:</b> Deep analytical assimilation and conceptual mastery under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-            f"<b>Academic Distinction & Certification Milestone:</b> <span style='color:#b57c38;font-weight:700;'>{l_st} – {l_en}</span> under <b>{curr_md}-{l_lord}</b>, "
-            f"energizing executive credentials, specialized publications, and competitive examinations{yog_note}.{chara_note}{transit_note}"
+            f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+            f"Focused self-study, mastering specialized knowledge, and refining technical expertise.<br>"
+            f"<b>Academic Distinction & Professional Certification:</b> <span style='color:#1c6b45;font-weight:700;'>{l_st} – {l_en} ({curr_md}–{l_lord})</span> — "
+            f"Major certifications, published research, and intellectual accolades."
         )
 
     elif code == "D4":
-        # Home, Property & Relocation
+        # Home & Property
         h12_lord = get_h_lord(12)
         prop_lord, prop_st, prop_en, prop_st_d, prop_en_d = find_target_ad(["Mars", "Venus", h4_lord, "Jupiter", h12_lord, "Rahu"])
-        chara_note, yog_note = get_overlapping_confluence_notes(prop_st_d, prop_en_d, ["Mars", "Bhramari", "Venus", "Siddha", "Jupiter", "Dhanya", "Rahu", "Sankata"])
-        transit_note = get_transit_ashtakavarga_domain_note("D4", prop_st_d, prop_en_d, pc, av_data)
         return (
-            f"{active_clocks}<br>"
-            f"<b>Domestic Sanctuary & Real Estate Timing:</b> Property consolidation and residential stability under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-            f"<b>Prime Property Acquisition & Relocation Window:</b> <span style='color:#b57c38;font-weight:700;'>{prop_st} – {prop_en}</span> under <b>{curr_md}-{prop_lord}</b> "
-            f"(activating 4th/12th house property, conveyance upgrade, and geographical relocation){yog_note}.{chara_note}{transit_note}"
+            f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+            f"Domestic organizing, researching properties, and maintaining residential peace.<br>"
+            f"<b>Prime Property Acquisition & Upgrades:</b> <span style='color:#1c6b45;font-weight:700;'>{prop_st} – {prop_en} ({curr_md}–{prop_lord})</span> — "
+            f"Highly favorable window for acquiring residential property, vehicles, or upgrading home comforts."
         )
 
     elif code == "D30":
         # Health
         if is_child:
             rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Mercury", "Jupiter", "Venus", "Moon"])
-            chara_note, yog_note = get_overlapping_confluence_notes(rec_st_d, rec_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Venus", "Siddha", "Moon", "Mangala"])
-            transit_note = get_transit_ashtakavarga_domain_note("D30", rec_st_d, rec_en_d, pc, av_data)
             return (
-                f"{active_clocks}<br>"
-                f"<b>Vitality & Nervous Regulation:</b> Building foundational nervous and digestive strength.<br>"
-                f"<b>Major Healing & Physical Fortification Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b> "
-                f"delivering rapid sensory recovery, emotional calm, and robust physical stamina{yog_note}.{chara_note}{transit_note}"
+                f"<b>Current Phase ({curr_md}–{curr_ad_lord}):</b> Establishing robust immunity, steady nutrition, and regular rest rhythms.<br>"
+                f"<b>Peak Vitality & Growth Window:</b> <span style='color:#1c6b45;font-weight:700;'>{rec_st} – {rec_en} ({curr_md}–{rec_lord})</span> — "
+                f"Strong physical stamina and energetic balance."
             )
         else:
             rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Jupiter", "Venus", "Sun", "Mercury", "Moon"])
-            chara_note, yog_note = get_overlapping_confluence_notes(rec_st_d, rec_en_d, ["Jupiter", "Dhanya", "Venus", "Siddha", "Sun", "Pingala", "Moon", "Mangala"])
-            transit_note = get_transit_ashtakavarga_domain_note("D30", rec_st_d, rec_en_d, pc, av_data)
             return (
-                f"{active_clocks}<br>"
-                f"<b>Immunity & Stress Rhythm:</b> Regulating work-rest balance under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}) during active {yog_display} Yogini cycle.<br>"
-                f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:#b57c38;font-weight:700;'>{rec_st} – {rec_en}</span> under <b>{curr_md}-{rec_lord}</b>, "
-                f"bringing deep physical rejuvenation, stress release, and cellular vitality{yog_note}.{chara_note}{transit_note}"
+                f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+                f"Prioritizing restorative sleep, digestive wellness, and conscious stress-relief.<br>"
+                f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:#1c6b45;font-weight:700;'>{rec_st} – {rec_en} ({curr_md}–{rec_lord})</span> — "
+                f"Rejuvenated energy, high physical stamina, and deep bodily renewal."
             )
 
     elif code == "D3":
         # Siblings & Initiative
         if is_child:
             sp_lord, sp_st, sp_en, sp_st_d, sp_en_d = find_target_ad(["Mercury", "Jupiter", "Venus", "Moon"])
-            chara_note, yog_note = get_overlapping_confluence_notes(sp_st_d, sp_en_d, ["Mercury", "Bhadrika", "Jupiter", "Dhanya", "Venus", "Siddha"])
             return (
-                f"{active_clocks}<br>"
-                f"<b>Expressive Speech & Motor Pacing:</b> Active motor coordination under {curr_md}-{curr_ad_lord}.<br>"
-                f"<b>Expressive Breakthrough Window:</b> <span style='color:#b57c38;font-weight:700;'>{sp_st} – {sp_en}</span> under <b>{curr_md}-{sp_lord}</b> "
-                f"activating vocal clarity, fluent sentence formation, and confident physical coordination{yog_note}.{chara_note}"
+                f"<b>Current Phase ({curr_md}–{curr_ad_lord}):</b> Encouraging creative play, communication, and motor coordination.<br>"
+                f"<b>Expressive Breakthrough Window:</b> <span style='color:#1c6b45;font-weight:700;'>{sp_st} – {sp_en} ({curr_md}–{sp_lord})</span> — "
+                f"Confident self-expression and clear communication."
             )
         else:
             dr_lord, dr_st, dr_en, dr_st_d, dr_en_d = find_target_ad([bk, "Mars", h3_lord, "Mercury", "Venus"])
-            chara_note, yog_note = get_overlapping_confluence_notes(dr_st_d, dr_en_d, ["Mars", "Bhramari", "Mercury", "Bhadrika", bk])
             return (
-                f"{active_clocks}<br>"
-                f"<b>Everyday Drive & Sibling Ties:</b> Steady personal enterprise and collaborative peer dynamics under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-                f"<b>High-Impact Enterprise & Collaborative Venture Window:</b> <span style='color:#b57c38;font-weight:700;'>{dr_st} – {dr_en}</span> under <b>{curr_md}-{dr_lord}</b> "
-                f"(activating Bhratrukaraka {bk} and 3rd house courageous initiatives){yog_note}.{chara_note}"
+                f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+                f"Steady, deliberate execution on personal projects and supportive relationships with close peers.<br>"
+                f"<b>High-Impact Enterprise & Collaborative Venture:</b> <span style='color:#1c6b45;font-weight:700;'>{dr_st} – {dr_en} ({curr_md}–{dr_lord})</span> — "
+                f"Bold initiatives, expanding enterprise, and successful ventures."
             )
 
     elif code == "D12":
         # Parents
         par_lord, par_st, par_en, par_st_d, par_en_d = find_target_ad(["Sun", "Moon", h9_lord, h4_lord, "Jupiter"])
-        chara_note, yog_note = get_overlapping_confluence_notes(par_st_d, par_en_d, ["Sun", "Pingala", "Moon", "Mangala", "Jupiter", "Dhanya"])
         return (
-            f"{active_clocks}<br>"
-            f"<b>Ancestral Lineage & Parental Blessings:</b> Grounding moral wisdom and family protection under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-            f"<b>Family Milestone & Ancestral Fulfillment Window:</b> <span style='color:#b57c38;font-weight:700;'>{par_st} – {par_en}</span> under <b>{curr_md}-{par_lord}</b>, "
-            f"bringing auspicious family harmony, paternal backing, and shared ancestral celebrations{yog_note}.{chara_note}"
+            f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+            f"Honoring ancestral values, respecting family elders, and maintaining peaceful family ties.<br>"
+            f"<b>Family Milestone & Parental Blessings:</b> <span style='color:#1c6b45;font-weight:700;'>{par_st} – {par_en} ({curr_md}–{par_lord})</span> — "
+            f"Auspicious family celebrations, parental backing, and shared domestic milestones."
         )
 
     else:
         # D1 Core
         core_lord, core_st, core_en, core_st_d, core_en_d = find_target_ad([ak, "Sun", "Jupiter", "Moon", "Mercury"])
-        chara_note, yog_note = get_overlapping_confluence_notes(core_st_d, core_en_d, ["Sun", "Pingala", "Jupiter", "Dhanya", "Venus", "Siddha", ak])
         return (
-            f"{active_clocks}<br>"
-            f"<b>Personal Constitution & Vitality:</b> Grounded self-realization under {curr_md}-{curr_ad_lord} (until {curr_ad_end_fmt}).<br>"
-            f"<b>Personal Evolution & Clarity Window:</b> <span style='color:#b57c38;font-weight:700;'>{core_st} – {core_en}</span> under <b>{curr_md}-{core_lord}</b> "
-            f"(activating Atmakaraka {ak} and core constitutional vitality){yog_note}.{chara_note}"
+            f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
+            f"Grounded self-realization, inner clarity, and steady personal growth.<br>"
+            f"<b>Personal Evolution & Clarity Window:</b> <span style='color:#1c6b45;font-weight:700;'>{core_st} – {core_en} ({curr_md}–{core_lord})</span> — "
+            f"Expanding personal confidence, charismatic presence, and decisive life breakthroughs."
         )
 
 
@@ -1322,7 +1297,7 @@ def _interpret_varga_concrete(
                     f"Shubha grahala ({', '.join(strong_planets)}) sahayatho mee financial holding capacity mariyu savings samayam tho paatu balapadathayi."
                 )
         else:
-            headline = f"Wealth, Savings & Financial Stability (Hora)"
+            headline = f"Wealth, Savings & Financial Stability"
             hora_nature = "strategic asset accumulation and compounding investments"
             if v_lagna in ("Leo", "Aries", "Sagittarius", "Gemini", "Libra", "Aquarius"):
                 hora_nature = "active enterprise, self-made initiatives, leadership authority, and bold professional ventures"
@@ -1354,7 +1329,7 @@ def _interpret_varga_concrete(
                 f"Mee loni sankalpa balam tho panulanu vijayavanthamga poorthi cheyagalaru."
             )
         else:
-            headline = f"Courage, Siblings & Everyday Initiative (Drekkana)"
+            headline = f"Courage, Siblings & Everyday Initiative"
             courage_str = "You possess strong natural courage, decisive execution, and the ability to take self-directed initiative on ambitious goals."
             if lord_house in (3, 6, 10, 11):
                 courage_str = "Your chart confirms powerful upachaya drive (*Parakrama*), indicating that your determination and ability to overcome resistance grow stronger with every challenge."
@@ -1372,7 +1347,7 @@ def _interpret_varga_concrete(
                 motor_str = "Physical pacing and manual stamina benefit from steady warmups, regular physical exercise, and avoiding erratic overexertion."
 
             reading_parts.extend([
-                f"The Drekkana division (D3) classically maps <b>personal courage (*Parakrama*), sibling relationships (*Bhratru*), everyday enterprise, and physical motor coordination</b>.",
+                f"The Drekkana division maps <b>personal courage (*Parakrama*), sibling relationships (*Bhratru*), everyday enterprise, and physical motor coordination</b>.",
                 courage_str,
                 sibling_str,
                 motor_str
@@ -1394,14 +1369,14 @@ def _interpret_varga_concrete(
                 "Mee kundali lo sthiramaina illu mariyu residential property pondadaniki anukoolamaina yogalu unnai."
             )
         else:
-            headline = f"Home, Land, Vehicles & Relocation (Chaturthamsha · D4)"
+            headline = f"Home, Land, Vehicles & Relocation"
             reading_parts.append(
-                "The Chaturthamsha division (D4) classically maps <b>domestic peace (*Griha Sukha*), fixed property, land acquisition, conveyances (*Vahana*), and geographical relocation / foreign settlement (*Videsh Vasa*)</b>. "
+                "The Chaturthamsha division maps <b>domestic peace (*Griha Sukha*), fixed property, land acquisition, conveyances (*Vahana*), and geographical relocation / foreign settlement (*Videsh Vasa*)</b>. "
                 "Your chart confirms a solid foundational promise for acquiring residential real estate, comfortable conveyances, and establishing an enduring personal sanctuary in adulthood."
             )
             if strong_planets:
                 reading_parts.append(
-                    f"<br><br><b>Property & Asset Fortification:</b> Well-placed indicators ({', '.join(strong_planets)}) in D4 support significant land appreciation, smooth property transactions, and domestic comfort."
+                    f"<br><br><b>Property & Asset Fortification:</b> Well-placed indicators ({', '.join(strong_planets)}) support significant land appreciation, smooth property transactions, and domestic comfort."
                 )
 
             d1_h4_lord = SIGN_LORDS.get(house_sign(d1_lagna, 4), "") if d1_lagna else ""
@@ -1466,7 +1441,7 @@ def _interpret_varga_concrete(
                 f"Kundali lo santhanam tho santhosham mariyu kutumba aanandam anukoolanga unnai."
             )
         else:
-            headline = f"Children, Family Lineage & Progeny (Saptamsha)"
+            headline = f"Children, Family Lineage & Progeny"
             d7_moon = div_dict.get("D7", {}).get("Moon", "")
             d7_jup = div_dict.get("D7", {}).get("Jupiter", "")
             d7_ven = div_dict.get("D7", {}).get("Venus", "")
@@ -1509,7 +1484,7 @@ def _interpret_varga_concrete(
                 f"Mee kundali vivekamaina jeevithabhagswami mariyu vivaham tharuvatha aarthika, manasika sthiratha sankethalu isthondi."
             )
         else:
-            headline = f"Marriage, Life Partner & Soul Purpose (Navamsha)"
+            headline = f"Marriage, Life Partner & Soul Purpose"
             partner_nature, partner_realm, dynamics = _determine_marriage_profile(
                 d1_lagna=d1_lagna,
                 d1_h7_lord=SIGN_LORDS.get(house_sign(d1_lagna, 7), ""),
@@ -1541,7 +1516,7 @@ def _interpret_varga_concrete(
                 f"<b>Anukoolamaina Rangamu:</b> Graha sthiti prakaram meeku specialized mastery, structured execution mariyu executive responsibility lo manchi vijayam vasthundi."
             )
         else:
-            headline = f"Career, Leadership & Professional Status (Dasamsha)"
+            headline = f"Career, Leadership & Professional Status"
             archetype, suited_fields, work_style = _determine_career_profile(
                 d1_lagna=d1_lagna,
                 d1_h10_lord=d1_h10_lord,
@@ -1576,7 +1551,7 @@ def _interpret_varga_concrete(
                 f"Peddala gouravam mariyu parivara moolalu meeku jeevitham lo shantini, positivity ni isthayi."
             )
         else:
-            headline = f"Family Roots & Parental Blessings (Dwadashamsha)"
+            headline = f"Family Roots & Parental Blessings"
             reading_parts.append(
                 f"This chart reflects family heritage, parental affection, and ancestral protection. "
                 f"You carry strong moral grounding and blessings from parents. Respecting family elders and honoring family traditions brings positive energetic support throughout your life."
@@ -1602,7 +1577,7 @@ def _interpret_varga_concrete(
                 f"Regular practice tho technical, management leda professional certifications lo goppa safalatha pondavachu."
             )
         else:
-            headline = f"Education, Memory & Intellectual Mastery (Chaturvimshamsha)"
+            headline = f"Education, Memory & Intellectual Mastery"
             reading_parts.append(
                 f"The D24 chart confirms strong conceptual grasping power, analytical thinking, and the ability to master complex disciplines. "
                 f"With structured, distraction-free study habits, you can excel in technical, scientific, legal, or management programs and competitive certifications."
@@ -1639,7 +1614,7 @@ def _interpret_varga_concrete(
                 "Aapki kundli niyamit dainik routine, pachan ka dhyan aur swasth aahar se achhi vitality aur physical balance banaye rakhne ka sanket deti hai."
             )
         else:
-            headline = f"Health Sensitivities, Physical Stamina & Timely Upayas (D30 · Trimsamsha & D27 · Bhamsha)"
+            headline = f"Health Sensitivities, Physical Stamina & Resilience"
             reading_parts.append(
                 "Classical Trimsamsha (D30) and Saptavimshamsha (D27) analysis maps your cellular stamina, "
                 "constitutional resilience, latent anatomical sensitivities, and preventive wellness rhythms."
@@ -2023,12 +1998,14 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
     for ins in insights:
         pill_cls = "up" if ins.strength == "strong" else "down" if ins.strength == "weak" else "mixed"
         if is_hinglish:
-            pill_lbl = "Anukool / Mazboot" if ins.strength == "strong" else "Savdhani Aavashyak" if ins.strength == "weak" else "Sakriya"
+            pill_lbl = "Anukool" if ins.strength == "strong" else "Savdhan" if ins.strength == "weak" else "Sakriya"
         elif is_tenglish:
-            pill_lbl = "Anukoolam / Balanga" if ins.strength == "strong" else "Jagratha Avasaram" if ins.strength == "weak" else "Sakriyam"
+            pill_lbl = "Anukoolam" if ins.strength == "strong" else "Jagratha" if ins.strength == "weak" else "Sakriyam"
         else:
-            pill_lbl = "Well Supported" if ins.strength == "strong" else "Needs Care" if ins.strength == "weak" else "Constructive / Active"
-        border_color = "#1c6b45" if ins.strength == "strong" else "#a3341f" if ins.strength == "weak" else "#8a6a1f"
+            pill_lbl = "Well Supported" if ins.strength == "strong" else "Needs Care" if ins.strength == "weak" else "Active / Mixed"
+        
+        card_class = "pos" if ins.strength == "strong" else "warn" if ins.strength == "weak" else "accent"
+        pill_status_class = "positive" if ins.strength == "strong" else "warning" if ins.strength == "weak" else "info"
 
         is_free_allowed = ins.code in FREE_ALLOWED_VARGAS
 
@@ -2040,7 +2017,7 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
                 timeline_text = _free_timeline(timeline_text)
             if timeline_text:
                 timeline_box = (
-                    f'  <div style="background:#fcfbf8;border-left:3px solid #b57c38;padding:8px 12px;border-radius:6px;margin:8px 0 10px;font-size:0.84rem;line-height:1.5;color:#2c3140;">\n'
+                    f'  <div style="background:rgba(56,189,248,0.08);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:10px 14px;margin:12px 0;font-size:13.5px;color:#e2e8f0;line-height:1.55;">\n'
                     f'    {timeline_text}\n'
                     f'  </div>\n'
                 )
@@ -2051,10 +2028,10 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
             elif is_tenglish:
                 upaya_lbl = "Vedic Upayam:"
             else:
-                upaya_lbl = "Targeted Vedic Upaya:"
+                upaya_lbl = "Prescribed Astrological Upaya:"
             if paid:
                 remedy_box = (
-                    f'  <div style="background:#f9f8f5;border-left:3px solid #1c6b45;padding:8px 12px;border-radius:6px;margin:8px 0 10px;font-size:0.84rem;line-height:1.45;color:#4a453c;">\n'
+                    f'  <div style="background:rgba(16,185,129,0.08);border-left:3px solid var(--positive);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0;font-size:13.5px;color:#a7f3d0;line-height:1.5;">\n'
                     f'    <b>{upaya_lbl}</b> {ins.remedy}\n'
                     f'  </div>\n'
                 )
@@ -2070,14 +2047,14 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
                         f'Mantra, charity and daily practice matched to '
                         f'{html.escape(ins.lord or "your chart ruler")} for this area of life.'
                     )
-                    lock_text = "🔒 Remedial Action in Full Reading"
+                    lock_text = "🔒 Upaya Unlocked in Full Reading"
                 remedy_box = (
-                    f'  <div class="lock-wrap" style="margin:8px 0 10px;border-radius:8px;">\n'
-                    f'    <div class="lock-blur" style="padding:8px 12px;font-size:0.84rem;line-height:1.45;">\n'
+                    f'  <div class="lock-wrap" style="margin:10px 0;">\n'
+                    f'    <div class="lock-blur" style="padding:10px 14px;font-size:13.5px;color:#94a3b8;">\n'
                     f'      <b>{upaya_lbl}</b> {teaser_remedy}\n'
                     f'    </div>\n'
                     f'    <div class="lock-over">\n'
-                    f'      <span class="lock-chip" style="font-size:0.72rem;padding:4px 10px;">{lock_text}</span>\n'
+                    f'      <span class="lock-chip">{lock_text}</span>\n'
                     f'    </div>\n'
                     f'  </div>\n'
                 )
@@ -2088,11 +2065,11 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
             elif is_tenglish:
                 proof_title = f"Jyotisha Pramanam ({html.escape(ins.name)})"
             else:
-                proof_title = f"Technical Astrological Proof ({html.escape(ins.name)})"
+                proof_title = f"Technical Astrological Basis ({html.escape(ins.name)})"
             proof_drawer = (
-                f'  <details style="margin-top:10px;border-top:1px solid #eeeae3;padding-top:8px;font-size:0.78rem;color:#7a756c;line-height:1.45;">\n'
-                f'    <summary style="cursor:pointer;font-weight:600;color:#1f2430;">{proof_title}</summary>\n'
-                f'    <div style="padding-top:6px;color:#444;">\n'
+                f'  <details style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px;font-size:12.5px;color:var(--text-muted);line-height:1.45;">\n'
+                f'    <summary style="cursor:pointer;font-weight:600;color:var(--text-muted);">{proof_title}</summary>\n'
+                f'    <div style="padding-top:6px;color:#cbd5e1;">\n'
                 f'      {ins.evidence}\n'
                 f'    </div>\n'
                 f'  </details>\n'
@@ -2102,51 +2079,46 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
             meta_entry = v_meta_dict.get(ins.code, {})
             area = meta_entry.get("nav") or meta_entry.get("governs") or ins.governs
             card = (
-                f'<article class="card div-card" id="{ins.domain_id}" style="margin-bottom:16px;border-left:4px solid {border_color};background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
-                f'  <div class="card-top">\n'
-                f'    <span class="area">{html.escape(area)} · {html.escape(ins.code)}</span>\n'
-                f'    <span class="pill {pill_cls}">{pill_lbl}</span>\n'
+                f'<div class="summary-card {card_class}" id="{ins.domain_id}">\n'
+                f'  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">\n'
+                f'    <span class="tag">{html.escape(area)}</span>\n'
+                f'    <span class="phase-pill {pill_status_class}">{pill_lbl}</span>\n'
                 f'  </div>\n'
-                f'  <h3 style="font-family:Georgia,serif;font-size:1.08rem;margin:8px 0 8px;color:#1f2430;font-weight:600;">{html.escape(ins.headline)}</h3>\n'
-                f'  <div style="margin:0 0 10px;font-size:0.9rem;line-height:1.58;color:#2c3140;">{ins.prediction}</div>\n'
+                f'  <h2>{html.escape(ins.headline)}</h2>\n'
+                f'  <div style="margin:0 0 12px;font-size:14.5px;line-height:1.6;color:#e2e8f0;">{ins.prediction}</div>\n'
                 f'{timeline_box}'
                 f'{remedy_box}'
                 f'{proof_drawer}'
-                f'</article>'
+                f'</div>\n'
             )
             div_cards_html.append(card)
         else:
             meta = v_meta_dict.get(ins.code, {})
-            verdict_bg = ("#e6f2ea" if ins.strength == "strong"
-                          else "#fbeae6" if ins.strength == "weak" else "#fbf3e2")
-            verdict_fg = ("#155c3a" if ins.strength == "strong"
-                          else "#8f2c19" if ins.strength == "weak" else "#7a5a12")
+            pill_status_class = "positive" if ins.strength == "strong" else "warning" if ins.strength == "weak" else "info"
             if is_hinglish:
                 verdict_said = ("anukool sthiti" if ins.strength == "strong"
                                 else "savdhani aavashyak" if ins.strength == "weak"
                                 else "sakriya aur mixed")
-                teaser_chart_msg = f'Aapki kundli mein yahan <b style="color:{verdict_fg};">{verdict_said}</b> hai{" — dated window already calculated hai" if ins.timeline else ""}.'
+                teaser_chart_msg = f'Aapki kundli mein yahan <b>{verdict_said}</b> hai{" — dated window already calculated hai" if ins.timeline else ""}.'
             elif is_tenglish:
                 verdict_said = ("anukoolamaina sthiti" if ins.strength == "strong"
                                 else "jagratha avasaram" if ins.strength == "weak"
                                 else "sakriyam mariyu mixed")
-                teaser_chart_msg = f'Mee kundali lo ikkada <b style="color:{verdict_fg};">{verdict_said}</b> undi{" — dated window already calculated ayyindi" if ins.timeline else ""}.'
+                teaser_chart_msg = f'Mee kundali lo ikkada <b>{verdict_said}</b> undi{" — dated window already calculated ayyindi" if ins.timeline else ""}.'
             else:
                 verdict_said = ("well supported" if ins.strength == "strong"
                                 else "needing care" if ins.strength == "weak"
                                 else "active but mixed")
-                teaser_chart_msg = f'Your chart reads as <b style="color:{verdict_fg};">{verdict_said}</b> here{" — with a dated window already calculated" if ins.timeline else ""}.'
+                teaser_chart_msg = f'Your chart reads as <b>{verdict_said}</b> here{" — with an exact dated window already calculated" if ins.timeline else ""}.'
             
             teaser_items.append(
-                f'<li style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #e2ded5;gap:10px;">'
+                f'<li style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);gap:10px;">'
                 f'  <div>'
-                f'    <b style="font-size:0.9rem;color:#1f2430;">{html.escape(ins.code)} · {html.escape(meta.get("governs", ins.governs))}</b><br>'
-                f'    <span style="font-size:0.78rem;color:#6a7080;">{html.escape(meta.get("desc", ""))}</span><br>'
-                f'    <span style="font-size:0.76rem;color:#3d4250;">{teaser_chart_msg}</span>'
+                f'    <b style="font-size:14.5px;color:var(--text-main);">{html.escape(meta.get("governs", ins.governs))}</b><br>'
+                f'    <span style="font-size:13px;color:var(--text-muted);">{html.escape(meta.get("desc", ""))}</span><br>'
+                f'    <span style="font-size:12.5px;color:var(--accent);">{teaser_chart_msg}</span>'
                 f'  </div>'
-                f'  <span class="pill {pill_cls}" style="font-size:0.72rem;font-weight:700;'
-                f'padding:4px 10px;border-radius:99px;white-space:nowrap;background:{verdict_bg};'
-                f'color:{verdict_fg};">{pill_lbl}</span>'
+                f'  <span class="phase-pill {pill_status_class}">{pill_lbl}</span>'
                 f'</li>'
             )
 
@@ -2163,26 +2135,26 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
             t_desc = "Mee migilina divisional charts career karma (D10), vivaham mariyu jeevithabhagswami (D9), santhanam (D7), uccha vidya (D24), mariyu aarogyam/immunity (D30) ni map chesthayi:"
             t_cta = "Complete Divisional Breakdown Unlock Cheyandi"
         else:
-            t_area = "The other five areas"
+            t_area = "Remaining Key Life Areas"
             t_avail = "Available in Full Reading"
-            t_desc = "Your remaining divisional charts map deep career karma (D10), marriage and soul purpose (D9), progeny dynamics (D7), intellectual mastery (D24), and overcoming life obstacles (D30):"
-            t_cta = "Unlock Complete Divisional Breakdown"
+            t_desc = "Your full reading unlocks in-depth consultations for your Career & Leadership, Marriage & Partner, Children & Legacy, Higher Learning & Skills, and Physical Stamina & Resilience:"
+            t_cta = "Unlock Complete Life Consultations · ₹298"
         teaser_html = (
-            f'<article class="card div-teaser-card" id="domain-locked" style="background:#fcfbf9;border:1px dashed #d5cfc4;border-radius:12px;padding:18px 20px;margin-bottom:16px;">\n'
-            f'  <div class="card-top">\n'
-            f'    <span class="area">{t_area}</span>\n'
-            f'    <span style="font-size:0.72rem;font-weight:700;background:#ebdcc7;color:#6b4012;padding:2px 8px;border-radius:99px;">{t_avail}</span>\n'
+            f'<div class="summary-card" id="domain-locked" style="background:#1e293b;border:1px dashed var(--border);border-radius:14px;padding:22px 24px;margin-bottom:20px;">\n'
+            f'  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">\n'
+            f'    <span class="tag">{t_area}</span>\n'
+            f'    <span class="phase-pill warning">{t_avail}</span>\n'
             f'  </div>\n'
-            f'  <p style="font-size:0.84rem;color:#5a554c;margin:0 0 12px;line-height:1.45;">\n'
+            f'  <p style="font-size:14px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;">\n'
             f'    {t_desc}\n'
             f'  </p>\n'
             f'  <ul style="list-style:none;margin:0;padding:0;">\n'
             f'    {"".join(teaser_items)}\n'
             f'  </ul>\n'
-            f'  <div style="text-align:center;margin-top:14px;">\n'
-            f'    <a href="#unlock" data-unlock="1" style="display:inline-block;background:#16181d;color:#f7f5f1;font-size:0.82rem;font-weight:600;padding:8px 18px;border-radius:99px;text-decoration:none;">{t_cta}</a>\n'
+            f'  <div style="text-align:center;margin-top:18px;">\n'
+            f'    <a href="#unlock" data-unlock="1" style="display:inline-block;background:var(--accent);color:#0f172a;font-weight:700;font-size:13.5px;padding:9px 24px;border-radius:999px;text-decoration:none;">{t_cta}</a>\n'
             f'  </div>\n'
-            f'</article>\n'
+            f'</div>\n'
         )
 
     # 108 Rule Snapshot Card
@@ -2200,14 +2172,14 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
         base_heading = "Foundational Astrological Baseline"
 
     snapshot_108_html = (
-        f'<article class="card snapshot-108-card" id="domain-baseline" style="margin-bottom:16px;background:#fbfbf9;border:1px solid #e8e4dc;border-left:4px solid #b57c38;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">\n'
-        f'  <div class="card-top">\n'
-        f'    <span class="area">{base_kicker}</span>\n'
-        f'    <span class="pill up">{base_chip}</span>\n'
+        f'<div class="summary-card accent" id="domain-baseline">\n'
+        f'  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">\n'
+        f'    <span class="tag">{base_kicker}</span>\n'
+        f'    <span class="phase-pill info">{base_chip}</span>\n'
         f'  </div>\n'
-        f'  <h3 style="font-family:Georgia,serif;font-size:1.05rem;margin:8px 0 8px;color:#1f2430;font-weight:600;">{base_heading}</h3>\n'
-        f'  <p style="margin:0;font-size:0.9rem;line-height:1.6;color:#2c3140;">{summary_108}</p>\n'
-        f'</article>\n'
+        f'  <h2>{base_heading}</h2>\n'
+        f'  <p style="margin:0;font-size:14.5px;line-height:1.6;color:#e2e8f0;">{summary_108}</p>\n'
+        f'</div>\n'
     )
 
     return snapshot_108_html, f"{''.join(div_cards_html)}\n{teaser_html}"

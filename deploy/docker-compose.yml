@@ -20,7 +20,7 @@ x-app-env: &app-env
     LLM_BASE_URL: ${LLM_BASE_URL:-}
     LLM_API_KEY: ${LLM_API_KEY:-}
     LLM_MODEL: ${LLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}
-    LLM_TABS: ${LLM_TABS:-full_report,user_question,horary,palm}
+    LLM_TABS: ${LLM_TABS:-full_report,user_question,horary,palm,chat}
     LLM_TIMEOUT: ${LLM_TIMEOUT:-20}
     LLM_CONCURRENCY: ${LLM_CONCURRENCY:-4}
     LLM_CACHE_TTL: ${LLM_CACHE_TTL:-86400}

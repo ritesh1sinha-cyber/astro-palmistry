@@ -19,19 +19,19 @@ todos:
     status: completed
   - id: voice-validator
     content: Add enforce_user_voice() to engines/astro/llm/validate.py rejecting third-person referents and un-glossed jargon, with one repair retry
-    status: in_progress
+    status: completed
   - id: rewire-chat
     content: Rewire answer_chat_with_confluence() to plan -> run tools -> write voice -> validate; add target_planet param to analyze_question_confluence(); use the same planner for synthesize_with_qwen()
-    status: pending
+    status: completed
   - id: dehardcode
     content: Delete the gemstone regex block, the literal INTENT_KEYPHRASES question strings, and the 9-branch target_planet if/elif chain; demote detect_domain to _fallback_detect_domain
-    status: pending
+    status: completed
   - id: bugfixes
     content: Fix the cross-lagna Emerald caution string, the hardcoded 2026 transit signs in audit_gate0_hardware/analyze_chandra_nadi, the private case labels in reason strings, is_strictly_out_of_domain ordering and over-generic tokens, and add chat to deploy/docker-compose.yml LLM_TABS
-    status: pending
+    status: completed
   - id: verify
     content: Run the verification question set (speech, property, gemstone typo, relocation, out-of-scope, LLM-off fallback) and confirm tool choice plus voice compliance
-    status: pending
+    status: completed
 isProject: false
 ---
 

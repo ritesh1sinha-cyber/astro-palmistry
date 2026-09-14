@@ -814,8 +814,28 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
         synthesize_with_qwen,
     )
 
-    conf = analyze_question_confluence(pc, question, domain_override=area, route=route)
-    qwen_consultation = synthesize_with_qwen(conf, lang=lang)
+    domain_override = area
+    target_planet = ""
+    try:
+        from llm.question_planner import plan_question
+        plan = plan_question(question, area_hint=area)
+        if plan is not None:
+            if not plan.in_scope:
+                domain_override = "out_of_domain"
+            else:
+                domain_override = plan.life_area or area
+                target_planet = getattr(plan, "target_planet", "") or ""
+    except Exception as exc:  # noqa: BLE001
+        print(f"[report_render] planner skipped: {exc}", flush=True)
+
+    conf = analyze_question_confluence(
+        pc, question, domain_override=domain_override, route=route,
+        target_planet=target_planet)
+
+    specialist_readings = getattr(conf, "specialist_readings", None) or {}
+
+    qwen_consultation = synthesize_with_qwen(
+        conf, lang=lang, specialist_readings=specialist_readings)
 
     free_body = _voice_polish(render_confluence_card_html(conf, paid=False, qwen_text="", lang=lang))
     paid_body = _voice_polish(render_confluence_card_html(conf, paid=True, qwen_text=qwen_consultation, lang=lang))
@@ -850,6 +870,14 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
             "primary_house": conf.primary_house,
             "primary_lord": conf.primary_house_lord,
             "breakthrough_period": conf.breakthrough_period,
+            "specialist_readings": {
+                key: {
+                    "status": value.get("status", "unavailable"),
+                    "count": len(value.get("findings") or []),
+                }
+                for key, value in specialist_readings.items()
+                if isinstance(value, dict) and key != "evaluation_date"
+            },
         },
         "freeSections": ["Question & Vedic Core Verdict", "Preview of Locked Upaya & Timeline"],
         "paidSections": [
