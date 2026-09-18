@@ -67,6 +67,7 @@ LLM_BASE_URL=
 LLM_API_KEY=
 LLM_MODEL=Qwen/Qwen2.5-7B-Instruct-AWQ
 LLM_TABS=full_report,user_question,horary,palm,chat
+CHAT_ENABLED=0
 ```
 
 `GOOGLE_CLIENT_ID` is **required for the Google button on production**. Local
@@ -114,6 +115,13 @@ are all set. `LLM_TABS` then decides which kinds may call it, so
 deterministic template prose. With the layer off, `/api/public-config` returns
 `chatEnabled:false`, the site hides the chat panel, and the chat endpoints
 return 503.
+
+Follow-up chat needs one more variable: **`CHAT_ENABLED=1`**. It is off by
+default because chat answers are not verified yet, and `LLM_TABS` alone could
+not hold it back — every environment that copied the default tab list shipped
+it live. With `CHAT_ENABLED` unset, the panel and the "Ask Astrologer" button
+never render and `/api/reports/{id}/chat` returns 503, whatever `LLM_TABS`
+says. Turn it on per environment once the answers pass review.
 
 `LLM_BASE_URL` should be **https**. The API key and the customer's birth
 details cross that connection, and Railway reaches it from the public internet.

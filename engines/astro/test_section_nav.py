@@ -73,7 +73,7 @@ def test_a_long_heading_is_shortened_for_the_rail_but_not_in_the_page():
     body, nav = RS.build_section_nav(_body(
         f"<h2>{long}</h2><h2>Second</h2><h2>Third</h2>"))
     assert long in body, "the page keeps the heading the writer wrote"
-    first = nav.split('href="#sec-how-well-today-s-sky-is">')[1].split("</a>")[0]
+    first = nav.split('href="#sec-how-well-today-s-sky-is-supported">')[1].split("</a>")[0]
     assert first.endswith("…") and len(first) < 40
 
 

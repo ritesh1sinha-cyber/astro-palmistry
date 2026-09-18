@@ -1604,6 +1604,7 @@ def _build_unified_current_chapter_html(
     # 1. Real-time mind state & 2. Last 6 Months consultation cards
     mind_card_html = ""
     past_card_html = ""
+    roadmap_card_html = ""
     try:
         from vedic_consultation_reading import generate_consultation_reading
         g_raw = ((pc.get("meta") or {}).get("gender") or "male")
@@ -1632,7 +1633,6 @@ def _build_unified_current_chapter_html(
                 f'</div>\n'
             )
 
-        roadmap_card_html = ""
         r_items = "".join(f"<li>{it}</li>" for it in cr_res.get("roadmap_ahead", []))
         if r_items:
             if is_hinglish:
@@ -2164,11 +2164,299 @@ def _build_unified_current_chapter_html(
         strategy_title = "How to Play This Chapter: Strategic Astrologer Advisory"
         timeline_title = "Chronological Dasha Sequence &amp; Phase Transitions"
 
-    return f"""
-    {mind_card_html}
-    {past_card_html}
-    {roadmap_card_html}
+    timeline_html = ""
+    if chronology_items:
+        timeline_html = f"""
+    <div class="chapter-timeline-wrap" style="margin:20px 0;">
+      <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">{timeline_title}</div>
+      <div style="display:grid;gap:10px;">
+        {"".join(chronology_items)}
+      </div>
+    </div>
     """
+
+    return f"""
+    <section class="conv-block current-block" style="margin:28px 0;">
+      <div class="section-kicker" style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#8a6a1f;font-weight:800;margin-bottom:6px;">{ch_kicker}</div>
+      <h2 id="sec-your-current-chapter" data-nav="Current chapter" style="font-family:Georgia,serif;font-size:1.35rem;color:#1f2430;margin:0 0 14px;font-weight:600;">{ch_heading}</h2>
+      {mind_card_html}
+      {past_card_html}
+      {roadmap_card_html}
+      {timeline_html}
+    </section>
+    """
+
+
+_STRONG_DIGNITIES = ("exalted", "moolatrikona", "own_sign")
+_STRAINED_DIGNITIES = ("debilitated", "enemy_sign")
+# Jupiter, Saturn and the nodes are the only bodies whose stay is long enough
+# that naming an end date tells the reader something they can plan around.
+_SLOW_TRANSITS = ("Jupiter", "Saturn", "Rahu", "Ketu")
+_MEDIUM_TRANSITS = ("Mars", "Venus", "Mercury", "Sun")
+
+_FOUNDATION_LABELS = {
+    "en": ("4. What Your Natal Chart Foundations Summarize", "Core Pillar",
+           "Karmic Growth", "Powerhouse", "Soul &amp; Career Compass"),
+    "hi": ("4. Aapki Janma Kundli Ki Buniyad Kya Kehti Hai", "Mukhya Stambh",
+           "Karmik Vikas", "Powerhouse", "Atma Aur Career Disha"),
+    "te": ("4. Mee Janma Kundali Punadulu Em Chepthunnayi", "Mukhya Stambham",
+           "Karmika Vruddhi", "Powerhouse", "Atma Mariyu Career Disha"),
+}
+
+
+def _dignity_words(dignity: str) -> str:
+    """The plain half of DIGNITY_PLAIN, without the Sanskrit in brackets.
+
+    DIGNITY_PLAIN reads "very powerful (moolatrikona)" — fine for the internal
+    prose builders, but no customer report has ever printed those terms, and
+    they are the kind of thing the reader has to look up.
+    """
+    from bhardwaj_prose import DIGNITY_PLAIN
+
+    plain = DIGNITY_PLAIN.get(dignity, str(dignity or "").replace("_", " "))
+    return re.sub(r"\s*\([^)]*\)", "", plain).strip()
+
+
+def _planet_house_sign(planets: dict, planet: str) -> tuple[int, str]:
+    entry = planets.get(planet) or {}
+    try:
+        house = int(entry.get("house") or 0)
+    except (TypeError, ValueError):
+        house = 0
+    return house, str(entry.get("sign") or "")
+
+
+def _natal_foundations_html(pc: dict, *, lang: str = "en") -> str:
+    """Section 4, read off this chart.
+
+    This block used to be a literal copy of one sample chart's placements —
+    every customer was told their Mars sat in Aries in the eleventh. Each
+    line below now comes from the precompute, and the section is dropped
+    entirely when the chart has nothing strong enough to list.
+    """
+    from astro_precompute import get_dignity
+    from bhardwaj_prose import HOUSE_PLAIN
+
+    lang_key = ("hi" if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+                else "te" if str(lang or "").lower() in ("te_en", "tenglish", "te", "telugu")
+                else "en")
+    title, pillar_tag, growth_tag, power_tag, compass_tag = _FOUNDATION_LABELS[lang_key]
+
+    planets = pc.get("planets") or {}
+    items: list[str] = []
+    by_house: dict[int, list[str]] = {}
+
+    for planet in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus",
+                   "Saturn", "Rahu", "Ketu"):
+        house, sign = _planet_house_sign(planets, planet)
+        if not house or not sign:
+            continue
+        by_house.setdefault(house, []).append(planet)
+        theme = HOUSE_PLAIN.get(house, "")
+        if planet in ("Rahu", "Ketu"):
+            continue
+        dignity = get_dignity(planet, sign)
+        if dignity in _STRONG_DIGNITIES:
+            items.append(
+                f"<li><span class='tag'>{pillar_tag}</span>"
+                f"<b>{_e(planet)} in House {house} ({_e(sign)}):</b> "
+                f"holds {_e(_dignity_words(dignity))} status, so it is a "
+                f"dependable source of strength in {_e(theme)}.</li>")
+        elif dignity in _STRAINED_DIGNITIES:
+            items.append(
+                f"<li><span class='tag'>{growth_tag}</span>"
+                f"<b>{_e(planet)} in House {house} ({_e(sign)}):</b> sits "
+                f"{_e(_dignity_words(dignity))}, so {_e(theme)} tends to "
+                f"come good through patience rather than on the first attempt.</li>")
+
+    for house, group in sorted(by_house.items()):
+        if len(group) < 2:
+            continue
+        sign = _planet_house_sign(planets, group[0])[1]
+        items.append(
+            f"<li><span class='tag'>{power_tag} · House {house}"
+            f"{f' ({_e(sign)})' if sign else ''}</span>"
+            f"<b>{_e(' + '.join(group))} together:</b> more than one planet lands on "
+            f"{_e(HOUSE_PLAIN.get(house, 'this area'))}, which makes it one of the "
+            f"loudest parts of your chart.</li>")
+
+    karakas = ((pc.get("jaimini") or {}).get("karakas")) or []
+    atma = next((k for k in karakas if k.get("role") == "Atmakarak"), None)
+    amatya = next((k for k in karakas if k.get("role") == "Amatyakarak"), None)
+    if atma or amatya:
+        bits = []
+        if atma:
+            bits.append(
+                f"your soul indicator is <b>{_e(atma.get('planet'))} in House "
+                f"{_e(atma.get('house'))} ({_e(atma.get('sign'))})</b>, which points "
+                f"lasting fulfilment towards {_e(HOUSE_PLAIN.get(_as_int(atma.get('house')), 'this part of life'))}")
+        if amatya:
+            bits.append(
+                f"your career indicator is <b>{_e(amatya.get('planet'))} in House "
+                f"{_e(amatya.get('house'))} ({_e(amatya.get('sign'))})</b>, which is "
+                f"where your working life is meant to be directed")
+        items.append(f"<li><span class='tag'>{compass_tag}</span>"
+                     + "; and ".join(bits).capitalize() + ".</li>")
+
+    if not items:
+        return ""
+    return (f'<div class="summary-card accent">\n'
+            f"    <h2>{title}</h2>\n"
+            f'    <ul class="bullet-list">{"".join(items)}</ul>\n'
+            f"</div>\n")
+
+
+def _as_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _dasha_remedy_html(md_lord: str, ad_lord: str) -> str:
+    """Fallback section 7: the mantra that belongs to each ruling planet."""
+    from divisional_profile import PLANET_REMEDIES
+
+    rows = []
+    for label, planet in (("Mahadasha", md_lord), ("current sub-period", ad_lord)):
+        entry = PLANET_REMEDIES.get(str(planet or "").strip())
+        if not entry:
+            continue
+        rows.append(f"<li><b>{_e(planet)} ({label}):</b> "
+                    f"{_e(entry.get('strengthen', ''))}</li>")
+    if not rows:
+        return ""
+    return ("""
+    <div class="remedy-box">
+        <h2>7. Prescribed Remedial Guidance &amp; Daily Upayas</h2>
+        <ul>""" + "".join(rows) + """</ul>
+    </div>
+    """)
+
+
+def _safe_block(fn, pc: dict, **kw) -> str:
+    """Render one section, or none. A chart that cannot fill a section is a
+    section the reader does not get — never a section filled from elsewhere."""
+    try:
+        return fn(pc, **kw) or ""
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_conversational] {fn.__name__} skipped: {exc}", flush=True)
+        return ""
+
+
+_TRANSIT_LABELS = {
+    "en": ("6. Active Planetary Transits &amp; When Things Will Ease / Change",
+           "Active until", "Currently over your natal",
+           "Preventive Action to Ease:"),
+    "hi": ("6. Sakriya Grah Gochar Aur Kab Sthiti Badlegi",
+           "Sakriya rahega", "Abhi aapke janma",
+           "Sthiti Aasan Karne Ke Liye:"),
+    "te": ("6. Sakriya Graha Gocharalu Mariyu Eppudu Marutundi",
+           "Sakriyamga untundi", "Prasthutham mee janma",
+           "Sthitini Tagginchadaniki:"),
+}
+
+
+def _active_transits_html(pc: dict, *, today: date, lang: str = "en") -> str:
+    """Section 6, computed from where the planets actually are today.
+
+    The previous version printed one sample chart's transits, including a
+    window that had already closed, to every reader. These rows come from the
+    same Ashtakavarga timeline the life-area blocks use, so the sign, the
+    house, the bindu score and the end date all belong to this chart.
+    """
+    from bhardwaj_prose import HOUSE_PLAIN
+    from life_area_transition import _d as _to_date
+    from life_area_transition import _node_segments, _transit_segments_for
+
+    lang_key = ("hi" if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
+                else "te" if str(lang or "").lower() in ("te_en", "tenglish", "te", "telugu")
+                else "en")
+    title, until_lbl, over_lbl, advice_lbl = _TRANSIT_LABELS[lang_key]
+
+    planets = pc.get("planets") or {}
+    natal_by_sign: dict[str, list[str]] = {}
+    for planet, entry in planets.items():
+        sign = str((entry or {}).get("sign") or "")
+        if sign:
+            natal_by_sign.setdefault(sign, []).append(planet)
+
+    rows: list[str] = []
+    for planet in (*_SLOW_TRANSITS, *_MEDIUM_TRANSITS):
+        try:
+            if planet in ("Rahu", "Ketu"):
+                segs = _node_segments(pc, planet, today, 2)
+            else:
+                segs = _transit_segments_for(pc, planet, today, 2)
+        except Exception as exc:                                     # noqa: BLE001
+            print(f"[report_conversational] transit {planet} skipped: {exc}",
+                  flush=True)
+            continue
+        current = next((s for s in segs
+                        if _to_date(s.get("start")) and _to_date(s.get("end"))
+                        and _to_date(s.get("start")) <= today < _to_date(s.get("end"))),
+                       None)
+        if not current:
+            continue
+
+        sign = str(current.get("sign") or "")
+        house = _as_int(current.get("house"))
+        ends = _to_date(current.get("end"))
+        bav = current.get("bav")
+        pill, impact, advice = _transit_verdict(planet, bav, house, lang_key)
+        conjunct = [p for p in natal_by_sign.get(sign, []) if p != planet]
+
+        over = ""
+        if conjunct:
+            over = (f" <b>{over_lbl} {_e(' and '.join(conjunct))}:</b> the two "
+                    f"come together this cycle, so the effect is felt more "
+                    f"sharply than usual.")
+        rows.append(
+            f"<li><span class='tag'>{_e(planet)} in {_e(sign)}"
+            f"{f' · House {house}' if house else ''}</span> {pill}<br>"
+            f"<b>Current impact:</b> {impact} in "
+            f"{_e(HOUSE_PLAIN.get(house, 'this area of life'))}.{over}<br>"
+            + (f"<b>Transition timing:</b> {until_lbl} "
+               f"<span class='timing-badge'>{ends:%d %b %Y}</span>, when "
+               f"{_e(planet)} leaves {_e(sign)}.<br>" if ends else "")
+            + f"<div class='preventive-callout'><b>{advice_lbl}</b> {advice}</div></li>")
+
+    if not rows:
+        return ""
+    return (f'<div class="summary-card warn">\n'
+            f"    <h2>{title}</h2>\n"
+            f'    <ul class="bullet-list warn">{"".join(rows)}</ul>\n'
+            f"</div>\n")
+
+
+def _transit_verdict(planet: str, bav: Any, house: int,
+                     lang_key: str) -> tuple[str, str, str]:
+    """Phase pill, impact sentence and the one thing to do about it.
+
+    The bindu score decides the tone. Rahu and Ketu carry no bindus, so they
+    are reported as a long karmic stay rather than given a rating they do not
+    have — inventing one was how the old block got away with sounding precise.
+    """
+    del lang_key  # The pill text is shared; the surrounding copy carries lang.
+    if planet in ("Rahu", "Ketu"):
+        return ("<span class='phase-pill warning'>Karmic calibration</span>",
+                "A long, slow re-sorting of priorities",
+                "Verify anything that looks unusually convenient, and keep "
+                "paperwork and health checks current while this runs.")
+    score = _as_int(bav) if bav is not None else 4
+    if score >= 5:
+        return ("<span class='phase-pill positive'>Supportive</span>",
+                "A genuinely helpful stretch",
+                "Use it deliberately: finalise the thing you have been "
+                "circling rather than waiting for a better window.")
+    if score <= 3:
+        return ("<span class='phase-pill warning'>Demanding</span>",
+                "A stretch that asks for care",
+                "Slow down and verify. Confirm commitments in writing and "
+                "avoid taking on anything you cannot finish.")
+    return ("<span class='phase-pill info'>Steady</span>",
+            "An ordinary working stretch",
+            "Keep to routine. Nothing here needs a decision forced out of it.")
 
 
 def render(
@@ -2520,11 +2808,11 @@ def render(
             u_p = "The free reading shows who you are, the chapter you are in and what the chart is activating. The full reading adds the confluence, timing and practical guidance for every life area."
             u_btn = "Unlock full reading"
         unlock = f"""
-        <section class="buy" id="unlock">
+        <div class="buy-card" id="unlock">
           <h3>{u_h3}</h3>
           <p>{u_p}</p>
-          <a class="cta" href="#unlock" data-unlock="1">{u_btn} · ₹{_e(price)}</a>
-        </section>
+          <a class="cta-btn" href="#unlock" data-unlock="1">{u_btn} · ₹{_e(price)}</a>
+        </div>
         """
 
     baseline_card_html = ""
@@ -2536,91 +2824,81 @@ def render(
     except Exception as exc:
         print(f"[report_conversational] divisional profile skipped: {exc}", flush=True)
 
-    # Render the full executive dark consultation report
-    transits_html = f"""
-    <!-- 6. Active Planetary Transits (With Phase Ratings & Preventive Actions) -->
-    <div class="summary-card warn">
-        <h2>6. Active Planetary Transits &amp; When Things Will Ease / Change</h2>
-        <ul class="bullet-list warn">
-            <li><span class='tag'>Transit Moon in House 10 (Pisces) &rarr; Natal Mercury + Venus</span> <span class='phase-pill info'>Active Fast-Moving Phase</span><br><b>Current Impact:</b> <b>Over Natal Mercury:</b> Vivid imagination, commercial negotiations, friendly discussions, writing, and strategic planning. <b>Over Natal Venus:</b> Refined aesthetic discernment, romantic harmony, and social elegance.<br><b>Transition Timing:</b> Active until <span class='timing-badge'>31 Aug 2026 (10:07 PM)</span> when Moon departs Pisces.<br><b>When Things Shift:</b> The brief decision surge eases smoothly as the planet moves into the subsequent sign.<div class='preventive-callout'><b>Preventive Action to Ease:</b> Stay focused on essential daily priorities; defer impulsive non-essential decisions until the transit settles.</div></li>
-            <li><span class='tag'>Transit Venus in House 4 (Virgo) &rarr; Natal Moon</span> <span class='phase-pill positive'>Highly Auspicious / Favorable</span><br><b>Current Impact:</b> <b>Over Natal Moon:</b> Charming domestic atmosphere, exquisite culinary satisfaction, artistic indulgence, and liquid cash flow.<br><b>Transition Timing:</b> Active until <span class='timing-badge'>02 Sep 2026</span> when Venus departs Virgo.<br><b>When Things Shift:</b> Momentum continues to expand into domestic celebrations, material gains, and emotional contentment.<div class='preventive-callout'><b>Preventive Action to Ease:</b> Maximize this auspicious window by finalizing negotiations, expanding networks, and undertaking creative initiatives.</div></li>
-            <li><span class='tag'>Transit Saturn in House 10 (Pisces) &rarr; Natal Mercury + Venus</span> <span class='phase-pill warning'>Constructive but Demanding (Mixed-Positive)</span><br><b>Current Impact:</b> <b>Over Natal Mercury:</b> Business planning, contract structuring, meticulous legal auditing, and joint ventures. <b>Over Natal Venus:</b> Substantial financial returns, lucrative commercial turnover, and active patronage from women in corporate networks.<br><b>Transition Timing:</b> Active until <span class='timing-badge'>03 Jun 2027</span> when Saturn departs Pisces.<br><b>When Things Shift:</b> When Saturn departs this sign, professional systems stabilize and accumulated financial and structural rewards become permanent.<div class='preventive-callout'><b>Preventive Action to Ease:</b> Avoid speculative uncollateralized investments; strictly verify legal and accounting clauses in all partnership contracts; maintain patience with authorities.</div></li>
-            <li><span class='tag'>Transit Rahu in House 9 (Aquarius) &rarr; Natal Sun</span> <span class='phase-pill warning'>Sensitive / Karmic Calibration</span><br><b>Current Impact:</b> <b>Over Natal Sun:</b> Sudden public recognition drives, paternal health vigilance, eye/spine sensitivity, and need to avoid illusionary deals.<br><b>Transition Timing:</b> Active until <span class='timing-badge'>06 Dec 2026</span> when Rahu departs Aquarius.<br><b>When Things Shift:</b> The upcoming Nodal shift permanently lifts the current area of friction and directs focus toward fresh evolutionary opportunities.<div class='preventive-callout'><b>Preventive Action to Ease:</b> Maintain absolute transparency in finances; avoid illusionary high-return schemes; schedule routine health checkups for the signified organs.</div></li>
-        </ul>
-    </div>
-    """
+    # Section 6: where the planets actually are for this chart today.
+    transits_html = _safe_block(_active_transits_html, pc, today=today,
+                                lang=lang)
 
-    remedy_block_html = f"""
-    <!-- 7. Actionable Remedial Guidance -->
-    <div class="remedy-box">
-        <h2>7. Prescribed Remedial Guidance &amp; Daily Upayas</h2>
-        <ul>
-            <li><b>Harmonize Active Sub-Lord ({ad_lord}):</b> Recite <i>Om Ketave Namah</i> 108 times on Tuesday evenings, or support spiritual education/monastic charities to clear mental static.</li>
-            <li><b>Energize Mahadasha Lord ({cur_md}):</b> Chant the <i>Guru Gayatri Mantra</i> on Thursday mornings and respect mentors, teachers, and elders.</li>
-            <li><b>Transit Balancing:</b> Offer water or grain to birds on Saturdays to harmonize Saturn's transit across governing professional houses.</li>
-            <li><b>Daily Integrity:</b> Maintain absolute transparency in legal agreements, financial accounting, and personal relationships while the Nodal axis is active.</li>
-        </ul>
-    </div>
-    """
+    # Section 7. The caller already computed a remedy block for this chart;
+    # the version that lived here prescribed Ketu's mantra for whichever
+    # planet happened to be the sub-lord, which is nobody's remedy.
+    remedy_block_html = remedy_html or _dasha_remedy_html(cur_md, ad_lord)
 
-    unlock_card_html = ""
-    if not paid:
-        unlock_card_html = f"""
-        <!-- 8. Single Unlock CTA -->
-        <div class="buy-card" id="unlock">
-            <h3>Unlock Your Complete Life Consultation &amp; Full 10-Area Roadmap</h3>
-            <p>Gain instant access to all 10 life domains, complete multi-year transit dates, and personalized remedial upayas.</p>
-            <a class="cta-btn" href="#unlock" data-unlock="1">Unlock Complete Full Reading · ₹{_e(price)}</a>
-        </div>
-        """
+    meta = pc.get("meta") or {}
+    dob_val = str(meta.get("dob") or "").strip()
+    gender_val = "Male" if meta.get("gender", 0) in (0, "male", "m") else "Female"
+    date_str_short = f"{today:%d %b %Y}" if today else ""
 
-    dob_val = pc.get("meta", {}).get("dob", "1985-03-08")
-    gender_val = "Male" if pc.get("meta", {}).get("gender", 0) in (0, "male", "m") else "Female"
-    date_str_short = f"{today:%d %b %Y}" if today else "30 Aug 2026"
+    if is_hinglish:
+        signature_kicker = "AAPKA CHART SIGNATURE"
+        who_kicker = "AAPKA VYAKTITVA"
+        who_heading = "Aapka Mool Swabhav Aur Foundational Promise"
+    elif is_tenglish:
+        signature_kicker = "MEE CHART SIGNATURE"
+        who_kicker = "MEE VYAKTHITHVAM"
+        who_heading = "Mee Moola Swabhavam Mariyu Foundational Promise"
+    else:
+        signature_kicker = "YOUR CHART SIGNATURE"
+        who_kicker = "WHO YOU ARE"
+        who_heading = "Your foundational promise"
+
+    # `chips` above is this chart's signature — rising sign, Moon, nakshatra,
+    # running periods. The reader's own details frame it.
+    sig_chips = [f'<span class="chip">Native: <b>{_e(first)}</b> ({gender_val})</span>']
+    if dob_val:
+        sig_chips.append(f'<span class="chip">DOB: <b>{_e(dob_val)}</b></span>')
+    sig_chips += [f'<span class="chip"><b>{_e(c)}</b></span>' for c in chips]
+    if date_str_short:
+        sig_chips.append(f'<span class="chip">Report Date: <b>{date_str_short}</b></span>')
 
     hero_html = f"""
     <div class="hero">
         <h1>Vedic Horoscope &amp; Astrological Consultation — {_e(first)}</h1>
         <div class="subtitle">Vedic Planetary Matrix &bull; Real-Time Mind State, 6-Month Timeline &amp; Life Forecast</div>
-        
-        <div class="meta-chips">
-            <span class="chip">Native: <b>{_e(first)}</b> ({gender_val})</span>
-            <span class="chip">DOB: <b>{dob_val}</b></span>
-            <span class="chip">Lagna: <b>{lagna_clean}</b></span>
-            <span class="chip">Active Dasha: <b>{cur_md} / {ad_lord}</b></span>
-            <span class="chip">Report Date: <b>{date_str_short}</b></span>
+
+        <div class="chart-signature">
+            <div class="section-kicker hero-kicker">{signature_kicker}</div>
+            <div class="meta-chips">
+                {"".join(sig_chips)}
+            </div>
         </div>
+        {f"<p>{_e(astrological_basis)}</p>" if astrological_basis else ""}
     </div>
     """
 
-    # Section 4: What Your Natal Chart Foundations Summarize
-    natal_foundations_html = f"""
-    <!-- 4. What Your Natal Chart Foundations Summarize -->
-    <div class="summary-card accent">
-        <h2>4. What Your Natal Chart Foundations Summarize</h2>
-        <ul class="bullet-list">
-            <li><span class='tag'>Core Pillar</span><b>Mars in House 11 (Aries):</b> Holds strong status (moolatrikona), serving as an enduring powerhouse for executive drive, strategic boldness, and financial gains.</li>
-            <li><span class='tag'>Karmic Growth</span><b>Mercury in House 10 (Pisces):</b> Operates through initial friction; transforms into solid authority and strategic mastery through patient expertise.</li>
-            <li><span class='tag'>Karmic Growth</span><b>Jupiter in House 8 (Capricorn):</b> Operates through deep research and endurance; builds exceptional risk-mitigation and crisis-management capabilities over time.</li>
-            <li><span class='tag'>Core Pillar</span><b>Venus in House 10 (Pisces):</b> Holds strong status (exalted), serving as an enduring powerhouse for professional reputation, elegance, and commercial wealth.</li>
-            <li><span class='tag'>House 10 Powerhouse (Pisces)</span><b>Mercury + Venus Cluster:</b> Unifies intellectual strategy and commercial negotiation into a major career driving force in House 10 domains.</li>
-            <li><span class='tag'>House 11 Powerhouse (Aries)</span><b>Mars + Rahu Cluster:</b> Unifies dynamic ambition and breakthrough enterprise into an expansive wealth-generation engine in House 11 domains.</li>
-            <li><span class='tag'>Directional 1-5-9 Triplicity (North Trine)</span><b>Karma Confluence (Mercury + Venus + Saturn):</b> Through planetary triplicity, your Karma Karaka Saturn operates in direct alignment with Mercury, Venus, and Saturn, unifying professional duty, analytical acumen, and commercial wealth into your permanent karmic signature.</li>
-            <li><span class='tag'>Jaimini Soul &amp; Career Compass</span><b>Atmakaraka (Venus in House 10, Pisces) &mdash; Amatyakaraka (Sun in House 9, Aquarius):</b> Your Soul Karaka Venus holds exalted status, confirming that ultimate life fulfillment comes through high-caliber creative and ethical autonomy, while Career Director Sun directs your output toward independent executive authority and advisory leadership.</li>
-        </ul>
-    </div>
-    """
+    # Section 4: read off this chart's own placements.
+    natal_foundations_html = _safe_block(_natal_foundations_html, pc,
+                                         lang=lang)
 
     body = f"""
     {hero_html}
 
+    <section class="conv-block who-you-are-block">
+      <div class="section-kicker">{who_kicker}</div>
+      <h2 id="sec-who-you-are" data-nav="Who you are">{who_heading}</h2>
+      <p class="lead-reading"><span class="ev-label">Constitutional Baseline</span> {about_meaning}</p>
+      {f'<p class="who-personality">{_e(personality)}</p>' if personality and personality != about_meaning else ""}
+      {baseline_card_html}
+    </section>
+
+    {family_html}
     {current_html}
+    {recent_html}
 
     {natal_foundations_html}
 
     <!-- 5. Comprehensive Life Domain Consultations -->
     <div style="margin:28px 0 16px;">
-        <h2 style="font-size:20px;color:var(--text-main);margin:0 0 16px;display:flex;align-items:center;gap:8px;">
+        <h2 id="sec-life-domains" data-nav="Your life areas" style="font-size:20px;color:var(--text-main);margin:0 0 16px;display:flex;align-items:center;gap:8px;">
             5. Comprehensive Life Domain Consultations &amp; Turning Points
         </h2>
         {divisional_html}
@@ -2632,7 +2910,8 @@ def render(
 
     {remedy_block_html}
 
-    {unlock_card_html}
+    {upsell_html if not paid else ""}
+    {unlock}
 
     <div class="footer">
         Vedic Planetary Matrix Engine &bull; Real-Time Astrological Timing Analysis

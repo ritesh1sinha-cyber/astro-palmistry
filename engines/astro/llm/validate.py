@@ -1138,10 +1138,11 @@ def validate_chat_answer(prose: Any, facts: Any) -> list[str]:
     kind = str(_fget(facts, "kind", "") or "")
     errors = validate_prose_against_facts(prose, facts)
     answer = getattr(prose, "answer", "") or ""
-    # For full_report (birth chart) chats, skip the area overclaim check —
-    # detailed astrological analysis legitimately uses confident language.
-    if kind != "full_report":
-        errors.extend(_chat_area_grounding(answer, facts))
+    # This gate does not object to confident language, only to an answer that
+    # calls an area supported when the engine scored it weak. ReportFacts.kind
+    # is always "full_report", so exempting that kind switched the gate off for
+    # every birth-chart chat — the one path where cards exist to contradict.
+    errors.extend(_chat_area_grounding(answer, facts))
     errors.extend(_chat_horary_grounding(answer, facts))
     errors.extend(_chat_palm_grounding(answer, facts))
     errors.extend(_chat_stalls(answer))
@@ -1149,20 +1150,18 @@ def validate_chat_answer(prose: Any, facts: Any) -> list[str]:
         errors.extend(_chat_horary_jargon(answer))
         errors.extend(_chat_horary_dates(answer, facts))
     used = list(getattr(prose, "used_fact_ids", None) or [])
-    # For full_report chats, don't require strict fact_id citation —
-    # the confluence engine provides its own grounding. Horary is the same
-    # case for the opposite reason: the payload is three lines, the verdict,
-    # jargon and date checks above already pin the answer to them, and a
-    # mangled citation string was throwing away otherwise correct answers.
-    if kind not in ("full_report", "horary"):
-        if not used:
-            errors.append("chat_missing_used_fact_ids")
-        else:
-            allowed_ids = set(GENERIC_FACT_IDS) | citable_fact_ids(facts)
-            for fid in used:
-                if str(fid) not in allowed_ids:
-                    errors.append(f"chat_unknown_fact_id:{fid}")
-                    break
+    # Correct horary answers were once refused here for citing real fields like
+    # `favourable`, because the citable list was hand-written around chart
+    # reports. citable_fact_ids now reads the payload it is given, so every kind
+    # can be held to its own fields rather than exempted from the check.
+    if not used:
+        errors.append("chat_missing_used_fact_ids")
+    else:
+        allowed_ids = set(GENERIC_FACT_IDS) | citable_fact_ids(facts)
+        for fid in used:
+            if str(fid) not in allowed_ids:
+                errors.append(f"chat_unknown_fact_id:{fid}")
+                break
     return list(dict.fromkeys(errors))
 
 

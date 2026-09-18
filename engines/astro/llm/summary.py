@@ -1723,10 +1723,6 @@ def _fb_full_report(brief: dict, *, paid: bool, lang: str = "en") -> list[dict]:
     lang_code = str(lang or "").lower()
     is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
     is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
-    if is_hinglish or is_tenglish:
-        return _localized_full_report_fallback(
-            brief, paid=paid, is_hinglish=is_hinglish
-        )
     out: list[Optional[dict]] = []
     if brief.get("classical_lagna") and not any(
         brief.get(k) for k in ("current_phase_tone", "personality_traits", "chart_foundations")
@@ -1983,7 +1979,7 @@ def _fb_horary(brief: dict, meta: dict, *, paid: bool, lang: str = "en") -> list
             body = f"Your question is{(' about ' + q) if q else ''}."
             if subject:
                 body += f" The reading is focused on {subject.lower()}."
-            body += " The full Western horary judgment is prepared in the report."
+            body += " The full horary judgment is prepared in the report."
             out.append(_sec("What the chart is examining", body))
         return [s for s in out if s]
 

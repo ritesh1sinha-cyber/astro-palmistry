@@ -107,16 +107,35 @@ check("couple header appears once",
 
 # ---------------------------------------------------------------------------
 print("\n— 4. horary: one answer, workings behind the wall —")
+
+
+class _KPPlain:
+    """Stand-in for llm.schemas.HoraryPlainAnswer — no model call needed."""
+
+    def __init__(self, answer: str, timing: str, remedy: str) -> None:
+        self.answer, self.timing, self.remedy = answer, timing, remedy
+
+
 hf, hp, hmeta = RD.horary(
     question="Will the property deal go through?",
-    verdicts={"western": {"verdict": "Likely yes", "confidence": "moderate"},
-              "vedic": {"verdict": "Uncertain", "confidence": "low"}},
-    western_judgment={}, asked="4 August 2026, 21:40", name="Meera", price=1499,
-    workings={"western": "<p>WORKINGMARKER west</p>",
-              "vedic": "<p>WORKINGMARKER vedic</p>"})
+    verdicts={"kp": {"verdict": "Likely yes", "confidence": "moderate",
+                     "favourable": True, "reason": ""}},
+    western_judgment={"asc_lord": "Mars", "q_lord": "Saturn", "timing": []},
+    asked="4 August 2026, 21:40", name="Meera", horary_price=298,
+    kp_evidence={"cusp_sub_lord": "Mars", "cusp_star_lord": "Venus",
+                 "list_c": ["Mars", "Venus"], "den_hits": ["Saturn"],
+                 "ruling_planets": ["Sun", "Mars"]},
+    plain=_KPPlain("The chart supports this going through.",
+                   "The nearest window is 2 Sep to 30 Sep 2026.",
+                   "Get the paperwork signed before you celebrate."),
+    timing={})
 check("free carries the answer", "you asked" in hf.lower())
-check("free hides the per-engine workings", "WORKINGMARKER" not in hf)
-check("paid shows the per-engine workings", "WORKINGMARKER" in hp)
+check("free hides the verdict", "supports this going through" not in visible(hf))
+check("paid carries the verdict", "supports this going through" in visible(hp))
+check("free teases every locked section",
+      visible(hf).count("locked") >= 4, visible(hf)[:200])
+check("paid shows the working the free view teased",
+      "Planets supporting you" in visible(hp), visible(hp)[:200])
 check("the question is printed once",
       visible(hf).count("Will the property deal go through?") == 1,
       visible(hf)[:160])

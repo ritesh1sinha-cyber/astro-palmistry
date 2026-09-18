@@ -310,19 +310,28 @@ PLANET_REMEDIES: dict[str, dict[str, str]] = {
 }
 
 
+def _sign_of(value: Any) -> str:
+    """``pc["lagna"]`` is a sign string on some precomputes and ``{"sign": …}``
+    on others. Returning the dict made every varga lookup raise on an
+    unhashable key, which the caller swallowed — the whole divisional half of
+    the reading vanished without an error anyone would see."""
+    if isinstance(value, dict):
+        return str(value.get("sign") or "")
+    return str(value or "")
+
+
 def _get_varga_lagna(pc: dict, code: str) -> str:
     div_entry = pc.get("divisional", {}).get(code, {}) or {}
     if code == "D1":
         return (
-            pc.get("meta", {}).get("lagna_sign", "")
-            or pc.get("lagna", "")
-            or pc.get("planets", {}).get("Lagna", {}).get("sign", "")
-            or pc.get("planets", {}).get("lagna", {}).get("sign", "")
-            or div_entry.get("Lagna", "")
-            or div_entry.get("lagna", "")
-            or ""
+            _sign_of(pc.get("meta", {}).get("lagna_sign", ""))
+            or _sign_of(pc.get("lagna", ""))
+            or _sign_of(pc.get("planets", {}).get("Lagna", {}).get("sign", ""))
+            or _sign_of(pc.get("planets", {}).get("lagna", {}).get("sign", ""))
+            or _sign_of(div_entry.get("Lagna", ""))
+            or _sign_of(div_entry.get("lagna", ""))
         )
-    return div_entry.get("Lagna", "") or div_entry.get("lagna", "")
+    return _sign_of(div_entry.get("Lagna", "")) or _sign_of(div_entry.get("lagna", ""))
 
 
 def _get_varga_planet_sign(pc: dict, code: str, planet: str) -> str:
@@ -568,6 +577,10 @@ def _build_domain_specific_timeline(
 
     if not curr_ad and curr_ad_list:
         curr_ad = curr_ad_list[0]
+    # A chart can arrive with no dasha table at all (a partial precompute, or
+    # a caller that only wants the varga blocks). That is not a reason to lose
+    # the whole divisional half of the page.
+    curr_ad = curr_ad or {}
 
     curr_ad_lord = curr_ad.get("ad_lord") or curr_ad.get("antardasha") or curr_ad_name or "Sub-period"
     curr_ad_end_fmt = _format_month_year(str(curr_ad.get("end") or "")) or curr_ad_end

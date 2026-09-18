@@ -100,6 +100,8 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_TABS: ${LLM_TABS:-}
+      # Follow-up chat is unverified — off unless a deployment opts in.
+      CHAT_ENABLED: ${CHAT_ENABLED:-0}
       LLM_TIMEOUT: ${LLM_TIMEOUT:-90}
       LLM_CONCURRENCY: ${LLM_CONCURRENCY:-2}
       LLM_CACHE_TTL: ${LLM_CACHE_TTL:-3600}

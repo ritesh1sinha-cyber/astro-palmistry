@@ -2153,7 +2153,7 @@ const CONFIG = {
   turnstileSiteKey: '',
   turnstileRequired: false,
   llmEnabled:   false,               // from /api/public-config
-  chatEnabled:  true,                // true only when LLM on + chat in LLM_TABS
+  chatEnabled:  false,               // /api/public-config; needs CHAT_ENABLED=1
   price:        298,
   priceStrike:  298,
   currency:     '₹',
@@ -2817,8 +2817,9 @@ function readingActions(){
   h += `<button class="btn btn-ghost btn-sm tocbtn" id="tocBtn" type="button" onclick="openTocSheet()" hidden title="Table of contents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="btn-lbl-extra">Contents</span></button>`;
   // 2. Summary button - ALWAYS present for every reading (free & paid)
   h += `<button class="btn btn-gold btn-sm btn-summary" type="button" onclick="openPlainSummary()" title="Plain-English summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px;margin-right:4px;flex:0 0 auto"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg><span>Summary</span></button>`;
-  // 3. Ask Astrologer button
-  if(rid && (CONFIG.chatEnabled || READING.unlocked)){
+  // 3. Ask Astrologer button — only when the server says chat is on. An
+  // unlocked report is not enough: the answers are not verified yet.
+  if(rid && CONFIG.chatEnabled){
     h += `<button class="btn btn-sm btn-chat-action" type="button" onclick="openReportChatSheet()" title="Ask your astrologer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px;margin-right:4px;flex:0 0 auto"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span class="btn-lbl-extra">Ask </span>Astrologer</button>`;
   }
   // 4. Download PDF
@@ -2830,12 +2831,14 @@ function readingActions(){
 
 function openReportChatSheet(){
   const rid = READING.reportId;
+  if(!CONFIG.chatEnabled){ toast('Follow-up chat is not available yet.'); return; }
   if(!rid){ toast('Chat is available for your unlocked reading.'); return; }
   const boxId = 'chat-sheet-' + Math.random().toString(36).slice(2, 9);
   openSheet('Ask your astrologer', reportChatPanel(rid, boxId));
 }
 
 function scrollToReportChat(){
+  if(!CONFIG.chatEnabled){ toast('Follow-up chat is not available yet.'); return; }
   let el = document.querySelector('#readingAside .report-chat');
   if(!el && READING.reportId){
     const aside = $('#readingAside');
@@ -2909,7 +2912,7 @@ function extractSummaryFromActiveReading(){
       body: copy(
         `Aapka prashna${horaryQuestion ? ` ${horaryQuestion}` : ''} ke baare mein hai. Prashna kundli ka poora faisla report mein taiyar hai.`,
         `Mee prashna${horaryQuestion ? ` ${horaryQuestion}` : ''} gurinchi. Prashna kundali yokka poorthi theerpu report lo siddham ga undi.`,
-        `Your question is${horaryQuestion ? ` about ${horaryQuestion}` : ''}. The full Western horary judgment is prepared in the report.`
+        `Your question is${horaryQuestion ? ` about ${horaryQuestion}` : ''}. The full horary judgment is prepared in the report.`
       )
     });
   } else {
@@ -3062,17 +3065,17 @@ function extractSummaryFromActiveReading(){
         isPalm
           ? 'Aapki poori life timeline, aane wale age chapters, har rekha aur parvat ke nishaan, aur unpar aadharit upayas taiyar hain.'
           : kind === 'horary'
-            ? 'Poora Western horary faisla, dates aur timeline windows, aur vishesh grah guidance taiyar hai.'
+            ? 'Poora horary faisla, dates aur timeline windows, aur vishesh grah guidance taiyar hai.'
             : 'Vedic faisla, dated opening windows, milestone timeline aur aapki kundli ke nishchit upayas taiyar hain.',
         isPalm
           ? 'Mee poorthi life timeline, mundu age chapters, prati rekha mariyu parvatha markings, vatipai aadharapadina upayamulu siddham ga unnai.'
           : kind === 'horary'
-            ? 'Poorthi Western horary theerpu, dates, timeline windows mariyu prathyeka graha guidance siddham ga unnai.'
+            ? 'Poorthi horary theerpu, dates, timeline windows mariyu prathyeka graha guidance siddham ga unnai.'
             : 'Vedic theerpu, dated opening windows, milestone timeline mariyu mee kundali ki tagina upayamulu siddham ga unnai.',
         isPalm
           ? 'Your complete life timeline, the age chapters still ahead, every line and mount marking, and the remedies drawn from them are written and waiting.'
           : kind === 'horary'
-            ? 'The complete Western horary judgment, the dated opening windows and the specific guidance are written and waiting.'
+            ? 'The complete horary judgment, the dated opening windows and the specific guidance are written and waiting.'
             : 'The classical verdict, the dated opening windows, the milestone timeline and the remedies chosen for your chart are written and waiting.'
       )
     });
@@ -3260,7 +3263,7 @@ function openReading(o){
   $('#readingHead').innerHTML    = o.headHtml || '';
   $('#readingBody').innerHTML    = o.link ? readingFrame(o.link) : (o.bodyHtml || '');
   $('#readingAside').innerHTML   = (o.asideHtml || '')
-    + ((READING.reportId && (CONFIG.chatEnabled || READING.unlocked)) ? reportChatPanel(READING.reportId) : '');
+    + ((READING.reportId && CONFIG.chatEnabled) ? reportChatPanel(READING.reportId) : '');
   READING.open = true;
   go('reading', {instant:true});
 }

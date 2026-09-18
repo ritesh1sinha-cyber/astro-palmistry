@@ -123,7 +123,8 @@ def _set_cookie(resp: Response, token: str) -> None:
 @app.get("/api/public-config")
 def public_config():
     """Non-secret flags the site needs before sign-in (Google Client ID, etc.)."""
-    # Chat UI is shown only when the LLM layer is on AND "chat" is in LLM_TABS.
+    # Chat UI is shown only when CHAT_ENABLED=1, the LLM layer is on, and
+    # "chat" is in LLM_TABS. Production leaves CHAT_ENABLED unset.
     chat_enabled = bool(S.llm_tab_enabled("chat"))
     return {
         "googleClientId": S.google_client_id or "",
@@ -640,11 +641,12 @@ class ChatIn(BaseModel):
 
 
 def _require_chat_enabled() -> None:
-    """Chat is available only when LLM is on and LLM_TABS includes chat."""
+    """Chat needs CHAT_ENABLED=1 on top of the LLM layer and the tab list."""
     if not S.llm_tab_enabled("chat"):
         raise HTTPException(
             503,
-            "report chat is disabled — enable LLM_ENABLED=1 with chat in LLM_TABS",
+            "report chat is disabled — set CHAT_ENABLED=1 with LLM_ENABLED=1 "
+            "and chat in LLM_TABS",
         )
 
 

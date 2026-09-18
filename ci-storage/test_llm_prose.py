@@ -164,15 +164,18 @@ def llm_on(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:9/v1")
     monkeypatch.setenv("LLM_TABS", "full_report,user_question,horary,palm,chat")
+    monkeypatch.setenv("CHAT_ENABLED", "1")
     from core import config as C
     C.S.llm_enabled = True
     C.S.llm_api_key = "test-key"
     C.S.llm_base_url = "http://127.0.0.1:9/v1"
     C.S.llm_tabs = "full_report,user_question,horary,palm,chat"
+    C.S.chat_enabled = True
     yield
     from core.llm_client import clear_stub
     clear_stub()
     C.S.llm_enabled = False
+    C.S.chat_enabled = False
 
 
 @pytest.fixture

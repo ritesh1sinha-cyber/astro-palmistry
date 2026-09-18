@@ -235,6 +235,11 @@ class Settings:
     llm_tabs: str = field(default_factory=lambda: _cfg(
         "llm_tabs", "LLM_TABS",
         "full_report,user_question,horary,palm,chat,summary"))
+    # Follow-up chat is the one surface that answers free-form questions, and
+    # it is not verified yet. It stays off unless a deployment asks for it,
+    # regardless of what LLM_TABS says — leaving it to LLM_TABS meant every
+    # environment that copied the default tab list shipped it live.
+    chat_enabled: bool = field(default_factory=lambda: _bool("CHAT_ENABLED", False))
     # One report layout whether or not the model answers. Python writes the
     # prose when the LLM is off or failing, so the reader loses wording rather
     # than whole sections. Set to 0 to send those readings back to the classic
@@ -244,10 +249,13 @@ class Settings:
 
     def llm_tab_enabled(self, kind: str) -> bool:
         """True when the LLM layer is on and ``kind`` is in the allow-list."""
+        kind = (kind or "").strip()
+        if kind == "chat" and not self.chat_enabled:
+            return False
         if not self.llm_enabled or not self.llm_api_key or not self.llm_base_url:
             return False
         allowed = {t.strip() for t in (self.llm_tabs or "").split(",") if t.strip()}
-        return (kind or "").strip() in allowed
+        return kind in allowed
 
     def __post_init__(self) -> None:
         # Managed hosts (Railway, Render, Heroku, Neon) hand out URLs starting

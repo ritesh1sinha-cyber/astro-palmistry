@@ -1,12 +1,14 @@
-"""One answer to the question — Western horary only.
+"""One answer to the question — this page, whichever engine judged it.
 
-Vedic Prashna, KP, and Jamakkol are parked for now. The customer sees a
-single Lilly/Louis-style Western horary judgment: one verdict, one confidence,
-one explanation. Mixing traditions produced contradictory headlines ("No — low
-confidence" at the top, a leaning-yes explanation below).
+Vedic Prashna and Jamakkol are parked. The customer sees a single judgment:
+one verdict, one confidence, one explanation. Mixing traditions produced
+contradictory headlines ("No — low confidence" at the top, a leaning-yes
+explanation below).
 
-* **Western horary is the only active engine.** Significators, perfection,
-  Moon condition, and the testimony tally drive the answer.
+* **One engine judges, and it is KP.** ``build_answer_html`` takes the
+  verdict, the window and the working from whoever computed them — pass
+  ``kp_evidence`` for the KP lane, or a Western judgment dict for the legacy
+  Lilly/Louis lane. The page itself does not change.
 * **An unfavourable answer always carries a remedy.** Someone asking a horary
   question is usually anxious about something specific. Telling them "no" and
   stopping there is a bad product and worse psychology.
@@ -213,6 +215,15 @@ def _e(text: Any) -> str:
 def _named(planet: str) -> str:
     """English takes an article before the luminaries: "the Moon", not "Moon"."""
     return f"the {planet}" if planet in ("Sun", "Moon") else planet
+
+
+def _lang_key(lang: Any) -> str:
+    code = str(lang or "").lower().strip()
+    if code in ("hi_en", "hinglish", "hi", "hindi"):
+        return "hi"
+    if code in ("te_en", "tenglish", "te", "telugu"):
+        return "te"
+    return "en"
 
 
 # --- the reconciliation ------------------------------------------------------
@@ -522,7 +533,10 @@ def _score_of(ed: Any) -> float:
 
 def _blocking_planet(j: dict, vedic: dict | None = None) -> str:
     """The planet the remedy should address — the weakest significator."""
-    del vedic  # Vedic/KP parked; Western significators only.
+    del vedic  # Vedic parked; KP names its own, Western works it out below.
+    named = str(j.get("blocking_planet") or "").strip()
+    if named:
+        return named
     candidates = [(j.get("asc_lord"), _score_of(j.get("asc_ed"))),
                   (j.get("q_lord"), _score_of(j.get("q_ed")))]
     candidates = [(n, sc) for n, sc in candidates if n]
@@ -628,6 +642,98 @@ def _planetary_dynamics_block(r: dict, j: dict, vc: dict | None = None, *, lang:
   <div class="card">
     {parts_html}
     <p style="margin:0 0 0.6rem 0;">{_e(agree_line)}</p>
+    {planets_html}
+  </div>
+</section>"""
+
+
+_KP_DYNAMICS_LABELS = {
+    "en": ("Planetary dynamics & supporting influences",
+           "Planets supporting you:", "Planets creating friction:",
+           "None stand out strongly"),
+    "hi": ("Grah Sthiti Aur Sambandh",
+           "Aapke sahayak grah:", "Chunauti paida karne wale grah:",
+           "Koi khaas nahi"),
+    "te": ("Graha Sthiti Mariyu Sambandhalu",
+           "Meeku sahayapade grahalu:", "Chunautilu kalipinche grahalu:",
+           "Prathyekamga evaru leru"),
+}
+
+
+def _kp_dynamics_block(ev: dict, *, lang: str = "en") -> str:
+    """The KP working in the section the Western lane already owned.
+
+    Same heading, same card, same two planet lists, so the free view's locked
+    teaser still describes the paid section it is teasing. The KP vocabulary
+    itself (sub-lord, cusp, significator) never reaches the reader — the
+    customer boundary strips those words, and a half-eaten sentence is worse
+    than one written in plain English to begin with.
+    """
+    lang_key = _lang_key(lang)
+    sec_title, fav_lbl, against_lbl, none_lbl = _KP_DYNAMICS_LABELS[lang_key]
+
+    decider = str(ev.get("cusp_sub_lord") or "")
+    through = str(ev.get("cusp_star_lord") or ev.get("star_lord") or "")
+    favour = [str(p) for p in (ev.get("list_c") or ev.get("list_a") or [])][:5]
+    against = [str(p) for p in (ev.get("den_hits") or [])][:5]
+    ruling = [str(p) for p in (ev.get("ruling_planets") or [])][:6]
+
+    # A full stop directly after </strong> is scrubbed on the way out, so
+    # every planet name here sits mid-sentence rather than closing one.
+    lines = []
+    if decider:
+        promise = {
+            "hi": (f"Is prashna par antim faisla <strong>{_e(_named(decider))}</strong> "
+                   f"ka hai, yaani kundli ka wahi hissa tay karta hai ki baat "
+                   f"banegi ya nahi."),
+            "te": (f"Ee prashna meeda thudi theerpu <strong>{_e(_named(decider))}</strong> "
+                   f"dhi, ade pani avutundo ledo nirnayisthundi."),
+            "en": (f"The final say on this question belongs to "
+                   f"<strong>{_e(_named(decider))}</strong>, the part of the moment "
+                   f"chart that decides whether the matter is on at all. "
+                   f"Everything else only colours how it plays out."),
+        }[lang_key]
+        lines.append(f"<p style='margin:0 0 0.5rem 0;'>{promise}</p>")
+    if through and through != decider:
+        via = {
+            "hi": (f"Woh apna phal <strong>{_e(_named(through))}</strong> ke through "
+                   f"deta hai, isliye natija usi ki chaal par chalta hai, aapki "
+                   f"jaldi par nahi."),
+            "te": (f"Adi tana phalitanni <strong>{_e(_named(through))}</strong> dwara "
+                   f"isthundi, anduke result aa grahaam naduka batti untundi, "
+                   f"mee theeruku kaadu."),
+            "en": (f"It works through <strong>{_e(_named(through))}</strong>, so the "
+                   f"outcome arrives on that planet's schedule rather than on "
+                   f"yours."),
+        }[lang_key]
+        lines.append(f"<p style='margin:0 0 0.5rem 0;'>{via}</p>")
+    if ruling:
+        rp = {
+            "hi": (f"<strong>{_e(', '.join(ruling))}</strong> — jis minute aapne "
+                   f"poocha uspar inhi ka adhikar tha, aur prashna kundli mein "
+                   f"timing inhi ke haath mein rehti hai."),
+            "te": (f"<strong>{_e(', '.join(ruling))}</strong> — meeru adigina "
+                   f"nimishanni veere nadipinchaaru, mariyu timing kooda veeri "
+                   f"chethilone untundi."),
+            "en": (f"<strong>{_e(', '.join(ruling))}</strong> ruled the minute you "
+                   f"asked, and in a moment chart those are the planets that "
+                   f"carry the timing."),
+        }[lang_key]
+        lines.append(f"<p style='margin:0 0 0.6rem 0;'>{rp}</p>")
+
+    planets_html = (
+        f"<div style='margin-top:12px;padding-top:10px;border-top:1px solid var(--line);'>"
+        f"<p style='margin:4px 0'><strong>{_e(fav_lbl)}</strong> "
+        f"{_e(', '.join(favour)) if favour else _e(none_lbl)}</p>"
+        f"<p style='margin:4px 0'><strong>{_e(against_lbl)}</strong> "
+        f"{_e(', '.join(against)) if against else _e(none_lbl)}</p>"
+        f"</div>")
+
+    return f"""
+<section class="section planetary-dynamics">
+  <h2>{_e(sec_title)}</h2>
+  <div class="card">
+    {''.join(lines)}
     {planets_html}
   </div>
 </section>"""
@@ -802,10 +908,13 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                       vedic_customer: dict | None = None,
                       paid: bool = True,
                       prose: dict | None = None,
-                      lang: str = "en") -> tuple[str, dict]:
+                      lang: str = "en",
+                      kp_evidence: dict | None = None) -> tuple[str, dict]:
     """The single answer the customer sees. Returns (html, summary).
 
     ``prose`` is an optional LLM overlay: lead, verdict_line, why, action.
+    ``kp_evidence`` swaps the working section to the KP significators; the
+    page around it — verdict, timing, remedy, locked cards — is unchanged.
     """
     prose = prose or {}
     lang_code = str(lang or "").lower().strip()
@@ -829,7 +938,12 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
     if r["contradicted"]:
         conf_line = CONFIDENCE_SENTENCE["low"]
 
-    dynamics_html = _planetary_dynamics_block(r, j, lang=lang) if paid else ""
+    if not paid:
+        dynamics_html = ""
+    elif kp_evidence:
+        dynamics_html = _kp_dynamics_block(kp_evidence, lang=lang)
+    else:
+        dynamics_html = _planetary_dynamics_block(r, j, lang=lang)
     timing_html = _timing_block(j, paid=paid, lang=lang) if paid else ""
 
     # An unfavourable answer ALWAYS carries a remedy (paid view only).
@@ -840,6 +954,10 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
         planet = _blocking_planet(j)
         remedy_planet = planet
         rem = REMEDIES.get(planet, GENERAL_REMEDY)
+        # KP writes its own first step in plain words; the traditional support
+        # and the mantra still come from the planet table.
+        practical = (_e(j["plain_remedy"]) if str(j.get("plain_remedy") or "").strip()
+                     else rem["practical"])
         if is_hinglish:
             heading = "Sthiti Ko Sudharne Ke Prabhavi Grah Upay" if r["favourable"] is False else "Anukoolta Badhane Ke Upay"
             planet_note = f"Kundli mein mukhya dabav <strong>{_e(_named(planet))}</strong> par hai, isliye yeh upay nirdharit kiye gaye hain." if planet else ""
@@ -865,7 +983,7 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
 <section class="section remedy" data-verdict="{'down' if r['favourable'] is False else 'mixed'}">
   <h2>{heading}</h2>
   <p>{planet_note}</p>
-  <p><strong>{do_first_lbl}</strong> {rem['practical']}</p>
+  <p><strong>{do_first_lbl}</strong> {practical}</p>
   <p><strong>{trad_lbl}</strong> {rem['traditional']}</p>
   <p class="mantra">{rem['mantra']}</p>
   <p class="fine">{rem_fine}</p>
@@ -951,7 +1069,7 @@ def build_answer_html(*, question: str, verdicts: dict, western_judgment: dict,
                 f'<p class="pred-why"><b>Why:</b> {_e(llm_why)}</p>'
                 if llm_why else
                 f"<p class=\"pred-why\"><b>Why:</b> Prashna kundli {_e(r.get('label','a mixed situation'))} darshati hai.</p>" if is_hinglish else
-                f"<p class=\"pred-why\"><b>Why:</b> Prashna kundali {_e(r.get('label','a mixed situation'))} chupisthondi.</p>" if is_tenglish else
+                f"<p class=\"pred-why\"><b>Why:</b> Ee kshanam chart {_e(r.get('label','a mixed situation'))} chupisthondi.</p>" if is_tenglish else
                 f"<p class=\"pred-why\"><b>Why:</b> The moment chart reflects {_e(r.get('label','a mixed situation'))} with {_e(r.get('confidence','moderate'))} confidence.</p>"
             )
             action_line = (
