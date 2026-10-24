@@ -25,7 +25,7 @@ WHAT’S INCLUDED
   - core/handlers.py, api.py, …
 
 • Docker / Railway (bundled model, no Hub download)
-  - deploy/Dockerfile.worker, Dockerfile.local
+  - deploy/Dockerfile, Dockerfile.local
   - deploy/ensure_semantic_models.py
   - .gitattributes  (Git LFS rules for model weights)
   - MODELS.md, LOCAL.md, RAILWAY.md

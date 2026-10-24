@@ -16,7 +16,9 @@ Vercel (frontend, static)  ──/api/*──▶  Railway service (api + inline 
 ## 1. Create the project
 
 1. railway.app → **New Project → Deploy from GitHub repo** → pick this repo.
-2. Railway reads `railway.json` and builds `deploy/Dockerfile.worker`.
+2. Railway reads `railway.json` and builds `deploy/Dockerfile`.
+   The service root directory must be `/` (empty). If it is `./deploy`, Railway
+   still builds this file, because that is the name it auto-detects in that folder.
    First build takes ~8–12 minutes (mediapipe and PyJHora are large).
 3. **Add Postgres:** New → Database → PostgreSQL.
 4. **Add Redis:** New → Database → Redis.

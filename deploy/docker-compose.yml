@@ -80,7 +80,7 @@ services:
   worker-heavy:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile.worker
+      dockerfile: deploy/Dockerfile
       args: {WITH_CONFLUENCE: "1"}
     <<: *app-env
     restart: unless-stopped
@@ -100,7 +100,7 @@ services:
   worker-light:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile.worker
+      dockerfile: deploy/Dockerfile
       args: {WITH_CONFLUENCE: "0"}
     <<: *app-env
     restart: unless-stopped

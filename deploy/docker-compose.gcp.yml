@@ -62,7 +62,7 @@ services:
   api:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile.worker
+      dockerfile: deploy/Dockerfile
       args:
         WITH_CONFLUENCE: "1"
         USE_LOCAL_SOURCE: "1"
@@ -119,7 +119,7 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
-    # Override until image rebuild picks up Dockerfile.worker CMD fix
+    # Override until image rebuild picks up Dockerfile CMD fix
     command: ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "3000"]
     expose: ["3000"]
     volumes:

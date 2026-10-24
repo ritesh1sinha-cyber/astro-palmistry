@@ -1,5 +1,10 @@
 # Worker / all-in-one image — carries both engines.
 #
+# This file is named Dockerfile, not Dockerfile.worker. The astro-api service
+# root directory is ./deploy, and Railway only auto-detects a file with this
+# exact name there. Without it, Railpack runs on the deploy folder, finds no
+# app, and the build stops with "Railpack failed to prepare the build".
+#
 # Railway and Render both run this single image with INLINE_WORKER=1, so one
 # service answers HTTP and runs the readings. On a VM, docker-compose runs the
 # same image as separate api / worker-heavy / worker-light services.

@@ -53,7 +53,7 @@ engines/astro/astro_hotfix.py  ← from this project (upstream glyph bug)
 deploy/ephe/                ← Swiss Ephemeris .se1 files
 ```
 
-`Dockerfile.worker` copies those into place.
+`deploy/Dockerfile` copies those into place.
 
 ## Run it locally with Docker (recommended)
 

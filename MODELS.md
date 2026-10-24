@@ -44,7 +44,7 @@ git push
 ```
 
 Docker / Railway **do not download from Hugging Face**. They use the LFS files
-from the clone (`git lfs pull` in `deploy/Dockerfile.worker`) or `COPY` from
+from the clone (`git lfs pull` in `deploy/Dockerfile`) or `COPY` from
 the build context (`deploy/Dockerfile.local`).
 
 Verify inside the image / checkout:
@@ -66,7 +66,7 @@ engines/astro/models/paraphrase-multilingual-MiniLM-L12-v2/
 
 ## Docker & Railway (recommended — enabled by default)
 
-Both `deploy/Dockerfile.worker` (Railway) and `deploy/Dockerfile.local` default
+Both `deploy/Dockerfile` (Railway) and `deploy/Dockerfile.local` default
 to **`WITH_CONFLUENCE=1`**. Models come from the **repo (Git LFS)**, not Hugging Face:
 
 1. Install CPU `torch` + `sentence-transformers`
