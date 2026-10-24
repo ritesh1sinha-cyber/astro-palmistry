@@ -23,16 +23,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Clone the repo INCLUDING Git LFS MiniLM weights (no Hugging Face download).
+# Clone the repo. MiniLM weights (Git LFS) are pulled only when WITH_CONFLUENCE=1.
 ARG USE_LOCAL_SOURCE=0
 ARG GIT_REPO=https://github.com/ritesh1sinha-cyber/astro-palmistry.git
 ARG GIT_REF=main
 ARG RAILWAY_GIT_COMMIT_SHA=unknown
+# Railway's 1 GB plan cannot hold Torch + MiniLM. Default off so that image
+# never downloads or imports them. GCP compose still passes WITH_CONFLUENCE=1.
+ARG WITH_CONFLUENCE=0
+ENV WITH_CONFLUENCE=${WITH_CONFLUENCE}
 ENV GIT_LFS_SKIP_SMUDGE=0
 # GCP compose sets USE_LOCAL_SOURCE=1 — copy the VM checkout (after git pull) so
 # Docker cache on `git clone` cannot serve stale api.py.
 COPY . /tmp/src
 RUN set -eux; \
+  if [ "$WITH_CONFLUENCE" != "1" ]; then export GIT_LFS_SKIP_SMUDGE=1; fi; \
   if [ "$USE_LOCAL_SOURCE" = "1" ]; then \
     echo "using local checkout $RAILWAY_GIT_COMMIT_SHA"; \
     cp -a /tmp/src/. .; \
@@ -41,7 +46,7 @@ RUN set -eux; \
     echo "cloning commit $RAILWAY_GIT_COMMIT_SHA from $GIT_REPO"; \
     rm -rf /tmp/src; \
     git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO" .; \
-    git lfs pull; \
+    if [ "$WITH_CONFLUENCE" = "1" ]; then git lfs pull; fi; \
     rm -rf .git; \
   fi
 
@@ -50,16 +55,20 @@ RUN set -eux; \
 RUN python -c "import pathlib,sys; \
 print('--- /app listing ---'); \
 [print('  '+str(p)) for p in sorted(pathlib.Path('.').iterdir())]; \
-need=('requirements.api.txt','requirements.worker.txt','engines/palm_api/pipeline.py','engines/astro/astro_precompute.py','core/handlers.py','api.py','engines/astro/models/paraphrase-multilingual-MiniLM-L12-v2/model.safetensors'); \
+import os; \
+need=['requirements.api.txt','requirements.worker.txt','engines/palm_api/pipeline.py','engines/astro/astro_precompute.py','core/handlers.py','api.py']; \
+need += ['engines/astro/models/paraphrase-multilingual-MiniLM-L12-v2/model.safetensors'] if os.environ.get('WITH_CONFLUENCE')=='1' else []; \
 missing=[q for q in need if not pathlib.Path(q).exists()]; \
-sys.exit('SOURCE CLONE INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('source + MiniLM LFS complete')"
+sys.exit('SOURCE CLONE INCOMPLETE - absent from image: '+', '.join(missing)) if missing else print('source complete, confluence='+os.environ.get('WITH_CONFLUENCE','0'))"
 
 RUN pip install -r requirements.worker.txt
 
-# sentence-transformers + torch — models already in the repo (Git LFS).
+# sentence-transformers + torch — only when this image is built with
+# WITH_CONFLUENCE=1 (GCP). Railway leaves it at 0: the lexical fallback in
+# semantic_fallback.py groups findings without loading MiniLM, and the LLM API
+# still writes the prose.
 # transformers 5.20 (pulled by sentence-transformers) disables PyTorch older
 # than 2.6. 2.4.x also lacks DTensor, which MiniLM import needs.
-ARG WITH_CONFLUENCE=1
 RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
       pip install "torch==2.6.0" --index-url https://download.pytorch.org/whl/cpu && \
       pip install "sentence-transformers>=3.0,<6" && \
@@ -85,7 +94,6 @@ print('astrology engine imports OK')"
 # site-packages, so that directory is the source root.
 ENV PYJHORA_SRC=/usr/local/lib/python3.12/site-packages
 
-ENV WITH_CONFLUENCE=1
 ENV INLINE_WORKER=1 INLINE_WORKER_THREADS=2 \
     WORKER_GROUPS=heavy,palm,light ASTRO_HOTFIX=1 \
     LOCAL_STORE=/data/storage

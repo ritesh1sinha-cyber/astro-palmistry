@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE",
     "dockerfilePath": "deploy/Dockerfile",
     "buildArgs": {
-      "WITH_CONFLUENCE": "1"
+      "WITH_CONFLUENCE": "0"
     }
   },
   "deploy": {
