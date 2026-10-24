@@ -10,11 +10,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://astro-api-production-af42.up.railway.app/api/:path*"
+      "destination": "https://astro-api-production-7bc5.up.railway.app/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://astro-api-production-af42.up.railway.app/health"
+      "destination": "https://astro-api-production-7bc5.up.railway.app/health"
     }
   ],
 
