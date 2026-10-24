@@ -16,12 +16,11 @@ COPY requirements.worker.txt requirements.api.txt ./
 
 RUN pip install -r requirements.worker.txt
 
-# torch 2.4.x lacks DTensor in torch.distributed.tensor; recent transformers
-# (pulled by sentence-transformers 5.x) import it and break MiniLM load.
-# Pin 2.5.1+cpu so paraphrase-multilingual-MiniLM actually runs.
+# transformers 5.20 disables PyTorch older than 2.6. 2.4.x also lacks DTensor.
+# Pin 2.6.0+cpu so paraphrase-multilingual-MiniLM actually runs.
 ARG WITH_CONFLUENCE=1
 RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
-      pip install "torch==2.5.1" --index-url https://download.pytorch.org/whl/cpu && \
+      pip install "torch==2.6.0" --index-url https://download.pytorch.org/whl/cpu && \
       pip install "sentence-transformers>=3.0,<6" && \
       python -c "from sentence_transformers import SentenceTransformer; print('ST import OK')"; \
     fi

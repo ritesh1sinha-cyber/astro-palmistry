@@ -57,11 +57,11 @@ sys.exit('SOURCE CLONE INCOMPLETE - absent from image: '+', '.join(missing)) if 
 RUN pip install -r requirements.worker.txt
 
 # sentence-transformers + torch — models already in the repo (Git LFS).
-# torch>=2.5 required: transformers (via ST 5.x) imports DTensor from
-# torch.distributed.tensor, which 2.4.x does not export.
+# transformers 5.20 (pulled by sentence-transformers) disables PyTorch older
+# than 2.6. 2.4.x also lacks DTensor, which MiniLM import needs.
 ARG WITH_CONFLUENCE=1
 RUN if [ "$WITH_CONFLUENCE" = "1" ]; then \
-      pip install "torch==2.5.1" --index-url https://download.pytorch.org/whl/cpu && \
+      pip install "torch==2.6.0" --index-url https://download.pytorch.org/whl/cpu && \
       pip install "sentence-transformers>=3.0,<6" && \
       python -c "from sentence_transformers import SentenceTransformer; print('ST import OK')" && \
       python deploy/ensure_semantic_models.py; \

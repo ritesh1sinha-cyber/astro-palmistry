@@ -134,7 +134,7 @@ Weights are already under `engines/astro/models/` once you clone with LFS:
 ```bash
 git lfs install
 git lfs pull
-pip install "torch==2.5.1" --index-url https://download.pytorch.org/whl/cpu
+pip install "torch==2.6.0" --index-url https://download.pytorch.org/whl/cpu
 pip install "sentence-transformers>=3.0,<6"
 python deploy/ensure_semantic_models.py
 # Note: torch 2.4.x fails MiniLM load (DTensor ImportError). Use 2.5.1+.

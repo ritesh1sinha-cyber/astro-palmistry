@@ -53,7 +53,7 @@ HOW TO APPLY ON THE OTHER PC
 
 4. Install runtime deps (once):
 
-   pip install "torch==2.5.1" --index-url https://download.pytorch.org/whl/cpu
+   pip install "torch==2.6.0" --index-url https://download.pytorch.org/whl/cpu
    pip install "sentence-transformers>=3.0,<6"
    pip install -r requirements.worker.txt
 
