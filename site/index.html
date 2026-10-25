@@ -5490,11 +5490,20 @@ window.addEventListener('message', (e)=>{
     // without this a palm report's unlock button would open a chart payment.
     const read = document.getElementById('v-read');
     if(read && read.classList.contains('on') && S.readingId){ startPay(); return; }
+    // The iframe that sent this knows exactly which report it shows; its signed
+    // link starts with the report id. Prefer that over session memory, which is
+    // empty after a reload or when the report was opened from "My reports".
+    let frameRid = '';
+    try{
+      const fr = Array.from(document.querySelectorAll('iframe')).find(f=> f.contentWindow === e.source);
+      const m = fr && /\/api\/file\/([0-9a-f-]{36})\./i.exec(fr.src || '');
+      if(m) frameRid = m[1];
+    }catch(err){}
     const item = ASTRO.lastKind || 'full_report';
     // `daily` is granted, never sold — the sellable item is the subscription.
     const payItem = ({ numerology:'numerology_full', palm:'palm_full',
                        daily:'subscription' })[item] || item;
-    astroPay(payItem, ASTRO.lastReportId || '');
+    astroPay(payItem, frameRid || ASTRO.lastReportId || '');
   }
 });
 

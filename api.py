@@ -832,8 +832,23 @@ def prices():
 @app.post("/api/order")
 def create_order(body: OrderIn, request: Request, user: dict = Depends(current_user)):
     TS.require_human(request, token=body.turnstileToken)
+    ref_id = body.refId
+    if not ref_id and body.item not in ("subscription", "bundle_all"):
+        # A per-report purchase with no report id would be granted account-wide
+        # (ref_id NULL matches every report of that kind, now and in future) and
+        # would never flag the report the customer actually bought. Bind it to
+        # their most recent report of that kind instead.
+        kind = {"palm_full": "palm", "numerology_full": "numerology"}.get(
+            body.item, body.item)
+        from sqlalchemy import text as _t
+        with engine().connect() as c:
+            row = c.execute(_t("SELECT id FROM reports WHERE user_id = :u AND kind = :k"
+                               " ORDER BY created_at DESC LIMIT 1"),
+                            {"u": user["id"], "k": kind}).fetchone()
+        if row:
+            ref_id = str(row[0])
     try:
-        out = billing.create_order(user["id"], body.item, ref_id=body.refId,
+        out = billing.create_order(user["id"], body.item, ref_id=ref_id,
                                    idempotency_key=body.idempotencyKey)
     except KeyError:
         raise HTTPException(400, "unknown item")
@@ -899,12 +914,25 @@ def _order_report_diag(c, m) -> dict:
             "AND (ref_id = :r OR ref_id IS NULL) AND revoked_at IS NULL LIMIT 1"),
             {"u": m["user_id"], "it": m["item"], "r": m.get("ref_id")}).fetchone()
         out["entitled"] = bool(ent)
-        if not m.get("ref_id"):
-            out["note"] = "order has no report id (ref_id empty)"
+        rid, fallback = m.get("ref_id"), False
+        if not rid and m["item"] in ("subscription", "bundle_all"):
+            out["note"] = "account-wide item, no single report"
             return out
+        if not rid:
+            # Orders placed without a report id: show the customer's latest
+            # report of that kind, which is the one they were most likely buying.
+            kind = {"palm_full": "palm", "numerology_full": "numerology"}.get(
+                m["item"], m["item"])
+            lr = c.execute(_t("SELECT id FROM reports WHERE user_id = :u AND kind = :k"
+                              " ORDER BY created_at DESC LIMIT 1"),
+                           {"u": m["user_id"], "k": kind}).fetchone()
+            if not lr:
+                out["note"] = "order has no report id and the customer has no report of this kind"
+                return out
+            rid, fallback = str(lr[0]), True
+            out["refId"] = rid
         r = c.execute(_t("SELECT kind, paid, free_key, paid_key, created_at "
-                         "FROM reports WHERE id = :r"),
-                      {"r": m["ref_id"]}).fetchone()
+                         "FROM reports WHERE id = :r"), {"r": rid}).fetchone()
         if not r:
             out["note"] = "no reports row for this order's report id"
             return out
@@ -916,6 +944,9 @@ def _order_report_diag(c, m) -> dict:
         out["paidFile"] = bool(rm["paid_key"]) and st.exists(rm["paid_key"])
         if not out["paidFile"]:
             out["note"] = "report row exists but the stored HTML file is missing"
+        if fallback:
+            out["note"] = ("order had no report id; showing the customer's latest "
+                           + (rm["kind"] or "") + " report. " + out["note"]).strip()
     except Exception as e:  # diagnostics must never break the lookup
         out["note"] = f"check failed: {type(e).__name__}"
     return out
