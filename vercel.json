@@ -15,6 +15,14 @@
     {
       "source": "/health",
       "destination": "https://astro-api-production-7bc5.up.railway.app/health"
+    },
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/promo",
+      "destination": "/index.html"
     }
   ],
 

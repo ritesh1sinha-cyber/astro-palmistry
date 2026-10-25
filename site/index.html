@@ -2237,9 +2237,15 @@ let _hashLock = false;
 
 const AUTH_PATHS = { admin:'/admin', promo:'/promo' };
 function authPathKind(){
+  // Path form: /admin, /promo (needs Vercel rewrite → index.html).
   const p = (location.pathname||'/').replace(/\/$/,'') || '/';
   if(p === AUTH_PATHS.admin) return 'admin';
   if(p === AUTH_PATHS.promo) return 'promo';
+  // Hash form people actually type: /#/admin, /#/promo. Without this,
+  // applyHash treats "admin" as an unknown view and lands on home with no modal.
+  const h = (location.hash||'').replace(/^#\/?/,'').split('/')[0];
+  if(h === 'admin') return 'admin';
+  if(h === 'promo') return 'promo';
   return null;
 }
 function dismissAuthModal(kind){
