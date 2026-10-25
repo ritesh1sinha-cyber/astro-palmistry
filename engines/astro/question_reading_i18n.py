@@ -168,6 +168,15 @@ _LENS_WORDS = {
 }
 
 
+def _keep_touching(d: dict, jup: str, sat: str) -> tuple[str, str]:
+    """A transit that is not touching the house needs no sentence when the other planet is (same rule as English)."""
+    if d["jup"]["mode"] == "none" and d["sat"]["mode"] != "none":
+        return "", sat
+    if d["sat"]["mode"] == "none" and d["jup"]["mode"] != "none":
+        return jup, ""
+    return jup, sat
+
+
 def lens_text(key: str, d: dict, facts: dict, lk: str) -> str:
     """Hinglish / Tenglish sentence for one live lens."""
     hi = lk == "hi_en"
@@ -219,7 +228,7 @@ def lens_text(key: str, d: dict, facts: dict, lk: str) -> str:
             sat = {"in": f"Shani aapke {p} house se hi guzar raha hai, jo use dheema karta hai aur parakhta hai",
                    "aspects": f"Shani, aapke {sh} house se, {p} house ko dekhta hai aur dabav badhata hai",
                    "none": f"Shani, aapke {sh} house mein, {p} house par dabav nahi daal raha"}.get(d["sat"]["mode"], "")
-            text = "Gochar: " + "; ".join(x for x in (jup, sat) if x) + "."
+            text = "Gochar: " + "; ".join(x for x in _keep_touching(d, jup, sat) if x) + "."
             if d["nodes"]:
                 text += f" Rahu aur Ketu aapke {p} house ke axis par hain, jo use asthir karte hain."
         else:
@@ -229,33 +238,24 @@ def lens_text(key: str, d: dict, facts: dict, lk: str) -> str:
             sat = {"in": f"Shani mee {p} house gunda ade sancharistunnadu, adi deeniki aalasyam, pareeksha",
                    "aspects": f"Shani, mee {sh} house nundi, {p} house ni choosi ottidi penchutunnadu",
                    "none": f"Shani, mee {sh} house lo, {p} house meeda ottidi teevatam ledu"}.get(d["sat"]["mode"], "")
-            text = "Gochar: " + "; ".join(x for x in (jup, sat) if x) + "."
+            text = "Gochar: " + "; ".join(x for x in _keep_touching(d, jup, sat) if x) + "."
             if d["nodes"]:
                 text += f" Rahu mariyu Ketu mee {p} house axis lo unnaru, idi deenini asthiram chestundi."
         return text
     if key == "naadi":
-        if not d["touched"]:
-            return ("Chandra Naadi: Chandra abhi kisi natal grah ko nahi chhu raha, isliye koi dhakka ya rukawat nahi." if hi else
-                    "Chandra Naadi: Chandrudu ippudu e natal grahanni thakadam ledu, kabatti e vaipu prabhavam ledu.")
-        names = ", ".join(d["touched"])
-        if not d["relevant"]:
-            return (f"Chandra Naadi: Chandra abhi aapke natal {names} ko chhu raha hai, jinme se koi is sawal ko nahi chalata, isliye na dhakka na rukawat." if hi
-                    else f"Chandra Naadi: Chandrudu ippudu mee natal {names} ni thakutunnadu, vaatilo e okkati ee prashnanu nadipinchadu, kabatti dhakka leda aapu ledu.")
-        if d["good"] and d["bad"]:
-            tail = (f"{', '.join(d['good'])} madad karta hai jabki {', '.join(d['bad'])} dabav mein hai" if hi else
-                    f"{', '.join(d['good'])} maddatu istundi, {', '.join(d['bad'])} ibbandilo undi")
-        elif d["bad"]:
-            tail = (f"{', '.join(d['bad'])} is sawal ko chalata hai par dabav mein hai, isliye yeh samay dabav laata hai" if hi else
-                    f"{', '.join(d['bad'])} ee prashnanu nadipistundi kani ibbandilo undi, kabatti ee samayam ottidi techchi pedutundi")
-        else:
-            tail = (f"{', '.join(d['good'])} is sawal ko chalata hai aur achhi sthiti mein hai, isliye yeh sakriya aur madadgaar samay hai" if hi else
-                    f"{', '.join(d['good'])} ee prashnanu nadipistundi mariyu manchi sthitilo undi, kabatti idi chaitanyavantamaina, upayogakaramaina samayam")
-        return (f"Chandra Naadi: Chandra abhi aapke natal {names} ko chhu raha hai; {tail}." if hi else
-                f"Chandra Naadi: Chandrudu ippudu mee natal {names} ni thakutunnadu; {tail}.")
+        import question_naadi as QN
+        return QN.text_local(d, facts, lk)
+    if key == "vulnerability":
+        import question_health as QH
+        return QH.text_local(d, lk)
     return ""
 
 
 def timing(facts: dict, lk: str) -> str:
+    vuln = (facts.get("lenses") or {}).get("vulnerability")
+    if vuln:
+        import question_health as QH
+        return QH.watch_line(vuln, lk)
     w = window(facts.get("next_window") or "", lk)
     if not w:
         return ""
@@ -317,6 +317,12 @@ def steps(facts: dict, lk: str) -> list[str]:
         out.append(f"{k} ko majboot karein: uska mantra jaapein aur {day or 'uske din'} ko thoda daan dein." if hi
                    else f"{k} ni balaparachandi: daani mantram japinchandi mariyu {day or 'aa roju'} na "
                         f"konchem danam cheyandi.")
+    vuln = (facts.get("lenses") or {}).get("vulnerability")
+    if vuln:
+        import question_health as QH
+        step = QH.prevent_step(vuln, lk)
+        if step and QH.sanitized(step):
+            out.append(step)
     w = window(facts.get("next_window") or "", lk)
     if w and key in QR._MOVE_DOMAINS:
         out.append(f"Zaroori kadam {w} ke dauran uthane ka lakshya rakhein aur usse pehle taiyari karein." if hi
@@ -418,6 +424,20 @@ _VERDICT = {
 }
 
 
+_AREA_LABEL = {
+    "hi_en": {"health_vitality": "Sehat", "career_profession": "Career", "marriage_relationship": "Rishta",
+              "wealth_finances": "Paisa", "children_progeny": "Santan", "education_learning": "Padhai",
+              "foreign_relocation": "Videsh yatra", "property_assets": "Property",
+              "litigation_disputes": "Vivad", "speech_neurology": "Vaani aur naadi",
+              "general_destiny": "Jeevan path"},
+    "te_en": {"health_vitality": "Aarogyam", "career_profession": "Career", "marriage_relationship": "Sambandham",
+              "wealth_finances": "Dabbu", "children_progeny": "Santanam", "education_learning": "Chaduvu",
+              "foreign_relocation": "Videsha prayanam", "property_assets": "Property",
+              "litigation_disputes": "Vivadam", "speech_neurology": "Maatalu mariyu narallu",
+              "general_destiny": "Jeevana margam"},
+}
+
+
 def answer(facts: dict, stance: str, lk: str) -> str:
     """The short verdict, in the reader's language, built from the facts and the (checked) stance."""
     hi = lk == "hi_en"
@@ -446,7 +466,12 @@ def answer(facts: dict, stance: str, lk: str) -> str:
         return text
     lord = facts["house"]["lord"]
     dw = _dw(lord["dignity"], lk)
-    opener = _VERDICT[lk][QR._verdict_key(facts)]
+    label = _AREA_LABEL[lk].get(key)
+    opener = (f"{label}: " if label else "") + _VERDICT[lk][QR._verdict_key(facts)]
+    vuln = (facts.get("lenses") or {}).get("vulnerability")
+    if vuln:                  # health: where to take care, instead of repeating the ruling planet
+        import question_health as QH
+        return f"{opener} {QH.answer_line(vuln, lk)}".strip()
     if hi:
         text = (f"{opener} {lord['planet']}, jo is kshetra ka swami hai, {lord['sign']} mein house "
                 f"{lord['house']} mein baitha hai{dw}.")

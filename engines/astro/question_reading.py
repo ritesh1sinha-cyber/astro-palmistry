@@ -1,4 +1,4 @@
-﻿"""A short, plain-language answer to ONE question the reader asked.
+"""A short, plain-language answer to ONE question the reader asked.
 
 The older question report stacked every technique the engine owned (house
 analysis, divisional charts, Lal Kitab, Chandra Naadi, transit lists, a dozen
@@ -150,7 +150,7 @@ def build_fact_sheet(conf: Any, pc: dict, cfg: dict) -> dict:
                                         conf.transit_finding or "")
 
     signals_for, signals_against = [], []
-    if conf.domain_key not in ("gemstones_remedies", "general_destiny", "out_of_domain"):
+    if conf.domain_key not in ("gemstones_remedies", "out_of_domain"):
         (signals_against if lord["hard_house"] else signals_for).append("ruling planet placement")
         if lord["dignity"] in _GOOD_DIGNITY:
             signals_for.append("ruling planet dignity")
@@ -169,7 +169,7 @@ def build_fact_sheet(conf: Any, pc: dict, cfg: dict) -> dict:
         p: {"house": int(d.get("house") or 0), "owns": _owned.get(p, [])}
         for p, d in (pc.get("planets") or {}).items() if int(d.get("house") or 0)}
     facts["lenses"] = {}
-    if conf.domain_key not in ("gemstones_remedies", "general_destiny", "out_of_domain"):
+    if conf.domain_key not in ("gemstones_remedies", "out_of_domain"):
         import question_lenses as QL
         facts["lenses"] = QL.build_lenses(conf, pc, cfg, facts)
 
@@ -330,6 +330,10 @@ def _timing_line(facts: dict, lang: str = "en") -> str:
     if _lang_key(lang) != "en":
         import question_reading_i18n as I18N
         return I18N.timing(facts, _lang_key(lang))
+    vuln = (facts.get("lenses") or {}).get("vulnerability")
+    if vuln:                  # health: the useful window is when to take more care, not a "best" period
+        import question_health as QH
+        return QH.watch_line(vuln, "en")
     w = facts.get("next_window") or ""
     return f"The period that supports this most is {w}." if w else ""
 
@@ -341,7 +345,11 @@ def _wants_timing(facts: dict, flag: Optional[bool] = None) -> bool:
     if facts["domain_key"] in ("gemstones_remedies", "out_of_domain"):
         return False
     # The model's flag only breaks a tie: a window is relevant for "will it happen" areas and for any
-    # question that asks "when"; it is noise on "how is my health".
+    # question that asks "when"; it is noise on "how is my health" - unless the chart names a window
+    # in which to take more care, which is exactly what a health question needs.
+    vuln = (facts.get("lenses") or {}).get("vulnerability") or {}
+    if (vuln.get("watch") or {}).get("range") or (vuln.get("now") or {}).get("range"):
+        return True
     return bool(_WHEN_WORDS.search(facts["question"])) or facts["domain_key"] in _MOVE_DOMAINS
 
 
@@ -386,6 +394,12 @@ def _steps(facts: dict, lang: str = "en") -> list[str]:
     if target:
         k = target["planet"]
         steps.append(f"Strengthen {k}: chant its mantra and offer a small donation on {_WEEKDAY.get(k, 'its day')}s.")
+    vuln = (facts.get("lenses") or {}).get("vulnerability")
+    if vuln:
+        import question_health as QH
+        step = QH.prevent_step(vuln, "en")
+        if step and QH.sanitized(step):
+            steps.append(step)
     window = facts.get("next_window")
     if window and key in _MOVE_DOMAINS:
         steps.append(f"Aim to make the key move during the {window} and prepare before it.")
@@ -517,8 +531,20 @@ def _prompt(facts: dict) -> str:
                          "do not talk about a 'birth promise' or periods here.")
     else:
         lens_labels = {"promise": "birth promise", "vimshottari": "running period", "jaimini": "Chara period",
-                       "yogini": "Yogini", "transit": "transit", "naadi": "Chandra Naadi"}
+                       "yogini": "Yogini", "transit": "transit", "naadi": "Chandra Naadi",
+                       "vulnerability": "body vulnerability"}
         votes = facts.get("lenses") or {}
+        if "vulnerability" in votes:
+            lines.insert(4, "HEALTH QUESTION (extra care is "
+                            + ("ADVISED right now: the running period, Chandra Naadi or the current sub-period "
+                               "shows strain" if _care_now(facts) else "not specially needed right now")
+                            + "): `answer` must say how the health outlook looks AND name the body "
+                            "areas that need care, using the body vulnerability finding (Chandra Naadi and the "
+                            "disease pattern). `because` is ONE short sentence saying whether the running "
+                            "period makes now a time for extra care; do not repeat the body areas and do not "
+                            "list lens or period names. Speak of "
+                            "sensitivity and care only: never name an illness, never predict illness, "
+                            "accident, surgery or lifespan.")
         if votes:
             word = {1: "supports", 0: "neutral", -1: "strains"}
             lines.insert(4, "How the lenses line up: " + "; ".join(
@@ -531,6 +557,16 @@ def _prompt(facts: dict) -> str:
         for fid, lens, text in _findings_full(facts):
             lines.append(f"{fid} [{lens_labels.get(lens, lens)}]: {text}")
     return "\n".join(lines)
+
+
+def _care_now(facts: dict) -> bool:
+    """Health: does the live picture ask for extra care? (running period, Chandra Naadi, current sensitive period)"""
+    lenses = facts.get("lenses") or {}
+    vuln = lenses.get("vulnerability") or {}
+    return bool((lenses.get("vimshottari") or {}).get("vote", 0) < 0
+                or (lenses.get("naadi") or {}).get("vote", 0) < 0
+                or (lenses.get("naadi") or {}).get("cautions")
+                or vuln.get("current_hard"))
 
 
 _GEM_NAMES = ("ruby", "pearl", "red coral", "coral", "emerald", "yellow sapphire", "blue sapphire",
@@ -569,12 +605,28 @@ def _check(ans: str, facts: dict) -> list[str]:
     problems = list(enforce_user_voice(ans))
     if not ans.strip():
         problems.append("answer is empty")
-    if len(ans.split()) > 90:
+    if len(ans.split()) > 60:
         problems.append("answer is longer than 60 words")
     if re.search(r"lal\s*kitab|python|code|```", ans, re.I):
         problems.append("answer contains something that is not part of a chart answer")
     if re.search(r"\b20\d\d\b", ans):
         problems.append("puts a year in the answer; timing is shown separately")
+    try:                      # the page's last filter deletes whole sentences it dislikes: never ship one
+        from qa_checks.customer_text_sanitizer import _internal_leak
+        if _internal_leak(ans):
+            problems.append("contains a phrase the customer page filter would delete; reword it plainly")
+    except Exception:  # noqa: BLE001
+        pass
+    if "vulnerability" in (facts.get("lenses") or {}):
+        if re.search(r"\b(cancer|diabet\w*|tumou?rs?|disease|illness(?:es)?|surgery|operation|accident|fatal|"
+                     r"die|dies|dying|death|terminal|lifespan|longevity)\b", ans, re.I):
+            problems.append("names an illness or predicts harm; speak of sensitivity and care only")
+        if not re.search(r"\b(health|body|wellbeing|well-being|vitality|energy|care|routine|check-?ups?|"
+                         r"strain|sensitiv\w*)\b", ans, re.I):
+            problems.append("does not say how the health outlook looks")
+        if _care_now(facts) and re.search(r"\b(does not|doesn't|do not|no need|not need|nothing)\b[^.]{0,60}"
+                                          r"\b(care|caution|attention)\b", ans, re.I):
+            problems.append("says no extra care is needed now, but the chart shows strain right now")
     if facts.get("lenses"):
         p, _n = _verdict_key(facts)
         for sent in re.split(r"(?<=[.!?])\s", ans):
@@ -714,19 +766,33 @@ def _pick_why(facts: dict, lk: str, use: list[str]) -> list[str]:
     """The reasons the model chose, always covering the birth promise AND something running now."""
     rows = _findings_full(facts, lk)
     by_id = {fid: (lens, text) for fid, lens, text in rows}
-    chosen = [i for i in dict.fromkeys(x.strip().upper() for x in use) if i in by_id][:5]
+    has_vuln = any(l == "vulnerability" for _i, l, _t in rows)
+    cap = 6 if has_vuln else 5
+    chosen = [i for i in dict.fromkeys(x.strip().upper() for x in use) if i in by_id][:cap]
     if len(chosen) < 3:
         seen = {by_id[i][0] for i in chosen}
         for fid, lens, _t in rows:           # no usable pick: the lead sentence of every lens
             if lens not in seen:
                 chosen.append(fid)
                 seen.add(lens)
-    lenses_in = {by_id[i][0] for i in chosen}
-    for want in ("promise", next((l for _i, l, _t in rows if l != "promise"), "")):
-        if want and want not in lenses_in:
-            fid = next(i for i, l, _t in rows if l == want)
-            chosen = (chosen[:4] + [fid]) if len(chosen) >= 5 else chosen + [fid]
-            lenses_in.add(want)
+    # Always shown: the birth promise, something running now, and (health) the body vulnerability.
+    first_live = next((l for _i, l, _t in rows if l not in ("promise", "vulnerability")), "")
+    has_naadi = any(l == "naadi" for _i, l, _t in rows)
+    # Chandra Naadi reads the present moment, so it is reviewed - and shown - for every question.
+    wants = (["promise"] + ([first_live] if first_live else []) + (["naadi"] if has_naadi else [])
+             + (["vulnerability"] if has_vuln else []))
+    for want in wants:
+        if want in {by_id[i][0] for i in chosen}:
+            continue
+        fid = next(i for i, l, _t in rows if l == want)
+        if len(chosen) >= cap:               # make room by dropping a reason that is not a required lens
+            drop = next((i for i in reversed(chosen) if by_id[i][0] not in wants), chosen[-1])
+            chosen.remove(drop)
+        chosen.append(fid)
+    votes = {k: v.get("vote", 0) for k, v in (facts.get("lenses") or {}).items()}
+    while len(chosen) > 6:                    # trim: a lens that voted neutral goes first
+        pool = [i for i in chosen if by_id[i][0] not in wants] or chosen
+        chosen.remove(next((i for i in reversed(pool) if votes.get(by_id[i][0], 0) == 0), pool[-1]))
     order = [fid for fid, _l, _t in rows]
     return [by_id[i][1] for i in sorted(set(chosen), key=order.index)]
 
@@ -753,6 +819,38 @@ _VERDICT_EN = {
     (-1, -1): "This is not easy for you right now: the chart's promise is weak and what is running now "
               "adds friction.",
 }
+
+
+_AREA_EN = {
+    "health_vitality": "your health", "speech_neurology": "your speech and nerves",
+    "career_profession": "your career", "marriage_relationship": "your relationship",
+    "wealth_finances": "your finances", "children_progeny": "your children",
+    "education_learning": "your studies", "foreign_relocation": "your move abroad",
+    "property_assets": "your property plans", "litigation_disputes": "this dispute",
+    "general_destiny": "your life path",
+}
+
+# Same nine outcomes as _VERDICT_EN, but the sentence says what it is about.
+_VERDICT_AREA_EN = {
+    (1, 1): "Your chart supports {area}, and what is running now backs it.",
+    (1, 0): "Your chart supports {area}, and what is running now is mixed, so steady effort will carry it.",
+    (1, -1): "Your chart supports {area}, but what is running now is holding it back, so be patient.",
+    (0, 1): "Your chart gives a mixed promise for {area}, but what is running now helps.",
+    (0, 0): "{Area} is workable, but expect some effort and delay.",
+    (0, -1): "Your chart gives a mixed promise for {area}, and what is running now adds friction.",
+    (-1, 1): "Your chart's promise for {area} is weak, though what is running now helps, so effort pays now.",
+    (-1, 0): "Your chart's promise for {area} is weak and what is running now is mixed, so it will take effort.",
+    (-1, -1): "{Area} needs care right now: the chart's promise is weak and what is running now adds friction.",
+}
+
+
+def verdict_opener(facts: dict) -> str:
+    """The first sentence of the answer; it names the area asked about, never just 'this'."""
+    key = _verdict_key(facts)
+    area = _AREA_EN.get(facts["domain_key"])
+    if not area:
+        return _VERDICT_EN[key]
+    return _VERDICT_AREA_EN[key].format(area=area, Area=area[0].upper() + area[1:])
 
 
 def headline(answer: str, limit: int = 140) -> str:
@@ -820,11 +918,16 @@ def _fallback(facts: dict, lang: str = "en") -> QuestionReading:
     stance = _stance_hint(facts)
     lord = facts["house"]["lord"]
     dw = _dignity_words(lord["dignity"])
-    opener = _VERDICT_EN[_verdict_key(facts)]
-    answer = (f"{opener} {lord['planet']}, the planet that rules this area, sits in house {lord['house']} "
-              f"in {lord['sign']}" + (f" and is {dw}" if dw else "") + ".")
-    if lord["hard_house"]:
-        answer += " That house tends to slow things down."
+    opener = verdict_opener(facts)
+    vuln = (facts.get("lenses") or {}).get("vulnerability")
+    if vuln:                  # health: say where to take care instead of repeating the ruling planet
+        import question_health as QH
+        answer = f"{opener} {QH.answer_line(vuln)}".strip()
+    else:
+        answer = (f"{opener} {lord['planet']}, the planet that rules this area, sits in house {lord['house']} "
+                  f"in {lord['sign']}" + (f" and is {dw}" if dw else "") + ".")
+        if lord["hard_house"]:
+            answer += " That house tends to slow things down."
     why = _pick_why(facts, "en", [])
     timing = _timing_line(facts) if _wants_timing(facts) else ""
     return _attach(QuestionReading(stance=stance, answer=answer, why=why, timing=timing,
@@ -851,6 +954,7 @@ _LABELS = {
         "lenses": "How the lenses line up",
         "lens_promise": "Birth promise", "lens_vimshottari": "Running period", "lens_jaimini": "Chara period",
         "lens_yogini": "Yogini", "lens_transit": "Transit", "lens_naadi": "Chandra Naadi",
+        "lens_vulnerability": "Body vulnerability",
         "lock": "Timing and next steps are in the full reading",
         "lockchip": "Unlock timing and steps",
         "cta": "Unlock full answer", "sub": "Timing window and practical steps for this question.",
@@ -863,6 +967,7 @@ _LABELS = {
         "lenses": "Lens kaise milte hain",
         "lens_promise": "Kundli ka vachan", "lens_vimshottari": "Chal rahi dasha", "lens_jaimini": "Chara dasha",
         "lens_yogini": "Yogini", "lens_transit": "Gochar", "lens_naadi": "Chandra Naadi",
+        "lens_vulnerability": "Sharir ki sanvedansheelta",
         "lock": "Samay aur agle kadam poori reading mein hain",
         "lockchip": "Samay aur kadam unlock karein",
         "cta": "Poora jawab unlock karein", "sub": "Is prashna ka samay aur vyavaharik kadam.",
@@ -875,6 +980,7 @@ _LABELS = {
         "lenses": "Lens lu ela kalustayi",
         "lens_promise": "Jataka vagdanam", "lens_vimshottari": "Nadustunna dasha", "lens_jaimini": "Chara dasha",
         "lens_yogini": "Yogini", "lens_transit": "Gochar", "lens_naadi": "Chandra Naadi",
+        "lens_vulnerability": "Sharira sunnitatvam",
         "lock": "Samayam mariyu tarvata chese pani poorthi reading lo unnayi",
         "lockchip": "Samayam mariyu steps unlock cheyandi",
         "cta": "Poorthi samadhanam unlock cheyandi", "sub": "Ee prashnaku samayam mariyu practical steps.",
@@ -912,10 +1018,17 @@ def _facts_list(facts: dict) -> list[str]:
         if "yogini" in lenses:
             y = lenses["yogini"]
             rows.append(f"Yogini period: {y['name']} ({y['lord']}), {y['tone']}.")
-        if "naadi" in lenses and lenses["naadi"]["touched"]:
+        if "naadi" in lenses:
             n = lenses["naadi"]
             where = f" in {n['moon_sign']}" if n["moon_sign"] else ""
-            rows.append(f"Chandra Naadi: the Moon{where} is touching natal {', '.join(n['touched'])}.")
+            rows.append(f"Chandra Naadi: the Moon{where} is touching natal {', '.join(n['touched'])}."
+                        if n["touched"] else f"Chandra Naadi: the Moon{where} is touching no natal planet.")
+            if n.get("cautions"):
+                import question_naadi as QN
+                rows.append("Chandra Naadi caution: " + "; ".join(QN._CAUTION_EN[c] for c in n["cautions"]) + ".")
+        if "vulnerability" in lenses:
+            import question_health as QH
+            rows.append("Body sensitivity: " + QH.text_en(lenses["vulnerability"]))
     return rows
 
 

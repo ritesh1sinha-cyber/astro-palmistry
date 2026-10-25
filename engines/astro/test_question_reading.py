@@ -72,7 +72,7 @@ def test_each_lens_votes_from_the_chart_and_the_verdict_uses_them():
     import question_lenses as QL
     conf, pc, cfg, facts = _sheet("is job change seen in near future", "career_profession")
     lenses = facts["lenses"]
-    assert set(lenses) == set(QL.LENS_ORDER), lenses.keys()
+    assert set(lenses) == set(QL.LENS_ORDER) - {"vulnerability"}, lenses.keys()    # health-only lens
     assert all(v["vote"] in (-1, 0, 1) for v in lenses.values())
     # the stance is the weighted vote, nothing else
     assert QR._stance_hint(facts) == QL.stance(lenses)
@@ -126,7 +126,8 @@ def test_fallback_is_short_and_plain():
         conf, pc, cfg, facts = _sheet(q, dom)
         r = QR._fallback(facts)
         words = len(" ".join([r.answer, r.timing, *r.why, *r.steps]).split())
-        assert words < 220, (q, words)
+        # health also carries the body-pattern reason, the care window and one preventive habit
+        assert words < (290 if dom == "health_vitality" else 235), (q, words)
         assert 1 <= len(r.why) <= 6 and len(r.steps) <= 3
         assert not QR._check(r.answer, facts), (q, QR._check(r.answer, facts))
         assert not re.search(r"lal kitab|naadi|trikona|kendradhipati|dusthana", r.answer, re.I)
@@ -304,6 +305,198 @@ def test_wrong_planet_house_claim_is_caught():
     if (lord, wrong) in QR._true_claims(facts):
         return
     assert QR._check(f"You will be fine because {lord} sits in house {wrong}.", facts)
+
+
+# ----------------------------------------------------------------------------- health & page filter
+_HPC = None
+
+
+def _health_pc() -> dict:
+    """Gemini rising, Mars (6th lord) debilitated in the 2nd, Ketu-Venus running: the chart that lost bullets."""
+    global _HPC
+    if _HPC is None:
+        from astro_precompute import resolve_precompute
+        _HPC = resolve_precompute("Test", "1992-11-15", birth_time="20:00", latitude=28.6, longitude=77.2,
+                                  timezone=5.5, place_name="Delhi", gender=1)
+    return _HPC
+
+
+def _health_sheet(question: str = "how is the health in coming time"):
+    pc = _health_pc()
+    conf = analyze_question_confluence(pc, question, domain_override="health_vitality")
+    cfg = DOMAINS_CONFIG[conf.domain_key]
+    return conf, pc, cfg, QR.build_fact_sheet(conf, pc, cfg)
+
+
+def _through_the_page_filters(html_text: str) -> str:
+    import report_render as RR
+    return RR._scrub(RR._voice_polish(html_text))
+
+
+def _li_texts(html_text: str) -> list[str]:
+    return [re.sub(r"<[^>]+>", "", x).strip() for x in re.findall(r"<li[^>]*>(.*?)</li>", html_text, re.S)]
+
+
+def test_no_reason_is_blanked_by_the_page_filter():
+    """The customer-text filter deletes a whole sentence that says '<Planet> sits'; none of ours may."""
+    for lang in ("en", "hi_en", "te_en"):
+        conf, pc, cfg, facts = _health_sheet()
+        r = QR._fallback(facts, lang)
+        page = QR.render_html(r, facts, paid=True, lang=lang)
+        out = _through_the_page_filters(page)
+        before, after = _li_texts(page), _li_texts(out)
+        assert len(before) == len(after) and all(after), (lang, [b for b, a in zip(before, after) if not a])
+
+
+def test_every_lens_sentence_survives_the_page_filter():
+    import itertools
+    import question_lenses as QL
+    facts = {"house": {"number": 6}}
+    planets = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
+    texts = []
+    for main, sub, rel in itertools.product(planets, planets, ("helper", "hard", "none")):
+        texts.append(QL.text_en("vimshottari", {"main": main, "sub": sub, "who": sub, "rel": rel}, facts))
+    for hit, hard in (("primary", False), ("lord", False), ("", True), ("", False)):
+        texts.append(QL.text_en("jaimini", {"maha": "Aries", "antar": "Leo", "hit": hit, "hard": hard,
+                                            "primary_sign": "Scorpio", "lord_sign": "Cancer"}, facts))
+    for nodes in (True, False):
+        texts.append(QL.text_en("transit", {"primary": 6, "nodes": nodes, "jup": {"mode": "aspects", "house": 2},
+                                            "sat": {"mode": "in", "house": 6}}, facts))
+    page = "<ul>" + "".join(f"<li>{t}</li>" for t in texts) + "</ul>"
+    out = _through_the_page_filters(page)
+    assert all(_li_texts(out)), "a lens sentence is wiped by the page filter"
+
+
+def test_model_answer_the_page_filter_would_delete_is_rejected():
+    conf, pc, cfg, facts = _health_sheet()
+    assert QR._check("Your health is fine because Mars sits in your second house.", facts)
+
+
+def test_health_gets_a_body_vulnerability_lens_from_naadi_and_the_disease_pattern():
+    conf, pc, cfg, facts = _health_sheet()
+    v = facts["lenses"].get("vulnerability")
+    assert v and v["vote"] in (-1, 0, 1)
+    assert v["themes"], "the disease-pattern confluence found no body zone"
+    assert v["sensitive"], "Chandra Naadi found no planet in the 6th or 8th"
+    text = QR._lens_findings(facts, "en", 1)
+    body = next(t for _i, lens, t in text if lens == "vulnerability")
+    assert "Chandra Naadi marks" in body and "body pattern" in body
+    # the other areas never get this lens
+    _c, _p, _cfg, career = _sheet("when will I get promoted", "career_profession")
+    assert "vulnerability" not in career["lenses"]
+
+
+def test_health_answer_names_the_area_and_where_to_take_care():
+    conf, pc, cfg, facts = _health_sheet()
+    r = QR._fallback(facts, "en")
+    assert "your health" in r.answer.lower(), r.answer
+    assert "Look after" in r.answer, r.answer
+    assert any("vulnerability" == v["key"] for v in r.lenses)
+    assert any(re.search(r"Chandra Naadi marks", w) for w in r.why), "the vulnerability reason must be shown"
+    assert any(s.startswith("For your body pattern") for s in r.steps), r.steps
+    assert "sub-period" in r.timing and re.search(r"\b20\d\d\b", r.timing)
+    vuln_reason = next(w for w in r.why if "Chandra Naadi marks" in w)
+    low = " ".join([r.answer, vuln_reason, *r.steps, r.timing]).lower()      # (the sign Cancer is not a disease)
+    assert not re.search(r"\b(cancer|diabet\w*|surgery|death|die|lifespan|longevity)\b", low)
+    page = QR.render_html(r, facts, paid=False)
+    assert "Body vulnerability" in page and "Unlock" in page
+
+
+def test_every_domain_answer_names_its_area():
+    for q, dom, word in [("when will I get promoted", "career_profession", "career"),
+                         ("will I be rich", "wealth_finances", "finances")]:
+        conf, pc, cfg, facts = _sheet(q, dom)
+        assert word in QR._fallback(facts, "en").answer.lower(), (dom, QR._fallback(facts, "en").answer)
+
+
+def test_model_cannot_name_an_illness_on_a_health_question():
+    conf, pc, cfg, facts = _health_sheet()
+    assert QR._check("You may develop diabetes, so take care of your health.", facts)
+    assert QR._check("Your chart is full of strain.", facts) == []
+    assert QR._check("Nothing to say.", facts), "a health answer must say how the health outlook looks"
+
+
+def test_health_reasons_survive_model_picks_and_hinglish_tenglish_are_localised():
+    conf, pc, cfg, facts = _health_sheet()
+
+    def stub(schema, system, user, **kw):
+        assert "HEALTH QUESTION" in user and "body vulnerability" in user
+        return QR.QuestionJudgement(
+            stance="mixed", answer="Your health needs steady care, mainly for the skin, nerves and face.",
+            because="Your chart is most sensitive there and the running period asks for extra care.",
+            use=["F1", "F2"], needs_timing=False)
+
+    with _Model(stub):
+        got = QR._ask_model(facts, "en")
+    assert got is not None and any("Chandra Naadi marks" in w for w in got.why), "vulnerability must be kept"
+    assert len(got.why) <= 6
+    for lang in ("hi_en", "te_en"):
+        r = QR._fallback(facts, lang)
+        text = " ".join([r.answer, *r.why, *r.steps, r.timing])
+        assert "Chandra Naadi" in text and not _ENGLISH_FILLER.search(text), (lang, text)
+        assert not re.search(r"[\u0900-\u097F\u0C00-\u0C7F]", text)
+
+
+_AREAS = [("when will I get promoted", "career_profession"), ("when will I get married", "marriage_relationship"),
+          ("will my finances improve", "wealth_finances"), ("will I have a child", "children_progeny"),
+          ("will I clear my exams", "education_learning"), ("will I settle abroad", "foreign_relocation"),
+          ("should I buy a house now", "property_assets"), ("will I win my court case", "litigation_disputes"),
+          ("will my stammering improve", "speech_neurology"), ("how will my life go", "general_destiny"),
+          ("how is my health", "health_vitality")]
+
+
+def test_chandra_naadi_is_reviewed_and_shown_for_every_life_area():
+    for q, dom in _AREAS:
+        conf, pc, cfg, facts = _sheet(q, dom)
+        naadi = facts["lenses"].get("naadi")
+        assert naadi, (dom, "no Chandra Naadi reading")
+        assert {"touched", "relevant", "cautions", "moon_sign"} <= set(naadi), dom
+        assert any(w.startswith("Chandra Naadi:") for w in QR._fallback(facts).why), dom
+
+        def stub(schema, system, user, **kw):          # a model that picks only the lead finding
+            return QR.QuestionJudgement(stance="mixed", answer="You may see progress with care.",
+                                        because="Your chart is mixed right now.", use=["F1"], needs_timing=False)
+
+        with _Model(stub):
+            got = QR._ask_model(facts, "en")
+        assert got is not None and any(w.startswith("Chandra Naadi:") for w in got.why), (dom, got and got.why)
+        assert len(got.why) <= 6, dom
+
+
+def test_general_life_question_is_a_confluence_of_every_lens():
+    conf, pc, cfg, facts = _sheet("how will my life go", "general_destiny")
+    assert {"promise", "vimshottari", "jaimini", "yogini", "transit", "naadi"} <= set(facts["lenses"])
+    assert QR._fallback(facts).confidence
+
+
+def test_naadi_present_moment_wording_survives_filters_and_is_localised():
+    import question_naadi as QN
+    base = {"vote": -1, "touched": ["Moon", "Mercury"], "relevant": ["Mercury"], "good": [], "bad": ["Mercury"],
+            "moon_sign": "Aries", "cautions": ["chandrashtama", "manthi", "badhaka", "punarpoo"],
+            "mars_in": True, "sat_over": ["Mercury", "Venus"], "primary": 7}
+    facts = {"domain_key": "marriage_relationship", "house": {"number": 7}}
+    en = QN.text_en(base, facts)
+    assert "sensitive moment" in en and "avoid hasty commitments" in en
+    assert "Transit Saturn is over your natal Mercury and Venus" in en and "Transit Mars" not in en
+    mars_only = QN.text_en(dict(base, sat_over=[]), facts)
+    assert "Transit Mars is in your 7th house" in mars_only
+    out = _through_the_page_filters(f"<ul><li>{en}</li></ul>")
+    assert _li_texts(out) and all(_li_texts(out)), "the Chandra Naadi sentence was wiped by the page filter"
+    health = QN.text_en(base, {"domain_key": "health_vitality", "house": {"number": 6}})
+    assert "so go easy" in health
+    for lk in ("hi_en", "te_en"):
+        text = QN.text_local(base, facts, lk)
+        assert "Chandra Naadi" in text and "Manthi" in text and not _ENGLISH_FILLER.search(text), (lk, text)
+        assert not re.search(r"[\u0900-\u097F\u0C00-\u0C7F]", text)
+    calm = dict(base, cautions=[], mars_in=False, sat_over=[])
+    assert "sensitive moment" not in QN.text_en(calm, facts)
+
+
+def test_health_answer_cannot_say_no_care_is_needed_while_the_chart_shows_strain():
+    conf, pc, cfg, facts = _health_sheet()
+    assert QR._care_now(facts)
+    assert QR._check("Your health is fine; the running period does not indicate a need for extra care.", facts)
+    assert "ADVISED" in QR._prompt(facts)
 
 
 if __name__ == "__main__":

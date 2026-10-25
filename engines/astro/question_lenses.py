@@ -24,7 +24,7 @@ _SIGN_LORD = {"Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury", "Cancer":
 _BAD_DIGNITY = ("debilitated", "enemy_sign")
 _DUSTHANA = (6, 8, 12)
 
-LENS_ORDER = ("promise", "vimshottari", "jaimini", "yogini", "transit", "naadi")
+LENS_ORDER = ("promise", "vimshottari", "jaimini", "yogini", "transit", "naadi", "vulnerability")
 
 
 def _idx(sign: str) -> int:
@@ -151,27 +151,18 @@ def build_lenses(conf: Any, pc: dict, cfg: dict, facts: dict) -> dict[str, dict]
                           "sat": {"mode": sm, "house": sh}, "nodes": nodes, "primary": primary}
 
     # ---- Chandra Naadi: the transiting Moon's live contacts with natal planets
-    cn = ((getattr(conf, "specialist_readings", None) or {}).get("chandra_naadi") or {})
-    if cn.get("status") == "available":
-        touched = []
-        for f in cn.get("findings") or []:
-            m = re.match(r"Transit Moon Activates Natal (\w+)", str((f or {}).get("title") or ""))
-            if m and m.group(1) not in touched:
-                touched.append(m.group(1))
-        in_primary = {pl for pl, d in (pc.get("planets") or {}).items() if int(d.get("house") or 0) == primary}
-        carries = helpers | in_primary
-        relevant = [t for t in touched if t in carries]
+    # (read for the present moment in every life area: see question_naadi)
+    import question_naadi as QN
+    naadi = QN.build_naadi(pc, cfg, facts, helpers, owned, primary)
+    if naadi:
+        out["naadi"] = naadi
 
-        def strained(pl: str) -> bool:
-            d = (pc.get("planets") or {}).get(pl) or {}
-            return (int(d.get("house") or 0) in _DUSTHANA or str(d.get("dignity") or "") in _BAD_DIGNITY
-                    or bool(d.get("combust")))
-
-        bad = [t for t in relevant if strained(t)]
-        good = [t for t in relevant if t not in bad]
-        moon = re.search(r"Transit Moon in (\w+)", conf.transit_finding or "")
-        out["naadi"] = {"vote": _clamp(len(good) - len(bad)), "touched": touched, "relevant": relevant,
-                        "good": good, "bad": bad, "moon_sign": moon.group(1) if moon else ""}
+    # ---- body vulnerability (health questions only): the disease pattern + Chandra Naadi's health reading
+    if getattr(conf, "domain_key", "") == "health_vitality":
+        import question_health as QH
+        vuln = QH.build_vulnerability(pc, conf)
+        if vuln:
+            out["vulnerability"] = vuln
     return out
 
 
@@ -208,7 +199,7 @@ def text_en(key: str, d: dict, facts: dict) -> str:
         base = f"You are running the {d['main']} main period and {d['sub']} sub-period."
         who = d["who"]
         tail = {"helper": f" {who} carries this question, so the period backs it.",
-                "hard": f" {who} sits in or rules a hard house, so the period brings delay.",
+                "hard": f" {who} is tied to a hard house, so the period brings delay.",
                 "none": f" {who} has no direct link to this question, so it neither pushes nor blocks."}
         return base + tail[d["rel"]]
     if key == "jaimini":
@@ -216,9 +207,9 @@ def text_en(key: str, d: dict, facts: dict) -> str:
         if d["hit"] == "primary":
             return f"{head} lights up your {n} house sign ({d['primary_sign']}), which helps."
         if d["hit"] == "lord":
-            return f"{head} lights up {d['lord_sign']}, where your {n} house ruler sits, which helps."
+            return f"{head} lights up {d['lord_sign']}, the sign of your {n} house ruler, which helps."
         if d["hard"]:
-            return (f"{head} does not reach your {n} house sign ({d['primary_sign']}) and sits awkwardly "
+            return (f"{head} does not reach your {n} house sign ({d['primary_sign']}) and stands awkwardly "
                     f"to it, so progress is slower.")
         return f"{head} neither lights up nor blocks your {n} house sign ({d['primary_sign']})."
     if key == "yogini":
@@ -242,24 +233,19 @@ def text_en(key: str, d: dict, facts: dict) -> str:
                           f"house and adds pressure",
                "none": f"Saturn, crossing your {_ord(d['sat']['house'])} house, is not pressing your "
                        f"{_ord(p)} house"}.get(d["sat"]["mode"], "")
+        if d["jup"]["mode"] == "none" and d["sat"]["mode"] != "none":
+            jup = ""                      # a planet that is not touching the house needs no sentence of its own
+        elif d["sat"]["mode"] == "none" and d["jup"]["mode"] != "none":
+            sat = ""
         text = "Transits: " + "; ".join(x for x in (jup, sat) if x) + "."
         if d["nodes"]:
-            text += f" Rahu and Ketu sit across your {_ord(p)} house axis, which unsettles it."
+            text += f" Rahu and Ketu lie across your {_ord(p)} house axis, which unsettles it."
         return text
+    if key == "vulnerability":
+        import question_health as QH
+        return QH.text_en(d)
     if key == "naadi":
-        if not d["touched"]:
-            return "Chandra Naadi: the Moon is not touching any natal planet right now, so it adds no push either way."
-        names = ", ".join(d["touched"])
-        if not d["relevant"]:
-            return (f"Chandra Naadi: the Moon is now touching your natal {names}, none of which carries this "
-                    f"question, so it neither pushes nor blocks it.")
-        if d["good"] and d["bad"]:
-            tail = f"{', '.join(d['good'])} helps while {', '.join(d['bad'])} is under strain"
-        elif d["bad"]:
-            tail = f"{', '.join(d['bad'])} carries this question but is under strain, so this moment brings pressure"
-        else:
-            tail = f"{', '.join(d['good'])} carries this question and is well placed, so this is an active, " \
-                   f"helpful moment"
-        return f"Chandra Naadi: the Moon is now touching your natal {names}; {tail}."
+        import question_naadi as QN
+        return QN.text_en(d, facts)
     return ""
 
