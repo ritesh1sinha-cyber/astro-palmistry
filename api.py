@@ -289,6 +289,13 @@ def submit_job(body: JobIn, request: Request, user: dict = Depends(current_user)
     TS.require_human(request, token=body.turnstileToken)
     if body.kind not in HANDLERS:
         raise HTTPException(400, f"unknown kind; try {sorted(HANDLERS)}")
+    # One job at a time per login: a second tap while the first is still
+    # queued or running is refused before it can use up a daily slot.
+    if Q.has_active_job(str(user["id"])):
+        raise HTTPException(
+            429,
+            "Your previous report is still being prepared. "
+            "Please wait for it to finish before starting another.")
     allowed, _remaining, allowance = billing.check_report_generation(
         user["id"], body.kind)
     if not allowed:
@@ -317,6 +324,7 @@ def submit_job(body: JobIn, request: Request, user: dict = Depends(current_user)
 
     job = Q.enqueue(kind=body.kind, user_id=user["id"], payload=body.payload,
                     priority=priority)
+    Q.mark_active(str(user["id"]), job["jobId"])
     job_insert(public_id=job["jobId"], user_id=user["id"], kind=body.kind,
                payload=body.payload, priority=priority)
     return JSONResponse(Q.snapshot(job))

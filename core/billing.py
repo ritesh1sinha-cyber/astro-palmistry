@@ -276,7 +276,8 @@ def report_gen_used(user_id: str) -> int:
 
 
 def report_gen_remaining(user_id: str) -> int:
-    if not is_subscribed(user_id):
+    from .auth import has_full_access_id
+    if has_full_access_id(user_id):
         return 999_999
     return max(0, report_gen_allowance(user_id) - report_gen_used(user_id))
 
@@ -284,7 +285,7 @@ def report_gen_remaining(user_id: str) -> int:
 def consume_report_generation(user_id: str) -> tuple[bool, int]:
     """Consume one IST-day generation slot. Returns (allowed, remaining_after)."""
     from .auth import has_full_access_id
-    if has_full_access_id(user_id) or not is_subscribed(user_id):
+    if has_full_access_id(user_id):
         return True, 999_999
     allowance = report_gen_allowance(user_id)
     period = ist_day_period()
@@ -312,8 +313,9 @@ def consume_report_generation(user_id: str) -> tuple[bool, int]:
 def check_report_generation(user_id: str, kind: str) -> tuple[bool, int, int]:
     """Returns (allowed, remaining_after_if_consumed, allowance_today)."""
     from .auth import has_full_access_id
-    if (has_full_access_id(user_id) or kind not in GENERATION_LIMIT_KINDS
-            or not is_subscribed(user_id)):
+    # Everyone is capped (free and subscribed alike); only full-access/admin
+    # accounts are exempt. One login must not be able to flood the queue.
+    if has_full_access_id(user_id) or kind not in GENERATION_LIMIT_KINDS:
         return True, 999_999, 999_999
     allowance = report_gen_allowance(user_id)
     used = report_gen_used(user_id)

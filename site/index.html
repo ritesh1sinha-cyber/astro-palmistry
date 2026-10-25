@@ -5829,7 +5829,11 @@ function astroErr(e){
     try{ const d = JSON.parse(e.body||'{}'); if(d.detail) return d.detail; }catch(err){}
     return 'Please complete the “I’m not a robot” check and try again.';
   }
-  if(e && e.status === 429) return 'That was a lot of requests — give it a moment.';
+  if(e && e.status === 429){
+    // The server says why: daily report limit, or a report still in progress.
+    try{ const d = JSON.parse(e.body||'{}'); if(typeof d.detail === 'string' && d.detail) return d.detail; }catch(err){}
+    return 'That was a lot of requests — give it a moment.';
+  }
   if(e && e.status === 503) return 'We are at capacity right now. Please try again shortly.';
   if(e && e.body){
     try{

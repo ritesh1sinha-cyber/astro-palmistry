@@ -85,6 +85,7 @@ def _job(pid: str) -> str:      return f"job:{pid}"
 def _slots(kind: str) -> str:   return f"slots:{kind}"
 def _stat(kind: str) -> str:    return f"stat:{kind}"
 def _rate(uid: str) -> str:     return f"rate:{uid}"
+def _active(uid: str) -> str:   return f"active:{uid}"
 
 # kinds that get their own concurrency budget; everything else shares "*"
 GROUPS = {"full_report": "heavy", "classical_report": "heavy", "btr": "heavy",
@@ -364,6 +365,25 @@ def snapshot(job: dict) -> dict:
 # ---------------------------------------------------------------------------
 # rate limiting (per user, sliding minute)
 # ---------------------------------------------------------------------------
+#: A user's job pointer outlives a stuck job by at most this long.
+ACTIVE_TTL_SECONDS = 20 * 60
+
+
+def has_active_job(user_id: str) -> bool:
+    """True while this user already has a queued or running job. One login
+    must not be able to stack jobs and starve everyone else's turn."""
+    pid = r().get(_active(user_id))
+    if not pid:
+        return False
+    pid = pid.decode() if isinstance(pid, bytes) else pid
+    job = load(pid)
+    return bool(job) and job.get("status") in ("queued", "processing")
+
+
+def mark_active(user_id: str, pid: str) -> None:
+    r().set(_active(user_id), pid, ex=ACTIVE_TTL_SECONDS)
+
+
 def rate_ok(user_id: str, limit: Optional[int] = None) -> bool:
     limit = limit or S.rate_per_min
     key = _rate(user_id)
