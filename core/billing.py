@@ -43,6 +43,48 @@ def expand(item: str) -> tuple[str, ...]:
     return BUNDLE_ITEMS if item == "bundle_all" else (item,)
 
 
+#: Items that are legitimately account-wide (no single report behind them).
+ACCOUNT_WIDE_ITEMS = ("subscription", "bundle_all")
+
+_ITEM_REPORT_KIND = {"palm_full": "palm", "numerology_full": "numerology"}
+
+
+def report_kind_for_item(item: str) -> str:
+    """The stored report kind a purchasable item unlocks."""
+    return _ITEM_REPORT_KIND.get(item, item)
+
+
+def latest_report_id(user_id: str, item: str) -> Optional[str]:
+    """The customer's most recent report of the kind `item` unlocks."""
+    with engine().connect() as c:
+        row = c.execute(text("SELECT id FROM reports WHERE user_id = :u AND kind = :k"
+                             " ORDER BY created_at DESC LIMIT 1"),
+                        {"u": user_id, "k": report_kind_for_item(item)}).fetchone()
+    return str(row[0]) if row else None
+
+
+def already_unlocked(user_id: str, item: str, ref_id: Optional[str]) -> bool:
+    """True when a real grant already covers this item and report. Unlike
+    entitled(), admin/promo access does not count, so staff can still test
+    checkout; and a subscription never counts, so renewals still work."""
+    if item in ACCOUNT_WIDE_ITEMS or item in FREE_ITEMS:
+        return False
+    with engine().connect() as c:
+        if ref_id:
+            row = c.execute(text(
+                "SELECT 1 FROM entitlements WHERE user_id=:u AND item=:i"
+                " AND (ref_id = :r OR ref_id IS NULL) AND revoked_at IS NULL"
+                " AND (expires_at IS NULL OR expires_at > :now) LIMIT 1"),
+                {"u": user_id, "i": item, "r": ref_id, "now": now()}).fetchone()
+        else:
+            row = c.execute(text(
+                "SELECT 1 FROM entitlements WHERE user_id=:u AND item=:i"
+                " AND ref_id IS NULL AND revoked_at IS NULL"
+                " AND (expires_at IS NULL OR expires_at > :now) LIMIT 1"),
+                {"u": user_id, "i": item, "now": now()}).fetchone()
+    return row is not None
+
+
 # ---------------------------------------------------------------------------
 # entitlements
 # ---------------------------------------------------------------------------
@@ -50,6 +92,16 @@ def grant(user_id: str, item: str, *, ref_id: Optional[str] = None,
           source: str = "order", order_id: Optional[str] = None,
           days: Optional[int] = None) -> None:
     expires = (now() + timedelta(days=days)) if days else None
+    from sqlalchemy.exc import IntegrityError
+    try:
+        _grant_once(user_id, item, ref_id, source, order_id, expires)
+    except IntegrityError:
+        # Two payers of the same grant raced past the existence check; the
+        # unique index let exactly one through, which is all we wanted.
+        pass
+
+
+def _grant_once(user_id, item, ref_id, source, order_id, expires) -> None:
     with tx() as c:
         # Postgres cannot infer the type of a bare NULL bind param; ref_id is UUID.
         if ref_id is None:
@@ -528,7 +580,8 @@ def mark_paid_from_gateway_payment(*, email: str = "", amount_paise: int = 0,
     receipt = (receipt or "").strip()
     if receipt:
         o = order_by_public(receipt)
-        if o and o.get("status") == "created":
+        if o and o.get("status") in ("created", "pending", "failed") and (
+                not amount_paise or amount_paise >= o["amount_paise"]):
             return mark_paid(o["public_id"], gateway_payment_id=gateway_payment_id)
 
     em = (email or "").strip().lower()
@@ -546,17 +599,14 @@ def mark_paid_from_gateway_payment(*, email: str = "", amount_paise: int = 0,
                     return mark_paid(jrow(row)["public_id"],
                                      gateway_payment_id=gateway_payment_id)
 
-    # Last resort for button payments where the shopper email ≠ account email.
-    if amount_paise > 0:
-        with engine().connect() as c:
-            rows = c.execute(text(
-                "SELECT * FROM orders WHERE status = 'created' AND amount_paise = :a"
-                " AND created_at > :since ORDER BY created_at DESC LIMIT 3"),
-                {"a": amount_paise,
-                 "since": now() - timedelta(hours=2)}).fetchall()
-        if len(rows) == 1:
-            return mark_paid(jrow(rows[0])["public_id"],
-                             gateway_payment_id=gateway_payment_id)
+    # No receipt and no email match. We used to guess here: "the only unpaid order
+    # of this amount in the last two hours". That hands one customer's payment to
+    # whichever stranger happened to have a same-priced order open, so a payer
+    # could stay locked while someone else's report unlocked for free. The event
+    # is already recorded in payment_events (unmatched); support unlocks the right
+    # order from the admin lookup.
+    print(f"[billing] UNMATCHED PAYMENT {gateway_payment_id} amount={amount_paise} "
+          f"email={em!r} — needs a manual unlock", flush=True)
     return None
 
 
@@ -565,25 +615,44 @@ def mark_paid(public_id: str, *, gateway_payment_id: str = "") -> dict:
     o = order_by_public(public_id)
     if not o:
         raise KeyError("order not found")
+    if o["status"] == "refunded":
+        # A late or replayed webhook must not resurrect a refunded purchase.
+        return {"ok": False, "refunded": True, "item": o["item"]}
     if o["status"] == "paid":
-        # Retry report unlock if a prior grant left reports.paid false.
-        ref = o.get("ref_id")
-        if ref:
+        # Re-run the (idempotent) grants: a paid order whose grant failed
+        # half-way, or a legacy order with no report id, heals on retry.
+        # (Never for a subscription: that would extend it again on every retry.)
+        if o["item"] not in ACCOUNT_WIDE_ITEMS:
+            ref = o.get("ref_id") or latest_report_id(o["user_id"], o["item"])
             try:
-                from .db import report_mark_paid
-                report_mark_paid(ref)
+                _apply_grants(o, o["item"], o["user_id"], ref)
             except Exception:                                         # noqa: BLE001
                 pass
         return {"ok": True, "already": True, "item": o["item"]}
 
-    with tx() as c:
-        c.execute(text("UPDATE orders SET status='paid', paid_at=:t,"
-                       " gateway_payment_id = COALESCE(NULLIF(:gp,''), gateway_payment_id)"
-                       " WHERE id = :i"),
-                  {"t": now(), "gp": gateway_payment_id, "i": o["id"]})
-
     item, uid, ref = o["item"], o["user_id"], o.get("ref_id")
+    if not ref and item not in ACCOUNT_WIDE_ITEMS:
+        # An order placed without a report id would grant every report of this
+        # kind, forever. Bind it to the customer's latest report of that kind.
+        ref = latest_report_id(uid, item)
 
+    with tx() as c:
+        # Conditional, so a webhook and the browser callback racing each other
+        # grant exactly once.
+        res = c.execute(text("UPDATE orders SET status='paid', paid_at=:t,"
+                             " gateway_payment_id = COALESCE(NULLIF(:gp,''), gateway_payment_id),"
+                             " ref_id = COALESCE(ref_id, :r)"
+                             " WHERE id = :i AND status IN ('created','pending','failed')"),
+                        {"t": now(), "gp": gateway_payment_id, "i": o["id"], "r": ref})
+        if not res.rowcount:
+            return {"ok": True, "already": True, "item": item}
+
+    _apply_grants(o, item, uid, ref)
+    return {"ok": True, "item": item, "userId": uid, "refId": ref}
+
+
+def _apply_grants(o: dict, item: str, uid: str, ref: Optional[str]) -> None:
+    """Write the entitlements a paid order confers. Idempotent."""
     if item == "subscription":
         _extend_subscription(uid)
         grant(uid, "daily", source="subscription", order_id=o["id"], days=30)
@@ -604,7 +673,6 @@ def mark_paid(public_id: str, *, gateway_payment_id: str = "") -> dict:
         if ref:
             from .db import report_mark_paid
             report_mark_paid(ref)
-    return {"ok": True, "item": item, "userId": uid, "refId": ref}
 
 
 def refund(public_id: str) -> None:
@@ -614,7 +682,69 @@ def refund(public_id: str) -> None:
     with tx() as c:
         c.execute(text("UPDATE orders SET status='refunded', refunded_at=:t WHERE id=:i"),
                   {"t": now(), "i": o["id"]})
-    revoke(o["user_id"], o["item"], o.get("ref_id"))
+    revoke_order_access(o)
+
+
+def bind_orphan_order_grants() -> int:
+    """One-time/startup repair. Orders placed without a report id left an
+    account-wide grant, so one purchase unlocked every report of that kind for
+    ever. Bind each such grant to the customer's latest report of that kind.
+    Idempotent; never touches bundles, subscriptions, promo or support grants."""
+    from sqlalchemy.exc import IntegrityError
+    with engine().connect() as c:
+        rows = c.execute(text(
+            "SELECT e.id AS eid, e.user_id, e.item, o.id AS oid"
+            " FROM entitlements e JOIN orders o ON o.id = e.order_id"
+            " WHERE e.source = 'order' AND e.ref_id IS NULL AND e.revoked_at IS NULL"
+            " AND o.item NOT IN ('bundle_all', 'subscription')")).fetchall()
+    fixed = 0
+    for r in rows:
+        m = r._mapping
+        rid = latest_report_id(m["user_id"], m["item"])
+        if not rid:
+            continue
+        try:
+            with tx() as c:
+                c.execute(text("UPDATE entitlements SET ref_id = :r WHERE id = :e"),
+                          {"r": rid, "e": m["eid"]})
+                c.execute(text("UPDATE orders SET ref_id = COALESCE(ref_id, :r)"
+                               " WHERE id = :o"), {"r": rid, "o": m["oid"]})
+            from .db import report_mark_paid
+            report_mark_paid(rid)
+            fixed += 1
+        except IntegrityError:
+            # That report already has its own live grant; this one is redundant.
+            with tx() as c:
+                c.execute(text("UPDATE entitlements SET revoked_at = :t WHERE id = :e"),
+                          {"t": now(), "e": m["eid"]})
+    return fixed
+
+
+def revoke_order_access(o: dict) -> int:
+    """Take back everything a paid order unlocked: its entitlements (every item
+    a bundle expanded into, not the bundle's own name) and the report's paid
+    flag, which would otherwise keep the report open on its own."""
+    uid, ref = o["user_id"], o.get("ref_id")
+    with engine().connect() as c:
+        linked = c.execute(text("SELECT count(*) FROM entitlements WHERE order_id = :o"),
+                           {"o": o["id"]}).fetchone()[0]
+    n = 0
+    with tx() as c:
+        res = c.execute(text("UPDATE entitlements SET revoked_at = :t"
+                             " WHERE order_id = :o AND revoked_at IS NULL"),
+                        {"t": now(), "o": o["id"]})
+        n += int(res.rowcount or 0)
+    if not linked:
+        # Older rows carry no order_id; fall back to matching by item and report.
+        for it in expand(o["item"]):
+            revoke(uid, it, None if o["item"] == "bundle_all" else ref)
+    if n and ref and o["item"] not in ("subscription", "bundle_all"):
+        # Only when something was actually revoked now, so re-running the same
+        # revocation after a restart cannot lock a report that was bought again.
+        with tx() as c:
+            c.execute(text("UPDATE reports SET paid = :p WHERE id = :i"),
+                      {"p": False, "i": ref})
+    return n
 
 
 def _extend_subscription(user_id: str) -> None:

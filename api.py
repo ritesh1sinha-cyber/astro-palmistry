@@ -15,6 +15,8 @@ import hashlib
 import hmac
 import json
 import os
+import uuid
+from html import escape as _html_escape
 import time
 from typing import Any, Optional
 
@@ -50,6 +52,27 @@ def _startup() -> None:
     try:
         from core.billing import pin_all_subscribed_daily_reports
         pin_all_subscribed_daily_reports()
+    except Exception:                                            # noqa: BLE001
+        pass
+    # Support revocations that must survive a restart: REVOKE_ORDERS=OD-AAAA,OD-BBBB
+    # takes back what those orders unlocked. Idempotent; runs before the binder
+    # so a revoked order is not re-bound to a report.
+    for pid in [p.strip().upper() for p in os.getenv("REVOKE_ORDERS", "").split(",")
+                if p.strip()]:
+        try:
+            o = billing.order_by_public(pid)
+            if o:
+                n = billing.revoke_order_access(o)
+                print(f"[billing] REVOKE_ORDERS {pid}: {n} entitlement(s) revoked",
+                      flush=True)
+        except Exception as exc:                                  # noqa: BLE001
+            print(f"[billing] REVOKE_ORDERS {pid} failed: {exc}", flush=True)
+    try:
+        from core.billing import bind_orphan_order_grants
+        n = bind_orphan_order_grants()
+        if n:
+            print(f"[billing] bound {n} account-wide order grant(s) to a report",
+                  flush=True)
     except Exception:                                            # noqa: BLE001
         pass
 
@@ -448,7 +471,22 @@ def serve_file(token: str):
     try:
         data = store().get(key)
     except Exception:                                                 # noqa: BLE001
-        raise HTTPException(404, "the stored report is missing")
+        print(f"[api] STORED REPORT MISSING report={rid} half={half} key={key}",
+              flush=True)
+        if key.endswith(".json"):
+            raise HTTPException(404, "the stored report is missing")
+        # This is shown inside the report frame, so say what happened and what
+        # to do rather than a bare JSON error.
+        return Response(
+            status_code=404, media_type="text/html; charset=utf-8",
+            content=("<!doctype html><meta charset=utf-8>"
+                     "<body style='font-family:system-ui,sans-serif;max-width:480px;"
+                     "margin:48px auto;padding:0 20px;color:#222;line-height:1.5'>"
+                     "<h2>This report needs to be restored</h2>"
+                     "<p>Your payment and access are safe, but the saved copy of this "
+                     "report could not be found on our server. Please write to us "
+                     "with this reference and we will re-send it to you: "
+                     f"<b>{_html_escape(str(rid)[:8].upper())}</b>.</p></body>"))
     media = "application/json" if key.endswith(".json") else "text/html; charset=utf-8"
     return Response(content=data, media_type=media,
                     headers={"Cache-Control": "private, max-age=300"})
@@ -832,21 +870,33 @@ def prices():
 @app.post("/api/order")
 def create_order(body: OrderIn, request: Request, user: dict = Depends(current_user)):
     TS.require_human(request, token=body.turnstileToken)
-    ref_id = body.refId
-    if not ref_id and body.item not in ("subscription", "bundle_all"):
+    ref_id = (body.refId or "").strip() or None
+    if ref_id:
+        try:
+            ref_id = str(uuid.UUID(ref_id))
+        except ValueError:
+            raise HTTPException(400, "bad report id")
+    if not ref_id and body.item not in billing.ACCOUNT_WIDE_ITEMS:
         # A per-report purchase with no report id would be granted account-wide
         # (ref_id NULL matches every report of that kind, now and in future) and
         # would never flag the report the customer actually bought. Bind it to
         # their most recent report of that kind instead.
-        kind = {"palm_full": "palm", "numerology_full": "numerology"}.get(
-            body.item, body.item)
+        ref_id = billing.latest_report_id(user["id"], body.item)
+    elif ref_id:
+        # The report being bought must be the caller's own.
         from sqlalchemy import text as _t
         with engine().connect() as c:
-            row = c.execute(_t("SELECT id FROM reports WHERE user_id = :u AND kind = :k"
-                               " ORDER BY created_at DESC LIMIT 1"),
-                            {"u": user["id"], "k": kind}).fetchone()
-        if row:
-            ref_id = str(row[0])
+            owner = c.execute(_t("SELECT user_id FROM reports WHERE id = :r"),
+                              {"r": ref_id}).fetchone()
+        if owner is not None and str(owner[0]) != str(user["id"]):
+            raise HTTPException(403, "that report is not yours")
+    try:
+        if billing.already_unlocked(user["id"], body.item, ref_id):
+            # Never charge twice for something already unlocked.
+            return {"status": "paid", "item": body.item, "amount": 0,
+                    "alreadyUnlocked": True}
+    except Exception:                                                # noqa: BLE001
+        pass
     try:
         out = billing.create_order(user["id"], body.item, ref_id=ref_id,
                                    idempotency_key=body.idempotencyKey)
@@ -898,6 +948,20 @@ def order_mark_paid_admin(public_id: str, user: dict = Depends(current_user)):
     return {**result, "orderId": public_id, "status": "paid",
             "item": o["item"], "refId": o.get("ref_id"),
             "amount": o["amount_paise"] // 100}
+
+
+@app.post("/api/order/{public_id}/revoke-access")
+def order_revoke_access_admin(public_id: str, user: dict = Depends(current_user)):
+    """Admin-only: take back what a paid order unlocked (the payment record stays)."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    o = billing.order_by_public(public_id.strip().upper())
+    if not o:
+        raise HTTPException(404, "no such order")
+    n = billing.revoke_order_access(o)
+    print(f"[billing] admin REVOKE by {user.get('email')} for order {public_id}: "
+          f"{n} entitlement(s)", flush=True)
+    return {"ok": True, "orderId": o["public_id"], "revoked": n}
 
 
 def _order_report_diag(c, m) -> dict:
@@ -1229,6 +1293,12 @@ async def payment_webhook(request: Request):
         return {"ok": True, "ignored": event}
 
     pay_id = _dig(payload, "payload", "payment", "entity", "id") or ""
+    paid_amount = int(pay_entity.get("amount") or 0) if isinstance(pay_entity, dict) else 0
+    if paid_amount and paid_amount < order["amount_paise"]:
+        # A signed payment for less than the order is not a full purchase.
+        billing.record_event(order["id"], "payment.underpaid",
+                             {"paid": paid_amount, "expected": order["amount_paise"]}, ok)
+        return {"ok": False, "underpaid": True}
     return billing.mark_paid(order["public_id"], gateway_payment_id=pay_id)
 
 

@@ -3603,6 +3603,7 @@ async function adminLookupOrder(){
       out.innerHTML = `<table class="analysis-table" style="margin-top:8px"><tbody>${rows}</tbody></table>`
         + (paid
           ? '<p class="hint" style="margin-top:10px;color:#0f9d58">✓ Already unlocked. If the customer still cannot see it, ask them to reload their reports list.</p>'
+            + `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" type="button" onclick="adminRevokeOrder('${esc(o.orderId)}')">Revoke access</button></div>`
           : `<div style="margin-top:12px"><button class="btn btn-gold btn-sm" type="button" onclick="adminUnlockOrder('${esc(o.orderId)}')">Unlock ${esc(o.orderId)} for ${esc(o.email||'this account')}</button></div>`);
     } else {
       // Multiple orders found for this user/query
@@ -3640,6 +3641,18 @@ async function adminUnlockOrder(orderId){
     adminLookupOrder();
   }catch(e){
     out.innerHTML = prevHtml + `<p class="hint" style="color:#b3261e;margin-top:8px">${esc(e.message||'Could not unlock that order.')}</p>`;
+  }
+}
+
+async function adminRevokeOrder(orderId){
+  if(!confirm('Revoke access for ' + orderId + '? The payment record stays; the customer loses what it unlocked.')) return;
+  const out = $('#admOrderOut');
+  try{
+    const r = await api('/api/order/'+encodeURIComponent(orderId)+'/revoke-access', {method:'POST'});
+    toast('Revoked ' + (r.revoked||0) + ' grant(s) for ' + orderId);
+    adminLookupOrder();
+  }catch(e){
+    if(out) out.insertAdjacentHTML('beforeend', `<p class="hint" style="color:#b3261e;margin-top:8px">${esc(e.message||'Could not revoke.')}</p>`);
   }
 }
 
