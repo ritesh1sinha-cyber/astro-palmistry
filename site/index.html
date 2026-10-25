@@ -3434,12 +3434,29 @@ async function loadAdminAnalysis(){
     el.innerHTML = '<div class="card hint">Could not load analysis. Try again.</div>';
   }
 }
+/* Admin tables store instants in UTC. Show them as India time so a 16:37
+   webhook is read as 22:07 IST, not as if it happened in the afternoon. */
+function fmtIst(v){
+  if(v == null || v === '') return '—';
+  const raw = String(v).trim();
+  if(!raw || raw === 'None' || raw === 'null') return '—';
+  const iso = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return raw;
+  const s = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false
+  }).format(d);
+  return s + ' IST';
+}
 function renderAdminEnquiries(data){
   const rows = (data.enquiries||[]).map(e=>{
     const st = esc(e.status||'new');
     const mail = esc(e.email||'');
     return `<tr>
-      <td>${esc(e.createdAt||'—')}</td>
+      <td>${esc(fmtIst(e.createdAt))}</td>
       <td>${esc(e.name||'—')}<br><a href="tel:${esc((e.phone||'').replace(/\s/g,''))}">${esc(e.phone||'—')}</a></td>
       <td>${mail ? `<a href="mailto:${mail}">${mail}</a>` : '—'}</td>
       <td><div class="enquiry-msg">${esc(e.message||'')}</div>
@@ -3454,7 +3471,7 @@ function renderAdminEnquiries(data){
   }).join('') || '<tr><td colspan="5" class="hint">No consultation requests yet.</td></tr>';
   const c = data.counts || {};
   return `<p class="hint" style="margin:0 0 10px">New ${esc(c.new||0)} · Replied ${esc(c.replied||0)} · Closed ${esc(c.closed||0)}</p>`
-    + `<table class="analysis-table"><thead><tr><th>When</th><th>Name / phone</th><th>Email</th><th>Message</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`
+    + `<table class="analysis-table"><thead><tr><th>When (IST)</th><th>Name / phone</th><th>Email</th><th>Message</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`
     + `<div style="margin-top:10px"><button class="btn btn-ghost btn-sm" type="button" onclick="reloadAdminEnquiries()">Refresh enquiries</button></div>`;
 }
 async function reloadAdminEnquiries(){
@@ -3515,10 +3532,10 @@ async function loadPaymentHealth(){
       verdicts.push(`${noGw} of the last ${(d.recentOrders||[]).length} orders have no Razorpay order id, so those customers saw the unmatched fallback button.`);
     }
     const evRows = (d.recentEvents||[]).map(e=>
-      `<tr><td>${esc(e.at)}</td><td>${esc(e.event)}</td><td>${e.signatureOk?'ok':'<b style="color:#b3261e">bad sig</b>'}</td><td>${e.matchedOrder?'matched':'<b style="color:#b3261e">no order</b>'}</td></tr>`).join('')
+      `<tr><td>${esc(fmtIst(e.at))}</td><td>${esc(e.event)}</td><td>${e.signatureOk?'ok':'<b style="color:#b3261e">bad sig</b>'}</td><td>${e.matchedOrder?'matched':'<b style="color:#b3261e">no order</b>'}</td></tr>`).join('')
       || '<tr><td colspan="4" class="hint">No webhooks recorded at all.</td></tr>';
     const orRows = (d.recentOrders||[]).map(o=>
-      `<tr><td>${esc(o.orderId)}</td><td>${esc(o.status)}</td><td>${o.hasGatewayOrder?'yes':'<b style="color:#b3261e">no</b>'}</td><td>${esc(o.at)}</td></tr>`).join('')
+      `<tr><td>${esc(o.orderId)}</td><td>${esc(o.status)}</td><td>${o.hasGatewayOrder?'yes':'<b style="color:#b3261e">no</b>'}</td><td>${esc(fmtIst(o.at))}</td></tr>`).join('')
       || '<tr><td colspan="4" class="hint">No orders yet.</td></tr>';
     out.innerHTML =
       `<p class="hint">Gateway <b>${esc(c.gateway)}</b> · env <b>${esc(c.env)}</b> · key id ${yes(c.keyId)} · key secret ${yes(c.keySecret)} · webhook secret ${yes(c.webhookSecret)}</p>`
@@ -3527,9 +3544,9 @@ async function loadPaymentHealth(){
         : '<p class="hint" style="margin:12px 0"><b>Payment path looks healthy.</b> Webhooks are arriving, signatures verify, and orders are being matched.</p>')
       + `<p class="hint" style="margin-top:10px">${esc(d.ordersAwaitingPayment)} order(s) still awaiting payment.</p>`
       + '<div class="eyebrow" style="margin-top:14px">Last 10 webhooks</div>'
-      + `<table class="analysis-table"><thead><tr><th>When</th><th>Event</th><th>Signature</th><th>Order</th></tr></thead><tbody>${evRows}</tbody></table>`
+      + `<table class="analysis-table"><thead><tr><th>When (IST)</th><th>Event</th><th>Signature</th><th>Order</th></tr></thead><tbody>${evRows}</tbody></table>`
       + '<div class="eyebrow" style="margin-top:14px">Last 10 orders</div>'
-      + `<table class="analysis-table"><thead><tr><th>Order</th><th>Status</th><th>Razorpay order</th><th>When</th></tr></thead><tbody>${orRows}</tbody></table>`
+      + `<table class="analysis-table"><thead><tr><th>Order</th><th>Status</th><th>Razorpay order</th><th>When (IST)</th></tr></thead><tbody>${orRows}</tbody></table>`
       + '<div style="margin-top:12px"><button class="btn btn-ghost btn-sm" type="button" onclick="loadPaymentHealth()">Re-check</button></div>';
   }catch(e){
     out.innerHTML = `<p class="hint">${esc(e.message||'Could not run the check.')}</p>`;
@@ -3565,8 +3582,8 @@ async function adminLookupOrder(){
         ['Item', esc(String(o.item||'').replace(/_/g,' '))],
         ['Amount', money(o.amount)],
         ['Status', paid ? '<span style="color:#0f9d58;font-weight:600">PAID / UNLOCKED</span>' : '<span style="color:#e65100;font-weight:600">UNPAID</span>'],
-        ['Placed', esc(o.createdAt || '—')],
-        ['Paid At', esc(o.paidAt || '—')],
+        ['Placed', esc(fmtIst(o.createdAt))],
+        ['Paid At', esc(fmtIst(o.paidAt))],
         ['Razorpay payment', esc(o.gatewayPaymentId || '—')]
       ].map(([k,v])=> `<tr><td style="font-weight:600;width:150px">${k}</td><td>${v}</td></tr>`).join('');
       out.innerHTML = `<table class="analysis-table" style="margin-top:8px"><tbody>${rows}</tbody></table>`
@@ -3581,7 +3598,7 @@ async function adminLookupOrder(){
           <td><b style="font-family:monospace;color:var(--gold,#d4af37)">${esc(o.orderId)}</b><br><small style="color:var(--muted)">${esc(o.email)}</small></td>
           <td>${esc(String(o.item||'').replace(/_/g,' '))}<br><small style="color:var(--muted)">${money(o.amount)}</small></td>
           <td>${paid ? '<span style="color:#0f9d58;font-weight:600">Paid</span>' : '<span style="color:#e65100;font-weight:600">Unpaid</span>'}</td>
-          <td><small>${esc((o.createdAt||'').slice(0, 16))}</small></td>
+          <td><small>${esc(fmtIst(o.createdAt))}</small></td>
           <td>
             ${paid
               ? '<span class="hint" style="color:#0f9d58">Unlocked</span>'
@@ -3591,7 +3608,7 @@ async function adminLookupOrder(){
       }).join('');
 
       out.innerHTML = `<p class="hint" style="margin-bottom:8px">Found <b>${orders.length}</b> orders for <b>${esc(q)}</b>:</p>`
-        + `<div style="overflow-x:auto"><table class="analysis-table"><thead><tr><th>Order / Email</th><th>Item / Amount</th><th>Status</th><th>Placed</th><th>Action</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+        + `<div style="overflow-x:auto"><table class="analysis-table"><thead><tr><th>Order / Email</th><th>Item / Amount</th><th>Status</th><th>Placed (IST)</th><th>Action</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
     }
   }catch(e){
     out.innerHTML = `<p class="hint">${esc(e.message||'Lookup failed.')}</p>`;
