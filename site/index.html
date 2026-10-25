@@ -3553,6 +3553,19 @@ async function loadPaymentHealth(){
   }
 }
 
+/* One-line verdict on whether the report behind an order really exists. */
+function admReportDiag(r, paid, full){
+  if(!r) return '—';
+  const ok = (b)=> b ? '<span style="color:#0f9d58">✓</span>' : '<span style="color:#d93025">✗</span>';
+  const healthy = r.row && r.paidFile && (r.entitled || r.paidFlag);
+  const verdict = healthy
+    ? '<b style="color:#0f9d58">OK</b>'
+    : '<b style="color:#d93025">' + (!r.row ? 'NO REPORT ROW' : !r.paidFile ? 'FILE MISSING' : 'LOCKED') + '</b>';
+  if(!full) return `<small>${verdict}</small>`;
+  return `${verdict} · row ${ok(r.row)} · paid flag ${ok(r.paidFlag)} · entitlement ${ok(r.entitled)} · free file ${ok(r.freeFile)} · paid file ${ok(r.paidFile)}`
+    + (r.note ? `<br><small style="color:var(--muted)">${esc(r.note)}</small>` : '')
+    + (r.refId ? `<br><small style="color:var(--muted);font-family:monospace">${esc(r.refId)}</small>` : '');
+}
 /* Support tool: confirm who an order belongs to (by order ID or email), then grant it. */
 async function adminLookupOrder(){
   const out = $('#admOrderOut');
@@ -3584,7 +3597,8 @@ async function adminLookupOrder(){
         ['Status', paid ? '<span style="color:#0f9d58;font-weight:600">PAID / UNLOCKED</span>' : '<span style="color:#e65100;font-weight:600">UNPAID</span>'],
         ['Placed', esc(fmtIst(o.createdAt))],
         ['Paid At', esc(fmtIst(o.paidAt))],
-        ['Razorpay payment', esc(o.gatewayPaymentId || '—')]
+        ['Razorpay payment', esc(o.gatewayPaymentId || '—')],
+        ['Report on server', admReportDiag(o.report, paid, true)]
       ].map(([k,v])=> `<tr><td style="font-weight:600;width:150px">${k}</td><td>${v}</td></tr>`).join('');
       out.innerHTML = `<table class="analysis-table" style="margin-top:8px"><tbody>${rows}</tbody></table>`
         + (paid
@@ -3603,6 +3617,7 @@ async function adminLookupOrder(){
             ${paid
               ? '<span class="hint" style="color:#0f9d58">Unlocked</span>'
               : `<button class="btn btn-gold btn-sm" style="padding:4px 8px;font-size:12px" type="button" onclick="adminUnlockOrder('${esc(o.orderId)}')">Unlock</button>`}
+            ${paid ? '<br>' + admReportDiag(o.report, paid, false) : ''}
           </td>
         </tr>`;
       }).join('');

@@ -877,6 +877,42 @@ def order_mark_paid_admin(public_id: str, user: dict = Depends(current_user)):
             "amount": o["amount_paise"] // 100}
 
 
+def _order_report_diag(c, m) -> dict:
+    """Does the report behind a paid order actually exist? Row, flag,
+    entitlement and the stored HTML objects, so support can see at a glance
+    whether a customer's 'it is missing' is a DB problem or a lost file."""
+    from sqlalchemy import text as _t
+    out = {"refId": str(m.get("ref_id") or ""), "row": False, "paidFlag": False,
+           "entitled": False, "freeFile": False, "paidFile": False,
+           "kind": "", "created": "", "note": ""}
+    try:
+        ent = c.execute(_t(
+            "SELECT 1 FROM entitlements WHERE user_id = :u AND item = :it "
+            "AND (ref_id = :r OR ref_id IS NULL) AND revoked_at IS NULL LIMIT 1"),
+            {"u": m["user_id"], "it": m["item"], "r": m.get("ref_id")}).fetchone()
+        out["entitled"] = bool(ent)
+        if not m.get("ref_id"):
+            out["note"] = "order has no report id (ref_id empty)"
+            return out
+        r = c.execute(_t("SELECT kind, paid, free_key, paid_key, created_at "
+                         "FROM reports WHERE id = :r"),
+                      {"r": m["ref_id"]}).fetchone()
+        if not r:
+            out["note"] = "no reports row for this order's report id"
+            return out
+        rm = r._mapping
+        out.update(row=True, paidFlag=bool(rm["paid"]), kind=rm["kind"] or "",
+                   created=str(rm["created_at"] or ""))
+        st = store()
+        out["freeFile"] = bool(rm["free_key"]) and st.exists(rm["free_key"])
+        out["paidFile"] = bool(rm["paid_key"]) and st.exists(rm["paid_key"])
+        if not out["paidFile"]:
+            out["note"] = "report row exists but the stored HTML file is missing"
+    except Exception as e:  # diagnostics must never break the lookup
+        out["note"] = f"check failed: {type(e).__name__}"
+    return out
+
+
 @app.get("/api/admin/orders-lookup")
 def orders_lookup_admin(q: str = "", email: str = "", user: dict = Depends(current_user)):
     """Admin-only: look up orders by order ID (e.g. OD-77D2CC9B) or customer email address."""
@@ -916,7 +952,8 @@ def orders_lookup_admin(q: str = "", email: str = "", user: dict = Depends(curre
                 "createdAt": str(m.get("created_at") or ""),
                 "paidAt": str(m.get("paid_at") or ""),
                 "gatewayOrderId": m.get("gateway_order_id") or "",
-                "gatewayPaymentId": m.get("gateway_payment_id") or ""
+                "gatewayPaymentId": m.get("gateway_payment_id") or "",
+                "report": _order_report_diag(c, m),
             })
 
         matched_users = []
