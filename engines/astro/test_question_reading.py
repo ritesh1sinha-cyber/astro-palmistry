@@ -1,4 +1,4 @@
-"""The question answer is short, judged by the model against a trimmed fact
+﻿"""The question answer is short, judged by the model against a trimmed fact
 sheet, and falls back to the same shape when the model is off or wrong."""
 from __future__ import annotations
 
@@ -44,14 +44,78 @@ class _Model:
         QR._llm_allowed = self.old
 
 
-def test_prompt_has_no_specialist_lenses():
+def test_prompt_has_no_lal_kitab_filler():
     for q, dom in [("which gemstone will suit me", "gemstones_remedies"),
                    ("when will I get promoted", "career_profession")]:
         conf, pc, cfg, facts = _sheet(q, dom)
         prompt = QR._prompt(facts)
-        assert "Lal Kitab" not in prompt and "Chandra Naadi" not in prompt
-        assert "Soya" not in prompt and "Pakka" not in prompt
-        assert len(prompt) < 2500, len(prompt)
+        assert "Lal Kitab" not in prompt and "Soya" not in prompt and "Pakka" not in prompt
+        assert len(prompt) < 3600, len(prompt)
+
+
+def test_prompt_carries_every_lens_and_their_votes():
+    conf, pc, cfg, facts = _sheet("is job change seen in near future", "career_profession")
+    prompt = QR._prompt(facts)
+    for tag in ("[birth promise]", "[running period]", "[Chara period]", "[Yogini]", "[transit]", "[Chandra Naadi]"):
+        assert tag in prompt, tag
+    assert "How the lenses line up:" in prompt
+
+
+def test_rashi_drishti_follows_the_jaimini_rule():
+    import question_lenses as QL
+    assert {"Aquarius", "Aries", "Cancer", "Libra"} == QL.rashi_drishti("Aquarius")      # fixed -> movable, not Capricorn
+    assert {"Gemini", "Virgo", "Sagittarius", "Pisces"} == QL.rashi_drishti("Gemini")    # dual -> other duals
+    assert "Taurus" not in QL.rashi_drishti("Aries") and "Leo" in QL.rashi_drishti("Aries")
+
+
+def test_each_lens_votes_from_the_chart_and_the_verdict_uses_them():
+    import question_lenses as QL
+    conf, pc, cfg, facts = _sheet("is job change seen in near future", "career_profession")
+    lenses = facts["lenses"]
+    assert set(lenses) == set(QL.LENS_ORDER), lenses.keys()
+    assert all(v["vote"] in (-1, 0, 1) for v in lenses.values())
+    # the stance is the weighted vote, nothing else
+    assert QR._stance_hint(facts) == QL.stance(lenses)
+    # promise vs now picks the sentence; flipping the live votes changes the verdict
+    for k in lenses:
+        if k != "promise":
+            lenses[k]["vote"] = 1
+    lenses["promise"]["vote"] = -1
+    weak_but_helped = QR._fallback(facts).answer
+    for k in lenses:
+        if k != "promise":
+            lenses[k]["vote"] = -1
+    weak_and_blocked = QR._fallback(facts).answer
+    assert weak_but_helped != weak_and_blocked and QR._stance_hint(facts) == "difficult"
+
+
+def test_chandra_naadi_is_in_the_reasons_and_the_page():
+    conf, pc, cfg, facts = _sheet("is job change seen in near future", "career_profession")
+    r = QR._fallback(facts)
+    assert any(w.startswith("Chandra Naadi:") for w in r.why), r.why
+    assert {l["key"] for l in r.lenses} == {"promise", "vimshottari", "jaimini", "yogini", "transit", "naadi"}
+    page = QR.render_html(r, facts, paid=False)
+    assert "Chandra Naadi" in page and "Chara period" in page and "Yogini" in page and "uq-lenses" in page
+
+
+def test_model_reasons_always_cover_the_promise_and_something_running_now():
+    conf, pc, cfg, facts = _sheet("is job change seen in near future", "career_profession")
+    lens_of = {fid: lens for fid, lens, _t in QR._findings_full(facts)}
+    with _Model(lambda *a, **k: QR.QuestionJudgement(
+            stance=QR._stance_hint(facts), answer="Your career planet is weak right now.",
+            use=["F2"], needs_timing=False)):
+        got = QR._ask_model(facts, "en")
+    table = {t: lens_of[i] for i, t in QR._findings(facts)}
+    lenses = {table[w] for w in got.why}
+    assert "promise" in lenses and len(lenses - {"promise"}) >= 1 and len(got.why) <= 6
+
+
+def test_headline_is_one_whole_sentence():
+    a = "Job change is seen as difficult in the near future. Jupiter, ruling your career, is weak."
+    assert QR.headline(a) == "Job change is seen as difficult in the near future."
+    long = "Your chart " + "really " * 40 + "supports this."
+    h = QR.headline(long, 60)
+    assert h.endswith("...") and len(h) <= 64 and not h[:-3].endswith(" ")
 
 
 def test_fallback_is_short_and_plain():
@@ -63,7 +127,7 @@ def test_fallback_is_short_and_plain():
         r = QR._fallback(facts)
         words = len(" ".join([r.answer, r.timing, *r.why, *r.steps]).split())
         assert words < 220, (q, words)
-        assert 1 <= len(r.why) <= 4 and len(r.steps) <= 3
+        assert 1 <= len(r.why) <= 6 and len(r.steps) <= 3
         assert not QR._check(r.answer, facts), (q, QR._check(r.answer, facts))
         assert not re.search(r"lal kitab|naadi|trikona|kendradhipati|dusthana", r.answer, re.I)
 
@@ -88,7 +152,8 @@ def test_free_locks_timing_paid_shows_it():
     paid = QR.render_html(r, facts, paid=True)
     assert r.timing and "data-unlock" in free and r.timing not in free
     assert "data-unlock" not in paid and "What to do" in paid
-    assert r.answer in free and r.answer in paid
+    import html as _html
+    assert _html.escape(r.answer) in free and _html.escape(r.answer) in paid
     assert not re.search(r"\b20\d\d\b", free.split('class="uq-reading"')[1]), "free half must carry no dates"
 
 
@@ -195,3 +260,4 @@ if __name__ == "__main__":
             fn()
             print("OK ", name)
     print("ALL question_reading tests passed")
+

@@ -36,6 +36,9 @@ class QuestionReading(BaseModel):
     why: list[str] = Field(description="2-4 short reasons, each citing one chart fact that bears on the question.")
     timing: str = Field(description="One sentence on when, or empty if the question has no timing aspect.")
     steps: list[str] = Field(description="1-3 concrete things to do, at most 20 words each.")
+    lenses: list[dict] = Field(default_factory=list,
+                               description="[{key, vote}] for each lens that was judged; vote is +1, 0 or -1.")
+    confidence: str = Field(default="", description="high / moderate / low, from how the lenses line up.")
 
 
 _GOOD_DIGNITY = ("exalted", "moolatrikona", "own_sign", "friendly_sign")
@@ -159,11 +162,16 @@ def build_fact_sheet(conf: Any, pc: dict, cfg: dict) -> dict:
             (signals_against if bad else signals_for).append("natural indicator")
         if sav_n:
             (signals_for if sav_n >= 28 else signals_against).append("sign score")
-        sub = facts["periods"]["sub"]
-        helpers = set((cfg.get("karakas") or [])[:2]) | {conf.lagna_lord, conf.primary_house_lord}
-        if sub in helpers:
-            signals_for.append("running sub-period")
     facts["signals_for"], facts["signals_against"] = signals_for, signals_against
+    import question_lenses as _QL
+    _owned = _QL.owned_houses(conf.lagna)
+    facts["placements"] = {
+        p: {"house": int(d.get("house") or 0), "owns": _owned.get(p, [])}
+        for p, d in (pc.get("planets") or {}).items() if int(d.get("house") or 0)}
+    facts["lenses"] = {}
+    if conf.domain_key not in ("gemstones_remedies", "general_destiny", "out_of_domain"):
+        import question_lenses as QL
+        facts["lenses"] = QL.build_lenses(conf, pc, cfg, facts)
 
     if conf.domain_key == "gemstones_remedies":
         audit = (audit_chart_gemstones(pc) or {}).get("audit", {})
@@ -198,6 +206,9 @@ def _stance_hint(facts: dict) -> str:
         return "favourable" if facts["gems"]["recommended"] else "mixed"
     if facts["domain_key"] == "out_of_domain":
         return "not_astrological"
+    if facts.get("lenses"):
+        import question_lenses as QL
+        return QL.stance(facts["lenses"])
     if n_for - n_against >= 2:
         return "favourable"
     if n_against - n_for >= 2:
@@ -219,11 +230,42 @@ def _state_words(k: dict) -> str:
 
 def _findings(facts: dict, lang: str = "en") -> list[tuple[str, str]]:
     """Plain, already-true sentences. The model may choose among them; it may not add to them."""
+    return [(fid, text) for fid, _lens, text in _findings_full(facts, lang)]
+
+
+def _lens_findings(facts: dict, lang: str, start: int) -> list[tuple[str, str, str]]:
+    """One sentence per live lens (Vimshottari, Jaimini, Yogini, transit, Chandra Naadi)."""
+    import question_lenses as QL
+    lk = _lang_key(lang)
+    rows = []
+    for key in QL.LENS_ORDER[1:]:
+        d = (facts.get("lenses") or {}).get(key)
+        if not d:
+            continue
+        if lk == "en":
+            text = QL.text_en(key, d, facts)
+        else:
+            import question_reading_i18n as I18N
+            text = I18N.lens_text(key, d, facts, lk)
+        if text:
+            rows.append((f"F{start + len(rows)}", key, text))
+    return rows
+
+
+def _findings_full(facts: dict, lang: str = "en") -> list[tuple[str, str, str]]:
+    """(id, lens, sentence). Birth-promise sentences first, then one per live lens."""
     if facts["domain_key"] in ("gemstones_remedies", "out_of_domain"):
         return []
     if _lang_key(lang) != "en":
         import question_reading_i18n as I18N
-        return I18N.findings(facts, _lang_key(lang))
+        promise = I18N.findings(facts, _lang_key(lang))
+    else:
+        promise = _promise_findings(facts)
+    rows = [(fid, "promise", text) for fid, text in promise]
+    return rows + _lens_findings(facts, lang, len(rows) + 1)
+
+
+def _promise_findings(facts: dict) -> list[tuple[str, str]]:
     h = facts["house"]
     lord = h["lord"]
     dw = _dignity_words(lord["dignity"])
@@ -231,7 +273,9 @@ def _findings(facts: dict, lang: str = "en") -> list[tuple[str, str]]:
         "F1",
         f"{lord['planet']} rules your {_ord(h['number'])} house, which governs this. It sits in house "
         f"{lord['house']} in {lord['sign']}" + (f" and is {dw}" if dw else "")
-        + (" - a hard house that brings delay." if lord["hard_house"] else " - a supportive placement."))]
+        + (" - a hard house that brings delay." if lord["hard_house"]
+           else " - a weak placement, even though the house itself is helpful."
+           if lord["dignity"] in _BAD_DIGNITY else " - a supportive placement."))]
     for k in facts["karakas"]:
         if k["planet"] == lord["planet"]:
             continue                      # already said in F1
@@ -242,14 +286,7 @@ def _findings(facts: dict, lang: str = "en") -> list[tuple[str, str]]:
         rows.append((f"F{nxt}", f"The {_ord(h['number'])} house scores {h['sav']} "
                                 f"({'above' if h['sav'] >= 28 else 'below'} the average of 28)."))
         nxt += 1
-    p = facts["periods"]
-    if p["sub"]:
-        # No end date: the free half must not carry the dated half of the answer.
-        rows.append((f"F{nxt}", f"You are running the {p['main']} main period and {p['sub']} sub-period."))
-        nxt += 1
-    if facts["transits"]:
-        rows.append((f"F{nxt}", f"Right now {facts['transits']}."))
-    return rows
+    return rows          # the running period and the transits are judged by their own lenses
 
 
 def _timing_line(facts: dict, lang: str = "en") -> str:
@@ -323,22 +360,29 @@ class QuestionJudgement(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     stance: Stance
-    answer: str = Field(description="Direct answer in 2-3 plain sentences, at most 60 words.")
-    use: list[str] = Field(description="Ids (F1, F2...) of the 2-4 findings that matter for THIS question.")
+    answer: str = Field(description="ONE sentence, under 18 words, that directly answers the question asked, "
+                                    "speaking to the reader as 'you'.")
+    because: str = Field(default="", description="ONE sentence, under 30 words, using 'your': whether the birth "
+                                                 "promise and what is running now agree, and the key fact.")
+    use: list[str] = Field(description="Ids (F1, F2...) of the 3-5 findings that matter for THIS question.")
     needs_timing: bool = Field(description="True only if the question asks when / how long / which year.")
 
 
 _SYSTEM = (
     "You are an experienced Vedic astrologer answering ONE question for one person. First work out "
-    "what the question is really asking. Then answer it in 2-3 short, plain sentences (at most 60 "
-    "words), speaking to the reader as 'you': say the verdict first, then the main reason. Use ONLY "
-    "the numbered findings supplied; never add a planet position, house, date or gemstone that is "
-    "not written there, and never describe what a planet 'governs' beyond the findings. In `use` "
-    "list the ids of the 2-4 findings that genuinely matter for this question and leave out the "
-    "rest. No headings, no jargon, no padding, do not repeat the question, never mention Lal "
-    "Kitab or Chandra Naadi. stance is favourable, mixed or difficult; stay close to the suggested "
-    "stance unless a finding clearly says otherwise. Set needs_timing true only when the question "
-    "asks about time. Never put a date, year or period in the answer: timing is shown separately."
+    "what the question is really asking. Judge it by how the lenses line up: the birth promise "
+    "(what the chart itself allows) against what is running now (the main and sub period, the Chara "
+    "period, the Yogini period, transits, Chandra Naadi). Fill `answer` with one short sentence that "
+    "answers the question in plain words, e.g. 'You can change jobs, but it will take effort'. Fill "
+    "`because` with one sentence that says, using 'your', whether the birth promise and what is "
+    "running now agree, naming the one or two facts that decide it. Use ONLY the numbered findings "
+    "supplied; never add a planet position, house, date or gemstone that is not written there. In "
+    "`use` list the ids of the 3-5 findings that genuinely matter for THIS question, covering both "
+    "the birth promise and what is running now; leave out the rest. No headings, no jargon, no "
+    "padding, do not repeat the question, never mention Lal Kitab. stance is favourable, mixed or "
+    "difficult; stay close to the suggested stance unless a finding clearly says otherwise. Set "
+    "needs_timing true only when the question asks about time. Never put a date, year or period "
+    "length in the text: timing is shown separately."
 )
 
 _LANG_NOTE = {
@@ -370,8 +414,20 @@ def _prompt(facts: dict) -> str:
             lines.append(f"- AVOID: {r['gem']} because {r['reason']}.")
         lines.append("Your answer MUST name every SUITS stone and every AVOID stone, in that order.")
     else:
-        for fid, text in _findings(facts):
-            lines.append(f"{fid}: {text}")
+        lens_labels = {"promise": "birth promise", "vimshottari": "running period", "jaimini": "Chara period",
+                       "yogini": "Yogini", "transit": "transit", "naadi": "Chandra Naadi"}
+        votes = facts.get("lenses") or {}
+        if votes:
+            word = {1: "supports", 0: "neutral", -1: "strains"}
+            lines.insert(4, "How the lenses line up: " + "; ".join(
+                f"{lens_labels[k]} {word[votes[k]['vote']]}" for k in lens_labels if k in votes) + ".")
+        if votes:
+            p, n = _verdict_key(facts)
+            lines.insert(5, "Verdict frame (answer the question FIRST, then state both in one short sentence using your/you): your birth promise is "
+                         f"{ {1: 'strong', 0: 'mixed', -1: 'weak'}[p] }; what is running for you now is "
+                         f"{ {1: 'helping', 0: 'mixed', -1: 'holding it back'}[n] }.")
+        for fid, lens, text in _findings_full(facts):
+            lines.append(f"{fid} [{lens_labels.get(lens, lens)}]: {text}")
     return "\n".join(lines)
 
 
@@ -393,6 +449,12 @@ def _true_claims(facts: dict) -> set[tuple[str, int]]:
         ok.add((k["planet"], k["house"]))
     for p, n in re.findall(r"(Jupiter|Saturn) is crossing your (\d+)", facts.get("transits") or ""):
         ok.add((p, int(n)))
+    for p, n, _s in facts.get("transit_parts") or []:
+        ok.add((p, int(n)))
+    # Every natal placement and rulership is a true fact the answer may cite.
+    for p, d in (facts.get("placements") or {}).items():
+        ok.add((p, int(d["house"])))
+        ok.update((p, int(x)) for x in d.get("owns", []))
     for r in (facts.get("gems") or {}).get("recommended", []) + (facts.get("gems") or {}).get("avoid", []):
         ok.update({(r["planet"], int(x)) for x in r["houses"]})
         if r.get("in_house"):
@@ -407,10 +469,24 @@ def _check(ans: str, facts: dict) -> list[str]:
         problems.append("answer is empty")
     if len(ans.split()) > 90:
         problems.append("answer is longer than 60 words")
-    if re.search(r"lal\s*kitab|chandra\s*naadi|python|code|```", ans, re.I):
+    if re.search(r"lal\s*kitab|python|code|```", ans, re.I):
         problems.append("answer contains something that is not part of a chart answer")
     if re.search(r"\b20\d\d\b", ans):
         problems.append("puts a year in the answer; timing is shown separately")
+    if facts.get("lenses"):
+        p, _n = _verdict_key(facts)
+        for sent in re.split(r"(?<=[.!?])\s", ans):
+            if not re.search(r"\b(birth )?(promise|promises)\b", sent, re.I):
+                continue
+            hedged = re.search(r"\b(but|though|however|yet|while|although)\b", sent, re.I)
+            good = re.search(r"\b(strong|supports?|supportive|good|favou?rable|promising|encouraging)\b", sent, re.I)
+            bad = re.search(r"\b(weak|delays?|delayed|poor|limited|difficult|hard|strain|debilitated)\b", sent, re.I)
+            if p < 0 and good and not bad and not hedged:
+                problems.append("calls the birth promise good, but the chart's birth promise is weak")
+                break
+            if p > 0 and bad and not good and not hedged:
+                problems.append("calls the birth promise weak, but the chart's birth promise is strong")
+                break
     true = _true_claims(facts)
     for m in _CLAIM.finditer(ans):
         house = int(m.group(2) or m.group(3))
@@ -476,7 +552,7 @@ def _ask_model(facts: dict, lang: str) -> Optional[QuestionReading]:
     user = _prompt(facts)
     judged: Optional[QuestionJudgement] = None
     problems: list[str] = []
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             got = complete_model(
                 QuestionJudgement, system,
@@ -488,7 +564,7 @@ def _ask_model(facts: dict, lang: str) -> Optional[QuestionReading]:
             return None
         if got is None:
             return None
-        problems = _check(got.answer, facts)
+        problems = _check(f"{got.answer.strip()} {got.because.strip()}".strip(), facts)
         if not problems:
             judged = got
             break
@@ -499,17 +575,78 @@ def _ask_model(facts: dict, lang: str) -> Optional[QuestionReading]:
     if "gems" in facts:
         why = _gem_why(facts, lk)
     else:
-        table = dict(_findings(facts, lk))
-        picked = [table[i] for i in dict.fromkeys(x.strip().upper() for x in judged.use) if i in table][:4]
-        why = picked if len(picked) >= 2 else [t for _, t in _findings(facts, lk)][:3]
+        why = _pick_why(facts, lk, judged.use)
     stance = _blend_stance(_stance_hint(facts), judged.stance, facts)
     timing = _timing_line(facts, lk) if _wants_timing(facts, judged.needs_timing) else ""
-    answer = judged.answer.strip()
+    answer = f"{judged.answer.strip()} {judged.because.strip()}".strip()
     if lk != "en":
         import question_reading_i18n as I18N
         answer = I18N.answer(facts, stance, lk)
-    return QuestionReading(stance=stance, answer=answer, why=why, timing=timing,
-                           steps=_steps(facts, lk))
+    return _attach(QuestionReading(stance=stance, answer=answer, why=why, timing=timing,
+                                   steps=_steps(facts, lk)), facts)
+
+
+def _pick_why(facts: dict, lk: str, use: list[str]) -> list[str]:
+    """The reasons the model chose, always covering the birth promise AND something running now."""
+    rows = _findings_full(facts, lk)
+    by_id = {fid: (lens, text) for fid, lens, text in rows}
+    chosen = [i for i in dict.fromkeys(x.strip().upper() for x in use) if i in by_id][:5]
+    if len(chosen) < 3:
+        seen = {by_id[i][0] for i in chosen}
+        for fid, lens, _t in rows:           # no usable pick: the lead sentence of every lens
+            if lens not in seen:
+                chosen.append(fid)
+                seen.add(lens)
+    lenses_in = {by_id[i][0] for i in chosen}
+    for want in ("promise", next((l for _i, l, _t in rows if l != "promise"), "")):
+        if want and want not in lenses_in:
+            fid = next(i for i, l, _t in rows if l == want)
+            chosen = (chosen[:4] + [fid]) if len(chosen) >= 5 else chosen + [fid]
+            lenses_in.add(want)
+    order = [fid for fid, _l, _t in rows]
+    return [by_id[i][1] for i in sorted(set(chosen), key=order.index)]
+
+
+def _attach(reading: QuestionReading, facts: dict) -> QuestionReading:
+    """Record how the lenses voted, so the page can show them and the verdict is auditable."""
+    lenses = facts.get("lenses") or {}
+    if lenses:
+        import question_lenses as QL
+        reading.lenses = [{"key": k, "vote": lenses[k]["vote"]} for k in QL.LENS_ORDER if k in lenses]
+        reading.confidence = QL.confidence(lenses)
+    return reading
+
+
+_VERDICT_EN = {
+    (1, 1): "Your chart promises this and what is running now backs it.",
+    (1, 0): "Your chart promises this, and what is running now is mixed, so steady effort will carry it.",
+    (1, -1): "Your chart promises this, but what is running now is holding it back, so be patient.",
+    (0, 1): "Your chart gives a mixed promise here, but what is running now helps.",
+    (0, 0): "This is possible for you, but expect some effort and delay.",
+    (0, -1): "Your chart gives a mixed promise here, and what is running now adds friction.",
+    (-1, 1): "Your chart's promise here is weak, though what is running now helps, so effort pays now.",
+    (-1, 0): "Your chart's promise here is weak and what is running now is mixed, so it will take effort.",
+    (-1, -1): "This is not easy for you right now: the chart's promise is weak and what is running now "
+              "adds friction.",
+}
+
+
+def headline(answer: str, limit: int = 140) -> str:
+    """The first whole sentence of the answer: it is shown as the page title, so never cut mid-phrase."""
+    text = re.sub(r"\s+", " ", str(answer or "")).strip()
+    first = re.split(r"(?<=[.!?])\s", text, maxsplit=1)[0]
+    if len(first) <= limit:
+        return first
+    lead = first.split(";")[0].rstrip(",:- ")
+    if ";" in first and len(lead) <= limit:
+        return lead + "."
+    cut = first[:limit].rsplit(" ", 1)[0].rstrip(",;:- ")
+    return cut + "..."
+
+
+def _verdict_key(facts: dict) -> tuple[int, int]:
+    import question_lenses as QL
+    return QL.promise_and_now(facts.get("lenses") or {})
 
 
 # ----------------------------------------------------------------------- the fallback
@@ -527,10 +664,10 @@ def _fallback(facts: dict, lang: str = "en") -> QuestionReading:
                                    answer=I18N.answer(facts, "mixed", lk), why=_gem_why(facts, lk),
                                    timing="", steps=_steps(facts, lk))
         stance = _stance_hint(facts)
-        return QuestionReading(
+        return _attach(QuestionReading(
             stance=stance, answer=I18N.answer(facts, stance, lk),
-            why=[t for _, t in _findings(facts, lk)][:4],
-            timing=_timing_line(facts, lk) if _wants_timing(facts) else "", steps=_steps(facts, lk))
+            why=_pick_why(facts, lk, []),
+            timing=_timing_line(facts, lk) if _wants_timing(facts) else "", steps=_steps(facts, lk)), facts)
     key = facts["domain_key"]
     if key == "out_of_domain":
         return QuestionReading(
@@ -556,16 +693,15 @@ def _fallback(facts: dict, lang: str = "en") -> QuestionReading:
     stance = _stance_hint(facts)
     lord = facts["house"]["lord"]
     dw = _dignity_words(lord["dignity"])
-    opener = {"favourable": "Your chart supports this.",
-              "mixed": "This is possible for you, but expect some effort and delay.",
-              "difficult": "This is not easy for you right now, though it is not closed."}[stance]
+    opener = _VERDICT_EN[_verdict_key(facts)]
     answer = (f"{opener} {lord['planet']}, the planet that rules this area, sits in house {lord['house']} "
               f"in {lord['sign']}" + (f" and is {dw}" if dw else "") + ".")
     if lord["hard_house"]:
         answer += " That house tends to slow things down."
-    why = [t for _, t in _findings(facts)][:4]
+    why = _pick_why(facts, "en", [])
     timing = _timing_line(facts) if _wants_timing(facts) else ""
-    return QuestionReading(stance=stance, answer=answer, why=why, timing=timing, steps=_steps(facts))
+    return _attach(QuestionReading(stance=stance, answer=answer, why=why, timing=timing,
+                                   steps=_steps(facts)), facts)
 
 
 def build_reading(conf: Any, pc: dict, cfg: dict, *, lang: str = "en") -> tuple[QuestionReading, dict, bool]:
@@ -585,6 +721,9 @@ _LABELS = {
         "do": "What to do", "facts": "Chart facts behind this answer",
         "favourable": "Looks favourable", "mixed": "Mixed", "difficult": "Needs care",
         "not_astrological": "Outside astrology",
+        "lenses": "How the lenses line up",
+        "lens_promise": "Birth promise", "lens_vimshottari": "Running period", "lens_jaimini": "Chara period",
+        "lens_yogini": "Yogini", "lens_transit": "Transit", "lens_naadi": "Chandra Naadi",
         "lock": "Timing and next steps are in the full reading",
         "lockchip": "Unlock timing and steps",
         "cta": "Unlock full answer", "sub": "Timing window and practical steps for this question.",
@@ -594,6 +733,9 @@ _LABELS = {
         "do": "Kya karein", "facts": "Is jawab ke peeche kundli ke tathya",
         "favourable": "Anukool", "mixed": "Milajula", "difficult": "Savdhani zaroori",
         "not_astrological": "Jyotish se bahar",
+        "lenses": "Lens kaise milte hain",
+        "lens_promise": "Kundli ka vachan", "lens_vimshottari": "Chal rahi dasha", "lens_jaimini": "Chara dasha",
+        "lens_yogini": "Yogini", "lens_transit": "Gochar", "lens_naadi": "Chandra Naadi",
         "lock": "Samay aur agle kadam poori reading mein hain",
         "lockchip": "Samay aur kadam unlock karein",
         "cta": "Poora jawab unlock karein", "sub": "Is prashna ka samay aur vyavaharik kadam.",
@@ -603,6 +745,9 @@ _LABELS = {
         "do": "Em cheyali", "facts": "Ee samadhanam venuka kundali vivaralu",
         "favourable": "Anukoolam", "mixed": "Mishramam", "difficult": "Jagrattha avasaram",
         "not_astrological": "Jyotishyam bayata",
+        "lenses": "Lens lu ela kalustayi",
+        "lens_promise": "Jataka vagdanam", "lens_vimshottari": "Nadustunna dasha", "lens_jaimini": "Chara dasha",
+        "lens_yogini": "Yogini", "lens_transit": "Gochar", "lens_naadi": "Chandra Naadi",
         "lock": "Samayam mariyu tarvata chese pani poorthi reading lo unnayi",
         "lockchip": "Samayam mariyu steps unlock cheyandi",
         "cta": "Poorthi samadhanam unlock cheyandi", "sub": "Ee prashnaku samayam mariyu practical steps.",
@@ -633,6 +778,17 @@ def _facts_list(facts: dict) -> list[str]:
                         f"{p['sub_from']} to {p['sub_until']}.")
         if facts["transits"]:
             rows.append(facts["transits"][0].upper() + facts["transits"][1:] + ".")
+        lenses = facts.get("lenses") or {}
+        if "jaimini" in lenses:
+            j = lenses["jaimini"]
+            rows.append(f"Chara period: {j['maha']} main, {j['antar']} sub.")
+        if "yogini" in lenses:
+            y = lenses["yogini"]
+            rows.append(f"Yogini period: {y['name']} ({y['lord']}), {y['tone']}.")
+        if "naadi" in lenses and lenses["naadi"]["touched"]:
+            n = lenses["naadi"]
+            where = f" in {n['moon_sign']}" if n["moon_sign"] else ""
+            rows.append(f"Chandra Naadi: the Moon{where} is touching natal {', '.join(n['touched'])}.")
     return rows
 
 
@@ -658,6 +814,21 @@ def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str 
         f'<p style="font-size:.78rem;color:#6a7080;margin:8px 0 0;">{meta_line}</p>'
         '</article>',
     ]
+
+    if reading.lenses:
+        chip = {1: ("&#10003;", "#1c6b45", "#e9f5ee"), 0: ("&bull;", "#8a6a1f", "#fbf6e4"),
+                -1: ("&#10007;", "#a3341f", "#fbeae6")}
+        chips = "".join(
+            f'<span style="display:inline-flex;align-items:center;gap:5px;font-size:.74rem;font-weight:600;'
+            f'padding:4px 10px;border-radius:99px;background:{chip[int(v["vote"])][2]};'
+            f'color:{chip[int(v["vote"])][1]};">{chip[int(v["vote"])][0]} {L.get("lens_" + v["key"], v["key"])}</span>'
+            for v in reading.lenses if int(v.get("vote", 0)) in chip)
+        parts.append(
+            '<div class="uq-lenses" style="margin:0 0 14px;padding:10px 14px;background:#fff;'
+            'border:1px solid #e8e4dc;border-radius:12px;">'
+            f'<div style="font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;'
+            f'color:#6a7080;margin-bottom:6px;">{L["lenses"]}</div>'
+            f'<div style="display:flex;flex-wrap:wrap;gap:6px;">{chips}</div></div>')
 
     if reading.why:
         items = "".join(f'<li style="margin-bottom:6px;">{_esc(w)}</li>' for w in reading.why)
@@ -711,3 +882,7 @@ def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str 
             '</details>')
     parts.append("</div>")
     return "\n".join(parts)
+
+
+
+

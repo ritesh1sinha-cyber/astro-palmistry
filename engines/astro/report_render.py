@@ -933,9 +933,9 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
 
     specialist_readings = getattr(conf, "specialist_readings", None) or {}
 
-    # One short answer judged against only the facts that bear on this
-    # question. Lal Kitab / Chandra Naadi findings are deliberately not fed in:
-    # they produced generic lines unrelated to what was asked.
+    # One short answer judged through six lenses (birth promise, Vimshottari,
+    # Jaimini, Yogini, transit, Chandra Naadi), each reduced to a vote. Lal Kitab
+    # is deliberately not fed in: it produced generic lines unrelated to the question.
     cfg = DOMAINS_CONFIG.get(conf.domain_key) or DOMAINS_CONFIG["career_profession"]
     reading, qfacts, by_model = QR.build_reading(conf, pc, cfg, lang=lang)
     qwen_consultation = reading.answer if by_model else ""
@@ -957,8 +957,8 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
         "design": "cards-v2",
         "language": lang,
         "answer": {
-            "label": reading.answer[:80],
-            "confidence": "high",
+            "label": QR.headline(reading.answer),
+            "confidence": reading.confidence or "moderate",
             "direction": "support" if reading.stance == "favourable" else "caution",
             "breakthrough": qfacts.get("next_window") or conf.breakthrough_period,
         },

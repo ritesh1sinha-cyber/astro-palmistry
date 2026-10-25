@@ -1,4 +1,4 @@
-"""Hinglish (hi_en) and Tenglish (te_en) wording for ``question_reading``.
+﻿"""Hinglish (hi_en) and Tenglish (te_en) wording for ``question_reading``.
 
 A 7B model cannot translate astrology sentences reliably (it turned "your marriage will
 face delays" into nonsense), so every non-English line is built from fixed templates over
@@ -129,12 +129,14 @@ def findings(facts: dict, lk: str) -> list[tuple[str, str]]:
         f1 = (f"{lord['planet']} aapke {QR._ord(h['number'])} house ka swami hai, jo is sawal ko chalata hai. "
               f"Woh {lord['sign']} mein house {lord['house']} mein baitha hai{dw}."
               + (" Yeh kathin house hai, jo deri laata hai." if lord["hard_house"]
-                 else " Yeh sahayak sthiti hai."))
+                 else " Yeh kamzor sthiti hai, bhale hi house madadgaar hai."
+                 if lord["dignity"] in QR._BAD_DIGNITY else " Yeh sahayak sthiti hai."))
     else:
         f1 = (f"{lord['planet']} mee {QR._ord(h['number'])} house ki adhipati, ee prashnanu nadipistundi. "
               f"Adi {lord['sign']} lo house {lord['house']} lo undi{dw}."
               + (" Idi kashtamaina house, aalasyam kaligistundi." if lord["hard_house"]
-                 else " Idi anukulamaina sthiti."))
+                 else " Idi balaheenamaina sthiti, house sahayakaramainaa."
+                 if lord["dignity"] in QR._BAD_DIGNITY else " Idi anukulamaina sthiti."))
     rows = [("F1", f1)]
     for k in facts["karakas"]:
         if k["planet"] == lord["planet"]:
@@ -157,16 +159,100 @@ def findings(facts: dict, lk: str) -> list[tuple[str, str]]:
                  f"(sarasari 28 kante {'ekkuva' if up else 'takkuva'}).")
         rows.append((f"F{nxt}", t))
         nxt += 1
-    p = facts["periods"]
-    if p["sub"]:
-        t = (f"Aap abhi {p['main']} mahadasha aur {p['sub']} antardasha mein hain." if hi else
-             f"Meeru ippudu {p['main']} mahadasha mariyu {p['sub']} antardasha lo unnaru.")
-        rows.append((f"F{nxt}", t))
-        nxt += 1
-    tr = transits(facts, lk)
-    if tr:
-        rows.append((f"F{nxt}", tr))
-    return rows
+    return rows          # periods and transits are judged by their own lenses (see lens_text)
+
+
+_LENS_WORDS = {
+    "hi_en": {"main": "mahadasha", "sub": "antardasha"},
+    "te_en": {"main": "mahadasha", "sub": "antardasha"},
+}
+
+
+def lens_text(key: str, d: dict, facts: dict, lk: str) -> str:
+    """Hinglish / Tenglish sentence for one live lens."""
+    hi = lk == "hi_en"
+    n = QR._ord(int(facts["house"]["number"]))
+    if key == "vimshottari":
+        who = d["who"]
+        if hi:
+            base = f"Aap abhi {d['main']} mahadasha aur {d['sub']} antardasha mein hain."
+            tail = {"helper": f" {who} un grahon mein se hai jo is sawal ko chalate hain, isliye yeh dasha saath deti hai.",
+                    "hard": f" {who} kathin house mein baitha ya uska swami hai, isliye yeh dasha deri aur mehnat laati hai.",
+                    "none": f" {who} ka is sawal se seedha sambandh nahi, isliye yeh dasha na dhakelti hai na rokti hai."}
+        else:
+            base = f"Meeru ippudu {d['main']} mahadasha mariyu {d['sub']} antardasha lo unnaru."
+            tail = {"helper": f" {who} ee prashnanu nadipe grahalalo okati, kabatti ee dasha maddatu istundi.",
+                    "hard": f" {who} kashtamaina house lo undi leda daani adhipati, kabatti ee dasha aalasyam, shramam techchi pedutundi.",
+                    "none": f" {who}ki ee prashnatho nerugaa sambandham ledu, kabatti ee dasha dhakkaadu aapadu."}
+        return base + tail[d["rel"]]
+    if key == "jaimini":
+        head = (f"Aapki Chara dasha ({d['maha']} mahadasha, {d['antar']} antardasha)" if hi else
+                f"Mee Chara dasha ({d['maha']} mahadasha, {d['antar']} antardasha)")
+        if d["hit"] == "primary":
+            return (f"{head} aapke {n} house ki rashi ({d['primary_sign']}) ko jagati hai, jo saath deti hai." if hi else
+                    f"{head} mee {n} house rashi ({d['primary_sign']}) ni velugulaki testundi, idi maddatu.")
+        if d["hit"] == "lord":
+            return (f"{head} {d['lord_sign']} ko jagati hai, jahan aapke {n} house ka swami baitha hai, jo saath deti hai." if hi
+                    else f"{head} {d['lord_sign']} ni velugulaki testundi, akkada mee {n} house adhipati undi, idi maddatu.")
+        if d["hard"]:
+            return (f"{head} aapke {n} house ki rashi ({d['primary_sign']}) tak nahi pahunchti aur usse kathin sthiti mein hai, isliye pragati dheemi hai." if hi
+                    else f"{head} mee {n} house rashi ({d['primary_sign']}) ki cheravadam ledu, kashtamaina sthitilo undi, kabatti pragati mellaga untundi.")
+        return (f"{head} aapke {n} house ki rashi ({d['primary_sign']}) ko na jagati hai na rokti hai." if hi else
+                f"{head} mee {n} house rashi ({d['primary_sign']}) ni velugulaki testadu, aapadu.")
+    if key == "yogini":
+        head = (f"Yogini: aap {d['name']} ({d['lord']}) dasha mein hain" if hi else
+                f"Yogini: meeru {d['name']} ({d['lord']}) dashalo unnaru")
+        if d["tone"] == "auspicious":
+            return head + ((", jo shubh hai" + (f", aur {d['lord']} bhi is sawal ko chalata hai, jo aur madad karta hai." if d["tie"] else ".")) if hi
+                           else (", idi shubhamainadi" + (f", mariyu {d['lord']} kuda ee prashnanu nadipistundi, idi inka maddatu." if d["tie"] else ".")))
+        if d["tone"] == "inauspicious":
+            return head + ((", jo kasauti ka samay hai" + (f", par {d['lord']} bhi is sawal ko chalata hai, isliye asar kam hota hai." if d["tie"] else ".")) if hi
+                           else (", idi pareeksha samayam" + (f", ayite {d['lord']} kuda ee prashnanu nadipistundi, kabatti prabhavam takkuva." if d["tie"] else ".")))
+        return head + (", jo milajula hai." if hi else ", idi mishramam.")
+    if key == "transit":
+        p = QR._ord(int(d["primary"]))
+        jh, sh = QR._ord(int(d["jup"]["house"] or 0)), QR._ord(int(d["sat"]["house"] or 0))
+        if hi:
+            jup = {"in": f"Jupiter aapke {p} house se hi guzar raha hai, jo use aashirwad deta hai",
+                   "aspects": f"Jupiter, aapke {jh} house se, {p} house ko dekhta hai aur saath deta hai",
+                   "none": f"Jupiter, aapke {jh} house mein, {p} house ko nahi chhu raha"}.get(d["jup"]["mode"], "")
+            sat = {"in": f"Shani aapke {p} house se hi guzar raha hai, jo use dheema karta hai aur parakhta hai",
+                   "aspects": f"Shani, aapke {sh} house se, {p} house ko dekhta hai aur dabav badhata hai",
+                   "none": f"Shani, aapke {sh} house mein, {p} house par dabav nahi daal raha"}.get(d["sat"]["mode"], "")
+            text = "Gochar: " + "; ".join(x for x in (jup, sat) if x) + "."
+            if d["nodes"]:
+                text += f" Rahu aur Ketu aapke {p} house ke axis par hain, jo use asthir karte hain."
+        else:
+            jup = {"in": f"Jupiter mee {p} house gunda ade sancharistunnadu, adi deeniki asheervadam",
+                   "aspects": f"Jupiter, mee {jh} house nundi, {p} house ni choosi maddatu istunnadu",
+                   "none": f"Jupiter, mee {jh} house lo, {p} house ni thakadam ledu"}.get(d["jup"]["mode"], "")
+            sat = {"in": f"Shani mee {p} house gunda ade sancharistunnadu, adi deeniki aalasyam, pareeksha",
+                   "aspects": f"Shani, mee {sh} house nundi, {p} house ni choosi ottidi penchutunnadu",
+                   "none": f"Shani, mee {sh} house lo, {p} house meeda ottidi teevatam ledu"}.get(d["sat"]["mode"], "")
+            text = "Gochar: " + "; ".join(x for x in (jup, sat) if x) + "."
+            if d["nodes"]:
+                text += f" Rahu mariyu Ketu mee {p} house axis lo unnaru, idi deenini asthiram chestundi."
+        return text
+    if key == "naadi":
+        if not d["touched"]:
+            return ("Chandra Naadi: Chandra abhi kisi natal grah ko nahi chhu raha, isliye koi dhakka ya rukawat nahi." if hi else
+                    "Chandra Naadi: Chandrudu ippudu e natal grahanni thakadam ledu, kabatti e vaipu prabhavam ledu.")
+        names = ", ".join(d["touched"])
+        if not d["relevant"]:
+            return (f"Chandra Naadi: Chandra abhi aapke natal {names} ko chhu raha hai, jinme se koi is sawal ko nahi chalata, isliye na dhakka na rukawat." if hi
+                    else f"Chandra Naadi: Chandrudu ippudu mee natal {names} ni thakutunnadu, vaatilo e okkati ee prashnanu nadipinchadu, kabatti dhakka leda aapu ledu.")
+        if d["good"] and d["bad"]:
+            tail = (f"{', '.join(d['good'])} madad karta hai jabki {', '.join(d['bad'])} dabav mein hai" if hi else
+                    f"{', '.join(d['good'])} maddatu istundi, {', '.join(d['bad'])} ibbandilo undi")
+        elif d["bad"]:
+            tail = (f"{', '.join(d['bad'])} is sawal ko chalata hai par dabav mein hai, isliye yeh samay dabav laata hai" if hi else
+                    f"{', '.join(d['bad'])} ee prashnanu nadipistundi kani ibbandilo undi, kabatti ee samayam ottidi techchi pedutundi")
+        else:
+            tail = (f"{', '.join(d['good'])} is sawal ko chalata hai aur achhi sthiti mein hai, isliye yeh sakriya aur madadgaar samay hai" if hi else
+                    f"{', '.join(d['good'])} ee prashnanu nadipistundi mariyu manchi sthitilo undi, kabatti idi chaitanyavantamaina, upayogakaramaina samayam")
+        return (f"Chandra Naadi: Chandra abhi aapke natal {names} ko chhu raha hai; {tail}." if hi else
+                f"Chandra Naadi: Chandrudu ippudu mee natal {names} ni thakutunnadu; {tail}.")
+    return ""
 
 
 def timing(facts: dict, lk: str) -> str:
@@ -232,13 +318,29 @@ def gem_why(facts: dict, lk: str) -> list[str]:
     return why[:4]
 
 
-_OPENER = {
-    "hi_en": {"favourable": "Aapki kundli is mein saath deti hai.",
-              "mixed": "Yeh aapke liye sambhav hai, par thodi mehnat aur deri ke liye taiyar rahein.",
-              "difficult": "Abhi aapke liye yeh aasaan nahi hai, lekin raasta band nahi hai."},
-    "te_en": {"favourable": "Mee jatakam deeniki maddatu istundi.",
-              "mixed": "Idi meeku sadhyame, kani konchem shramam mariyu aalasyam undochchu.",
-              "difficult": "Ippudu idi meeku sulabham kaadu, kani daari moosukupoledu."},
+_VERDICT = {
+    "hi_en": {
+        (1, 1): "Aapki kundli ka vachan is mein saath deta hai aur abhi chal rahi dasha bhi saath hai.",
+        (1, 0): "Aapki kundli ka vachan is mein saath deta hai, aur abhi chal rahi dasha milijuli hai, isliye lagatar koshish kaam aayegi.",
+        (1, -1): "Aapki kundli ka vachan is mein saath deta hai, par abhi chal rahi dasha ise rok rahi hai, isliye sabr rakhein.",
+        (0, 1): "Aapki kundli ka vachan yahan milajula hai, par abhi chal rahi dasha madad kar rahi hai.",
+        (0, 0): "Yeh aapke liye sambhav hai, par thodi mehnat aur deri ke liye taiyar rahein.",
+        (0, -1): "Aapki kundli ka vachan yahan milajula hai, aur abhi chal rahi dasha rukawat badha rahi hai.",
+        (-1, 1): "Aapki kundli ka vachan yahan kamzor hai, par abhi chal rahi dasha madad karti hai, isliye ab mehnat rang laayegi.",
+        (-1, 0): "Aapki kundli ka vachan yahan kamzor hai aur abhi chal rahi dasha milijuli hai, isliye mehnat lagegi.",
+        (-1, -1): "Abhi aapke liye yeh aasaan nahi hai: kundli ka vachan kamzor hai aur abhi chal rahi dasha rukawat badha rahi hai.",
+    },
+    "te_en": {
+        (1, 1): "Mee jatakam vagdanam deeniki maddatu istundi, ippudu nadustunna dasha kuda saha ayam chestundi.",
+        (1, 0): "Mee jatakam vagdanam deeniki maddatu istundi, ippudu nadustunna dasha mishramam, kabatti nirantara prayatnam phalistundi.",
+        (1, -1): "Mee jatakam vagdanam deeniki maddatu istundi, kani ippudu nadustunna dasha daanini aapestondi, kabatti sabaram avasaram.",
+        (0, 1): "Mee jatakam vagdanam ikkada mishramam, kani ippudu nadustunna dasha maddatu istundi.",
+        (0, 0): "Idi meeku sadhyame, kani konchem shramam mariyu aalasyam undochchu.",
+        (0, -1): "Mee jatakam vagdanam ikkada mishramam, mariyu ippudu nadustunna dasha ibbandi penchutundi.",
+        (-1, 1): "Mee jatakam vagdanam ikkada balaheenam, kani ippudu nadustunna dasha maddatu istundi, kabatti ippudu prayatnam phalistundi.",
+        (-1, 0): "Mee jatakam vagdanam ikkada balaheenam, ippudu nadustunna dasha mishramam, kabatti shramam kavali.",
+        (-1, -1): "Ippudu idi meeku sulabham kaadu: jatakam vagdanam balaheenam, mariyu ippudu nadustunna dasha ibbandi penchutundi.",
+    },
 }
 
 
@@ -268,7 +370,7 @@ def answer(facts: dict, stance: str, lk: str) -> str:
         return text
     lord = facts["house"]["lord"]
     dw = _dw(lord["dignity"], lk)
-    opener = _OPENER[lk][stance if stance in _OPENER[lk] else "mixed"]
+    opener = _VERDICT[lk][QR._verdict_key(facts)]
     if hi:
         text = (f"{opener} {lord['planet']}, jo is kshetra ka swami hai, {lord['sign']} mein house "
                 f"{lord['house']} mein baitha hai{dw}.")
@@ -280,3 +382,4 @@ def answer(facts: dict, stance: str, lk: str) -> str:
         if lord["hard_house"]:
             text += " Aa house panulanu mandagimpachestundi."
     return text
+
