@@ -211,7 +211,7 @@ if pc:
     check("bundle is offered in free only",
           "Everything, one package" in ff and "Everything, one package" not in fp)
     check("bundle asks for contact, not a payment button",
-          "admin@graharekha.com" in ff
+          "graharekha4@gmail.com" in ff
           and 'data-unlock="1"' not in ff.split("Everything, one package")[1][:800])
     check("no leak in the free half", not LEAK.search(ff),
           str((LEAK.search(ff) or [""])[0]))

@@ -1712,7 +1712,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
   <div class="card legal-doc">
    <h3>Who we are</h3>
    <p>GrahaRekha (<a href="https://www.graharekha.com">graharekha.com</a>) provides palmistry and astrology readings online.
-      For privacy questions, email <a href="mailto:admin@graharekha.com">admin@graharekha.com</a>.</p>
+      For privacy questions, email <a href="mailto:graharekha4@gmail.com">graharekha4@gmail.com</a>.</p>
 
    <h3>What we collect</h3>
    <ul>
@@ -1740,7 +1740,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
    <h3>Retention &amp; your choices</h3>
    <p>We keep account and order records as long as needed to provide the service and meet legal/accounting duties.
       To request access or deletion of your account data, email
-      <a href="mailto:admin@graharekha.com">admin@graharekha.com</a> from the address on your account.</p>
+      <a href="mailto:graharekha4@gmail.com">graharekha4@gmail.com</a> from the address on your account.</p>
 
    <h3>Security</h3>
    <p>We use industry-standard safeguards (HTTPS, signed sessions, webhook verification for payments).
@@ -1795,7 +1795,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
 
    <h3>Changes</h3>
    <p>We may update these terms. Continued use after a change means you accept the revised terms.
-      For help: <a href="mailto:admin@graharekha.com">admin@graharekha.com</a> ·
+      For help: <a href="mailto:graharekha4@gmail.com">graharekha4@gmail.com</a> ·
       <a href="#" onclick="go('contact');return false">Contact</a>.</p>
   </div>
  </div>
@@ -1819,7 +1819,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
 
    <h3>Payment succeeded but report still locked</h3>
    <p>This is not a refund case by default — we will help you get access. Email
-      <a href="mailto:admin@graharekha.com">admin@graharekha.com</a> with:</p>
+      <a href="mailto:graharekha4@gmail.com">graharekha4@gmail.com</a> with:</p>
    <ul>
     <li>Your account email</li>
     <li>Order id (e.g. OD-……)</li>
@@ -1836,7 +1836,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
       after the report was unlocked.</p>
 
    <h3>How to reach us</h3>
-   <p><a href="mailto:admin@graharekha.com">admin@graharekha.com</a> ·
+   <p><a href="mailto:graharekha4@gmail.com">graharekha4@gmail.com</a> ·
       <a href="#" onclick="go('contact');return false">Contact page</a> · phone/WhatsApp on Contact.</p>
   </div>
  </div>
@@ -2143,7 +2143,7 @@ const CONFIG = {
   brand:        'GrahaRekha',
   apiBase:      '',                      // '' = same origin; auto-set for local split ports below
   googleClientId:'',                     // Google Cloud OAuth 2.0 Web Client ID ('' = promocode login)
-  contactEmail: 'admin@graharekha.com',
+  contactEmail: 'graharekha4@gmail.com',
   contactPhone: '+91-7095734613',
   whatsapp:     '917095734613',          // digits only, with country code
   upiId:        '',                      // set your real UPI id, or leave blank to use the gateway only
@@ -2341,7 +2341,18 @@ function applyHash(){
   go(view, {silent:true, instant:true});
   if(view === 'astro') setAstroPane(parts[1] || null, {clear:true, silent:true});
 }
-addEventListener('popstate', ()=>{ if(!_hashLock) applyHash(); });
+/* Razorpay closes its checkout with history.back(). That pop lands on whatever
+   URL was underneath — often home — and wipes the report we just opened.
+   Hold the current view across that one bounce. */
+let _holdNavUntil = 0;
+function holdNav(ms){
+  _holdNavUntil = Date.now() + (ms || 8000);
+}
+addEventListener('popstate', ()=>{
+  if(_hashLock) return;
+  if(Date.now() < _holdNavUntil) return;
+  applyHash();
+});
 
 function finishAuthPathLogin(u){
   if(!authPathKind()) return;
@@ -5005,6 +5016,56 @@ async function openRazorpayCheckout(order, mountEl){
     rzp.open();
   });
 }
+/* Remember which report this checkout belongs to. The payment button and
+   Razorpay's own redirect both reload the site at /#/home; without this the
+   unlocked report is sitting on the account and the customer is looking at
+   the landing page. */
+function armPayReturn(reportId, kind){
+  if(!reportId) return;
+  try{
+    sessionStorage.setItem('grPayReturn', JSON.stringify({
+      reportId: String(reportId), kind: kind || '', at: Date.now()
+    }));
+  }catch(e){}
+  holdNav(120000);
+}
+function clearPayReturn(){
+  try{ sessionStorage.removeItem('grPayReturn'); }catch(e){}
+}
+async function openPaidReturn(){
+  let raw = '';
+  try{ raw = sessionStorage.getItem('grPayReturn') || ''; }catch(e){ return false; }
+  if(!raw || !apSessionToken) return false;
+  let rec;
+  try{ rec = JSON.parse(raw); }catch(e){ clearPayReturn(); return false; }
+  if(!rec.reportId || Date.now() - (rec.at || 0) > 30 * 60 * 1000){
+    clearPayReturn();
+    return false;
+  }
+  try{
+    const r = await api('/api/reports/' + rec.reportId);
+    if(!reportIsUnlocked(r)) return false;
+    clearPayReturn();
+    const kind = rec.kind || r.kind || 'full_report';
+    _paySuccessMsg = 'Payment successful — your full report is open.';
+    if(kind === 'palm' || kind === 'palm_full'){
+      S.readingId = rec.reportId;
+      S.reading = { reportId: rec.reportId, links: r.links, paid: true, meta: r.meta || {} };
+      S.unlocked = true;
+      save();
+      renderReading();
+      openPalmReading();
+      toast('Your full report is ready');
+      return true;
+    }
+    rememberLastAstro(kind, rec.reportId);
+    renderAstroResult(kind, enrichReport(r, kind));
+    toast('Your full report is ready');
+    return true;
+  }catch(e){
+    return false;
+  }
+}
 function pollOrderPaid(orderId, onPaid, statusEl, fetchFn){
   stopPayPoll();
   let tries = 0, notFound = 0;
@@ -5039,6 +5100,7 @@ function pollOrderPaid(orderId, onPaid, statusEl, fetchFn){
 }
 async function showPayModal(order, opts){
   const o = opts || {};
+  armPayReturn(o.reportId, o.kind);
   const title = o.title || String(order.item || 'Unlock').replace(/_/g,' ');
   const m = document.createElement('div'); m.className='modal on'; m.id = o.modalId || 'payModal';
     m.innerHTML = `<div class="modal-box" style="text-align:center">
@@ -5054,13 +5116,13 @@ async function showPayModal(order, opts){
       <button class="btn btn-ghost btn-sm" type="button" id="payCancelBtn">Cancel</button>
     </div>
     <p class="hint" id="payFallbackNote" hidden style="margin-top:12px">Please pay using <b>${esc((S.user&&S.user.email)||'your account email')}</b> so we can match the payment to your account automatically.</p>
-    <p class="hint" style="margin-top:12px">If money was debited but this stays open, email admin@graharekha.com with order ${esc(order.orderId)} and we will unlock it.</p>
+    <p class="hint" style="margin-top:12px">If money was debited but this stays open, email graharekha4@gmail.com with order ${esc(order.orderId)} and we will unlock it.</p>
   </div>`;
   document.body.appendChild(m);
   m.addEventListener('click', e=>{ if(e.target===m) closePayModal(m); });
   m.querySelector('#payCancelBtn')?.addEventListener('click', ()=> closePayModal(m));
   const statusEl = m.querySelector('#payStatus');
-  const finish = ()=>{ closePayModal(m); if(o.onPaid) o.onPaid(); };
+  const finish = ()=>{ closePayModal(m); holdNav(8000); if(o.onPaid) o.onPaid(); };
   const fetchFn = o.fetchOrder || ((id)=> astroApi('/api/order/'+id));
   const checkOnce = async()=>{
     try{
@@ -5134,6 +5196,8 @@ async function startPay(){
     showPayModal(order, {
       title: 'Unlock your full report',
       modalId: 'payModal',
+      reportId: S.readingId,
+      kind: 'palm',
       onPaid: unlock,
       fetchOrder: (id)=> api('/api/order/'+id)
     });
@@ -5169,10 +5233,11 @@ async function unlock(){
     S.reading = S.reading || {};
     S.reading.paid = true;
     S.reading.links = S.reading.links || {free:'#', paid:'#'};
-    S.unlocked = true;
-    _paySuccessMsg = 'Payment successful — your full report is open.';
-    save(); renderReading(); openPalmReading();
-    toast('Your full report is ready');
+  S.unlocked = true;
+  clearPayReturn();
+  _paySuccessMsg = 'Payment successful — your full report is open.';
+  save(); renderReading(); openPalmReading();
+  toast('Your full report is ready');
     return;
   }
   const rep = await waitForUnlockedReport(S.readingId);
@@ -5181,7 +5246,7 @@ async function unlock(){
     renderReading();
     const rid = S.readingId;
     watchReportUnlock(rid, (rep2)=> _applyUnlockedPalmReport(rid, rep2), {
-      onTimeout: ()=> toast('Still confirming — if money was debited, tap “I already paid — check again” or email admin@graharekha.com with your order id.')
+      onTimeout: ()=> toast('Still confirming — if money was debited, tap “I already paid — check again” or email graharekha4@gmail.com with your order id.')
     });
     return;
   }
@@ -5942,6 +6007,8 @@ async function astroPay(item, refId){
     showPayModal(o, {
       title,
       modalId: 'aPayModal',
+      reportId: refId || ASTRO.lastReportId,
+      kind: item,
       onPaid: async ()=>{
         if(item === 'subscription'){
           _paySuccessMsg = 'Subscription active — today\'s full reading is below.';
@@ -5990,6 +6057,7 @@ async function astroRefreshReports(refId, item){
     // entitlement" is what left customers staring at a still-locked report
     // right after a "Payment successful" message.
     if(reportIsUnlocked(r)){
+      clearPayReturn();
       _paySuccessMsg = 'Payment successful — your full report is open.';
       toast('Your full report is ready');
     }
@@ -6000,7 +6068,7 @@ async function astroRefreshReports(refId, item){
     if(!r && rid){
       toast('Payment received — confirming your unlock. This can take up to a couple of minutes; the page will update on its own.');
       watchReportUnlock(rid, finish, {
-        onTimeout: ()=> toast('Still confirming — if money was debited, contact admin@graharekha.com with your order id.')
+        onTimeout: ()=> toast('Still confirming — if money was debited, contact graharekha4@gmail.com with your order id.')
       });
       return;
     }
@@ -6285,6 +6353,9 @@ function syncHomeFolds(){
   const afterAuth = async (u)=>{
     if(u) setUser(Object.assign({}, S.user, u));
     paintDailySub();
+    // A Razorpay return reloads at home. If this tab just paid, open that
+    // report instead of leaving the customer on the landing page.
+    if(await openPaidReturn()) return;
     // Server is truth for unlocks — reopen last reading if the account still owns it.
     if(apSessionToken && S.lastAstro && S.lastAstro.reportId){
       await resumeLastAstro();

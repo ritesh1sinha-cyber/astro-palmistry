@@ -204,7 +204,7 @@ class Settings:
     smtp_from: str = os.getenv("SMTP_FROM", "")
     smtp_use_tls: bool = _bool("SMTP_USE_TLS", True)
     enquiry_notify_to: str = field(default_factory=lambda: _cfg(
-        "enquiry_notify_to", "ENQUIRY_NOTIFY_TO", "admin@graharekha.com"))
+        "enquiry_notify_to", "ENQUIRY_NOTIFY_TO", "graharekha4@gmail.com"))
 
     # --- retention ---------------------------------------------------------
     report_retention_days: int = _int("REPORT_RETENTION_DAYS", 365)
