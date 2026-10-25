@@ -245,6 +245,58 @@ def test_model_path_localises_the_answer_without_trusting_model_text():
     assert got is not None and "marry" not in got.answer and not _ENGLISH_FILLER.search(got.answer)
 
 
+def test_a_named_stone_is_answered_first():
+    assert QR.asked_planets("Is blue sapphire suited for me") == ["Saturn"]
+    assert QR.asked_planets("is neelam good for me") == ["Saturn"]
+    assert set(QR.asked_planets("should I wear a sapphire")) == {"Saturn", "Jupiter"}
+    assert QR.asked_planets("which gemstone will suit me") == []
+    conf, pc, cfg, facts = _sheet("Is blue sapphire suited for me", "gemstones_remedies")
+    asked = facts["gems"]["asked"]
+    assert [a["gem"] for a in asked] == ["Blue Sapphire (Neelam)"] and asked[0]["verdict"] == "mantra"
+    r = QR._fallback(facts)
+    assert r.answer.startswith("Blue Sapphire (Neelam) is not advised"), r.answer
+    assert "Emerald" in r.answer, "then name the stones that do suit the reader"
+    assert r.stance == "difficult" and "Saturn rules your 8th and 9th houses" in r.why[0], r.why[0]
+    assert r.steps[0].startswith("Skip Blue Sapphire") and len(r.steps) <= 3
+    # a stone the audit says suits the reader is answered as a yes
+    conf, pc, cfg, facts = _sheet("is emerald good for me", "gemstones_remedies")
+    r = QR._fallback(facts)
+    assert r.answer.startswith("Emerald (Panna) suits you") and r.stance == "favourable", r.answer
+
+
+def test_model_must_answer_about_the_named_stone_and_match_the_audit():
+    conf, pc, cfg, facts = _sheet("Is blue sapphire suited for me", "gemstones_remedies")
+    assert QR._check("Emerald and Diamond suit you best for your Gemini rising sign.", facts), \
+        "an answer that never mentions Blue Sapphire must fail"
+    assert QR._check("Blue Sapphire (Neelam) suits you well, so wear it.", facts), \
+        "saying yes when the audit says no must fail"
+    assert not QR._check("Blue Sapphire (Neelam) is not advised for you; use Saturn's mantra instead. "
+                         "Emerald (Panna) suits you.", facts)
+    seen = {}
+
+    def stub(schema, system, user, **kw):
+        seen["user"] = user
+        return QR.QuestionJudgement(
+            stance="favourable", answer="Blue Sapphire (Neelam) is not advised for you.",
+            because="Your Saturn is not a safe stone planet, so mantra and charity work better.",
+            use=[], needs_timing=False)
+
+    with _Model(stub):
+        got = QR._ask_model(facts, "en")
+    assert "ASKED STONE: Blue Sapphire (Neelam)" in seen["user"]
+    assert got is not None and got.stance == "difficult", "the audit, not the model, sets the outlook"
+    assert "Saturn rules your 8th and 9th houses" in got.why[0]
+
+
+def test_named_stone_answer_is_localised():
+    conf, pc, cfg, facts = _sheet("Is blue sapphire suited for me", "gemstones_remedies")
+    for lang in ("hi_en", "te_en"):
+        r = QR._fallback(facts, lang)
+        text = " ".join([r.answer, *r.why, *r.steps])
+        assert "Blue Sapphire (Neelam)" in r.answer and not _ENGLISH_FILLER.search(text), (lang, text)
+        assert not re.search(r"[\u0900-\u097F\u0C00-\u0C7F]", text)
+
+
 def test_wrong_planet_house_claim_is_caught():
     conf, pc, cfg, facts = _sheet("when will I get promoted", "career_profession")
     lord = facts["house"]["lord"]["planet"]

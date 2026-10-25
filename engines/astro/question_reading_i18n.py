@@ -49,21 +49,21 @@ _METAL = {
 }
 _AVOID_WHY = {
     "hi_en": {
-        "it sits in your 8th house, which stirs up sudden trouble":
-            "yeh aapke 8th house mein baitha hai, jo achanak pareshani laata hai",
-        "it rules a difficult house (6th, 8th or 12th) and could magnify those problems":
-            "yeh kathin house (6th, 8th ya 12th) ka swami hai aur un samasyaon ko badha sakta hai",
-        "it rules a house of loss or obstruction for your rising sign":
-            "yeh aapke lagna ke liye haani ya rukawat ke ghar ka swami hai",
+        "its planet sits in your 8th house, which stirs up sudden trouble":
+            "iska grah aapke 8th house mein baitha hai, jo achanak pareshani laata hai",
+        "its planet rules a difficult house (6th, 8th or 12th) and could magnify those problems":
+            "iska grah kathin house (6th, 8th ya 12th) ka swami hai aur un samasyaon ko badha sakta hai",
+        "its planet rules a house of loss or obstruction for your rising sign":
+            "iska grah aapke lagna ke liye haani ya rukawat ke ghar ka swami hai",
         "it is not a safe stone for your chart": "yeh aapki kundli ke liye surakshit ratna nahi hai",
     },
     "te_en": {
-        "it sits in your 8th house, which stirs up sudden trouble":
-            "idi mee 8th house lo undi, appudappudu ibbandulu techchi pedutundi",
-        "it rules a difficult house (6th, 8th or 12th) and could magnify those problems":
-            "idi kashtamaina house (6th, 8th leda 12th) ki adhipati, aa samasyalanu penchavachchu",
-        "it rules a house of loss or obstruction for your rising sign":
-            "idi mee lagnaniki nashtam leda aatankam kaliginche house ki adhipati",
+        "its planet sits in your 8th house, which stirs up sudden trouble":
+            "daani graham mee 8th house lo undi, appudappudu ibbandulu techchi pedutundi",
+        "its planet rules a difficult house (6th, 8th or 12th) and could magnify those problems":
+            "daani graham kashtamaina house (6th, 8th leda 12th) ki adhipati, aa samasyalanu penchavachchu",
+        "its planet rules a house of loss or obstruction for your rising sign":
+            "daani graham mee lagnaniki nashtam leda aatankam kaliginche house ki adhipati",
         "it is not a safe stone for your chart": "idi mee jatakaniki surakshitamaina ratnam kaadu",
     },
 }
@@ -267,6 +267,28 @@ def steps(facts: dict, lk: str) -> list[str]:
     key = facts["domain_key"]
     if key == "out_of_domain":
         return []
+    if key == "gemstones_remedies" and facts["gems"].get("asked"):
+        out = []
+
+        def wear_line(r: dict) -> str:
+            finger = _swap(r["finger"].lower(), _FINGER[lk])
+            metal = _swap(r["metal"].lower(), _METAL[lk])
+            day = _day(r["day"], lk)
+            return (f"{day} ki subah shukla paksh mein {r['gem']} ko {metal} mein {finger} par pehnein." if hi
+                    else f"Shukla pakshamlo {day} udayam {r['gem']} ni {metal} lo {finger} meeda dharinchandi.")
+
+        for r in facts["gems"]["asked"]:
+            if r["verdict"] == "wear":
+                out.append(wear_line(r))
+            else:
+                day = _day(QR._WEEKDAY.get(r["planet"], ""), lk)
+                out.append(f"{r['gem']} na pehnein; {r['planet']} ka mantra jaapein aur {day or 'uske din'} ko thoda daan dein."
+                           if hi else
+                           f"{r['gem']} dharinchakandi; {r['planet']} mantram japinchi {day or 'aa roju'} na konchem danam cheyandi.")
+        skip = {r["planet"] for r in facts["gems"]["asked"]}
+        for r in [x for x in facts["gems"]["recommended"] if x["planet"] not in skip][:1]:
+            out.append(("Agar ratna pehenna ho to: " if hi else "Ratnam kavalante: ") + wear_line(r))
+        return out[:3]
     if key == "gemstones_remedies":
         out = []
         for r in facts["gems"]["recommended"][:2]:
@@ -303,19 +325,71 @@ def steps(facts: dict, lk: str) -> list[str]:
     return out[:3]
 
 
+def _place(r: dict, lk: str) -> str:
+    hs = _AND[lk].join(QR._ord(int(x)) for x in r["houses"])
+    if lk == "hi_en":
+        rules = (f"{r['planet']} aapke {hs} house ka swami hai" if r["houses"]
+                 else f"{r['planet']} aapke lagna ke liye kisi house ka swami nahi hai")
+        return rules + (f" aur house {r['in_house']} mein baitha hai" if r.get("in_house") else "")
+    rules = (f"{r['planet']} mee {hs} house ki adhipati" if r["houses"]
+             else f"{r['planet']} mee lagnaniki e house ki adhipati kaadu")
+    return rules + (f" mariyu house {r['in_house']} lo undi" if r.get("in_house") else "")
+
+
+def asked_why(r: dict, lk: str) -> str:
+    hi = lk == "hi_en"
+    place = _place(r, lk)
+    if r["verdict"] == "wear":
+        return (f"{place}, isliye {r['gem']} aapke liye sahayak ratna hai." if hi else
+                f"{place}, kabatti {r['gem']} meeku anukulamaina ratnam.")
+    if r["verdict"] == "avoid":
+        reason = _AVOID_WHY[lk].get(r["reason"], r["reason"])
+        return (f"{r['gem']} se bachna behtar hai kyunki {reason} ({place})." if hi else
+                f"{r['gem']} dharinchakapovadame manchidi, endukante {reason} ({place}).")
+    return (f"{place}. Aapke lagna ke liye yeh aisa grah nahi jiska ratna pehenna surakshit ho, isliye mantra "
+            f"aur daan behtar hai." if hi else
+            f"{place}. Mee lagnaniki ee grahaniki ratnam dharinchadam surakshitam kaadu, kabatti mantram "
+            f"mariyu danam manchidi.")
+
+
+def asked_answer(facts: dict, lk: str) -> str:
+    hi = lk == "hi_en"
+    parts = []
+    for r in facts["gems"]["asked"]:
+        g = r["gem"]
+        parts.append({
+            "wear": f"{g} aapke liye theek hai." if hi else f"{g} meeku anukulam.",
+            "avoid": f"{g} se bachein." if hi else f"{g} dharinchakandi.",
+            "mantra": (f"{g} pehenne ki salah nahi hai; {r['planet']} ka mantra aur daan behtar hai." if hi else
+                       f"{g} dharinchadam salaha kaadu; {r['planet']} mantram mariyu danam manchidi."),
+        }[r["verdict"]])
+    skip = {r["planet"] for r in facts["gems"]["asked"]}
+    others = [r["gem"] for r in facts["gems"]["recommended"] if r["planet"] not in skip]
+    if others and not all(r["verdict"] == "wear" for r in facts["gems"]["asked"]):
+        names = _AND[lk].join(others)
+        parts.append(f"Aapke liye behtar ratna: {names}." if hi else f"Meeku manchi ratnalu: {names}.")
+    return " ".join(parts)
+
+
 def gem_why(facts: dict, lk: str) -> list[str]:
     hi = lk == "hi_en"
-    why = []
+    asked = facts["gems"].get("asked", [])
+    why = [asked_why(r, lk) for r in asked]
+    skipped = {r["planet"] for r in asked}
     for r in facts["gems"]["recommended"]:
+        if r["planet"] in skipped:
+            continue
         hs = _AND[lk].join(QR._ord(int(x)) for x in r["houses"])
         why.append(f"{r['planet']} aapke {hs} house ka swami hai, isliye {r['gem']} aapke liye sahayak ratna hai."
                    if hi else
                    f"{r['planet']} mee {hs} house ki adhipati, kabatti {r['gem']} meeku anukulamaina ratnam.")
     for r in facts["gems"]["avoid"][:2]:
+        if r["planet"] in skipped:
+            continue
         reason = _AVOID_WHY[lk].get(r["reason"], r["reason"])
         why.append(f"{r['gem']} se bachna behtar hai kyunki {reason}." if hi else
                    f"{r['gem']} dharinchakapovadame manchidi, endukante {reason}.")
-    return why[:4]
+    return why[:5 if asked else 4]
 
 
 _VERDICT = {
@@ -353,6 +427,8 @@ def answer(facts: dict, stance: str, lk: str) -> str:
                 "parivaar, yatra ya samay ke baare mein poochhein, kundli jawab degi." if hi else
                 "Ee prashna jatakam parithi bayata unnattu undi. Mee career, sambandhalu, dabbu, aarogyam, "
                 "kutumbam, prayanam leda samayam gurinchi adagandi, jatakam samadhanam istundi.")
+    if key == "gemstones_remedies" and facts["gems"].get("asked"):
+        return asked_answer(facts, lk)
     if key == "gemstones_remedies":
         rec, avoid = facts["gems"]["recommended"], facts["gems"]["avoid"]
         if rec:
@@ -382,4 +458,5 @@ def answer(facts: dict, stance: str, lk: str) -> str:
         if lord["hard_house"]:
             text += " Aa house panulanu mandagimpachestundi."
     return text
+
 

@@ -185,24 +185,61 @@ def build_fact_sheet(conf: Any, pc: dict, cfg: dict) -> dict:
             elif inf["status"] in ("AVOID", "STRICTLY_AVOID"):
                 row["reason"] = _short_avoid_reason(inf)
                 avoid.append(row)
-        facts["gems"] = {"recommended": rec, "avoid": avoid}
+        asked = []
+        for planet in asked_planets(conf.question):
+            inf = audit.get(planet)
+            if not inf:
+                continue
+            verdict = ("wear" if inf["status"] == "RECOMMENDED"
+                       else "avoid" if inf["status"] in ("AVOID", "STRICTLY_AVOID") else "mantra")
+            asked.append({"planet": planet, "gem": inf["gem"], "metal": inf["metal"], "finger": inf["finger"],
+                          "day": inf["day"], "mantra": inf["mantra"], "houses": inf.get("owned_houses", []),
+                          "in_house": inf.get("house"), "verdict": verdict,
+                          "reason": _short_avoid_reason(inf) if verdict == "avoid" else ""})
+        facts["gems"] = {"recommended": rec, "avoid": avoid, "asked": asked}
     return facts
+
+
+# A stone the question names is answered first, whatever the audit ranked it.
+_STONE_WORDS = (
+    ("Saturn", r"blue\s+sapphire|neelam|nilam|neelam"),
+    ("Jupiter", r"yellow\s+sapphire|pukhraj|pukhraaj|pukhraj"),
+    ("Venus", r"diamond|heera|hira|white\s+zircon|zircon"),
+    ("Mercury", r"emerald|panna"),
+    ("Mars", r"red\s+coral|coral|moonga|munga"),
+    ("Moon", r"pearl|moti"),
+    ("Sun", r"ruby|manik|manikya"),
+    ("Rahu", r"hessonite|gomed|gomedh"),
+    ("Ketu", r"cat'?s?\s*eye|lehsunia|lahsunia"),
+)
+
+
+def asked_planets(question: str) -> list[str]:
+    """Planets whose stone the question names ('sapphire' alone means both sapphires)."""
+    low = str(question or "").lower()
+    out = [p for p, pat in _STONE_WORDS if re.search(rf"\b(?:{pat})\b", low)]
+    if re.search(r"\bsapphires?\b", low) and not ({"Saturn", "Jupiter"} & set(out)):
+        out += ["Saturn", "Jupiter"]
+    return out
 
 
 def _short_avoid_reason(inf: dict) -> str:
     text = " ".join(inf.get("reasons") or [])
     if "8th house" in text and "placed in the 8th" in text:
-        return "it sits in your 8th house, which stirs up sudden trouble"
+        return "its planet sits in your 8th house, which stirs up sudden trouble"
     if "Dusthana" in text:
-        return "it rules a difficult house (6th, 8th or 12th) and could magnify those problems"
+        return "its planet rules a difficult house (6th, 8th or 12th) and could magnify those problems"
     if "Kendradhipati" in text or "Maraka" in text:
-        return "it rules a house of loss or obstruction for your rising sign"
+        return "its planet rules a house of loss or obstruction for your rising sign"
     return "it is not a safe stone for your chart"
 
 
 def _stance_hint(facts: dict) -> str:
     n_for, n_against = len(facts["signals_for"]), len(facts["signals_against"])
     if facts["domain_key"] == "gemstones_remedies":
+        asked = facts["gems"].get("asked") or []
+        if asked:           # the named stone decides the outlook, not the rest of the list
+            return "favourable" if asked[0]["verdict"] == "wear" else "difficult"
         return "favourable" if facts["gems"]["recommended"] else "mixed"
     if facts["domain_key"] == "out_of_domain":
         return "not_astrological"
@@ -315,6 +352,21 @@ def _steps(facts: dict, lang: str = "en") -> list[str]:
     key = facts["domain_key"]
     if key == "gemstones_remedies":
         rec = facts["gems"]["recommended"]
+        asked = facts["gems"].get("asked") or []
+        if asked:
+            out = []
+            for r in asked:
+                if r["verdict"] == "wear":
+                    out.append(f"Wear {r['gem']} in {r['metal'].lower()} on the {r['finger'].lower()}, on a "
+                               f"{r['day']} morning in the bright half of the month.")
+                else:
+                    out.append(f"Skip {r['gem']}; chant {r['planet']}'s mantra and give a small donation on "
+                               f"{_WEEKDAY.get(r['planet'], 'its day')}s.")
+            skip = {r["planet"] for r in asked}
+            for r in [x for x in rec if x["planet"] not in skip][:1]:
+                out.append(f"If you want a stone, wear {r['gem']} in {r['metal'].lower()} on the "
+                           f"{r['finger'].lower()}, on a {r['day']} morning in the bright half of the month.")
+            return out[:3]
         steps = [f"Wear {r['gem']} in {r['metal'].lower()} on the {r['finger'].lower()}, on a {r['day']} "
                  f"morning in the bright half of the month." for r in rec[:2]]
         if facts["gems"]["avoid"]:
@@ -344,14 +396,52 @@ def _gem_why(facts: dict, lang: str = "en") -> list[str]:
     if _lang_key(lang) != "en":
         import question_reading_i18n as I18N
         return I18N.gem_why(facts, _lang_key(lang))
-    why = []
+    why = [_asked_why(r) for r in facts["gems"].get("asked", [])]
+    asked_planets_ = {r["planet"] for r in facts["gems"].get("asked", [])}
     for r in facts["gems"]["recommended"]:
+        if r["planet"] in asked_planets_:
+            continue
         hs = _and_join([_ord(int(h)) for h in r["houses"]])
         why.append(f"{r['planet']} rules your {hs} house{'s' if len(r['houses']) > 1 else ''}, "
                    f"which makes {r['gem']} a supportive stone for you.")
     for r in facts["gems"]["avoid"][:2]:
+        if r["planet"] in asked_planets_:
+            continue
         why.append(f"{r['gem']} is best avoided because {r['reason']}.")
-    return why[:4]
+    return why[:5 if facts["gems"].get("asked") else 4]
+
+
+def _place_phrase(r: dict) -> str:
+    """'Saturn rules your 8th and 9th houses and sits in house 6'."""
+    hs = _and_join([_ord(int(h)) for h in r["houses"]])
+    rules = (f"{r['planet']} rules your {hs} house{'s' if len(r['houses']) > 1 else ''}" if r["houses"]
+             else f"{r['planet']} rules no house of its own for your rising sign")
+    return rules + (f" and sits in house {r['in_house']}" if r.get("in_house") else "")
+
+
+def _asked_why(r: dict) -> str:
+    """Why the stone the reader asked about is, or is not, for them."""
+    if r["verdict"] == "wear":
+        return f"{_place_phrase(r)}, which makes {r['gem']} a supportive stone for you."
+    if r["verdict"] == "avoid":
+        return f"{r['gem']} is best avoided because {r['reason']} ({_place_phrase(r)})."
+    return (f"{_place_phrase(r)}. For your rising sign that is not a planet whose stone is safe to wear, "
+            f"so mantra and charity suit it better.")
+
+
+def _asked_answer(facts: dict) -> str:
+    """Direct answer about the named stone, then the stones that do suit the reader."""
+    parts = []
+    for r in facts["gems"]["asked"]:
+        parts.append({"wear": f"{r['gem']} suits you.",
+                      "avoid": f"{r['gem']} is best avoided.",
+                      "mantra": f"{r['gem']} is not advised for you; {r['planet']}'s mantra and charity suit "
+                                f"better."}[r["verdict"]])
+    skip = {r["planet"] for r in facts["gems"]["asked"]}
+    others = [r["gem"] for r in facts["gems"]["recommended"] if r["planet"] not in skip]
+    if others and not all(r["verdict"] == "wear" for r in facts["gems"]["asked"]):
+        parts.append(f"The stones that do suit you are {_and_join(others)}.")
+    return " ".join(parts)
 
 
 # ------------------------------------------------------------------------- the model
@@ -412,7 +502,19 @@ def _prompt(facts: dict) -> str:
                          f"{_and_join([_ord(int(h)) for h in r['houses']])} houses).")
         for r in facts["gems"]["avoid"]:
             lines.append(f"- AVOID: {r['gem']} because {r['reason']}.")
-        lines.append("Your answer MUST name every SUITS stone and every AVOID stone, in that order.")
+        asked = facts["gems"].get("asked") or []
+        if asked:
+            for r in asked:
+                verdict = {"wear": "it SUITS the reader", "avoid": "the reader should AVOID it",
+                           "mantra": "it is NOT ADVISED to wear; mantra and charity instead"}[r["verdict"]]
+                lines.append(f"- ASKED STONE: {r['gem']}: {verdict}. {_place_phrase(r)}.")
+            lines.append("`answer` MUST be one plain sentence that says whether the ASKED STONE suits the "
+                         "reader, naming that stone, exactly as the audit says. `because` gives the reason "
+                         "from its line and may name the stones that do suit the reader.")
+        else:
+            lines.append("`answer` MUST name every SUITS stone and every AVOID stone, in that order. "
+                         "`because` gives the reason in plain words from the SUITS and AVOID lines only; "
+                         "do not talk about a 'birth promise' or periods here.")
     else:
         lens_labels = {"promise": "birth promise", "vimshottari": "running period", "jaimini": "Chara period",
                        "yogini": "Yogini", "transit": "transit", "naadi": "Chandra Naadi"}
@@ -499,17 +601,39 @@ def _check(ans: str, facts: dict) -> list[str]:
         if hit:
             problems.append(f"names a gemstone ({hit}); this answer has no stone list to support it")
     if "gems" in facts:
-        listed = " ".join(r["gem"].lower() for r in facts["gems"]["recommended"] + facts["gems"]["avoid"])
+        asked = facts["gems"].get("asked") or []
+        listed = " ".join(r["gem"].lower() for r in
+                          facts["gems"]["recommended"] + facts["gems"]["avoid"] + asked)
         low = ans.lower()
         for name in _GEM_NAMES:
             if name in low and name not in listed:
                 problems.append(f"names a gemstone ({name}) that is not in the supplied list")
                 break
-        for r in facts["gems"]["recommended"] + facts["gems"]["avoid"]:
-            first = r["gem"].split("(")[0].split("/")[0].strip().lower()
-            if first not in low:
-                problems.append(f"leaves out {r['gem']}")
-                break
+        if asked:
+            for r in asked:
+                first = r["gem"].split("(")[0].split("/")[0].strip().lower()
+                alt = re.search(r"\(([^)]+)\)", r["gem"])           # 'Neelam' in 'Blue Sapphire (Neelam)'
+                names = [first] + ([alt.group(1).strip().lower()] if alt else [])
+                sents = [s for s in re.split(r"(?<=[.!?])\s", low) if any(n in s for n in names)]
+                if not sents:
+                    problems.append(f"never says whether {r['gem']} suits the reader")
+                    break
+                neg = re.search(r"\b(avoid|not|don't|do not|skip|shouldn't|unsafe|unsuitable|instead|isn't|"
+                                r"no)\b", sents[0])
+                pos = re.search(r"\b(suits?|suitable|wear|good|supportive|favou?rable|recommended|benefic)", sents[0])
+                if r["verdict"] == "wear" and neg and not pos:
+                    problems.append(f"says {r['gem']} is not for the reader, but the audit says it suits them")
+                    break
+                if r["verdict"] != "wear" and not neg:
+                    problems.append(f"does not say {r['gem']} should be avoided; the audit says it is not for "
+                                    f"the reader")
+                    break
+        else:
+            for r in facts["gems"]["recommended"] + facts["gems"]["avoid"]:
+                first = r["gem"].split("(")[0].split("/")[0].strip().lower()
+                if first not in low:
+                    problems.append(f"leaves out {r['gem']}")
+                    break
     return problems
 
 
@@ -660,9 +784,9 @@ def _fallback(facts: dict, lang: str = "en") -> QuestionReading:
                                    why=[], timing="", steps=[])
         if key == "gemstones_remedies":
             rec = facts["gems"]["recommended"]
-            return QuestionReading(stance="favourable" if rec else "mixed",
-                                   answer=I18N.answer(facts, "mixed", lk), why=_gem_why(facts, lk),
-                                   timing="", steps=_steps(facts, lk))
+            return _attach(QuestionReading(stance=_stance_hint(facts),
+                                           answer=I18N.answer(facts, "mixed", lk), why=_gem_why(facts, lk),
+                                           timing="", steps=_steps(facts, lk)), facts)
         stance = _stance_hint(facts)
         return _attach(QuestionReading(
             stance=stance, answer=I18N.answer(facts, stance, lk),
@@ -676,6 +800,9 @@ def _fallback(facts: dict, lang: str = "en") -> QuestionReading:
                     "career, relationships, money, health, family, travel or timing and your chart "
                     "will answer it."),
             why=[], timing="", steps=[])
+    if key == "gemstones_remedies" and facts["gems"].get("asked"):
+        return _attach(QuestionReading(stance=_stance_hint(facts), answer=_asked_answer(facts),
+                                       why=_gem_why(facts), timing="", steps=_steps(facts)), facts)
     if key == "gemstones_remedies":
         rec, avoid = facts["gems"]["recommended"], facts["gems"]["avoid"]
         if rec:
@@ -882,6 +1009,7 @@ def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str 
             '</details>')
     parts.append("</div>")
     return "\n".join(parts)
+
 
 
 
