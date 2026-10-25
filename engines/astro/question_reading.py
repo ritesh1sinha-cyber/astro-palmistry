@@ -1,4 +1,4 @@
-"""A short, plain-language answer to ONE question the reader asked.
+﻿"""A short, plain-language answer to ONE question the reader asked.
 
 The older question report stacked every technique the engine owned (house
 analysis, divisional charts, Lal Kitab, Chandra Naadi, transit lists, a dozen
@@ -74,7 +74,6 @@ def _pretty_window(text: str) -> str:
     out = re.sub(r"\d{4}-\d{2}-\d{2}", lambda m: _month_year(m.group(0)), str(text or ""))
     out = out.replace("Antardasha", "sub-period").replace("Sub-Period", "sub-period")
     out = out.replace("Mahadasha", "main period")
-    out = re.sub(r"\s*\((.*?)\)", r", \1", out, count=1)
     return re.sub(r"\s+", " ", out).strip(" ,")
 
 
@@ -144,6 +143,8 @@ def build_fact_sheet(conf: Any, pc: dict, cfg: dict) -> dict:
     facts["periods"] = _periods(pc)
     facts["next_window"] = _pretty_window(conf.breakthrough_period)
     facts["transits"] = _slow_transits(conf)
+    facts["transit_parts"] = re.findall(r"Transit (Jupiter|Saturn) in House (\d+) \((\w+)",
+                                        conf.transit_finding or "")
 
     signals_for, signals_against = [], []
     if conf.domain_key not in ("gemstones_remedies", "general_destiny", "out_of_domain"):
@@ -204,25 +205,145 @@ def _stance_hint(facts: dict) -> str:
     return "mixed"
 
 
+# ------------------------------------------------------------------------- findings
+def _state_words(k: dict) -> str:
+    bits = []
+    if k["hard_house"]:
+        bits.append("in a hard house")
+    if k["dignity"] in _BAD_DIGNITY:
+        bits.append("weak")
+    if k["combust"]:
+        bits.append("too close to the Sun")
+    return "under strain (" + ", ".join(bits) + ")" if bits else "well placed"
+
+
+def _findings(facts: dict, lang: str = "en") -> list[tuple[str, str]]:
+    """Plain, already-true sentences. The model may choose among them; it may not add to them."""
+    if facts["domain_key"] in ("gemstones_remedies", "out_of_domain"):
+        return []
+    if _lang_key(lang) != "en":
+        import question_reading_i18n as I18N
+        return I18N.findings(facts, _lang_key(lang))
+    h = facts["house"]
+    lord = h["lord"]
+    dw = _dignity_words(lord["dignity"])
+    rows: list[tuple[str, str]] = [(
+        "F1",
+        f"{lord['planet']} rules your {_ord(h['number'])} house, which governs this. It sits in house "
+        f"{lord['house']} in {lord['sign']}" + (f" and is {dw}" if dw else "")
+        + (" - a hard house that brings delay." if lord["hard_house"] else " - a supportive placement."))]
+    for k in facts["karakas"]:
+        if k["planet"] == lord["planet"]:
+            continue                      # already said in F1
+        rows.append((f"F{len(rows) + 1}", f"{k['planet']}, a natural indicator for this, is in house "
+                                          f"{k['house']} ({k['sign']}) and is {_state_words(k)}."))
+    nxt = len(rows) + 1
+    if h["sav"]:
+        rows.append((f"F{nxt}", f"The {_ord(h['number'])} house scores {h['sav']} "
+                                f"({'above' if h['sav'] >= 28 else 'below'} the average of 28)."))
+        nxt += 1
+    p = facts["periods"]
+    if p["sub"]:
+        # No end date: the free half must not carry the dated half of the answer.
+        rows.append((f"F{nxt}", f"You are running the {p['main']} main period and {p['sub']} sub-period."))
+        nxt += 1
+    if facts["transits"]:
+        rows.append((f"F{nxt}", f"Right now {facts['transits']}."))
+    return rows
+
+
+def _timing_line(facts: dict, lang: str = "en") -> str:
+    if _lang_key(lang) != "en":
+        import question_reading_i18n as I18N
+        return I18N.timing(facts, _lang_key(lang))
+    w = facts.get("next_window") or ""
+    return f"The period that supports this most is {w}." if w else ""
+
+
+_WHEN_WORDS = re.compile(r"\b(when|how long|by when|which year|what year|how soon|kab|eppudu|date|timing|time)\b", re.I)
+
+
+def _wants_timing(facts: dict, flag: Optional[bool] = None) -> bool:
+    if facts["domain_key"] in ("gemstones_remedies", "out_of_domain"):
+        return False
+    # The model's flag only breaks a tie: a window is relevant for "will it happen" areas and for any
+    # question that asks "when"; it is noise on "how is my health".
+    return bool(_WHEN_WORDS.search(facts["question"])) or facts["domain_key"] in _MOVE_DOMAINS
+
+
+def _steps(facts: dict, lang: str = "en") -> list[str]:
+    if _lang_key(lang) != "en":
+        import question_reading_i18n as I18N
+        return I18N.steps(facts, _lang_key(lang))
+    key = facts["domain_key"]
+    if key == "gemstones_remedies":
+        rec = facts["gems"]["recommended"]
+        steps = [f"Wear {r['gem']} in {r['metal'].lower()} on the {r['finger'].lower()}, on a {r['day']} "
+                 f"morning in the bright half of the month." for r in rec[:2]]
+        if facts["gems"]["avoid"]:
+            steps.append("Skip the stones listed as avoid; use that planet's mantra and a small "
+                         "donation instead.")
+        if not steps:
+            lord = facts["lagna_lord"]
+            steps.append(f"Chant {lord}'s mantra on {_WEEKDAY.get(lord, 'its day')}s and give a small donation.")
+        return steps[:3]
+    if key == "out_of_domain":
+        return []
+    steps = []
+    # Work on the planet that is actually under strain; fall back to the first natural indicator.
+    cands = [facts["house"]["lord"], *facts["karakas"]]
+    weak = next((c for c in cands if c["hard_house"] or c["dignity"] in _BAD_DIGNITY or c["combust"]), None)
+    target = weak or (facts["karakas"][0] if facts["karakas"] else None)
+    if target:
+        k = target["planet"]
+        steps.append(f"Strengthen {k}: chant its mantra and offer a small donation on {_WEEKDAY.get(k, 'its day')}s.")
+    window = facts.get("next_window")
+    if window and key in _MOVE_DOMAINS:
+        steps.append(f"Aim to make the key move during the {window} and prepare before it.")
+    return steps[:3]
+
+
+def _gem_why(facts: dict, lang: str = "en") -> list[str]:
+    if _lang_key(lang) != "en":
+        import question_reading_i18n as I18N
+        return I18N.gem_why(facts, _lang_key(lang))
+    why = []
+    for r in facts["gems"]["recommended"]:
+        hs = _and_join([_ord(int(h)) for h in r["houses"]])
+        why.append(f"{r['planet']} rules your {hs} house{'s' if len(r['houses']) > 1 else ''}, "
+                   f"which makes {r['gem']} a supportive stone for you.")
+    for r in facts["gems"]["avoid"][:2]:
+        why.append(f"{r['gem']} is best avoided because {r['reason']}.")
+    return why[:4]
+
+
 # ------------------------------------------------------------------------- the model
+class QuestionJudgement(BaseModel):
+    """What the model decides. It never writes a fact: reasons are picked by id."""
+    model_config = ConfigDict(extra="forbid")
+
+    stance: Stance
+    answer: str = Field(description="Direct answer in 2-3 plain sentences, at most 60 words.")
+    use: list[str] = Field(description="Ids (F1, F2...) of the 2-4 findings that matter for THIS question.")
+    needs_timing: bool = Field(description="True only if the question asks when / how long / which year.")
+
+
 _SYSTEM = (
-    "You are an experienced Vedic astrologer answering ONE question for one person. "
-    "Judge the question yourself: work out what it is really asking, pick the few chart facts "
-    "that bear on it, and ignore the rest. Use ONLY the facts supplied; never invent a placement, "
-    "date, planet position or gemstone. Speak to the reader as 'you'. Plain, warm language, no "
-    "headings, no jargon without a plain-word gloss. Keep it short: answer is 2-3 sentences "
-    "(at most 60 words); why is 2-4 bullets (at most 22 words each), each tied to one supplied "
-    "fact that matters for THIS question; timing is one sentence, or empty when the question has "
-    "no 'when' to it; steps are 1-3 concrete actions (at most 20 words each). Do not repeat the "
-    "question, do not mention Lal Kitab or Chandra Naadi, and do not pad. "
-    "stance: favourable, mixed or difficult. For a gemstone question use favourable when a stone "
-    "is recommended. If the question has nothing to do with life or astrology, use not_astrological "
-    "and politely say what you can help with."
+    "You are an experienced Vedic astrologer answering ONE question for one person. First work out "
+    "what the question is really asking. Then answer it in 2-3 short, plain sentences (at most 60 "
+    "words), speaking to the reader as 'you': say the verdict first, then the main reason. Use ONLY "
+    "the numbered findings supplied; never add a planet position, house, date or gemstone that is "
+    "not written there, and never describe what a planet 'governs' beyond the findings. In `use` "
+    "list the ids of the 2-4 findings that genuinely matter for this question and leave out the "
+    "rest. No headings, no jargon, no padding, do not repeat the question, never mention Lal "
+    "Kitab or Chandra Naadi. stance is favourable, mixed or difficult; stay close to the suggested "
+    "stance unless a finding clearly says otherwise. Set needs_timing true only when the question "
+    "asks about time. Never put a date, year or period in the answer: timing is shown separately."
 )
 
 _LANG_NOTE = {
-    "hi_en": "Write every text field in natural Hindi using English letters (Roman Hindi), not Devanagari.",
-    "te_en": "Write every text field in natural Telugu using English letters (Roman Telugu), not Telugu script.",
+    "hi_en": "Write the answer in natural Hindi using English letters (Roman Hindi), not Devanagari.",
+    "te_en": "Write the answer in natural Telugu using English letters (Roman Telugu), not Telugu script.",
 }
 
 
@@ -235,84 +356,95 @@ def _lang_key(lang: str) -> str:
     return "en"
 
 
-def _facts_for_prompt(facts: dict) -> str:
-    h = facts["house"]
-    lord = h["lord"]
-    lines = [
-        f"QUESTION: {facts['question']}",
-        f"AREA: {facts['domain']}",
-        f"Rising sign: {facts['lagna']} (ruled by {facts['lagna_lord']}). Moon sign: {facts['moon_sign']}.",
-    ]
-    if facts["domain_key"] not in ("gemstones_remedies", "out_of_domain"):
-        lines.append(
-            f"Governing house: {_ord(h['number'])} house ({h['sign']}), ruled by {lord['planet']}, "
-            f"which sits in house {lord['house']} in {lord['sign']}"
-            + (f", {_dignity_words(lord['dignity'])}" if _dignity_words(lord['dignity']) else "")
-            + (" (a difficult house: 6/8/12)." if lord["hard_house"] else "."))
-        for k in facts["karakas"]:
-            state = []
-            if _dignity_words(k["dignity"]):
-                state.append(_dignity_words(k["dignity"]))
-            if k["hard_house"]:
-                state.append("in a difficult house")
-            if k["combust"]:
-                state.append("too close to the Sun")
-            lines.append(f"Natural indicator {k['planet']}: house {k['house']} in {k['sign']}"
-                         f"{', ' + ', '.join(state) if state else ', no affliction'}.")
-        if h["sav"]:
-            lines.append(f"Sign score of the {_ord(h['number'])} house: {h['sav']} (28 is average).")
-        p = facts["periods"]
-        if p["main"]:
-            lines.append(f"Running: {p['main']} main period until {p['main_until']}; "
-                         f"{p['sub']} sub-period {p['sub_from']} to {p['sub_until']}.")
-        if facts["next_window"]:
-            lines.append(f"Next period that supports this: {facts['next_window']}.")
-        if facts["transits"]:
-            lines.append(f"Slow transits now: {facts['transits']}.")
-        lines.append(f"Agreeing signals: {', '.join(facts['signals_for']) or 'none'}. "
-                     f"Against: {', '.join(facts['signals_against']) or 'none'}.")
+def _prompt(facts: dict) -> str:
+    lines = [f"QUESTION: {facts['question']}",
+             f"AREA: {facts['domain']}",
+             f"Rising sign: {facts['lagna']}. Moon sign: {facts['moon_sign']}.",
+             f"Suggested stance: {_stance_hint(facts)}.",
+             "FINDINGS:"]
     if "gems" in facts:
         for r in facts["gems"]["recommended"]:
-            lines.append(f"SUITS: {r['gem']} ({r['planet']}, rules houses {r['houses']}) - {r['metal']}, "
-                         f"{r['finger']}, {r['day']} morning, bright half of the month.")
+            lines.append(f"- SUITS: {r['gem']} ({r['planet']} rules your "
+                         f"{_and_join([_ord(int(h)) for h in r['houses']])} houses).")
         for r in facts["gems"]["avoid"]:
-            lines.append(f"AVOID: {r['gem']} ({r['planet']}) - {r['reason']}.")
-        lines.append("Other stones are not advised; use that planet's mantra and charity instead.")
+            lines.append(f"- AVOID: {r['gem']} because {r['reason']}.")
+        lines.append("Your answer MUST name every SUITS stone and every AVOID stone, in that order.")
+    else:
+        for fid, text in _findings(facts):
+            lines.append(f"{fid}: {text}")
     return "\n".join(lines)
-
-
-def _allowed_years(facts: dict) -> set[str]:
-    blob = " ".join(str(v) for v in (facts.get("periods") or {}).values()) + " " + str(facts.get("next_window"))
-    return set(re.findall(r"20\d\d", blob)) | {str(date.today().year)}
 
 
 _GEM_NAMES = ("ruby", "pearl", "red coral", "coral", "emerald", "yellow sapphire", "blue sapphire",
               "diamond", "white zircon", "hessonite", "gomed", "cat's eye", "cats eye")
+_PLANETS = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
+_CLAIM = re.compile(
+    r"\b(Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu)\b[^.;]{0,60}?"
+    r"(?:\bhouse\s*(\d{1,2})\b|\b(\d{1,2})(?:st|nd|rd|th)\s+house\b)")
 
 
-def _check(reading: QuestionReading, facts: dict) -> list[str]:
+def _true_claims(facts: dict) -> set[tuple[str, int]]:
+    """(planet, house) pairs the fact sheet supports: placements, rulerships and slow transits."""
+    ok: set[tuple[str, int]] = set()
+    h = facts["house"]
+    lord = h["lord"]
+    ok |= {(lord["planet"], lord["house"]), (lord["planet"], h["number"])}
+    for k in facts["karakas"]:
+        ok.add((k["planet"], k["house"]))
+    for p, n in re.findall(r"(Jupiter|Saturn) is crossing your (\d+)", facts.get("transits") or ""):
+        ok.add((p, int(n)))
+    for r in (facts.get("gems") or {}).get("recommended", []) + (facts.get("gems") or {}).get("avoid", []):
+        ok.update({(r["planet"], int(x)) for x in r["houses"]})
+        if r.get("in_house"):
+            ok.add((r["planet"], int(r["in_house"])))
+    return ok
+
+
+def _check(ans: str, facts: dict) -> list[str]:
     from llm.validate import enforce_user_voice
-    text = " ".join([reading.answer, reading.timing, *reading.why, *reading.steps])
-    problems = list(enforce_user_voice(text))
-    if not reading.answer.strip():
+    problems = list(enforce_user_voice(ans))
+    if not ans.strip():
         problems.append("answer is empty")
-    if len(reading.answer.split()) > 90:
-        problems.append("answer is too long")
-    if len(reading.why) > 4 or len(reading.steps) > 3:
-        problems.append("too many bullets")
-    if re.search(r"lal\s*kitab|chandra\s*naadi", text, re.I):
-        problems.append("mentions a technique that is not part of this answer")
-    bad_years = set(re.findall(r"20\d\d", text)) - _allowed_years(facts)
-    if bad_years:
-        problems.append("names a year that is not in the facts: " + ", ".join(sorted(bad_years)))
+    if len(ans.split()) > 90:
+        problems.append("answer is longer than 60 words")
+    if re.search(r"lal\s*kitab|chandra\s*naadi|python|code|```", ans, re.I):
+        problems.append("answer contains something that is not part of a chart answer")
+    if re.search(r"\b20\d\d\b", ans):
+        problems.append("puts a year in the answer; timing is shown separately")
+    true = _true_claims(facts)
+    for m in _CLAIM.finditer(ans):
+        house = int(m.group(2) or m.group(3))
+        if (m.group(1), house) not in true:
+            problems.append(f"says {m.group(1)} is tied to house {house}, which the findings do not say")
+            break
+    if "gems" not in facts:
+        low = ans.lower()
+        hit = next((n for n in _GEM_NAMES if re.search(rf"\b{re.escape(n)}\b", low)), None)
+        if hit:
+            problems.append(f"names a gemstone ({hit}); this answer has no stone list to support it")
     if "gems" in facts:
-        allowed = " ".join(r["gem"].lower() for r in facts["gems"]["recommended"] + facts["gems"]["avoid"])
-        low = text.lower()
+        listed = " ".join(r["gem"].lower() for r in facts["gems"]["recommended"] + facts["gems"]["avoid"])
+        low = ans.lower()
         for name in _GEM_NAMES:
-            if name in low and name not in allowed:
+            if name in low and name not in listed:
                 problems.append(f"names a gemstone ({name}) that is not in the supplied list")
                 break
+        for r in facts["gems"]["recommended"] + facts["gems"]["avoid"]:
+            first = r["gem"].split("(")[0].split("/")[0].strip().lower()
+            if first not in low:
+                problems.append(f"leaves out {r['gem']}")
+                break
     return problems
+
+
+_GEM_QUESTION = re.compile(
+    r"\b(gem|gems|gemstone|gemstones|stone|stones|ratna|rudraksha|ruby|pearl|coral|emerald|sapphire|"
+    r"diamond|hessonite|gomed|cat'?s eye|manik|moti|moonga|panna|neelam|pukhraj|heera|lehsunia)\b", re.I)
+
+
+def is_gem_question(question: str) -> bool:
+    """A question about wearing a stone is answered from the stone audit, whatever life area it names."""
+    return bool(_GEM_QUESTION.search(question or ""))
 
 
 def _llm_allowed() -> bool:
@@ -323,73 +455,82 @@ def _llm_allowed() -> bool:
         return False
 
 
+def _blend_stance(hint: str, model: str, facts: dict) -> str:
+    """The model may nuance by one step; it may not flip the outlook the chart signals give."""
+    if facts["domain_key"] == "gemstones_remedies" or hint == "not_astrological":
+        return hint
+    if {hint, model} == {"favourable", "difficult"} or model == "not_astrological":
+        return hint
+    return model
+
+
 def _ask_model(facts: dict, lang: str) -> Optional[QuestionReading]:
-    if not _llm_allowed():
+    if facts["domain_key"] == "out_of_domain" or not _llm_allowed():
         return None
     try:
         from core.llm_client import complete_model
     except Exception:  # noqa: BLE001
         return None
-    system = _SYSTEM
-    note = _LANG_NOTE.get(_lang_key(lang))
-    if note:
-        system += " " + note
-    user = _facts_for_prompt(facts)
-    user += f"\n\nSuggested stance from the signals (override only with a reason): {_stance_hint(facts)}."
-    try:
-        reading = complete_model(QuestionReading, system, user, temperature=0.3)
-    except Exception as exc:  # noqa: BLE001
-        print(f"[question_reading] model call failed: {type(exc).__name__}: {exc}", flush=True)
+    lk = _lang_key(lang)
+    system = _SYSTEM          # always judged in English; non-English wording comes from templates
+    user = _prompt(facts)
+    judged: Optional[QuestionJudgement] = None
+    problems: list[str] = []
+    for attempt in range(2):
+        try:
+            got = complete_model(
+                QuestionJudgement, system,
+                user if not problems else user + "\n\nYour previous answer was rejected: "
+                + "; ".join(problems[:3]) + ". Rewrite it using only the findings.",
+                temperature=0.2)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[question_reading] model call failed: {type(exc).__name__}: {exc}", flush=True)
+            return None
+        if got is None:
+            return None
+        problems = _check(got.answer, facts)
+        if not problems:
+            judged = got
+            break
+    if judged is None:
+        print(f"[question_reading] model answer rejected: {problems[:3]}", flush=True)
         return None
-    if reading is None:
-        return None
-    problems = _check(reading, facts)
-    if not problems:
-        return reading
-    try:
-        retry = complete_model(
-            QuestionReading, system,
-            user + "\n\nYour previous answer was rejected: " + "; ".join(problems[:4])
-            + ". Rewrite it using only the facts above.", temperature=0.2)
-    except Exception:  # noqa: BLE001
-        retry = None
-    if retry is not None and not _check(retry, facts):
-        return retry
-    print(f"[question_reading] model answer rejected: {problems[:3]}", flush=True)
-    return None
+
+    if "gems" in facts:
+        why = _gem_why(facts, lk)
+    else:
+        table = dict(_findings(facts, lk))
+        picked = [table[i] for i in dict.fromkeys(x.strip().upper() for x in judged.use) if i in table][:4]
+        why = picked if len(picked) >= 2 else [t for _, t in _findings(facts, lk)][:3]
+    stance = _blend_stance(_stance_hint(facts), judged.stance, facts)
+    timing = _timing_line(facts, lk) if _wants_timing(facts, judged.needs_timing) else ""
+    answer = judged.answer.strip()
+    if lk != "en":
+        import question_reading_i18n as I18N
+        answer = I18N.answer(facts, stance, lk)
+    return QuestionReading(stance=stance, answer=answer, why=why, timing=timing,
+                           steps=_steps(facts, lk))
 
 
 # ----------------------------------------------------------------------- the fallback
-def _gem_fallback(facts: dict) -> QuestionReading:
-    rec, avoid = facts["gems"]["recommended"], facts["gems"]["avoid"]
-    why: list[str] = []
-    steps: list[str] = []
-    if rec:
-        names = " and ".join(r["gem"] for r in rec)
-        answer = (f"For your {facts['lagna']} rising sign, {names} "
-                  f"{'suits' if len(rec) == 1 else 'suit'} you best.")
-        for r in rec:
-            hs = _and_join([_ord(int(h)) for h in r["houses"]])
-            why.append(f"{r['planet']} rules your {hs} house{'s' if len(r['houses']) > 1 else ''}, "
-                       f"which makes {r['gem']} a supportive stone for you.")
-            steps.append(f"Wear {r['gem']} in {r['metal'].lower()} on the {r['finger'].lower()}, "
-                         f"on a {r['day']} morning in the bright half of the month.")
-    else:
-        answer = ("No gemstone is clearly safe for your chart right now, so the better route is "
-                  "mantra and charity rather than wearing a stone.")
-    if avoid:
-        shown = avoid[:3]
-        answer += " Avoid " + ", ".join(r["gem"] for r in shown) + "."
-        for r in shown[:2]:
-            why.append(f"{r['gem']} is best avoided because {r['reason']}.")
-    if not steps:
-        lord = facts["lagna_lord"]
-        steps.append(f"Chant {lord}'s mantra on {_WEEKDAY.get(lord, 'its day')}s and give a small donation.")
-    return QuestionReading(stance="favourable" if rec else "mixed", answer=answer,
-                           why=why[:4], timing="", steps=steps[:3])
-
-
-def _fallback(facts: dict) -> QuestionReading:
+def _fallback(facts: dict, lang: str = "en") -> QuestionReading:
+    lk = _lang_key(lang)
+    if lk != "en":
+        import question_reading_i18n as I18N
+        key = facts["domain_key"]
+        if key == "out_of_domain":
+            return QuestionReading(stance="not_astrological", answer=I18N.answer(facts, "mixed", lk),
+                                   why=[], timing="", steps=[])
+        if key == "gemstones_remedies":
+            rec = facts["gems"]["recommended"]
+            return QuestionReading(stance="favourable" if rec else "mixed",
+                                   answer=I18N.answer(facts, "mixed", lk), why=_gem_why(facts, lk),
+                                   timing="", steps=_steps(facts, lk))
+        stance = _stance_hint(facts)
+        return QuestionReading(
+            stance=stance, answer=I18N.answer(facts, stance, lk),
+            why=[t for _, t in _findings(facts, lk)][:4],
+            timing=_timing_line(facts, lk) if _wants_timing(facts) else "", steps=_steps(facts, lk))
     key = facts["domain_key"]
     if key == "out_of_domain":
         return QuestionReading(
@@ -399,43 +540,32 @@ def _fallback(facts: dict) -> QuestionReading:
                     "will answer it."),
             why=[], timing="", steps=[])
     if key == "gemstones_remedies":
-        return _gem_fallback(facts)
+        rec, avoid = facts["gems"]["recommended"], facts["gems"]["avoid"]
+        if rec:
+            names = " and ".join(r["gem"] for r in rec)
+            answer = (f"For your {facts['lagna']} rising sign, {names} "
+                      f"{'suits' if len(rec) == 1 else 'suit'} you best.")
+        else:
+            answer = ("No gemstone is clearly safe for your chart right now, so the better route is "
+                      "mantra and charity rather than wearing a stone.")
+        if avoid:
+            answer += " Avoid " + ", ".join(r["gem"] for r in avoid[:3]) + "."
+        return QuestionReading(stance="favourable" if rec else "mixed", answer=answer,
+                               why=_gem_why(facts), timing="", steps=_steps(facts))
 
     stance = _stance_hint(facts)
-    h = facts["house"]
-    lord = h["lord"]
+    lord = facts["house"]["lord"]
     dw = _dignity_words(lord["dignity"])
-    place = (f"{lord['planet']}, the planet that rules this area, sits in house {lord['house']} "
-             f"in {lord['sign']}" + (f" and is {dw}" if dw else ""))
     opener = {"favourable": "Your chart supports this.",
-              "mixed": "This is possible, but expect some effort and delay.",
-              "difficult": "This is not easy right now, though it is not closed."}[stance]
-    window = facts["next_window"]
-    answer = f"{opener} {place}."
+              "mixed": "This is possible for you, but expect some effort and delay.",
+              "difficult": "This is not easy for you right now, though it is not closed."}[stance]
+    answer = (f"{opener} {lord['planet']}, the planet that rules this area, sits in house {lord['house']} "
+              f"in {lord['sign']}" + (f" and is {dw}" if dw else "") + ".")
     if lord["hard_house"]:
         answer += " That house tends to slow things down."
-    why = [f"{_ord(h['number'])} house is ruled by {lord['planet']}, placed in house {lord['house']}"
-           + (" - a hard house that brings delay." if lord["hard_house"] else " - a supportive placement.")]
-    if facts["karakas"]:
-        k = facts["karakas"][0]
-        bad = k["hard_house"] or k["dignity"] in _BAD_DIGNITY or k["combust"]
-        why.append(f"{k['planet']}, the natural indicator for this, is in house {k['house']} "
-                   f"({k['sign']}) and is {'under strain' if bad else 'well placed'}.")
-    if h["sav"]:
-        why.append(f"The {_ord(h['number'])} house scores {h['sav']} "
-                   f"({'above' if h['sav'] >= 28 else 'below'} the average of 28).")
-    p = facts["periods"]
-    if p["sub"]:
-        why.append(f"You are running {p['main']} main period and {p['sub']} sub-period "
-                   f"(until {p['sub_until']}).")
-    timing = f"The period that supports this most is {window}." if window else ""
-    steps = []
-    if facts["karakas"]:
-        k = facts["karakas"][0]["planet"]
-        steps.append(f"Strengthen {k}: chant its mantra and offer a small donation on {_WEEKDAY.get(k, 'its day')}s.")
-    if window and key in _MOVE_DOMAINS:
-        steps.append(f"Time the key move for the {window} window where you can, and prepare before it.")
-    return QuestionReading(stance=stance, answer=answer, why=why[:4], timing=timing, steps=steps[:3])
+    why = [t for _, t in _findings(facts)][:4]
+    timing = _timing_line(facts) if _wants_timing(facts) else ""
+    return QuestionReading(stance=stance, answer=answer, why=why, timing=timing, steps=_steps(facts))
 
 
 def build_reading(conf: Any, pc: dict, cfg: dict, *, lang: str = "en") -> tuple[QuestionReading, dict, bool]:
@@ -444,7 +574,8 @@ def build_reading(conf: Any, pc: dict, cfg: dict, *, lang: str = "en") -> tuple[
     reading = _ask_model(facts, lang)
     if reading is not None:
         return reading, facts, True
-    return _fallback(facts), facts, False
+    return _fallback(facts, lang), facts, False
+
 
 
 # ------------------------------------------------------------------------- rendering

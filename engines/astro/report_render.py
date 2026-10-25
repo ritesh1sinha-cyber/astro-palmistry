@@ -924,6 +924,9 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     except Exception as exc:  # noqa: BLE001
         print(f"[report_render] planner skipped: {exc}", flush=True)
 
+    if domain_override != "out_of_domain" and QR.is_gem_question(question):
+        domain_override = "gemstones_remedies"
+
     conf = analyze_question_confluence(
         pc, question, domain_override=domain_override, route=route,
         target_planet=target_planet)
@@ -963,6 +966,8 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
         "area": conf.domain_title,
         "price": price,
         "llm": {"enabled": bool(by_model)},
+        # The plain-language summary is built from this, not from the page text.
+        "reading": reading.model_dump(),
         "_facts": {
             "question": question,
             "domain": conf.domain_title,

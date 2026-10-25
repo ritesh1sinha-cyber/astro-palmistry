@@ -693,7 +693,8 @@ def _summary_brief(kind: str, meta: dict, facts: Any, *, paid: bool) -> dict:
         put("question", _clip(meta.get("question"), 300))
         put("life_area", _clip(meta.get("area") or f.get("domain"), 80))
         put("direction", _clip(ans.get("direction"), 40))
-        put("finding", _clip(ans.get("label"), 300))
+        rd = meta.get("reading") if isinstance(meta.get("reading"), dict) else {}
+        put("finding", _clip(rd.get("answer") or ans.get("label"), 300))
         if paid:
             put("breakthrough_window", _clip(ans.get("breakthrough"), 240))
 
@@ -1373,6 +1374,8 @@ def _cta_section(kind: str, lang: str = "en") -> dict:
                  "along with every morning after it.",
         "horary": "Unlock the full report and the complete judgment, the timing windows and "
                   "the guidance open straight away. It stays in your account.",
+        "user_question": "Unlock the full answer and the timing window and practical steps for "
+                         "your question open straight away. It stays in your account.",
     }.get(
         kind,
         "Unlock the full report and everything above opens straight away — the dated windows, "
@@ -2497,6 +2500,61 @@ def _llm_sections(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+_UQ_TITLES = {
+    "en": ("The short answer", "The main reasons", "When", "What to do", "Timing and next steps"),
+    "hi_en": ("Seedha jawab", "Mukhya karan", "Kab", "Kya karein", "Samay aur agle kadam"),
+    "te_en": ("Chinna samadhanam", "Mukhya karanalu", "Eppudu", "Em cheyali", "Samayam mariyu next steps"),
+}
+
+
+def _summary_from_question_reading(meta: dict, *, paid: bool, lang: str) -> Optional[dict]:
+    """Summary of a question report, written from the reading itself.
+
+    The report is already one short answer, so the summary is that answer plus
+    its reasons (and, once paid, the timing and steps). It used to be rebuilt
+    from a truncated one-line label, which cut sentences mid-word.
+    """
+    rd = meta.get("reading")
+    if not isinstance(rd, dict) or not str(rd.get("answer") or "").strip():
+        return None
+    key = _lang_key_for_summary(lang)
+    t_answer, t_why, t_when, t_do, t_next = _UQ_TITLES[key]
+    answer = str(rd["answer"]).strip()
+    why = [str(x).strip() for x in (rd.get("why") or []) if str(x).strip()]
+    timing = str(rd.get("timing") or "").strip()
+    steps = [str(x).strip() for x in (rd.get("steps") or []) if str(x).strip()]
+
+    sections: list[dict] = [{"title": t_answer, "body": answer, "role": "insight"}]
+    if why:
+        sections.append({"title": t_why, "body": " ".join(why[:3]), "role": "insight"})
+    has_more = bool(timing or steps)
+    if paid:
+        if timing:
+            sections.append({"title": t_when, "body": timing, "role": "insight"})
+        if steps:
+            sections.append({"title": t_do, "body": " ".join(steps[:3]), "role": "insight"})
+    elif has_more:
+        if key == "en":
+            body = ("The timing window and the practical steps for this question are written and "
+                    "waiting in the full answer.")
+            sections.append({"title": t_next, "body": body, "role": "locked"})
+        else:
+            sections.append(_locked_section("user_question", None, lang))
+        sections.append(_cta_section("user_question", lang))
+    first = _sentences(answer)
+    headline = (first[0] if first else answer)[:170]
+    return {"sections": sections, "headline": headline}
+
+
+def _lang_key_for_summary(lang: str) -> str:
+    low = str(lang or "").lower().strip()
+    if low in ("hi_en", "hinglish", "hi", "hindi"):
+        return "hi_en"
+    if low in ("te_en", "tenglish", "te", "telugu"):
+        return "te_en"
+    return "en"
+
+
 def build_plain_summary(
     *,
     kind: str,
@@ -2518,8 +2576,12 @@ def build_plain_summary(
         f"{kind}:{paid}:{lang}:{text[:4000]}:{json.dumps(meta, sort_keys=True, default=str)[:800]}".encode()
     ).hexdigest()[:24]
 
-    out = _llm_sections(kind, meta, text, paid=paid, brief=brief, inventory=inventory, lang=lang)
-    generated = "llm"
+    out = None
+    if kind == "user_question":
+        out = _summary_from_question_reading(meta, paid=paid, lang=lang)
+    generated = "reading" if out else "llm"
+    if out is None:
+        out = _llm_sections(kind, meta, text, paid=paid, brief=brief, inventory=inventory, lang=lang)
     if not out or not out.get("sections"):
         out = {
             "sections": _fallback_sections(
