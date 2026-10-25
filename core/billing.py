@@ -377,6 +377,22 @@ def create_order(user_id: str, item: str, *, ref_id: Optional[str] = None,
             if row:
                 return _order_public(jrow(row))
 
+    # A double tap, a retry or a bot must not mint a fresh order (and a fresh
+    # gateway order) each time. Reuse this user's still-open order for the same
+    # item and report; the customer then sees one checkout, not four.
+    with engine().connect() as c:
+        ref_sql = "ref_id = :r" if ref_id else "ref_id IS NULL"
+        params = {"u": user_id, "it": item,
+                  "since": now() - timedelta(minutes=30)}
+        if ref_id:
+            params["r"] = ref_id
+        row = c.execute(
+            text("SELECT * FROM orders WHERE user_id = :u AND item = :it AND "
+                 + ref_sql + " AND status = 'created' AND created_at > :since"
+                 " ORDER BY created_at DESC LIMIT 1"), params).fetchone()
+    if row:
+        return _order_public(jrow(row))
+
     oid, public = new_id(), "OD-" + uuid.uuid4().hex[:8].upper()
     gw_order_id = None
     if S.gateway == "razorpay" and S.razorpay_key_id:

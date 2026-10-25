@@ -5198,7 +5198,14 @@ async function verifyCheckout(order, resp){
   return false;
 }
 function closePayModal(m){ stopPayPoll(); (m || document.getElementById('payModal') || document.getElementById('aPayModal'))?.remove(); }
+let _startPayBusy = false;
 async function startPay(){
+  if(_startPayBusy) return;
+  _startPayBusy = true;
+  try{ return await _startPay(); }
+  finally{ setTimeout(()=>{ _startPayBusy = false; }, 1500); }
+}
+async function _startPay(){
   if(!S.user || !apSessionToken){
     toast('Please sign in first.');
     go('read');
@@ -6005,7 +6012,17 @@ function astroPayCard(item, price, refId, sections, teasers, opts){
     <p class="hint">GPay · PhonePe · cards · UPI · secured by Razorpay</p></div>`;
 }
 
+const _payBusy = {};
 async function astroPay(item, refId){
+  // One checkout per item+report at a time: double taps and the report's
+  // several "Unlock" buttons must not each create an order.
+  const _k = item + '|' + (refId || '');
+  if(_payBusy[_k]) return;
+  _payBusy[_k] = true;
+  try{ return await _astroPay(item, refId); }
+  finally{ setTimeout(()=>{ delete _payBusy[_k]; }, 1500); }
+}
+async function _astroPay(item, refId){
   try{
     const turnstileToken = await getTurnstileToken('Confirm you\'re human before checkout.');
     const o = await astroApi('/api/order', { item, refId: refId || null, turnstileToken });
