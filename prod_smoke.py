@@ -203,17 +203,15 @@ try:
         question="Will I get the new role?", verdicts=verdicts,
         western_judgment=wj, asked="2026-09-18 10:00", name=BIRTH["name"],
         kp_evidence=kp, plain=_Plain(),
-        # _kp_judgment reads window/starts, not start/end.
         timing={"window": "Oct–Dec 2026", "starts": "2026-10-01",
                 "ends": "2026-12-15"})
-    check("horary free", hfree, min_chars=8000, paid=False)
-    check("horary paid", hpaid, min_chars=8000, paid=True)
+    # A horary is one compact card, like the natal question report: the answer
+    # and how the lenses line up are free; the dated window and the steps are paid.
+    check("horary free", hfree, min_chars=1500, paid=False)
+    check("horary paid", hpaid, min_chars=1500, paid=True)
     print()
-    print("  -- horary keeps the rich format --")
-    # The dated window is what a paid horary is bought for; the horary page
-    # prints it as a list item, not the conversational page's timing-badge.
-    for probe in ("Planetary dynamics", "Key timing & dated windows",
-                  "Oct–Dec 2026", "In this reading"):
+    print("  -- horary uses the question card --")
+    for probe in ("How the lenses line up", "What to do", "Oct–Dec 2026"):
         in_paid = probe in hpaid
         print(f"  {'ok  ' if in_paid else 'FAIL'} paid has {probe:32} {in_paid}")
         if not in_paid:
@@ -221,19 +219,19 @@ try:
     if "Oct–Dec 2026" in hfree:
         FAIL.append("horary free view leaks the dated window")
     if "lock-blur" not in hfree:
-        FAIL.append("horary free view has no blurred locked sections")
+        FAIL.append("horary free view has no blurred locked section")
     print(f"  {'ok  ' if 'lock-blur' in hfree else 'FAIL'} "
-          f"free has blurred locked cards{'':13} {'lock-blur' in hfree}")
+          f"free blurs timing and steps{'':15} {'lock-blur' in hfree}")
     verdict_free = "leans towards yes" in hfree.lower()
     verdict_paid = "leans towards yes" in hpaid.lower()
-    print(f"  {'FAIL' if verdict_free else 'ok  '} free hides verdict"
-          f"{'':26} {not verdict_free}")
-    print(f"  {'ok  ' if verdict_paid else 'FAIL'} paid shows verdict"
-          f"{'':25} {verdict_paid}")
-    if verdict_free:
-        FAIL.append("horary free view leaks the verdict")
+    print(f"  {'ok  ' if verdict_free else 'FAIL'} free shows the answer"
+          f"{'':22} {verdict_free}")
+    print(f"  {'ok  ' if verdict_paid else 'FAIL'} paid shows the answer"
+          f"{'':22} {verdict_paid}")
+    if not verdict_free:
+        FAIL.append("horary free view is missing the answer")
     if not verdict_paid:
-        FAIL.append("horary paid view is missing the verdict")
+        FAIL.append("horary paid view is missing the answer")
     print(f"  paidSections: {hmeta.get('paidSections')}")
 except Exception:
     FAIL.append(f"horary raised\n{traceback.format_exc()}")

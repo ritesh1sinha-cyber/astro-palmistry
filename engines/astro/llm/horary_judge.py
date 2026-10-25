@@ -528,7 +528,28 @@ def timing_sentence(timing: dict[str, Any]) -> str:
     return f"The next likely opening is around {span}."
 
 
-def label_gloss(label: str, timing: dict[str, Any]) -> str:
+# How the chart's lenses line up (see horary_reading.outlook). A "conditional" label
+# is the judge hedging; the lens votes say which way the hedge leans.
+_OUTLOOK_GLOSS = {
+    "against": "This does not look likely right now.",
+    "for": "This looks possible, though it is not certain.",
+}
+_HOPEFUL = re.compile(r"\b(might|may|could|likely|possible|possibly|good chance|will (?:happen|get|win|be))\b", re.I)
+_DOUBTFUL = re.compile(r"\b(unlikely|not likely|no chance|won't|will not|does not look|doesn't look)\b", re.I)
+_NEGATED_HOPE = re.compile(r"\b(not|n't|unlikely|no)\b[^.]{0,25}\b(likely|possible|happen|chance)\b", re.I)
+
+
+def contradicts_outlook(answer: str, outlook: str) -> bool:
+    """True when the wording leans the opposite way to the lenses ("might happen" over an against)."""
+    text = answer or ""
+    if outlook == "against":
+        return bool(_HOPEFUL.search(text)) and not _NEGATED_HOPE.search(text)
+    if outlook == "for":
+        return bool(_DOUBTFUL.search(text))
+    return False
+
+
+def label_gloss(label: str, timing: dict[str, Any], outlook: str = "") -> str:
     """The verdict line must not date the event — the timing line does that.
 
     Saying "no clear sign of this happening soon" above a window that opens
@@ -536,6 +557,8 @@ def label_gloss(label: str, timing: dict[str, Any]) -> str:
     """
     if label in ("yes", "no"):
         return _LABEL_GLOSS[label]
+    if label == "conditional" and outlook in _OUTLOOK_GLOSS:
+        return _OUTLOOK_GLOSS[outlook]
     soon = (not timing.get("beyond_horizon")
             and int(timing.get("days_away", 999)) <= _SOON_DAYS)
     if soon:
@@ -545,19 +568,23 @@ def label_gloss(label: str, timing: dict[str, Any]) -> str:
 
 
 def _fallback_plain(question: str, label: str, timing: dict[str, Any],
-                    remedy: str, asks: str = "other") -> Any:
+                    remedy: str, asks: str = "other", outlook: str = "") -> Any:
     from .schemas import HoraryPlainAnswer
     return HoraryPlainAnswer(
         answer=(quantity_answer(label) if asks == "quantity"
-                else label_gloss(label, timing)),
+                else label_gloss(label, timing, outlook)),
         timing=timing_sentence(timing),
         remedy=remedy,
     )
 
 
 def write_plain_answer(question: str, plan: Any, evidence: dict[str, Any],
-                       timing: dict[str, Any], *, lang: str = "en") -> Any:
-    """Turn the judgement into the reader-facing verdict, date and remedy."""
+                       timing: dict[str, Any], *, lang: str = "en", outlook: str = "") -> Any:
+    """Turn the judgement into the reader-facing verdict, date and remedy.
+
+    ``outlook`` is "for", "against" or "" (mixed): which way the chart's lenses lean.
+    The wording may not pull the other way.
+    """
     from .schemas import HoraryPlainAnswer
 
     label = str(getattr(plan, "label", "open") or "open")
@@ -573,13 +600,18 @@ def write_plain_answer(question: str, plan: Any, evidence: dict[str, Any],
     try:
         from core.llm_client import complete_model
     except Exception:
-        return _fallback_plain(question, label, timing, remedy_line, asks)
+        return _fallback_plain(question, label, timing, remedy_line, asks, outlook)
 
+    lean = {"against": "HOW THE CHART LINES UP: it leans AGAINST this. Do not say might, may or could; "
+                       "say it is unlikely or not supported.\n",
+            "for": "HOW THE CHART LINES UP: it leans in favour. Say it looks possible; do not say "
+                   "it is unlikely.\n"}.get(outlook, "")
     user = (
         f'QUESTION: "{(question or "").strip()}"\n'
         f"WHAT THEY WANT BACK: {asks}\n"
         f"VERDICT THE CHART GAVE: {label}\n"
         f"HOW SURE: {getattr(plan, 'confidence', 'low')}\n"
+        f"{lean}"
         f"WINDOW YOU MAY NAME: {timing_sentence(timing) or 'none'}\n"
         f"PLANET TO REMEDY: {planet or 'none'}\n"
         f"REMEDY IDEA (rewrite in plain words): {remedy_line or 'none'}\n"
@@ -593,7 +625,7 @@ def write_plain_answer(question: str, plan: Any, evidence: dict[str, Any],
     out = complete_model(HoraryPlainAnswer, _WRITE_SYSTEM, user,
                          temperature=0.3)
     if out is None:
-        return _fallback_plain(question, label, timing, remedy_line, asks)
+        return _fallback_plain(question, label, timing, remedy_line, asks, outlook)
 
     # The date is computed, not written. Letting the model restate it only
     # ever lost precision or dropped half a span.
@@ -605,7 +637,10 @@ def write_plain_answer(question: str, plan: Any, evidence: dict[str, Any],
     elif _has_date(out.answer) or _contradicts_timing(out.answer, timing):
         # A date in the answer leaks paid content; "not soon" above a window
         # that opens next week just reads as broken.
-        out.answer = label_gloss(label, timing)
+        out.answer = label_gloss(label, timing, outlook)
+    elif label == "conditional" and asks == "yes_no" and contradicts_outlook(out.answer, outlook):
+        # "might happen" over a chart that leans against it (or the reverse) reads as two answers.
+        out.answer = label_gloss("conditional", timing, outlook)
     if not out.remedy or _PLANET_NAMED.search(out.remedy):
         # A named planet turns an action into an influence to explain.
         out.remedy = remedy_line

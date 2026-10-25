@@ -955,6 +955,8 @@ _LABELS = {
         "lens_promise": "Birth promise", "lens_vimshottari": "Running period", "lens_jaimini": "Chara period",
         "lens_yogini": "Yogini", "lens_transit": "Transit", "lens_naadi": "Chandra Naadi",
         "lens_vulnerability": "Body vulnerability",
+        "lens_kp": "Chart's promise", "lens_ruling": "Ruling planets", "lens_period": "Running period",
+        "lens_moment": "Moment chart", "lens_jamakkol": "Tamil method", "lens_moon": "Moon now",
         "lock": "Timing and next steps are in the full reading",
         "lockchip": "Unlock timing and steps",
         "cta": "Unlock full answer", "sub": "Timing window and practical steps for this question.",
@@ -968,6 +970,8 @@ _LABELS = {
         "lens_promise": "Kundli ka vachan", "lens_vimshottari": "Chal rahi dasha", "lens_jaimini": "Chara dasha",
         "lens_yogini": "Yogini", "lens_transit": "Gochar", "lens_naadi": "Chandra Naadi",
         "lens_vulnerability": "Sharir ki sanvedansheelta",
+        "lens_kp": "Kundli ka vachan", "lens_ruling": "Shasak grah", "lens_period": "Chal rahi dasha",
+        "lens_moment": "Prashna kundli", "lens_jamakkol": "Tamil vidhi", "lens_moon": "Abhi Chandra",
         "lock": "Samay aur agle kadam poori reading mein hain",
         "lockchip": "Samay aur kadam unlock karein",
         "cta": "Poora jawab unlock karein", "sub": "Is prashna ka samay aur vyavaharik kadam.",
@@ -981,6 +985,8 @@ _LABELS = {
         "lens_promise": "Jataka vagdanam", "lens_vimshottari": "Nadustunna dasha", "lens_jaimini": "Chara dasha",
         "lens_yogini": "Yogini", "lens_transit": "Gochar", "lens_naadi": "Chandra Naadi",
         "lens_vulnerability": "Sharira sunnitatvam",
+        "lens_kp": "Kundali vagdanam", "lens_ruling": "Shasaka grahalu", "lens_period": "Nadustunna dasha",
+        "lens_moment": "Ee kshanam chart", "lens_jamakkol": "Tamil paddhati", "lens_moon": "Ippudu Chandrudu",
         "lock": "Samayam mariyu tarvata chese pani poorthi reading lo unnayi",
         "lockchip": "Samayam mariyu steps unlock cheyandi",
         "cta": "Poorthi samadhanam unlock cheyandi", "sub": "Ee prashnaku samayam mariyu practical steps.",
@@ -1033,11 +1039,14 @@ def _facts_list(facts: dict) -> list[str]:
 
 
 def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str = "en",
-                price: int = 298) -> str:
+                price: int = 298, fact_rows: Optional[list[str]] = None,
+                meta_line: Optional[str] = None) -> str:
+    """One card for any question. A horary supplies its own ``fact_rows`` and ``meta_line``."""
     L = _LABELS[_lang_key(lang)]
     color = _STANCE_COLOR[reading.stance]
     out_of_scope = reading.stance == "not_astrological"
-    meta_line = f"{html.escape(facts['lagna'])} rising &middot; Moon in {html.escape(facts['moon_sign'])}"
+    if meta_line is None:
+        meta_line = f"{html.escape(facts['lagna'])} rising &middot; Moon in {html.escape(facts['moon_sign'])}"
 
     parts = [
         '<div class="uq-reading" style="margin:10px 0 24px;">',
@@ -1111,7 +1120,8 @@ def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str 
             f'text-decoration:none;width:100%;max-width:320px;">&#128274; {L["cta"]} &mdash; &#8377;{int(price)}</a>'
             '</div>')
 
-    fact_rows = _facts_list(facts)
+    if fact_rows is None:
+        fact_rows = _facts_list(facts)
     if paid and not out_of_scope and len(fact_rows) >= 3:
         rows = "".join(f'<li style="margin-bottom:4px;">{_esc(r)}</li>' for r in fact_rows)
         parts.append(

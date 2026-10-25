@@ -726,58 +726,6 @@ def _bundle(bundle_price: int) -> str:
 # ---------------------------------------------------------------------------
 # horary — one answer, not two engines arguing
 # ---------------------------------------------------------------------------
-_KP_WINDOW_LABEL = {
-    "en": "The stretch the moment chart opens for this.",
-    "hi": "Prashna kundli is kaam ke liye jo samay kholti hai.",
-    "te": "Ee panikî chart teriche samayam.",
-}
-
-
-def _kp_prose_overlay(plain: Any, verdict: dict) -> dict:
-    """Map the KP plain answer onto the overlay slots the page already has.
-
-    The verdict line, the "why" and the action land exactly where a reader of
-    any other horary report expects them — only the engine behind them moved.
-    The judge's ``reason`` is written for the judge and usually cites the
-    significators by name; the customer boundary would delete those words and
-    leave a stub, so it is only used when it already reads as plain English.
-    """
-    from qa_checks.customer_text_sanitizer import is_customer_safe
-
-    reason = str(verdict.get("reason") or "").strip()
-    return {
-        "verdict_line": (getattr(plain, "answer", "") or "").strip(),
-        "why": reason if reason and is_customer_safe(reason) else "",
-        "action": (getattr(plain, "remedy", "") or "").strip(),
-    }
-
-
-def _kp_judgment(western_judgment: dict, evidence: Optional[dict],
-                 plain: Any, timing: Optional[dict], lang: str) -> dict:
-    """Feed the KP window and remedy into the fields the old page reads."""
-    from horary_answer import _lang_key
-    from llm.horary_judge import _format_window, blocking_planet, timing_sentence
-
-    j = dict(western_judgment or {})
-    tm = timing or {}
-    window = str(tm.get("window") or "")
-    if window and not tm.get("beyond_horizon"):
-        j["timing"] = [{"window": _format_window(tm),
-                        "start": tm.get("starts"),
-                        "label": _KP_WINDOW_LABEL[_lang_key(lang)]}]
-    else:
-        j["timing"] = []
-        note = timing_sentence(tm) or (getattr(plain, "timing", "") or "")
-        if note:
-            j["requested_horizon_note"] = note
-    if evidence:
-        j["blocking_planet"] = blocking_planet(evidence)
-    remedy = (getattr(plain, "remedy", "") or "").strip()
-    if remedy:
-        j["plain_remedy"] = remedy
-    return j
-
-
 def horary(*, question: str, verdicts: dict, western_judgment: dict,
            asked: str, name: str = "", horary_price: int = 298,
            full_report_price: int = 298,
@@ -785,18 +733,19 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
            lang: str = "en",
            kp_evidence: Optional[dict] = None,
            plain: Any = None,
-           timing: Optional[dict] = None) -> tuple:
+           timing: Optional[dict] = None,
+           data: Optional[dict] = None,
+           judgement: Any = None) -> tuple:
     from horary_answer import build_answer_html, reconcile
     prose_overlay: dict = {}
     llm_meta: dict = {"enabled": False}
     facts_payload: dict = {}
 
     if plain is not None:
-        # KP judges and writes the verdict; the page it lands on is the same
-        # one the Western lane used — question card, verdict, working, dated
-        # windows, remedy, and the four locked cards on the free view.
+        # KP judges and writes the verdict (llm/horary_judge); horary_reading
+        # lays it out as the same card the natal question report uses.
+        import question_reading as QR
         summary = reconcile(verdicts)
-        judgment = _kp_judgment(western_judgment, kp_evidence, plain, timing, lang)
         try:
             from llm.facts import build_horary_facts, public_fact_payload
             facts_payload = public_fact_payload(build_horary_facts(
@@ -807,29 +756,41 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
         except Exception as exc:                                     # noqa: BLE001
             print(f"[report_render] horary facts skipped: {exc}", flush=True)
 
-        overlay = _kp_prose_overlay(plain, verdicts.get("kp") or {})
-        common = dict(question=question, verdicts=verdicts,
-                      western_judgment=judgment, asked=asked, name=name,
-                      horary_price=horary_price,
-                      full_report_price=full_report_price,
-                      vedic_customer=None, lang=lang, kp_evidence=kp_evidence)
-        free_body, _ = build_answer_html(**common, paid=False, prose={})
-        paid_body, answer = build_answer_html(**common, paid=True, prose=overlay)
-        title = (f"Aapka Prashna — {question[:60]}"
-                 if str(lang or "").lower() in ("hi_en", "hinglish", "hi", "hindi")
-                 else f"Your question — {question[:60]}")
+        # Same one-card page as the natal question report: short answer, the
+        # lenses and how each voted, plain reasons, then (paid) when and what to do.
+        import horary_reading as HR
+        label = HR.label_of(judgement, verdicts)
+        reading, rows, meta_line = HR.build(
+            question=question, data=data, evidence=kp_evidence or {}, timing=timing,
+            plain=plain, label=label, lang=lang, asked=asked,
+            asks=str(getattr(judgement, "asks", "") or ""))
+        page = dict(fact_rows=rows, meta_line=meta_line, lang=lang, price=horary_price)
+        facts_stub = {"question": question}
+        free_body = QR.render_html(reading, facts_stub, paid=False, **page)
+        paid_body = QR.render_html(reading, facts_stub, paid=True, **page)
+        lang_code = str(lang or "").lower().strip()
+        if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
+            title = f"Aapka Prashna — {question[:60]}"
+        elif lang_code in ("te_en", "tenglish", "te", "telugu"):
+            title = f"Mee Prashna — {question[:60]}"
+        else:
+            title = f"Your Question — {question[:60]}"
         free = RS.page(title, _scrub(_voice_polish(free_body)))
         paid = RS.page(title, _scrub(_voice_polish(paid_body)))
-        meta = {"design": "cards-v2", "answer": answer,
+        meta = {"design": "cards-v2",
+                "answer": {"label": QR.headline(reading.answer),
+                           "confidence": reading.confidence or "moderate",
+                           "direction": "support" if reading.stance == "favourable" else "caution",
+                           "favourable": summary.get("favourable"),
+                           "contradicted": bool(summary.get("contradicted")),
+                           "subject": question[:120]},
                 "question": question, "asked": asked, "price": horary_price,
                 "language": lang, "llm": {"enabled": True, "mode": "kp-plain"},
+                "reading": reading.model_dump(),
                 "_facts": facts_payload,
-                "freeSections": ["Question & moment chart context",
-                                 "Preview of locked consultation verdict & timeline"],
-                "paidSections": ["The verdict — horary judgment",
-                                 "Planetary dynamics & supporting influences",
-                                 "Key timing & dated windows",
-                                 "Targeted remedies & immediate relief"],
+                "freeSections": ["Your answer", "What your chart shows"],
+                "paidSections": ["When it happens", "What to do",
+                                 "The chart facts behind the answer"],
                 "teasers": {}}
         return free, paid, meta
 

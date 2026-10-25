@@ -129,13 +129,16 @@ hf, hp, hmeta = RD.horary(
                    "The nearest window is 2 Sep to 30 Sep 2026.",
                    "Get the paperwork signed before you celebrate."),
     timing={})
-check("free carries the answer", "you asked" in hf.lower())
-check("free hides the verdict", "supports this going through" not in visible(hf))
+# A horary is laid out like the natal question report: answer, lenses, reasons
+# free; the dated window and the next steps behind the wall.
+check("free carries the answer", "supports this going through" in visible(hf))
+check("free shows how the lenses line up", "How the lenses line up" in visible(hf))
+check("free locks the timing and steps",
+      'data-unlock="1"' in hf and "Unlock" in visible(hf), visible(hf)[-200:])
 check("paid carries the verdict", "supports this going through" in visible(hp))
-check("free teases every locked section",
-      visible(hf).count("locked") >= 4, visible(hf)[:200])
-check("paid shows the working the free view teased",
-      "Planets supporting you" in visible(hp), visible(hp)[:200])
+check("paid shows the timing and the steps",
+      "What to do" in visible(hp) and "paperwork signed" in visible(hp)
+      and "Unlock" not in visible(hp), visible(hp)[:300])
 check("the question is printed once",
       visible(hf).count("Will the property deal go through?") == 1,
       visible(hf)[:160])

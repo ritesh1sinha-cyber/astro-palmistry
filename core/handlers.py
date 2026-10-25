@@ -503,7 +503,12 @@ def h_horary(user: dict, p: dict) -> dict:
     timing = kp_timing(
         data, evidence,
         exclude_running=str(getattr(judgement, "label", "")) != "yes")
-    plain = write_plain_answer(q, judgement, evidence, timing, lang=lang)
+    # The writer is told which way the chart's lenses lean, so "might happen"
+    # never sits over a chart that leans against it.
+    import horary_reading as HR
+    lean = HR.outlook(HR.build_lenses(data, evidence, timing))
+    plain = write_plain_answer(q, judgement, evidence, timing, lang=lang,
+                               outlook=lean)
     verdicts = {"kp": kp_verdict}
     western_judgment = {
         "asc_lord": evidence.get("cusp_sub_lord") or "",
@@ -533,7 +538,7 @@ def h_horary(user: dict, p: dict) -> dict:
         vedic_customer=None,
         lang=lang,
         kp_evidence=evidence,
-        plain=plain, timing=timing)
+        plain=plain, timing=timing, data=data, judgement=judgement)
 
     meta = {**hmeta, "verdicts": verdicts, "price": horary_price,
             "language": lang, "kpNumber": kp_num}

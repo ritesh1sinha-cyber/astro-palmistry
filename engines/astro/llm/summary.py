@@ -2577,7 +2577,7 @@ def build_plain_summary(
     ).hexdigest()[:24]
 
     out = None
-    if kind == "user_question":
+    if kind in ("user_question", "horary"):      # both are one card with the same reading
         out = _summary_from_question_reading(meta, paid=paid, lang=lang)
     generated = "reading" if out else "llm"
     if out is None:
