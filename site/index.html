@@ -3600,7 +3600,17 @@ async function adminLookupOrder(){
         ['Razorpay payment', esc(o.gatewayPaymentId || '—')],
         ['Report on server', admReportDiag(o.report, paid, true)]
       ].map(([k,v])=> `<tr><td style="font-weight:600;width:150px">${k}</td><td>${v}</td></tr>`).join('');
-      out.innerHTML = `<table class="analysis-table" style="margin-top:8px"><tbody>${rows}</tbody></table>`
+      const rp = o.report || {};
+      const oid = esc(o.orderId);
+      const reportTools = (rp.row && o.item !== 'subscription' && o.item !== 'bundle_all')
+        ? `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">`
+          + (rp.paidFile
+              ? `<button class="btn btn-gold btn-sm" type="button" onclick="adminDownloadReport('${oid}','pdf')">Download PDF</button>`
+                + `<button class="btn btn-ghost btn-sm" type="button" onclick="adminDownloadReport('${oid}','html')">Download HTML</button>`
+                + `<button class="btn btn-ghost btn-sm" type="button" onclick="if(confirm('Rebuild this report from the original request? It replaces the stored copy.')) adminRegenReport('${oid}', true)">Rebuild report</button>`
+              : `<button class="btn btn-gold btn-sm" type="button" onclick="adminRegenReport('${oid}', false)">Regenerate lost report</button>`)
+          + `</div>` : '';
+      out.innerHTML = `<table class="analysis-table" style="margin-top:8px"><tbody>${rows}</tbody></table>` + reportTools
         + (paid
           ? '<p class="hint" style="margin-top:10px;color:#0f9d58">✓ Already unlocked. If the customer still cannot see it, ask them to reload their reports list.</p>'
             + `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" type="button" onclick="adminRevokeOrder('${esc(o.orderId)}')">Revoke access</button></div>`
@@ -3644,6 +3654,50 @@ async function adminUnlockOrder(orderId){
   }
 }
 
+/* Support: download a customer's report by order id, to send on. */
+async function adminDownloadReport(orderId, fmt){
+  const token = ASTRO.token || apSessionToken;
+  if(!token){ toast('Please sign in first'); return; }
+  try{
+    const r = await fetch(CONFIG.apiBase + '/api/admin/order/' + encodeURIComponent(orderId)
+                          + '/report?format=' + (fmt === 'html' ? 'html' : 'pdf'),
+                          { headers:{ Authorization:'Bearer ' + token } });
+    if(!r.ok){
+      let msg = 'Could not download the report';
+      try{ msg = (await r.json()).detail || msg; }catch(e){}
+      throw new Error(msg);
+    }
+    const blob = await r.blob();
+    const m = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = m ? m[1] : (orderId + (fmt === 'html' ? '.html' : '.pdf'));
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 60000);
+  }catch(e){ toast(e.message || 'Could not download the report'); }
+}
+/* Support: rebuild a lost report under the same id, then watch for it. */
+async function adminRegenReport(orderId, force){
+  const out = $('#admOrderOut');
+  try{
+    const r = await api('/api/admin/order/' + encodeURIComponent(orderId)
+                        + '/regenerate-report' + (force ? '?force=true' : ''), {method:'POST'});
+    if(r.status === 'exists'){ toast(r.message || 'The report file is already there.'); return; }
+    toast('Rebuild queued — takes about 3 minutes');
+    if(out) out.insertAdjacentHTML('beforeend',
+      `<p class="hint" id="admRegenNote" style="margin-top:8px"><span class="spin"></span> Rebuilding ${esc(orderId)} (job ${esc(r.jobId||'')}). This page refreshes when it is ready.</p>`);
+    let tries = 0;
+    const iv = setInterval(async ()=>{
+      tries++;
+      try{
+        const res = await api('/api/admin/orders-lookup?q=' + encodeURIComponent(orderId));
+        const rep = (res.orders && res.orders[0] && res.orders[0].report) || {};
+        if(rep.paidFile){ clearInterval(iv); toast('Report rebuilt'); adminLookupOrder(); return; }
+      }catch(e){}
+      if(tries >= 24){ clearInterval(iv); const n = $('#admRegenNote'); if(n) n.textContent = 'Still not ready after 8 minutes — check the server logs.'; }
+    }, 20000);
+  }catch(e){ toast(e.message || 'Could not start the rebuild'); }
+}
 async function adminRevokeOrder(orderId){
   if(!confirm('Revoke access for ' + orderId + '? The payment record stays; the customer loses what it unlocked.')) return;
   const out = $('#admOrderOut');

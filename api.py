@@ -310,8 +310,9 @@ class JobIn(BaseModel):
 def submit_job(body: JobIn, request: Request, user: dict = Depends(current_user)):
     from core.handlers import HANDLERS
     TS.require_human(request, token=body.turnstileToken)
-    if body.kind not in HANDLERS:
-        raise HTTPException(400, f"unknown kind; try {sorted(HANDLERS)}")
+    public_kinds = sorted(k for k in HANDLERS if not k.startswith("admin_"))
+    if body.kind not in public_kinds:          # admin_* kinds are queued by admin endpoints only
+        raise HTTPException(400, f"unknown kind; try {public_kinds}")
     # One job at a time per login: a second tap while the first is still
     # queued or running is refused before it can use up a daily slot.
     if Q.has_active_job(str(user["id"])):
@@ -948,6 +949,73 @@ def order_mark_paid_admin(public_id: str, user: dict = Depends(current_user)):
     return {**result, "orderId": public_id, "status": "paid",
             "item": o["item"], "refId": o.get("ref_id"),
             "amount": o["amount_paise"] // 100}
+
+
+def _admin_order_report(public_id: str, user: dict) -> tuple[dict, dict]:
+    """(order, report row) for an admin tool; raises a readable 4xx otherwise."""
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    o = billing.order_by_public(public_id.strip().upper())
+    if not o:
+        raise HTTPException(404, "no such order")
+    if o["item"] in billing.ACCOUNT_WIDE_ITEMS:
+        raise HTTPException(400, "this order is not for a single report")
+    rid = o.get("ref_id") or billing.latest_report_id(o["user_id"], o["item"])
+    rep = report_get(str(rid)) if rid else None
+    if not rep:
+        raise HTTPException(404, "no report found for this order")
+    return o, rep
+
+
+@app.post("/api/admin/order/{public_id}/regenerate-report")
+def admin_regenerate_report(public_id: str, force: bool = False,
+                            user: dict = Depends(current_user)):
+    """Admin-only: rebuild a lost report from the original request, under the
+    SAME report id, so the customer's order and links keep working."""
+    o, rep = _admin_order_report(public_id, user)
+    rid = str(rep["id"])
+    key = rep.get("paid_key") or ""
+    try:
+        present = bool(key) and store().exists(key)
+    except Exception:                                                 # noqa: BLE001
+        present = False
+    if present and not force:
+        return {"status": "exists", "reportId": rid,
+                "message": "The report file is already on the server."}
+    if not Q.r().set(f"regen:{rid}", "1", nx=True, ex=900):
+        raise HTTPException(409, "A rebuild of this report is already running.")
+    try:
+        job = Q.enqueue(kind="admin_regenerate", user_id=str(rep["user_id"]),
+                        payload={"reportId": rid}, priority=1)
+        job_insert(public_id=job["jobId"], user_id=rep["user_id"],
+                   kind="admin_regenerate", payload={"reportId": rid}, priority=1)
+    except Exception:
+        Q.r().delete(f"regen:{rid}")
+        raise
+    print(f"[billing] admin REGENERATE by {user.get('email')} order={o['public_id']} "
+          f"report={rid} job={job['jobId']}", flush=True)
+    return {"status": "queued", "jobId": job["jobId"], "reportId": rid}
+
+
+@app.get("/api/admin/order/{public_id}/report")
+def admin_order_report(public_id: str, format: str = "pdf",
+                       user: dict = Depends(current_user)):
+    """Admin-only: download the customer's full report, by order id, to send on."""
+    o, rep = _admin_order_report(public_id, user)
+    rid = str(rep["id"])
+    if format == "html":
+        key = rep.get("paid_key") or ""
+        try:
+            data = store().get(key) if key else None
+        except Exception:                                             # noqa: BLE001
+            data = None
+        if not data:
+            raise HTTPException(404, "the stored report is missing — regenerate it first")
+        name = _pdf_name(rep).rsplit(".", 1)[0] + ".html"
+        return Response(content=data, media_type="text/html; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"',
+                                 "Cache-Control": "private, no-store"})
+    return report_pdf(rid, True, user)
 
 
 @app.post("/api/order/{public_id}/revoke-access")

@@ -845,7 +845,88 @@ def h_future_event(user: dict, p: dict) -> dict:
             "error": res.get("error"), "price": S.price("future_event") // 100}
 
 
+def h_admin_regenerate(user: dict, p: dict) -> dict:
+    """Rebuild a report's stored files IN PLACE, keeping its id.
+
+    The report row, the customer's order and entitlement all point at the
+    report id, so a lost file must come back under that same id. We re-run the
+    original request (kept in the `jobs` table) through its normal handler,
+    copy the freshly written objects over the old keys, then drop the temporary
+    report the handler created. Admin-only: queued by the admin endpoint, and
+    refused from the public job API (kinds prefixed `admin_`).
+    """
+    from sqlalchemy import text as _t
+
+    from .db import engine, jdump, jload, jrow, tx
+    from .store import facts_key as _facts_key
+
+    rid = str(p.get("reportId") or "")
+    try:
+        with engine().connect() as c:
+            rep = c.execute(_t("SELECT * FROM reports WHERE id = :r"), {"r": rid}).fetchone()
+            job = c.execute(_t("SELECT kind, payload FROM jobs WHERE report_id = :r"
+                               " AND status = 'done' ORDER BY created_at DESC LIMIT 1"),
+                            {"r": rid}).fetchone()
+        if not rep:
+            raise UserError("That report no longer exists in the database.")
+        rep = jrow(rep)
+        if str(rep["user_id"]) != str(user["id"]):
+            raise UserError("Report does not belong to this account.")
+        if not job:
+            raise UserError("The original request for this report was not saved, so it "
+                            "cannot be rebuilt automatically.")
+        kind = job._mapping["kind"]
+        payload = jload(job._mapping["payload"]) or {}
+        fn = HANDLERS.get(kind)
+        if fn is None or kind.startswith("admin_"):
+            raise UserError(f"Cannot rebuild a '{kind}' report.")
+
+        res = fn(user, payload)
+        new_rid = str((res or {}).get("reportId") or "")
+        if not new_rid or new_rid == rid:
+            raise UserError("The rebuild did not produce a report.")
+
+        with engine().connect() as c:
+            new = c.execute(_t("SELECT * FROM reports WHERE id = :r"), {"r": new_rid}).fetchone()
+        new = jrow(new)
+        st = store()
+        for old_key, new_key in ((rep.get("free_key"), new.get("free_key")),
+                                 (rep.get("paid_key"), new.get("paid_key"))):
+            if old_key and new_key:
+                ctype = ("application/json" if old_key.endswith(".json")
+                         else "text/html; charset=utf-8")
+                st.put(old_key, st.get(new_key), ctype)
+
+        meta = dict(jload(new.get("meta")) or {})
+        scratch_facts = meta.get("facts_key")
+        old_facts = _facts_key(rid)
+        if meta.get("facts_key"):
+            st.put(old_facts, st.get(meta["facts_key"]), "application/json; charset=utf-8")
+            meta["facts_key"] = old_facts
+        with tx() as c:
+            c.execute(_t("UPDATE reports SET meta = :m, engine_version = :v WHERE id = :r"),
+                      {"m": jdump(meta), "v": new.get("engine_version"), "r": rid})
+
+        # Drop the scratch report the handler made.
+        for k in (new.get("free_key"), new.get("paid_key"), scratch_facts):
+            if k:
+                try:
+                    st.delete(k)
+                except Exception:                                    # noqa: BLE001
+                    pass
+        with tx() as c:
+            c.execute(_t("DELETE FROM reports WHERE id = :r"), {"r": new_rid})
+        return {"reportId": rid, "regenerated": True, "kind": kind}
+    finally:
+        try:
+            from . import queue as _Q
+            _Q.r().delete(f"regen:{rid}")
+        except Exception:                                            # noqa: BLE001
+            pass
+
+
 HANDLERS = {
+    "admin_regenerate": h_admin_regenerate,
     "palm": h_palm,
     "chart_summary": h_chart_summary,
     "numerology": h_numerology,

@@ -89,7 +89,7 @@ def _active(uid: str) -> str:   return f"active:{uid}"
 
 # kinds that get their own concurrency budget; everything else shares "*"
 GROUPS = {"full_report": "heavy", "classical_report": "heavy", "btr": "heavy",
-          "palm": "palm"}
+          "admin_regenerate": "heavy", "palm": "palm"}
 
 
 def group_of(kind: str) -> str:
