@@ -80,10 +80,10 @@ def test_rendered_life_domain_label():
         DE.end()
 
     assert "Foreign Settlement" in meta["area"]
-    m = re.search(r"Life Domain · ([^<]+)", paid)
-    assert m, "missing Life Domain header"
-    assert "Foreign Settlement" in m.group(1)
-    assert "Health, Physical Vitality" not in m.group(1)
+    assert 'class="uq-reading"' in paid, "missing the question answer card"
+    reading = paid.split('class="uq-reading"', 1)[1]
+    assert "Health, Physical Vitality" not in reading
+    assert "Lal Kitab" not in reading and "Chandra Naadi" not in reading
 
 
 if __name__ == "__main__":

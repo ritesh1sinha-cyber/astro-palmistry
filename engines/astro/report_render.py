@@ -907,11 +907,8 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     today = today or date.today()
     first = (name or "").split()[0] if name else ""
 
-    from confluence_question_engine import (
-        analyze_question_confluence,
-        render_confluence_card_html,
-        synthesize_with_qwen,
-    )
+    from confluence_question_engine import DOMAINS_CONFIG, analyze_question_confluence
+    import question_reading as QR
 
     domain_override = area
     target_planet = ""
@@ -933,11 +930,15 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
 
     specialist_readings = getattr(conf, "specialist_readings", None) or {}
 
-    qwen_consultation = synthesize_with_qwen(
-        conf, lang=lang, specialist_readings=specialist_readings)
+    # One short answer judged against only the facts that bear on this
+    # question. Lal Kitab / Chandra Naadi findings are deliberately not fed in:
+    # they produced generic lines unrelated to what was asked.
+    cfg = DOMAINS_CONFIG.get(conf.domain_key) or DOMAINS_CONFIG["career_profession"]
+    reading, qfacts, by_model = QR.build_reading(conf, pc, cfg, lang=lang)
+    qwen_consultation = reading.answer if by_model else ""
 
-    free_body = _voice_polish(render_confluence_card_html(conf, paid=False, qwen_text="", lang=lang))
-    paid_body = _voice_polish(render_confluence_card_html(conf, paid=True, qwen_text=qwen_consultation, lang=lang))
+    free_body = _voice_polish(QR.render_html(reading, qfacts, paid=False, lang=lang, price=price))
+    paid_body = _voice_polish(QR.render_html(reading, qfacts, paid=True, lang=lang, price=price))
 
     lang_code = str(lang or "").lower().strip()
     if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
@@ -953,15 +954,15 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
         "design": "cards-v2",
         "language": lang,
         "answer": {
-            "label": conf.classical_verdict[:80],
+            "label": reading.answer[:80],
             "confidence": "high",
-            "direction": "caution" if conf.is_lord_in_dusthana else "support",
-            "breakthrough": conf.breakthrough_period,
+            "direction": "support" if reading.stance == "favourable" else "caution",
+            "breakthrough": qfacts.get("next_window") or conf.breakthrough_period,
         },
         "question": question,
         "area": conf.domain_title,
         "price": price,
-        "llm": {"enabled": bool(qwen_consultation)},
+        "llm": {"enabled": bool(by_model)},
         "_facts": {
             "question": question,
             "domain": conf.domain_title,
@@ -978,14 +979,8 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
                 if isinstance(value, dict) and key != "evaluation_date"
             },
         },
-        "freeSections": ["Question & Vedic Core Verdict", "Preview of Locked Upaya & Timeline"],
-        "paidSections": [
-            "Classical Astrological Verdict",
-            "Deep Jyotish Consultation Reading",
-            "Planetary Dynamics & Divisional Indicators",
-            "Dasha Timeline & Key Milestones",
-            "Targeted Vedic Upaya & Actionable Guidance"
-        ],
+        "freeSections": ["Your answer", "What your chart shows"],
+        "paidSections": ["When it happens", "What to do", "The chart facts behind the answer"],
         "teasers": {}
     }
     return free, paid, meta
