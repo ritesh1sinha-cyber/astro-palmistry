@@ -2504,6 +2504,7 @@ def render(
     upsell_html: str = "",
     analysis: Any = None,
     lang: str = "en",
+    sade_html: str = "",
 ) -> str:
     """Render the LLM report as a consultation-style reading.
 
@@ -2932,6 +2933,8 @@ def render(
     </div>
 
     {transits_html}
+
+    {sade_html}
 
     {_specialist_readings_html(analysis, paid=paid, lang=lang)}
 

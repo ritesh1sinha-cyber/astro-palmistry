@@ -323,6 +323,14 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                        today: date, price: int = 298, bundle_price: int = 298,
                        lat: float = 0.0, lon: float = 0.0, tz: float = 5.5,
                        daily: Any = None, first: str = "", lang: str = "en") -> tuple:
+    # Sade Sati is the best-known timing event, so every full report states where the reader stands in it.
+    sade_blk = None
+    try:
+        import sade_sati as SS
+        sade_blk = SS.build(pc, today=today)
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_render] sade sati failed: {exc}", flush=True)
+
     present_block = None
     try:
         import present_read as PR
@@ -506,6 +514,9 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                     for d in (getattr(aj, "relief_window", ""), getattr(aj, "stronger_window", "")):
                         if d:
                             window_sources.append({"start": d, "end": d})
+        if paid and sade_blk:
+            import sade_sati as SS
+            window_sources.extend(SS.window_dates(sade_blk))
         vim = pc.get("vimshottari", {}) or {}
         window_sources.append(vim.get("current_md") or {})
         window_sources.extend(vim.get("current_md_antardashas") or [])
@@ -583,7 +594,8 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 remedy_html=_safe(_remedy, pc, name=first, paid=paid, price=price, lang=lang),
                 upsell_html=upsell,
                 analysis=(paid_facts if paid else free_facts),
-                lang=lang)
+                lang=lang,
+                sade_html=_sade_html(sade_blk, paid=paid, price=price))
             return _post_render_guard(_scrub(body, allowed_dates=_allowed_dates(paid)))
 
         # Frozen non-LLM / classic path — untouched when conversational is used.
@@ -594,7 +606,8 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 present_html = PR.render(present_block, paid=paid)
             except Exception as exc:                                 # noqa: BLE001
                 print(f"[report_render] present render failed: {exc}", flush=True)
-        remedy = _safe(_remedy, pc, name=first, paid=paid, price=price, lang=lang)
+        remedy = (_sade_html(sade_blk, paid=paid, price=price)
+                  + _safe(_remedy, pc, name=first, paid=paid, price=price, lang=lang))
         if paid:
             dashboard_html = _safe(_promise_dashboard, shared_cards)
             tail = dashboard_html + timing_html + remedy
@@ -635,9 +648,11 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
         "freeSections": ["Your current chapter", "Who your chart says you are",
                          "Your recent past — free and checkable",
                          "What is happening right now",
+                         "Sade Sati: where you stand",
                          "Major life areas",
                          "Gemstones you should not wear"],
-        "paidSections": ["Why each life area reads the way it does",
+        "paidSections": ["Sade Sati: dates, cautions and remedies",
+                         "Why each life area reads the way it does",
                          "Exact dates for every life area",
                          "How this area changes over time",
                          "Planets involved",
@@ -648,6 +663,17 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
         "teasers": {},
     }
     return free_html, paid_html, meta
+
+
+def _sade_html(blk: Any, *, paid: bool, price: int = 298) -> str:
+    if not blk:
+        return ""
+    try:
+        import sade_sati as SS
+        return SS.render(blk, paid=paid, price=price)
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_render] sade sati render failed: {exc}", flush=True)
+        return ""
 
 
 def _promise_dashboard(cards: list) -> str:
@@ -918,18 +944,28 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     reading, qfacts, by_model = QR.build_reading(conf, pc, cfg, lang=lang)
     qwen_consultation = reading.answer if by_model else ""
 
-    # Love, breakup and "will she come back" questions get their own Chandra Naadi section.
+    # Love, work and health questions get their own Chandra Naadi section (dated days, what helps).
     rel_block, rel_free, rel_paid = None, "", ""
-    if conf.domain_key == "marriage_relationship":
-        try:
+    try:
+        if conf.domain_key == "marriage_relationship":
             import relationship_naadi as RN
             built = RN.build(pc, question, qfacts, stance=reading.stance, gender=gender, today=today, lang=lang)
             if built:
                 rel_block = RN.compose(built, lang=lang)
                 rel_free = RN.render_html(rel_block, paid=False, price=price)
                 rel_paid = RN.render_html(rel_block, paid=True, price=price)
-        except Exception as exc:                                      # noqa: BLE001
-            print(f"[report_render] relationship section skipped: {type(exc).__name__}: {exc}", flush=True)
+        elif conf.domain_key in ("career_profession", "health_vitality"):
+            import sade_sati as SS
+            import topic_naadi as TN
+            topic = "career" if conf.domain_key == "career_profession" else "health"
+            built = TN.build(topic, pc, question, qfacts, stance=reading.stance, today=today,
+                             sade=SS.build(pc, today=today))
+            if built:
+                rel_block = TN.compose(built)
+                rel_free = TN.render_html(rel_block, paid=False, price=price)
+                rel_paid = TN.render_html(rel_block, paid=True, price=price)
+    except Exception as exc:                                          # noqa: BLE001
+        print(f"[report_render] topic section skipped: {type(exc).__name__}: {exc}", flush=True)
 
     free_body = _voice_polish(QR.render_html(reading, qfacts, paid=False, lang=lang, price=price,
                                              extra_after_answer=rel_free))
@@ -983,9 +1019,12 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     }
     if rel_block:
         import relationship_naadi as RN
-        meta["relationship"] = RN.public(rel_block)
+        meta["section"] = RN.public(rel_block)
+        meta["relationship"] = meta["section"]               # older readers of the meta
         meta["freeSections"] = ["Your answer", "What is happening", "What your chart shows"]
-        meta["paidSections"] = ["The days the Moon favours reaching out", "Days to hold back",
+        ui = rel_block.get("ui") or {}
+        meta["paidSections"] = [ui.get("reach", "The days the Moon favours reaching out"),
+                                ui.get("hold", "Days to hold back"),
                                 "What helps and what to avoid", "When it happens", "The chart facts behind the answer"]
     return free, paid, meta
 

@@ -2549,11 +2549,11 @@ def _summary_from_question_reading(meta: dict, *, paid: bool, lang: str) -> Opti
     steps = [str(x).strip() for x in (rd.get("steps") or []) if str(x).strip()]
 
     sections: list[dict] = [{"title": t_answer, "body": answer, "role": "insight"}]
-    rel = meta.get("relationship") if isinstance(meta.get("relationship"), dict) else None
+    rel = next((meta[k] for k in ("section", "relationship") if isinstance(meta.get(k), dict)), None)
     if rel and key == "en" and str(rel.get("happening") or "").strip():
         body = f"{str(rel.get('headline') or '').strip()} {str(rel.get('happening') or '').strip()}".strip()
         if paid and rel.get("open"):
-            body += f" The Moon favours reaching out on: {'; '.join(rel['open'][:3])}."
+            body += f" The Moon favours acting on: {'; '.join(rel['open'][:3])}."
             if rel.get("hold"):
                 body += f" Hold back on: {'; '.join(rel['hold'][:2])}."
         sections.append({"title": "What is happening", "body": body, "role": "insight"})
@@ -2573,8 +2573,9 @@ def _summary_from_question_reading(meta: dict, *, paid: bool, lang: str) -> Opti
                        if n_lens > 2 else "The full answer has the details."))
             if rel and rel.get("days_ok"):
                 body = (f"The Moon's path over your chart for the next {rel.get('scan_days')} days has been read: "
-                        f"{rel.get('n_open')} days that favour reaching out and {rel.get('n_hold')} days to hold back. "
-                        "The dates, and what to say and not say, are in the full answer.")
+                        f"{rel.get('n_open')} days {rel.get('phrase_open') or 'that favour acting'} and "
+                        f"{rel.get('n_hold')} days {rel.get('phrase_hold') or 'to hold back'}. "
+                        "The dates, and what to do on each, are in the full answer.")
             sections.append({"title": t_next, "body": body, "role": "locked"})
         else:
             sections.append(_locked_section("user_question", None, lang))

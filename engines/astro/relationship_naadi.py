@@ -550,7 +550,8 @@ def compose(b: dict, *, lang: str = "en") -> dict[str, Any]:
             "do": prose["do"], "avoid": prose["avoid"], "pattern": b["pattern"] if lk == "en" else "",
             "open": b["days"]["open"], "hold": b["days"]["hold"],
             "n_open": b["days"]["n_open"], "n_hold": b["days"]["n_hold"], "days_ok": b["days"]["ok"],
-            "scan_days": SCAN_DAYS,
+            "scan_days": SCAN_DAYS, "topic": "relationship",
+            "phrase_open": "that favour reaching out", "phrase_hold": "to hold back",
             "next_window": b["next_window"] if b["kind"] in ("find", "marriage", "other") else "",
             "by_model": bool(b.get("by_model")),
             "lang": lk}
@@ -577,7 +578,7 @@ def _head(text: str, color: str = "#7a4b18") -> str:
 
 def render_html(blk: dict, *, paid: bool, price: int = 298) -> str:
     """One card. Free: what is happening and a count. Paid: the dated days and what to do."""
-    U = _UI[blk.get("lang") if blk.get("lang") in _UI else "en"]
+    U = blk.get("ui") or _UI[blk.get("lang") if blk.get("lang") in _UI else "en"]
     color, bg = _COLOR[blk["lean"]], _BG[blk["lean"]]
     out = ['<article class="card rel-naadi" style="background:#fff;border:1px solid #e8e4dc;'
            f'border-left:4px solid {color};border-radius:12px;padding:18px 22px;margin-bottom:14px;'
@@ -616,6 +617,8 @@ def render_html(blk: dict, *, paid: bool, price: int = 298) -> str:
         if blk.get("pattern"):
             out += [_head(U["pattern"]), f'<p style="font-size:.92rem;line-height:1.55;color:#2c3140;margin:0;">'
                     f'{_e(blk["pattern"])}</p>']
+        if U.get("note"):
+            out.append(f'<p style="font-size:.8rem;line-height:1.5;color:#5a6070;margin:12px 0 0;">{_e(U["note"])}</p>')
         out.append("</article>")
         return "\n".join(out)
 
@@ -625,11 +628,13 @@ def render_html(blk: dict, *, paid: bool, price: int = 298) -> str:
             '<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" '
             'style="margin:14px 0 4px;border-radius:12px;cursor:pointer;">'
             f'<div class="lock-blur" style="padding:14px 18px;font-size:.88rem;line-height:1.55;">'
-            f'<b>{_e(U["reach"])}:</b> the best days are marked here, with what to say on each one. '
-            f'<b>{_e(U["hold"])}:</b> the days to stay quiet are marked here too.</div>'
+            f'<b>{_e(U["reach"])}:</b> {_e(U.get("ph_open") or "the best days are marked here, with what to say on each one.")} '
+            f'<b>{_e(U["hold"])}:</b> {_e(U.get("ph_hold") or "the days to stay quiet are marked here too.")}</div>'
             f'<div class="lock-over" data-unlock="1"><span class="lock-chip" data-unlock="1" '
             f'style="font-size:.72rem;padding:7px 18px;cursor:pointer;">&#128274; {_e(U["lockchip"])}</span></div></div>'
             f'<p style="font-size:.84rem;line-height:1.5;color:#4a5160;margin:8px 0 0;">&#127769; {_e(teaser)}</p>')
+    if U.get("note"):
+        out.append(f'<p style="font-size:.8rem;line-height:1.5;color:#5a6070;margin:12px 0 0;">{_e(U["note"])}</p>')
     out.append("</article>")
     return "\n".join(out)
 
@@ -637,7 +642,7 @@ def render_html(blk: dict, *, paid: bool, price: int = 298) -> str:
 def public(blk: dict) -> dict:
     """What goes into report meta: enough for the plain summary, nothing internal."""
     keep = ("kind", "lean", "label", "headline", "happening", "n_open", "n_hold", "scan_days", "days_ok",
-            "by_model", "lang")
+            "by_model", "lang", "topic", "phrase_open", "phrase_hold")
     out = {k: blk.get(k) for k in keep}
     out["open"] = list(blk.get("open") or [])
     out["hold"] = list(blk.get("hold") or [])

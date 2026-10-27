@@ -1185,8 +1185,8 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
       <div class="grid g2" style="gap:10px">
        <div class="field"><label for="fDom">Dominant hand <span style="color:#a3341f" aria-hidden="true">*</span></label>
         <select class="inp" id="fDom" aria-required="true"><option value="right">Right handed</option><option value="left">Left handed</option></select></div>
-       <div class="field"><label for="fLang">Report language</label>
-        <select class="inp" id="fLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option><option value="te_en">Telugu (Tenglish)</option></select></div>
+       <div class="field" style="display:none"><label for="fLang">Report language</label>
+        <select class="inp" id="fLang"><option value="en">English (Default)</option></select></div>
       </div>
      </div>
     </div>
@@ -1228,12 +1228,10 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
       </div>
      </div>
      <div style="text-align:right">
-      <div class="field" style="text-align:left;margin-bottom:12px">
+      <div class="field" style="text-align:left;margin-bottom:12px;display:none">
        <label for="pLang" style="font-size:13px;font-weight:600">Report language</label>
        <select class="inp" id="pLang" onchange="syncPalmReportLang(this.value)">
         <option value="en">English (Default)</option>
-        <option value="hi_en">Hindi (Hinglish)</option>
-        <option value="te_en">Telugu (Tenglish)</option>
        </select>
       </div>
       <button class="btn btn-gold btn-block" id="submitBtn" onclick="submitReading()" disabled>Reveal my reading</button>
@@ -1334,7 +1332,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
       <p class="placenote" id="aPlaceNote">We fill coordinates from the city you pick.</p></div>
      <div class="grid g2" style="gap:10px">
        <div class="field"><label for="aGender">Gender</label><select class="inp" id="aGender"><option value="0">Male</option><option value="1">Female</option></select></div>
-       <div class="field"><label for="aLang">Report language</label><select class="inp" id="aLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option><option value="te_en">Telugu (Tenglish)</option></select></div>
+       <div class="field" style="display:none"><label for="aLang">Report language</label><select class="inp" id="aLang"><option value="en">English (Default)</option></select></div>
       </div>
      <p class="hint"><button type="button" class="btn-line" id="toggleCoords" onclick="toggleAstroCoords()">Enter coordinates manually</button></p>
      <div class="coords-adv" id="astroCoords">
@@ -1445,8 +1443,8 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
      </select>
      <p class="hint" style="margin-top:8px">Pick the area first — we read it together with your wording so the answer stays on the right houses.</p>
     </div>
-    <div class="field" style="margin-top:14px"><label for="hLang">Report language</label>
-     <select class="inp" id="hLang"><option value="en">English (Default)</option><option value="hi_en">Hindi (Hinglish)</option><option value="te_en">Telugu (Tenglish)</option></select>
+    <div class="field" style="margin-top:14px;display:none"><label for="hLang">Report language</label>
+     <select class="inp" id="hLang"><option value="en">English (Default)</option></select>
     </div>
     <div class="field" style="margin-top:14px"><label for="hQ">Your question</label>
      <input class="inp" id="hQ" placeholder="Will I get the promotion this year?"><div class="err">Required</div></div>
@@ -4408,13 +4406,13 @@ function syncFlow(){
           $('#s-auth').style.display = 'none';
           $('#s-details').style.display = 'none';
           $('#s-hands').style.display = '';
-          if($('#pLang') && S.details.language) $('#pLang').value = S.details.language;
+          
         }
       };
     }
   });
   if(S.details){
-    const lang = S.details.language || 'en';
+    const lang = 'en';   // English only for now
     if($('#fLang')) $('#fLang').value = lang;
     if($('#pLang')) $('#pLang').value = lang;
   }
@@ -4448,7 +4446,7 @@ function fillDetails(){
   $('#fName').value = (n && n !== 'Seeker') ? n : '';
   $('#fAge').value = S.details.age || '';
   $('#fDom').value=S.details.dominant||'right';
-  const lang = S.details.language || 'en';
+  const lang = 'en';   // English only for now
   if($('#fLang')) $('#fLang').value = lang;
   if($('#pLang')) $('#pLang').value = lang;
   $$('#genderPills .pill').forEach(p=>p.setAttribute('aria-pressed', p.dataset.val===S.details.gender));
@@ -4624,7 +4622,7 @@ async function submitReading(){
   const b=$('#submitBtn'); b.disabled=true; b.innerHTML='<span class="spin"></span> Submitting…';
   try{
     const turnstileToken = await getTurnstileToken('Confirm you\'re human before we run your palm reading.');
-    const lang = ($('#pLang') && $('#pLang').value) || ($('#fLang') && $('#fLang').value) || (S.details && S.details.language) || 'en';
+    const lang = 'en';   // English only for now
     if(S.details) S.details.language = lang;
     const payload={ userId:S.user.id, email:S.user.email, name:S.details.name,
       gender:S.details.gender, age:S.details.age,
