@@ -123,15 +123,21 @@ def build(pc: dict, today: Optional[date] = None) -> Optional[dict[str, Any]]:
         return None
 
     phases: list[dict] = []
+    last_parts = [s for s in cycle if s["house"] == 2]
+    main_end = last_parts[0]["end"] if last_parts else cycle[-1]["end"]     # the date almanacs print as the end
     for house in (12, 1, 2):
         parts = [s for s in cycle if s["house"] == house]
         if parts:
-            # Saturn's retrograde loops can bring it back into a phase later; the phase is dated by its first
-            # unbroken stretch and the return is shown separately, so the windows never overlap.
-            phases.append({"house": house, "name": _PHASE[house], "start": parts[0]["start"],
-                           "end": parts[0]["end"],
-                           "back": ({"start": parts[1]["start"], "end": parts[-1]["end"]}
-                                    if len(parts) > 1 else None)})
+            # Saturn's retrograde turns step it out of a sign for a few months and back in. Stretches less than
+            # about 14 months apart are one phase (first entry to last exit); a much later return is shown apart.
+            first_end = parts[0]["end"]
+            merged_end, k = first_end, 1
+            while k < len(parts) and (parts[k]["start"] - merged_end).days <= 430:
+                merged_end = parts[k]["end"]
+                k += 1
+            phases.append({"house": house, "name": _PHASE[house], "start": parts[0]["start"], "end": merged_end,
+                           "back": ({"start": parts[k]["start"], "end": parts[-1]["end"]}
+                                    if k < len(parts) else None)})
     minor = None
     if now_seg and now_seg["house"] in (4, 8):
         minor = {"house": now_seg["house"],
@@ -141,7 +147,7 @@ def build(pc: dict, today: Optional[date] = None) -> Optional[dict[str, Any]]:
         "status": "in" if cur else "next",
         "phase": now_seg["house"] if (cur and now_seg and now_seg["house"] in (12, 1, 2)) else None,
         "phases": phases,
-        "cycle_start": cycle[0]["start"], "cycle_end": cycle[-1]["end"],
+        "cycle_start": cycle[0]["start"], "cycle_end": cycle[-1]["end"], "main_end": main_end,
         "severity": _severity(pc, moon_idx), "minor": minor, "moon_sign": moon_sign,
         "years_to_start": round((cycle[0]["start"] - today).days / 365.25, 1) if not cur else 0,
         "relevant": bool(cur or minor or (cycle[0]["start"] - today).days <= 365 * 3),
@@ -152,7 +158,7 @@ def window_dates(blk: Optional[dict]) -> list[dict]:
     """Every date the paid block prints, in the shape the report's date guard takes."""
     if not blk:
         return []
-    out = [{"start": blk["cycle_start"], "end": blk["cycle_end"]}]
+    out = [{"start": blk["cycle_start"], "end": blk["cycle_end"]}, {"start": blk["main_end"], "end": blk["main_end"]}]
     for p in blk["phases"]:
         out.append({"start": p["start"], "end": p["end"]})
         if p.get("back"):
@@ -240,7 +246,11 @@ def render(blk: Optional[dict], *, paid: bool, price: int = 298) -> str:
 
     if paid:
         out.append(_head("When it begins and ends" if blk.get("relevant") else "When it comes"))
-        rows = [f"Whole period: {_month_year(blk['cycle_start'])} to {_month_year(blk['cycle_end'])}."]
+        whole = f"Whole period: {_month_year(blk['cycle_start'])} to {_month_year(blk['main_end'])}."
+        if (blk["cycle_end"] - blk["main_end"]).days > 90:
+            whole += (f" Saturn then dips back for a short while, so the last touch runs to "
+                      f"{_month_year(blk['cycle_end'])}.")
+        rows = [whole]
         for p in blk["phases"]:
             row = f"{p['name']}: {_month_year(p['start'])} to {_month_year(p['end'])}."
             if p.get("back"):
@@ -251,6 +261,9 @@ def render(blk: Optional[dict], *, paid: bool, price: int = 298) -> str:
             m = blk["minor"]
             rows.append(f"{m['name']}: {_month_year(m['start'])} to {_month_year(m['end'])}.")
         out.append(_list(rows))
+        if len(blk["phases"]) > 1:
+            out.append(_p("The phases can overlap by a few months, because Saturn turns retrograde and steps back "
+                          "into the earlier sign for a while.", "font-size:.82rem;color:#5a6070;"))
         if in_it:
             peak = next((p for p in blk["phases"] if p["house"] == 1), None)
             if peak:

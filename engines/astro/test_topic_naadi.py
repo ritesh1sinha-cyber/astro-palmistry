@@ -108,7 +108,8 @@ def test_sade_sati_running_phases_do_not_overlap_and_are_ordered():
     names = [p["name"] for p in blk["phases"]]
     assert names == ["Rising phase", "Peak phase", "Setting phase"]
     for a, b in zip(blk["phases"], blk["phases"][1:]):
-        assert a["end"] <= b["start"] or a["end"] == b["start"]
+        assert a["start"] < b["start"] and a["end"] < b["end"]      # in order; retrograde turns may overlap them
+    assert all((p["end"] - p["start"]).days > 365 for p in blk["phases"])   # no half-year slivers
     assert blk["cycle_start"] <= TODAY <= blk["cycle_end"]
 
 
