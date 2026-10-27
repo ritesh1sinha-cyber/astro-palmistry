@@ -182,26 +182,39 @@ def _e(x: Any) -> str:
     return html.escape(str(x or "").strip())
 
 
-def _head(text: str, color: str = "#7a4b18") -> str:
+def _head(text: str, color: str) -> str:
     return (f'<div style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;'
             f'color:{color};margin:12px 0 6px;">{_e(text)}</div>')
 
 
-def _list(items: list[str]) -> str:
-    return ('<ul style="margin:0;padding-left:18px;font-size:.92rem;line-height:1.55;color:#2c3140;">'
+def _list(items: list[str], P: dict) -> str:
+    return (f'<ul style="margin:0;padding-left:18px;font-size:.92rem;line-height:1.55;color:{P["text"]};">'
             + "".join(f'<li style="margin-bottom:6px;">{_e(i)}</li>' for i in items) + "</ul>")
 
 
-def _p(text: str, extra: str = "") -> str:
-    return (f'<p style="font-size:.95rem;line-height:1.6;color:#2c3140;margin:0 0 6px;{extra}">{_e(text)}</p>')
+def _p(text: str, P: dict, extra: str = "") -> str:
+    return (f'<p style="font-size:.95rem;line-height:1.6;color:{P["text"]};margin:0 0 6px;{extra}">'
+            f'{_e(text)}</p>')
 
 
-def render(blk: Optional[dict], *, paid: bool, price: int = 298) -> str:
-    if not blk:
-        return ""
+# Light for the classic cards, dark for the conversational report (which is a
+# dark page — a white card there reads as a different product).
+_PAL = {
+    "light": dict(card="#fff", border="#e8e4dc", text="#2c3140", head="#1f2430", muted="#5a6070",
+                  label="#6a7080", warn="#a3341f", good="#1c6b45", amber="#7a4b18",
+                  shadow="0 2px 8px rgba(0,0,0,.03)",
+                  in_c="#8a4a1f", in_bg="#fbeee4", next_c="#4a5a7a", next_bg="#eaeef6"),
+    "dark": dict(card="#1e293b", border="#334155", text="#e2e8f0", head="#f8fafc", muted="#94a3b8",
+                 label="#94a3b8", warn="#fca5a5", good="#6ee7b7", amber="#fcd34d",
+                 shadow="0 2px 8px rgba(0,0,0,.25)",
+                 in_c="#fbbf24", in_bg="rgba(245,158,11,.18)", next_c="#93c5fd",
+                 next_bg="rgba(96,165,250,.18)"),
+}
+
+
+def _status(blk: dict) -> tuple[bool, str, str]:
+    """(running?, pill text, headline)."""
     in_it = blk["status"] == "in"
-    color = {"in": "#8a4a1f", "next": "#4a5a7a"}[blk["status"]]
-    bg = {"in": "#fbeee4", "next": "#eaeef6"}[blk["status"]]
     pill = (f'Running now · {_PHASE[blk["phase"]]}' if in_it and blk.get("phase") else
             "Running now" if in_it else "Not running now")
     if in_it and blk.get("phase"):
@@ -212,40 +225,83 @@ def render(blk: Optional[dict], *, paid: bool, price: int = 298) -> str:
         yrs = blk["years_to_start"]
         head = ("Sade Sati is not running now." if yrs >= 1 else
                 "Sade Sati is not running now, but it begins soon.")
-    out = ['<section class="card sade-sati" style="background:#fff;border:1px solid #e8e4dc;'
-           f'border-left:4px solid {color};border-radius:12px;padding:18px 22px;margin:18px 0;'
-           'box-shadow:0 2px 8px rgba(0,0,0,.03);">',
-           '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;">'
-           '<span style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;'
-           'color:#6a7080;">Sade Sati · Saturn and your Moon</span>'
-           f'<span class="pill" style="font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:99px;'
-           f'background:{bg};color:{color};">{_e(pill)}</span></div>',
-           f'<h3 style="font-family:Georgia,serif;font-size:1.15rem;margin:4px 0 8px;color:#1f2430;'
-           f'font-weight:600;line-height:1.35;">{_e(head)}</h3>']
+    return in_it, pill, head
+
+
+def banner(blk: Optional[dict], *, dark: bool = True) -> str:
+    """Top-of-report highlight. Only when Sade Sati is actually running."""
+    if not blk or blk.get("status") != "in":
+        return ""
+    P = _PAL["dark" if dark else "light"]
+    _, pill, head = _status(blk)
+    line = (_PHASE_TEXT[blk["phase"]] if blk.get("phase") else
+            "Saturn has stepped back out of the zone for its retrograde turn and returns to it later in this cycle.")
+    return (
+        f'<section class="sade-banner" style="background:{P["in_bg"]};border:1px solid {P["in_c"]};'
+        f'border-left:5px solid {P["in_c"]};border-radius:12px;padding:16px 20px;margin:0 0 20px;">'
+        f'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;'
+        f'margin-bottom:4px;">'
+        f'<span style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;'
+        f'color:{P["in_c"]};">&#9888; Major Saturn period</span>'
+        f'<span style="font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:99px;'
+        f'border:1px solid {P["in_c"]};color:{P["in_c"]};">{_e(pill)}</span></div>'
+        f'<h3 style="font-family:Georgia,serif;font-size:1.15rem;margin:4px 0 6px;color:{P["head"]};'
+        f'font-weight:700;line-height:1.35;">{_e(head)}</h3>'
+        f'<p style="font-size:.95rem;line-height:1.6;color:{P["text"]};margin:0 0 6px;">{_e(line)}</p>'
+        f'<p style="font-size:.85rem;line-height:1.5;color:{P["muted"]};margin:0;">'
+        f'The dates, cautions and remedies are in the <a href="#sec-sade-sati" '
+        f'style="color:{P["in_c"]};font-weight:700;">Sade Sati section</a> at the end of this report.</p>'
+        f'</section>')
+
+
+def render(blk: Optional[dict], *, paid: bool, price: int = 298,
+           dark: bool = False, collapsible: bool = False) -> str:
+    """The full Sade Sati block.
+
+    ``collapsible`` wraps it in a <details>: open while Sade Sati is running,
+    folded when it is not, so a reader with no Sade Sati is not made to scroll
+    through it.
+    """
+    if not blk:
+        return ""
+    P = _PAL["dark" if dark else "light"]
+    in_it, pill, head = _status(blk)
+    color = P["in_c"] if in_it else P["next_c"]
+    bg = P["in_bg"] if in_it else P["next_bg"]
+
+    kicker = (f'<span style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;'
+              f'color:{P["label"]};">Sade Sati &middot; Saturn and your Moon</span>')
+    pill_html = (f'<span class="pill" style="font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:99px;'
+                 f'background:{bg};color:{color};">{_e(pill)}</span>')
+    title = (f'<h3 style="font-family:Georgia,serif;font-size:1.15rem;margin:4px 0 8px;color:{P["head"]};'
+             f'font-weight:600;line-height:1.35;">{_e(head)}</h3>')
+
+    out: list[str] = []
     if in_it:
         if blk.get("phase"):
-            out.append(_p(_PHASE_TEXT[blk["phase"]]))
+            out.append(_p(_PHASE_TEXT[blk["phase"]], P))
         else:
             out.append(_p("Saturn has stepped back out of the zone for its retrograde turn and returns to it later "
-                          "in this cycle."))
-        out.append(_p(_SEV[blk["severity"]]))
+                          "in this cycle.", P))
+        out.append(_p(_SEV[blk["severity"]], P))
         out.append(_p("Sade Sati is a period of discipline, not doom. Many people build their firmest "
-                      "foundations during it."))
+                      "foundations during it.", P))
     else:
         out.append(_p("Sade Sati happens when Saturn crosses the sign before your Moon, your Moon's own sign "
-                      "and the sign after it, about once in thirty years."))
+                      "and the sign after it, about once in thirty years.", P))
         if blk.get("relevant"):
-            out.append(_p(_SEV[blk["severity"]]))
+            out.append(_p(_SEV[blk["severity"]], P))
         else:
             out.append(_p(f"Your next one is about {round(blk['years_to_start'])} years away, so there is nothing "
-                          "to do about it now."))
+                          "to do about it now.", P))
     if blk.get("minor"):
         m = blk["minor"]
         out.append(_p(f"Saturn is also in the {m['house']}th house from your Moon ({m['name']}), a smaller "
-                      "Saturn stretch that asks for extra care with health, money and travel."))
+                      "Saturn stretch that asks for extra care with health, money and travel.", P))
 
+    small = f"font-size:.82rem;color:{P['muted']};"
     if paid:
-        out.append(_head("When it begins and ends" if blk.get("relevant") else "When it comes"))
+        out.append(_head("When it begins and ends" if blk.get("relevant") else "When it comes", P["amber"]))
         whole = f"Whole period: {_month_year(blk['cycle_start'])} to {_month_year(blk['main_end'])}."
         if (blk["cycle_end"] - blk["main_end"]).days > 90:
             whole += (f" Saturn then dips back for a short while, so the last touch runs to "
@@ -260,23 +316,23 @@ def render(blk: Optional[dict], *, paid: bool, price: int = 298) -> str:
         if blk.get("minor"):
             m = blk["minor"]
             rows.append(f"{m['name']}: {_month_year(m['start'])} to {_month_year(m['end'])}.")
-        out.append(_list(rows))
+        out.append(_list(rows, P))
         if len(blk["phases"]) > 1:
             out.append(_p("The phases can overlap by a few months, because Saturn turns retrograde and steps back "
-                          "into the earlier sign for a while.", "font-size:.82rem;color:#5a6070;"))
+                          "into the earlier sign for a while.", P, small))
         if in_it:
             peak = next((p for p in blk["phases"] if p["house"] == 1), None)
             if peak:
-                out += [_head("The hardest stretch", "#a3341f"),
+                out += [_head("The hardest stretch", P["warn"]),
                         _p(f"The peak phase, {_month_year(peak['start'])} to {_month_year(peak['end'])}, "
-                           "is when the pressure is usually felt most.")]
+                           "is when the pressure is usually felt most.", P)]
         if blk.get("relevant"):
-            out += [_head("Cautions for this time", "#a3341f"), _list(CAUTIONS),
-                    _head("Remedies", "#1c6b45"), _list(REMEDIES),
-                    _p(GEM_CAUTION, "margin-top:8px;"),
-                    _p(NOTE, "font-size:.82rem;color:#5a6070;")]
+            out += [_head("Cautions for this time", P["warn"]), _list(CAUTIONS, P),
+                    _head("Remedies", P["good"]), _list(REMEDIES, P),
+                    _p(GEM_CAUTION, P, "margin-top:8px;"),
+                    _p(NOTE, P, small)]
     elif blk.get("relevant"):
-        out += [_head("What to keep in mind", "#a3341f"), _list(CAUTIONS[:2])]
+        out += [_head("What to keep in mind", P["warn"]), _list(CAUTIONS[:2], P)]
         out.append(
             '<div class="lock-wrap" data-unlock="1" role="button" tabindex="0" '
             'style="margin:14px 0 4px;border-radius:12px;cursor:pointer;">'
@@ -286,7 +342,22 @@ def render(blk: Optional[dict], *, paid: bool, price: int = 298) -> str:
             '<div class="lock-over" data-unlock="1"><span class="lock-chip" data-unlock="1" '
             'style="font-size:.72rem;padding:7px 18px;cursor:pointer;">&#128274; See the dates and the remedies'
             '</span></div></div>'
-            '<p style="font-size:.84rem;line-height:1.5;color:#4a5160;margin:8px 0 0;">&#129680; The start and end '
+            f'<p style="font-size:.84rem;line-height:1.5;color:{P["muted"]};margin:8px 0 0;">&#129680; The start and end '
             'of each phase, the hardest stretch, five cautions and the remedies are in the full reading.</p>')
-    out.append("</section>")
-    return "\n".join(out)
+    body = "\n".join(out)
+
+    card_style = (f'background:{P["card"]};border:1px solid {P["border"]};border-left:4px solid {color};'
+                  f'border-radius:12px;margin:18px 0;box-shadow:{P["shadow"]};')
+    if not collapsible:
+        return ('<section class="card sade-sati" style="' + card_style + 'padding:18px 22px;">'
+                '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;'
+                f'margin-bottom:6px;">{kicker}{pill_html}</div>{title}{body}</section>')
+
+    return (f'<details class="sade-sati" id="sec-sade-sati" data-nav="Sade Sati"'
+            f'{" open" if in_it else ""} style="{card_style}">'
+            f'<summary style="cursor:pointer;padding:16px 22px;list-style-position:inside;">'
+            f'<span style="display:inline-flex;justify-content:space-between;align-items:baseline;gap:10px;'
+            f'flex-wrap:wrap;width:calc(100% - 22px);vertical-align:top;">{kicker}{pill_html}</span>'
+            f'<span style="display:block;font-family:Georgia,serif;font-size:1.1rem;font-weight:600;'
+            f'color:{P["head"]};margin:6px 0 0 22px;line-height:1.35;">{_e(head)}</span></summary>'
+            f'<div style="padding:0 22px 18px;">{body}</div></details>')

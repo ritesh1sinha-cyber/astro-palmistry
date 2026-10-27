@@ -2571,6 +2571,7 @@ def render(
     analysis: Any = None,
     lang: str = "en",
     sade_html: str = "",
+    sade_banner_html: str = "",
 ) -> str:
     """Render the LLM report as a consultation-style reading.
 
@@ -2986,6 +2987,8 @@ def render(
     body = f"""
     {hero_html}
 
+    {sade_banner_html}
+
     <section class="conv-block who-you-are-block">
       <div class="section-kicker">{who_kicker}</div>
       <h2 id="sec-who-you-are" data-nav="Who you are">{who_heading}</h2>
@@ -3010,9 +3013,9 @@ def render(
 
     {transits_html}
 
-    {sade_html}
-
     {remedy_block_html}
+
+    {sade_html}
 
     {upsell_html if not paid else ""}
     {unlock}

@@ -626,7 +626,8 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 upsell_html=upsell,
                 analysis=(paid_facts if paid else free_facts),
                 lang=lang,
-                sade_html=_sade_html(sade_blk, paid=paid, price=price))
+                sade_html=_sade_html(sade_blk, paid=paid, price=price, dark=True),
+                sade_banner_html=_sade_banner_html(sade_blk, dark=True))
             return _post_render_guard(_scrub(body, allowed_dates=_allowed_dates(paid)))
 
         # Frozen non-LLM / classic path — untouched when conversational is used.
@@ -637,8 +638,8 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                 present_html = PR.render(present_block, paid=paid)
             except Exception as exc:                                 # noqa: BLE001
                 print(f"[report_render] present render failed: {exc}", flush=True)
-        remedy = (_sade_html(sade_blk, paid=paid, price=price)
-                  + _safe(_remedy, pc, name=first, paid=paid, price=price, lang=lang))
+        remedy = (_safe(_remedy, pc, name=first, paid=paid, price=price, lang=lang)
+                  + _sade_html(sade_blk, paid=paid, price=price))
         if paid:
             dashboard_html = _safe(_promise_dashboard, shared_cards)
             tail = dashboard_html + timing_html + remedy
@@ -649,7 +650,7 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
                     + _bundle(bundle_price))
         body = RC.render(
             pc, name=name, price=price, today=today, paid=paid,
-            question_html="",
+            question_html=_sade_banner_html(sade_blk),
             proof_html=present_html + past_html,
             timing_html=tail,
             cards=shared_cards,
@@ -696,14 +697,28 @@ def _full_report_inner(pc: dict, *, name: str = "", question: str = "",
     return free_html, paid_html, meta
 
 
-def _sade_html(blk: Any, *, paid: bool, price: int = 298) -> str:
+def _sade_html(blk: Any, *, paid: bool, price: int = 298, dark: bool = False) -> str:
+    """The detailed Sade Sati block, last on the page: open while it is running,
+    folded when it is not."""
     if not blk:
         return ""
     try:
         import sade_sati as SS
-        return SS.render(blk, paid=paid, price=price)
+        return SS.render(blk, paid=paid, price=price, dark=dark, collapsible=True)
     except Exception as exc:                                         # noqa: BLE001
         print(f"[report_render] sade sati render failed: {exc}", flush=True)
+        return ""
+
+
+def _sade_banner_html(blk: Any, *, dark: bool = False) -> str:
+    """Top-of-page highlight, only while Sade Sati is running."""
+    if not blk:
+        return ""
+    try:
+        import sade_sati as SS
+        return SS.banner(blk, dark=dark)
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"[report_render] sade sati banner failed: {exc}", flush=True)
         return ""
 
 

@@ -131,3 +131,20 @@ def test_sade_sati_pages():
     far_paid = SS.render(far, paid=True)
     assert "Remedies" not in far_paid and "nothing to do about it now" in far_paid
     assert SS.window_dates(running) and all(isinstance(w["start"], date) for w in SS.window_dates(running))
+
+
+def test_sade_sati_fold_and_banner():
+    running = SS.build(_pc("Aries", 5), TODAY)
+    far = SS.build(_pc("Capricorn", 2), TODAY)
+    # running: banner at the top, detailed block open
+    assert "sade-banner" in SS.banner(running) and "#sec-sade-sati" in SS.banner(running)
+    open_html = SS.render(running, paid=True, dark=True, collapsible=True)
+    assert "<details" in open_html and " open" in open_html.split(">", 1)[0] + ">"
+    assert 'id="sec-sade-sati"' in open_html and "Hanuman Chalisa" in open_html
+    # not running: no banner, block folded
+    assert SS.banner(far) == ""
+    folded = SS.render(far, paid=True, dark=True, collapsible=True)
+    assert "<details" in folded and " open" not in folded.split(">", 1)[0]
+    assert "<summary" in folded and "Not running now" in folded
+    # dark palette: no white card
+    assert "#fff" not in folded and "#1e293b" in folded
