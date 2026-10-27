@@ -1655,6 +1655,10 @@ def _build_unified_current_chapter_html(
                     f'</div>\n'
                 )
             else:
+                # The blur is only CSS: whatever text is in the block is in the page
+                # source. It used to be the real roadmap, i.e. the next sub-period, its
+                # exact dates and its verdict. Ship stand-in text of the same shape.
+                r_items = "".join(f"<li>{it}</li>" for it in _ROADMAP_PLACEHOLDER)
                 roadmap_card_html = (
                     f'<div class="summary-card pos lock-wrap">\n'
                     f'  <div class="lock-blur">\n'
@@ -2187,6 +2191,13 @@ def _build_unified_current_chapter_html(
     """
 
 
+_ROADMAP_PLACEHOLDER = (
+    "Your current phase is nearing the end of its refinement window. Use the time to consolidate "
+    "what you have built and settle anything left pending before the next chapter begins.",
+    "Your chart then moves into a new sub-period. Its dates, its character and what it asks of you "
+    "are worked out for your chart in the full reading.",
+)
+
 _STRONG_DIGNITIES = ("exalted", "moolatrikona", "own_sign")
 _STRAINED_DIGNITIES = ("debilitated", "enemy_sign")
 # Jupiter, Saturn and the nodes are the only bodies whose stay is long enough
@@ -2357,7 +2368,8 @@ _TRANSIT_LABELS = {
 }
 
 
-def _active_transits_html(pc: dict, *, today: date, lang: str = "en") -> str:
+def _active_transits_html(pc: dict, *, today: date, lang: str = "en",
+                          paid: bool = True) -> str:
     """Section 6, computed from where the planets actually are today.
 
     The previous version printed one sample chart's transits, including a
@@ -2382,7 +2394,11 @@ def _active_transits_html(pc: dict, *, today: date, lang: str = "en") -> str:
             natal_by_sign.setdefault(sign, []).append(planet)
 
     rows: list[str] = []
-    for planet in (*_SLOW_TRANSITS, *_MEDIUM_TRANSITS):
+    # Free shows the slow planets that define the chapter (Jupiter, Saturn, Rahu);
+    # the quicker ones, each with its end date and what to do, are the full reading's.
+    free_planets = ("Jupiter", "Saturn", "Rahu")
+    shown = (*_SLOW_TRANSITS, *_MEDIUM_TRANSITS) if paid else free_planets
+    for planet in shown:
         try:
             if planet in ("Rahu", "Ketu"):
                 segs = _node_segments(pc, planet, today, 2)
@@ -2418,15 +2434,26 @@ def _active_transits_html(pc: dict, *, today: date, lang: str = "en") -> str:
             f"{_e(HOUSE_PLAIN.get(house, 'this area of life'))}.{over}<br>"
             + (f"<b>Transition timing:</b> {until_lbl} "
                f"<span class='timing-badge'>{ends:%d %b %Y}</span>, when "
-               f"{_e(planet)} leaves {_e(sign)}.<br>" if ends else "")
+               f"{_e(planet)} leaves {_e(sign)}.<br>" if ends and paid else "")
+            + ("<b>Transition timing:</b> the date this eases is calculated "
+               "in the full reading.<br>" if ends and not paid else "")
             + f"<div class='preventive-callout'><b>{advice_lbl}</b> {advice}</div></li>")
 
     if not rows:
         return ""
+    more = ""
+    if not paid:
+        more = (
+            '<div class="lock-wrap" style="margin-top:12px;"><div class="lock-blur">'
+            "The quicker planets (Mars, Venus, Mercury, Sun and Ketu) are moving through your chart "
+            "too, each with its own end date and the one thing to do about it."
+            '</div><div class="lock-over"><span class="lock-chip">'
+            "&#128274; Quicker transits and their dates &middot; in the full reading"
+            "</span></div></div>\n")
     return (f'<div class="summary-card warn">\n'
             f"    <h2>{title}</h2>\n"
             f'    <ul class="bullet-list warn">{"".join(rows)}</ul>\n'
-            f"</div>\n")
+            f"{more}</div>\n")
 
 
 def _transit_verdict(planet: str, bav: Any, house: int,
@@ -2826,7 +2853,7 @@ def render(
 
     # Section 6: where the planets actually are for this chart today.
     transits_html = _safe_block(_active_transits_html, pc, today=today,
-                                lang=lang)
+                                lang=lang, paid=paid)
 
     # Section 7. The caller already computed a remedy block for this chart;
     # the version that lived here prescribed Ketu's mantra for whichever

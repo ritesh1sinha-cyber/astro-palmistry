@@ -729,19 +729,22 @@ def _summary_brief(kind: str, meta: dict, facts: Any, *, paid: bool) -> dict:
             if isinstance(s, dict) and s.get("k") and isinstance(s.get("v"), (int, float))
         ])
         aspects = f.get("aspects") if isinstance(f.get("aspects"), list) else []
-        put("life_areas", [
-            {
-                "area": _clip(a.get("aspect"), 60),
-                "direction": _clip(a.get("direction"), 40),
-                "reading": _clip(a.get("semantic_summary"), 240),
-            }
-            for a in aspects[:8] if isinstance(a, dict) and a.get("aspect")
-        ])
+        if paid:      # life-area verdicts are the paid half's answer
+            put("life_areas", [
+                {
+                    "area": _clip(a.get("aspect"), 60),
+                    "direction": _clip(a.get("direction"), 40),
+                    "reading": _clip(a.get("semantic_summary"), 240),
+                }
+                for a in aspects[:8] if isinstance(a, dict) and a.get("aspect")
+            ])
         consultation = f.get("consultation_sections")
         if isinstance(consultation, dict):
             measured_sections = []
             for key, section in consultation.items():
                 if not isinstance(section, dict):
+                    continue
+                if not paid and key not in ("core_persona", "mind_architecture", "heart_equilibrium"):
                     continue
                 title = _clip(section.get("title"), 100)
                 narrative = _clip(section.get("narrative"), 260)
@@ -1385,11 +1388,31 @@ def _cta_section(kind: str, lang: str = "en") -> dict:
     return {"title": title, "body": body, "role": "cta"}
 
 
+_FREE_GATED_TITLE = re.compile(
+    r"\b(career|vocation\w*|wealth|money|financ\w*|capital|relationship\w*|marriage|partner\w*|"
+    r"health|vitality|stamina|children|progeny)\b")
+
+
 def _repair_free_sections(
     sections: list[dict], kind: str, inventory: Optional[dict], lang: str = "en"
 ) -> list[dict]:
     """Guarantee a free summary closes on a locked account and one CTA."""
     out = [s for s in sections if (s.get("role") or "insight") == "insight"]
+    # A free insight must not be a locked heading dressed up as content ("Exact Dates
+    # for Every Life Area: the full report includes…"), nor a verdict for an area the
+    # paid half answers.
+    locked_titles = {re.sub(r"\W+", " ", t).strip().lower()
+                     for t in ((inventory or {}).get("sections") or []) if isinstance(t, str)}
+    gated = kind in ("palm", "full_report", "classical_report")
+    kept = []
+    for sec in out:
+        title = re.sub(r"\W+", " ", str(sec.get("title") or "")).strip().lower()
+        if title in locked_titles:
+            continue
+        if gated and _FREE_GATED_TITLE.search(title):
+            continue
+        kept.append(sec)
+    out = kept or out
     locked = [s for s in sections if s.get("role") == "locked"]
     cta = [s for s in sections if s.get("role") == "cta"]
     out.append(locked[0] if locked else _locked_section(kind, inventory, lang))
@@ -2391,8 +2414,9 @@ def _user_prompt(
                 "'What your chart says about you'. Do this before discussing the current "
                 "phase or life areas. Do not replace personal traits with generic words "
                 "such as supportive, creative or careful. When present, also cover the "
-                "free-visible D1 self baseline, D2 money and savings, D3 courage and "
-                "initiative, and D12 family and parental findings. End the insight "
+                "free-visible D1 self baseline, D3 courage and "
+                "initiative, and D12 family and parental findings; say nothing about "
+                "money, career, relationships or health. End the insight "
                 "sections with the current strained areas from the brief."
             )
     lines.append(
@@ -2526,7 +2550,7 @@ def _summary_from_question_reading(meta: dict, *, paid: bool, lang: str) -> Opti
 
     sections: list[dict] = [{"title": t_answer, "body": answer, "role": "insight"}]
     if why:
-        sections.append({"title": t_why, "body": " ".join(why[:3]), "role": "insight"})
+        sections.append({"title": t_why, "body": " ".join(why[:(3 if paid else 2)]), "role": "insight"})
     has_more = bool(timing or steps)
     if paid:
         if timing:
@@ -2535,8 +2559,10 @@ def _summary_from_question_reading(meta: dict, *, paid: bool, lang: str) -> Opti
             sections.append({"title": t_do, "body": " ".join(steps[:3]), "role": "insight"})
     elif has_more:
         if key == "en":
-            body = ("The timing window and the practical steps for this question are written and "
-                    "waiting in the full answer.")
+            n_lens = len([x for x in (rd.get("lenses") or []) if isinstance(x, dict)])
+            body = ("A dated window has been worked out for this question, with steps that suit your chart. "
+                    + (f"{n_lens} more perspectives were checked too, and what each one found is in the full answer."
+                       if n_lens > 2 else "The full answer has the details."))
             sections.append({"title": t_next, "body": body, "role": "locked"})
         else:
             sections.append(_locked_section("user_question", None, lang))

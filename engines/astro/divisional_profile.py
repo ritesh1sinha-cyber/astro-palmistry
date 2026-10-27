@@ -44,7 +44,9 @@ GOOD_HOUSES = {1, 2, 4, 5, 7, 9, 10, 11}
 NAT_BENEFIC = {"Jupiter", "Venus", "Mercury", "Moon"}
 NAT_MALEFIC = {"Sun", "Mars", "Saturn", "Rahu", "Ketu"}
 
-FREE_ALLOWED_VARGAS = {"D1", "D2", "D3", "D12"}
+# D2 (money & wealth) is deliberately NOT free: it is one of the most-wanted answers,
+# and the free half shows what the chart is *activating*, not the wealth verdict.
+FREE_ALLOWED_VARGAS = {"D1", "D3", "D12"}
 LOCKED_TEASER_VARGAS = ["D7", "D9", "D10", "D24", "D30"]
 
 ORDINALS = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th", 7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th"}
@@ -2138,19 +2140,19 @@ def render_divisional_blocks(pc: dict, *, paid: bool = False,
     teaser_html = ""
     if not paid and teaser_items:
         if is_hinglish:
-            t_area = "Baki 5 Jeevan Kshetra"
+            t_area = "Baki 6 Jeevan Kshetra"
             t_avail = "Full Reading Mein Uplabdh"
-            t_desc = "Aapke baki divisional charts career karma (D10), vivah aur jeevansathi (D9), santan (D7), uccha shiksha (D24), aur swasthya/immunity (D30) ko map karte hain:"
+            t_desc = "Aapke baki divisional charts dhan aur sampatti (D2), career karma (D10), vivah aur jeevansathi (D9), santan (D7), uccha shiksha (D24), aur swasthya/immunity (D30) ko map karte hain:"
             t_cta = "Complete Divisional Breakdown Unlock Karein"
         elif is_tenglish:
-            t_area = "Migilina 5 Jeevitha Rangalu"
+            t_area = "Migilina 6 Jeevitha Rangalu"
             t_avail = "Full Reading Lo Labhisthundi"
-            t_desc = "Mee migilina divisional charts career karma (D10), vivaham mariyu jeevithabhagswami (D9), santhanam (D7), uccha vidya (D24), mariyu aarogyam/immunity (D30) ni map chesthayi:"
+            t_desc = "Mee migilina divisional charts dhanam mariyu sampada (D2), career karma (D10), vivaham mariyu jeevithabhagswami (D9), santhanam (D7), uccha vidya (D24), mariyu aarogyam/immunity (D30) ni map chesthayi:"
             t_cta = "Complete Divisional Breakdown Unlock Cheyandi"
         else:
             t_area = "Remaining Key Life Areas"
             t_avail = "Available in Full Reading"
-            t_desc = "Your full reading unlocks in-depth consultations for your Career & Leadership, Marriage & Partner, Children & Legacy, Higher Learning & Skills, and Physical Stamina & Resilience:"
+            t_desc = "Your full reading unlocks in-depth consultations for your Money & Wealth, Career & Leadership, Marriage & Partner, Children & Legacy, Higher Learning & Skills, and Physical Stamina & Resilience:"
             t_cta = "Unlock Complete Life Consultations · ₹298"
         teaser_html = (
             f'<div class="summary-card" id="domain-locked" style="background:#1e293b;border:1px dashed var(--border);border-radius:14px;padding:22px 24px;margin-bottom:20px;">\n'

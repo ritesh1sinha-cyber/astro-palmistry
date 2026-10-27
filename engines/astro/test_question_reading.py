@@ -94,8 +94,12 @@ def test_chandra_naadi_is_in_the_reasons_and_the_page():
     r = QR._fallback(facts)
     assert any(w.startswith("Chandra Naadi:") for w in r.why), r.why
     assert {l["key"] for l in r.lenses} == {"promise", "vimshottari", "jaimini", "yogini", "transit", "naadi"}
-    page = QR.render_html(r, facts, paid=False)
+    page = QR.render_html(r, facts, paid=True)
     assert "Chandra Naadi" in page and "Chara period" in page and "Yogini" in page and "uq-lenses" in page
+    # the free half only counts the lenses; what each one found stays behind the lock
+    free = QR.render_html(r, facts, paid=False)
+    assert "more perspectives were checked" in free and "Chara period" not in free and "Yogini" not in free
+    assert free.count("<li") <= 3
 
 
 def test_model_reasons_always_cover_the_promise_and_something_running_now():
@@ -398,8 +402,10 @@ def test_health_answer_names_the_area_and_where_to_take_care():
     vuln_reason = next(w for w in r.why if "Chandra Naadi marks" in w)
     low = " ".join([r.answer, vuln_reason, *r.steps, r.timing]).lower()      # (the sign Cancer is not a disease)
     assert not re.search(r"\b(cancer|diabet\w*|surgery|death|die|lifespan|longevity)\b", low)
-    page = QR.render_html(r, facts, paid=False)
-    assert "Body vulnerability" in page and "Unlock" in page
+    page = QR.render_html(r, facts, paid=True)
+    assert "Body vulnerability" in page
+    free = QR.render_html(r, facts, paid=False)
+    assert "Body vulnerability" not in free and "Unlock" in free
 
 
 def test_every_domain_answer_names_its_area():

@@ -137,6 +137,9 @@ def test_nothing_is_blanked_by_the_page_filter_in_any_language():
             for paid in (False, True):
                 page = _rendered(lang, label, paid)
                 assert not re.search(r"<li[^>]*>\s*</li>", page), (lang, label, paid)
+                if not paid:        # free: headline, two reasons and a count - no chips, no full list
+                    assert "uq-lenses" in page and page.count("<li") <= 3, (lang, label)
+                    continue
                 chips = re.findall(r'border-radius:99px;background:#\w+;color:#\w+;">([^<]*)</span>', page)
                 assert chips and all(re.sub(r"&#\d+;|&bull;", "", c).strip() for c in chips), (lang, chips)
                 assert page.count("<li") >= len(HR.LENS_ORDER), (lang, label, paid)
@@ -144,7 +147,8 @@ def test_nothing_is_blanked_by_the_page_filter_in_any_language():
 
 def test_free_shows_the_answer_and_locks_timing_and_steps():
     free, paid = _rendered("en", "conditional", False), _rendered("en", "conditional", True)
-    assert "How the lenses line up" in free and PLAIN.answer in free
+    assert "How the lenses line up" in paid and "How the lenses line up" not in free
+    assert "more perspectives were checked" in free and PLAIN.answer in free
     assert "Unlock" in free and PLAIN.remedy not in free and PLAIN.timing not in free
     assert PLAIN.remedy in paid and PLAIN.timing in paid and "Unlock" not in paid
 

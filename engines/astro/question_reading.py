@@ -957,9 +957,12 @@ _LABELS = {
         "lens_vulnerability": "Body vulnerability",
         "lens_kp": "Chart's promise", "lens_ruling": "Ruling planets", "lens_period": "Running period",
         "lens_moment": "Moment chart", "lens_jamakkol": "Tamil method", "lens_moon": "Moon now",
-        "lock": "Timing and next steps are in the full reading",
-        "lockchip": "Unlock timing and steps",
-        "cta": "Unlock full answer", "sub": "Timing window and practical steps for this question.",
+        "lock": "A dated window has been worked out for your question, with steps that suit your chart",
+        "lockchip": "See when, and what to do",
+        "cta": "Unlock full answer", "sub": "The window we calculated for this question, and the steps that suit it.",
+        "lens_count": "{n} more perspectives were checked on your chart. What each one found is in the full reading.",
+        "more_why": "{n} more reasons from your chart are in the full reading.",
+        "deeper": "Every perspective in detail",
     },
     "hi_en": {
         "kicker": "Aapka prashna", "why": "Aapki kundli kya dikhati hai", "when": "Kab",
@@ -972,9 +975,12 @@ _LABELS = {
         "lens_vulnerability": "Sharir ki sanvedansheelta",
         "lens_kp": "Kundli ka vachan", "lens_ruling": "Shasak grah", "lens_period": "Chal rahi dasha",
         "lens_moment": "Prashna kundli", "lens_jamakkol": "Tamil vidhi", "lens_moon": "Abhi Chandra",
-        "lock": "Samay aur agle kadam poori reading mein hain",
-        "lockchip": "Samay aur kadam unlock karein",
-        "cta": "Poora jawab unlock karein", "sub": "Is prashna ka samay aur vyavaharik kadam.",
+        "lock": "Aapke prashna ke liye ek tarikh-wali avadhi nikali gayi hai, aapki kundli ke anuroop kadam ke saath",
+        "lockchip": "Kab aur kya karein, dekhein",
+        "cta": "Poora jawab unlock karein", "sub": "Is prashna ke liye nikali gayi avadhi aur uske anuroop kadam.",
+        "lens_count": "Aapki kundli par {n} aur drishtikon jaanche gaye. Har ek ne kya paya, yeh poori reading mein hai.",
+        "more_why": "Aapki kundli ke {n} aur karan poori reading mein hain.",
+        "deeper": "Har drishtikon vistaar mein",
     },
     "te_en": {
         "kicker": "Mee prashna", "why": "Mee kundali emi chupisthundi", "when": "Eppudu",
@@ -987,9 +993,12 @@ _LABELS = {
         "lens_vulnerability": "Sharira sunnitatvam",
         "lens_kp": "Kundali vagdanam", "lens_ruling": "Shasaka grahalu", "lens_period": "Nadustunna dasha",
         "lens_moment": "Ee kshanam chart", "lens_jamakkol": "Tamil paddhati", "lens_moon": "Ippudu Chandrudu",
-        "lock": "Samayam mariyu tarvata chese pani poorthi reading lo unnayi",
-        "lockchip": "Samayam mariyu steps unlock cheyandi",
-        "cta": "Poorthi samadhanam unlock cheyandi", "sub": "Ee prashnaku samayam mariyu practical steps.",
+        "lock": "Mee prashnaku oka tedee-tho unna samayam lekkinchabadindi, mee kundaliki saripoye steps tho",
+        "lockchip": "Eppudu, em cheyali chudandi",
+        "cta": "Poorthi samadhanam unlock cheyandi", "sub": "Ee prashnaku lekkinchina samayam mariyu daaniki saripoye steps.",
+        "lens_count": "Mee kundali meeda inka {n} drukkonalu parishilincham. Prathidi emi chupindo poorthi reading lo undi.",
+        "more_why": "Mee kundali nundi inka {n} karanalu poorthi reading lo unnayi.",
+        "deeper": "Prathi drukkonam vivaramga",
     },
 }
 _STANCE_COLOR = {"favourable": "#1c6b45", "mixed": "#8a6a1f", "difficult": "#a3341f",
@@ -1064,7 +1073,15 @@ def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str 
         '</article>',
     ]
 
-    if reading.lenses:
+    free_view = not paid and not out_of_scope
+    if reading.lenses and free_view:
+        n_lens = len([v for v in reading.lenses if int(v.get("vote", 0)) in (1, 0, -1)])
+        if n_lens:
+            parts.append(
+                '<div class="uq-lenses" style="margin:0 0 14px;padding:10px 14px;background:#fff;'
+                'border:1px solid #e8e4dc;border-radius:12px;font-size:.84rem;line-height:1.5;color:#4a5160;">'
+                f'&#128269; {L["lens_count"].format(n=n_lens)}</div>')
+    elif reading.lenses:
         chip = {1: ("&#10003;", "#1c6b45", "#e9f5ee"), 0: ("&bull;", "#8a6a1f", "#fbf6e4"),
                 -1: ("&#10007;", "#a3341f", "#fbeae6")}
         chips = "".join(
@@ -1080,7 +1097,12 @@ def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str 
             f'<div style="display:flex;flex-wrap:wrap;gap:6px;">{chips}</div></div>')
 
     if reading.why:
-        items = "".join(f'<li style="margin-bottom:6px;">{_esc(w)}</li>' for w in reading.why)
+        shown = reading.why[:2] if free_view else reading.why
+        hidden = len(reading.why) - len(shown)
+        items = "".join(f'<li style="margin-bottom:6px;">{_esc(w)}</li>' for w in shown)
+        if hidden > 0:
+            items += (f'<li style="margin-bottom:6px;list-style:none;margin-left:-18px;color:#8a5a1c;'
+                      f'font-size:.84rem;">&#128274; {L["more_why"].format(n=hidden)}</li>')
         parts.append(
             '<article class="card" style="background:#fff;border:1px solid #e8e4dc;border-radius:12px;'
             'padding:16px 20px;margin-bottom:14px;">'
@@ -1119,6 +1141,22 @@ def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str 
             'color:#16181d;font-weight:700;font-size:.95rem;padding:12px 26px;border-radius:99px;'
             f'text-decoration:none;width:100%;max-width:320px;">&#128274; {L["cta"]} &mdash; &#8377;{int(price)}</a>'
             '</div>')
+
+    if paid and not out_of_scope:
+        try:
+            have = {str(w).strip() for w in reading.why}
+            extra = [t for _fid, _l, t in _findings_full(facts, lang) if t.strip() not in have][:6]
+        except Exception:
+            extra = []
+        if extra:
+            li = "".join(f'<li style="margin-bottom:6px;">{_esc(t)}</li>' for t in extra)
+            parts.append(
+                '<article class="card" style="background:#fff;border:1px solid #e8e4dc;border-radius:12px;'
+                'padding:16px 20px;margin-bottom:14px;">'
+                f'<div style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;'
+                f'color:#7a4b18;margin-bottom:8px;">{L["deeper"]}</div>'
+                f'<ul style="margin:0;padding-left:18px;font-size:.92rem;line-height:1.55;color:#2c3140;">{li}</ul>'
+                '</article>')
 
     if fact_rows is None:
         fact_rows = _facts_list(facts)
