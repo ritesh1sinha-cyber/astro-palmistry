@@ -198,7 +198,7 @@ def _gem_safety(
     if trikona_lords and planet not in trikona_lords and role not in ("Lagna lord", "H1 lord", "5th lord", "9th lord"):
         verdict = "mantra_only"
         use_sub = False
-        reasons.append(f"{planet} is not a primary trine/lagna lord for {lagna} Ascendant — mantra and charity recommended instead of gemstone wear")
+        reasons.append(f"{planet} does not rule one of the fortune houses for {lagna} rising, so a stone for it is not advised — mantra and charity suit it better")
 
     if ph in DUSTHANA and role not in ("Lagna lord", "H1 lord"):
         verdict = "avoid"

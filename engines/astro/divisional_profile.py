@@ -342,6 +342,18 @@ def _get_varga_planet_sign(pc: dict, code: str, planet: str) -> str:
     return (pc.get("divisional", {}).get(code, {}) or {}).get(planet, "")
 
 
+def _a_an(phrase: str) -> str:
+    """'a' or 'an' for the phrase that follows ("a intellectually" read wrong)."""
+    word = (str(phrase or "").strip().split() or [""])[0].lower()
+    if not word:
+        return "a"
+    if word.startswith(("uni", "use", "usu", "uti", "one", "eu")):
+        return "a"
+    if word.startswith(("hour", "honest", "honou", "honor", "heir")):
+        return "an"
+    return "an" if word[0] in "aeiou" else "a"
+
+
 def _format_month_year(date_str: str) -> str:
     if not date_str or len(date_str) < 7:
         return date_str
@@ -1511,7 +1523,7 @@ def _interpret_varga_concrete(
             )
             reading_parts.append(
                 f"The Navamsha division maps life partnership, marital harmony, and inner destiny (Bhagyodaya). "
-                f"Your chart indicates a <b>{partner_nature}</b> life partner, likely connected with <b>{partner_realm}</b>. "
+                f"Your chart indicates {_a_an(partner_nature)} <b>{partner_nature}</b> life partner, likely connected with <b>{partner_realm}</b>. "
                 f"The relationship provides {dynamics}, bringing emotional stability, shared values, and mutual life elevation in adulthood."
             )
         remedy_planet = "Venus"
@@ -1544,7 +1556,7 @@ def _interpret_varga_concrete(
             )
             fields_bullet = ", ".join([f"<b>{f}</b>" for f in suited_fields])
             reading_parts.append(
-                f"Your professional karma operates as an <b>{archetype}</b>. Your natural work style {work_style}.<br><br>"
+                f"Your professional karma operates as {_a_an(archetype)} <b>{archetype}</b>. Your natural work style {work_style}.<br><br>"
                 f"<b>Optimal High-Growth Career Fields:</b> Your planetary confluence indicates maximum success and recognition in {fields_bullet}. "
                 f"Gaining specialized subject mastery early paves the way for significant executive respect and leadership authority."
             )

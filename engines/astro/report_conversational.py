@@ -2424,14 +2424,22 @@ def _active_transits_html(pc: dict, *, today: date, lang: str = "en",
 
         over = ""
         if conjunct:
-            over = (f" <b>{over_lbl} {_e(' and '.join(conjunct))}:</b> the two "
-                    f"come together this cycle, so the effect is felt more "
-                    f"sharply than usual.")
+            if lang_key == "en":
+                over = (f" It is also sitting on your natal {_e(' and '.join(conjunct))}, "
+                        f"so expect it to touch that part of you first.")
+            else:
+                over = (f" <b>{over_lbl} {_e(' and '.join(conjunct))}:</b> the two "
+                        f"come together this cycle, so the effect is felt more "
+                        f"sharply than usual.")
+        area_txt = _e(HOUSE_PLAIN.get(house, "this area of life"))
+        impact_txt = (impact.replace("{area}", area_txt) if "{area}" in impact
+                      else f"{impact} in {area_txt}")
+        if not impact_txt.rstrip().endswith((".", "!", "?")):
+            impact_txt += "."
         rows.append(
             f"<li><span class='tag'>{_e(planet)} in {_e(sign)}"
             f"{f' · House {house}' if house else ''}</span> {pill}<br>"
-            f"<b>Current impact:</b> {impact} in "
-            f"{_e(HOUSE_PLAIN.get(house, 'this area of life'))}.{over}<br>"
+            f"{impact_txt}{over}<br>"
             + (f"<b>Transition timing:</b> {until_lbl} "
                f"<span class='timing-badge'>{ends:%d %b %Y}</span>, when "
                f"{_e(planet)} leaves {_e(sign)}.<br>" if ends and paid else "")
@@ -2466,24 +2474,82 @@ def _transit_verdict(planet: str, bav: Any, house: int,
     """
     del lang_key  # The pill text is shared; the surrounding copy carries lang.
     if planet in ("Rahu", "Ketu"):
+        impact, advice = _TRANSIT_COPY[planet]["node"]
         return ("<span class='phase-pill warning'>Karmic calibration</span>",
-                "A long, slow re-sorting of priorities",
-                "Verify anything that looks unusually convenient, and keep "
-                "paperwork and health checks current while this runs.")
+                impact, advice)
     score = _as_int(bav) if bav is not None else 4
-    if score >= 5:
-        return ("<span class='phase-pill positive'>Supportive</span>",
-                "A genuinely helpful stretch",
-                "Use it deliberately: finalise the thing you have been "
-                "circling rather than waiting for a better window.")
-    if score <= 3:
-        return ("<span class='phase-pill warning'>Demanding</span>",
-                "A stretch that asks for care",
-                "Slow down and verify. Confirm commitments in writing and "
-                "avoid taking on anything you cannot finish.")
-    return ("<span class='phase-pill info'>Steady</span>",
-            "An ordinary working stretch",
-            "Keep to routine. Nothing here needs a decision forced out of it.")
+    tone = "supportive" if score >= 5 else "demanding" if score <= 3 else "steady"
+    pill = {"supportive": "<span class='phase-pill positive'>Supportive</span>",
+            "demanding": "<span class='phase-pill warning'>Demanding</span>",
+            "steady": "<span class='phase-pill info'>Steady</span>"}[tone]
+    copy = _TRANSIT_COPY.get(planet, {}).get(tone)
+    if not copy:
+        copy = _TRANSIT_COPY["Saturn"][tone]
+    return (pill, copy[0], copy[1])
+
+
+# One voice per planet. The old block gave every planet the same three
+# sentences, so eight cards in a row read as one card repeated. ``{area}`` is
+# filled with the house theme where the planet sits (e.g. "money, speech, and
+# family"). Tone follows the Ashtakavarga bindu score, never the wording.
+_TRANSIT_COPY: dict[str, dict[str, Any]] = {
+    "Jupiter": {
+        "supportive": ("Jupiter is generous with you here: help, advice and goodwill come more easily around {area}.",
+                       "Say yes to guidance and introductions, and finish the thing you have been circling while the door is open."),
+        "steady": ("Jupiter is a quiet supporter for {area}. Nothing dramatic, but nothing working against you either.",
+                   "Keep building steadily; small consistent steps count for more than one big push right now."),
+        "demanding": ("Jupiter is stretched thin around {area}: more promises than delivery, so hopes can run ahead of reality.",
+                      "Don't overcommit or overspend on hope, and check advice against facts before you act on it."),
+    },
+    "Saturn": {
+        "supportive": ("Saturn rewards honest, patient work around {area}. What you build now holds.",
+                       "Take on the long-term responsibility you have been putting off; it pays back later."),
+        "steady": ("Saturn asks for patience around {area}. Progress is slow, but it is real.",
+                   "Keep to routine and finish what you start; do not expect quick applause."),
+        "demanding": ("Saturn is testing you around {area}: delays, extra duty and a feeling of being weighed.",
+                      "Slow down and verify. Confirm commitments in writing and avoid taking on anything you cannot finish."),
+    },
+    "Mars": {
+        "supportive": ("Mars gives you drive around {area}: energy, courage and the push to begin.",
+                       "Use that energy early in the day. Start the task, not the argument."),
+        "steady": ("Mars moves at an ordinary pace through {area}, with energy to spare but nothing forcing it.",
+                   "Keep to routine and put the spare energy into exercise or one practical job."),
+        "demanding": ("Mars runs hot around {area}: short tempers, rushed decisions and friction with other people.",
+                      "Pause before you reply, avoid risky shortcuts, and let the other side speak first."),
+    },
+    "Venus": {
+        "supportive": ("Venus softens {area}: warmth, pleasant company and an easier flow of money or affection.",
+                       "Reach out, repair a relationship, or treat yourself within your budget."),
+        "steady": ("Venus is a gentle background presence around {area}.",
+                   "Keep things courteous and do not read too much into small gestures."),
+        "demanding": ("Venus is unsettled around {area}: comfort spending, mixed signals and small disappointments.",
+                      "Hold back on impulse purchases, and do not decide anything about a relationship on one bad day."),
+    },
+    "Mercury": {
+        "supportive": ("Mercury sharpens {area}: clear thinking, good conversations and deals that read well on paper.",
+                       "Make the call, send the proposal, sign the clean agreement."),
+        "steady": ("Mercury is neutral around {area}: routine messages, routine paperwork.",
+                   "Write important things down and read them again before you send."),
+        "demanding": ("Mercury scatters attention around {area}: misread messages, slips in detail and delayed paperwork.",
+                      "Double-check numbers and dates, and keep every important agreement in writing."),
+    },
+    "Sun": {
+        "supportive": ("The Sun puts you in the light around {area}: confidence, visibility and attention from people in authority.",
+                       "Show your work and speak to the decision-maker directly."),
+        "steady": ("The Sun is a steady, ordinary presence around {area}.",
+                   "Do your part quietly and visibly; there is no need to push for credit."),
+        "demanding": ("The Sun presses on {area}: ego clashes, and bosses or elders who are hard to please.",
+                      "Do not fight for status this month. Stay respectful and let the results speak."),
+    },
+    "Rahu": {
+        "node": ("Rahu is stirring {area}: restless ambition and a pull towards the unusual, with some confusion mixed in.",
+                 "Verify anything that looks unusually convenient, and keep paperwork and health checks current while this runs."),
+    },
+    "Ketu": {
+        "node": ("Ketu is loosening your grip on {area}: detachment, withdrawal, and things falling away that were never solid.",
+                 "Do not force outcomes here. Simplify, let go of what is already finished, and keep a quiet routine."),
+    },
+}
 
 
 def render(
@@ -2704,14 +2770,24 @@ def render(
                 elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
                     line_txt = "Illu mariyu kutumba vatavaranam chinnapatinunche sthiratha, shanti mariyu manchi viluvala balamaina neev isthundi."
             else:
-                if any(w in low for w in ("father", "paternal", "sun in", "disciplined", "duty", "traditional")):
-                    line_txt = "Your chart indicates a strong paternal heritage of discipline, traditional values, and structured guidance, emphasizing duty and ethical principles."
-                elif any(w in low for w in ("mother", "maternal", "moon in", "anchor", "emotional", "grounding")):
-                    line_txt = "Your chart reflects deep maternal care, emotional grounding, and moral stability in early life."
-                elif any(w in low for w in ("sibling", "brother", "sister", "mars in", "dynamic", "ties")):
-                    line_txt = "Your relationships with siblings and close peers are active and independent, with mutual respect and collaborative loyalty."
-                elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
-                    line_txt = "Domestic upbringing is grounded in creating a peaceful, organized household environment and long-term stability."
+                # The accepted model line is the reading — it is written from
+                # this chart's own father/mother/sibling/home facts. It used to
+                # be overwritten with one fixed sentence per relation whenever
+                # it contained a word like "father" or "values", so every
+                # customer read the same four lines. The fixed sentences are
+                # now only a fallback for a line that is empty, a bare tag
+                # list or too short to be a sentence.
+                looks_like_tags = (len(line_txt) < 45
+                                   or (line_txt.count(",") >= 3 and "." not in line_txt))
+                if looks_like_tags:
+                    if any(w in low for w in ("father", "paternal", "sun in", "disciplined", "duty", "traditional")):
+                        line_txt = "Your father's side of the chart points to discipline, traditional values and a sense of duty."
+                    elif any(w in low for w in ("mother", "maternal", "moon in", "anchor", "emotional", "grounding")):
+                        line_txt = "Your mother's side of the chart points to care, emotional steadiness and a grounded early life."
+                    elif any(w in low for w in ("sibling", "brother", "sister", "mars in", "dynamic", "ties")):
+                        line_txt = "Your chart shows active, independent ties with brothers, sisters and close peers."
+                    elif any(w in low for w in ("home", "household", "childhood", "foundation", "values")):
+                        line_txt = "Your early home life points to a settled, orderly household and a steady base."
             items.append(
                 f'<div class="family-item"><div class="family-label">{_e(label)}</div>'
                 f"<p>{_e(line_txt)}</p></div>"
@@ -2738,7 +2814,7 @@ def render(
         else:
             fam_kicker = "FAMILY &amp; HOME"
             fam_heading = "The people and home that shaped you"
-            fam_note = "These are chart-derived patterns, not facts we were given about your family."
+            fam_note = "Read from your chart alone, so take it as a leaning, not a record of your family."
 
         family_html = f"""
         <section class="conv-block family-block">
@@ -2800,13 +2876,13 @@ def render(
     moon_txt = f" and <b>Moon in {moon_sign}</b>" if moon_sign else ""
     nak_txt = f" (under <b>{nakshatra}</b> nakshatra)" if nakshatra else ""
     
-    if interpretation:
-        about_meaning = _e(interpretation)
-    else:
-        about_meaning = (
-            f"With <b>{lagna_clean} rising</b>{moon_txt}{nak_txt}, your birth chart establishes <b>{lp['title']}</b>. "
-            f"{lp['traits']} <b>{h_pred}</b> (governed by Lagna lord <b>{lord} in the {h_str} house, {lord_s}{d_str}</b>)."
-        )
+    # The model's `interpretation` field is about how the *current stretch*
+    # feels (phase_tone), so it read as a career note under "Constitutional
+    # Baseline". The baseline is the chart's own rising sign and Moon.
+    about_meaning = (
+        f"With <b>{lagna_clean} rising</b>{moon_txt}{nak_txt}, your birth chart establishes <b>{lp['title']}</b>. "
+        f"{lp['traits']} <b>{h_pred}</b> (governed by Lagna lord <b>{lord} in the {h_str} house, {lord_s}{d_str}</b>)."
+    )
     if not personality:
         personality = (
             f"{lp['life_path']} {mp} In classical Vedic astrology, while planetary periods (Dashas) and transits (Gochara) bring shifting life chapters, "
@@ -2935,8 +3011,6 @@ def render(
     {transits_html}
 
     {sade_html}
-
-    {_specialist_readings_html(analysis, paid=paid, lang=lang)}
 
     {remedy_block_html}
 
@@ -3222,6 +3296,136 @@ def render(
         text-decoration: none;
         box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
     }
+
+    /* Reading sections (who you are, family & home) — these classes had no
+       rules at all, so headings, labels and notes fell back to the browser
+       default and the text looked unfinished. */
+    .family-block, .who-you-are-block {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 22px 24px;
+        margin: 0 0 20px 0;
+    }
+    .section-kicker {
+        font-size: 11.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: var(--accent);
+        margin: 0 0 6px 0;
+    }
+    .family-block h2, .who-you-are-block h2 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 22px;
+        line-height: 1.3;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+        color: var(--text-main);
+    }
+    .sec-note {
+        font-size: 13px;
+        font-style: italic;
+        color: var(--text-muted);
+        margin: 0 0 14px 0;
+    }
+    .family-item {
+        padding: 14px 0 2px 0;
+        border-top: 1px solid var(--border);
+    }
+    .family-item:first-of-type { border-top: 0; padding-top: 4px; }
+    .family-label {
+        font-size: 11.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--warning);
+        margin: 0 0 4px 0;
+    }
+    .family-item p {
+        margin: 0 0 10px 0;
+        font-size: 15.5px;
+        line-height: 1.75;
+        color: #e2e8f0;
+    }
+    .lead-reading { font-size: 15.5px; line-height: 1.75; color: #e2e8f0; margin: 0 0 12px 0; }
+    .lead-reading .ev-label {
+        display: block;
+        font-size: 11.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--warning);
+        margin-bottom: 4px;
+    }
+    .who-personality { font-size: 15.5px; line-height: 1.75; color: #cbd5e1; margin: 0 0 12px 0; }
+
+    /* Remedies and gemstones */
+    .remedy-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 22px 24px;
+        margin-top: 24px;
+    }
+    .remedy-card > .ev-label {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 21px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0 0 8px 0;
+    }
+    .remedy-lede { color: #cbd5e1; font-size: 14.5px; line-height: 1.65; margin: 0 0 14px 0; }
+    .remedy-do {
+        background: rgba(16, 185, 129, 0.08);
+        border-left: 3px solid var(--positive);
+        border-radius: 0 8px 8px 0;
+        padding: 10px 14px;
+        margin: 12px 0 14px 0;
+    }
+    .remedy-do-label {
+        font-size: 11.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: var(--positive);
+    }
+    .remedy-do p { margin: 4px 0 0 0; color: #d1fae5; font-size: 14.5px; }
+    .stones-group { margin: 18px 0 6px 0; }
+    .stones-group-label {
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: var(--text-muted);
+    }
+    .stones-group.up .stones-group-label { color: var(--positive); }
+    .stones-group.trial .stones-group-label { color: var(--warning); }
+    .stones-group.down .stones-group-label { color: #fca5a5; }
+    .stones { list-style: none; margin: 0; padding: 0; }
+    .stone {
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    .stone.up { border-left-color: var(--positive); }
+    .stone.trial { border-left-color: var(--warning); }
+    .stone.down { border-left-color: var(--critical); }
+    .stone-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .stone-top b { font-size: 15px; color: var(--text-main); }
+    .stone-verdict { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+    .stone-role { margin-top: 3px; color: var(--text-muted); font-size: 12.5px; }
+    .stone-detail, .stone-why, .stone-alt { margin-top: 4px; color: #cbd5e1; font-size: 13.5px; line-height: 1.55; }
+    .remedy-locked {
+        margin-top: 14px; padding: 10px 14px; border: 1px dashed var(--border);
+        border-radius: 10px; color: var(--text-muted); font-size: 13.5px;
+    }
+    .remedy-card .fine, .fine { font-size: 12.5px; line-height: 1.55; color: var(--text-muted); margin: 12px 0 0 0; }
 
     /* Dark sidebar navigation overrides */
     nav.secnav {

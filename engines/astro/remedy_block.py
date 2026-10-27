@@ -310,7 +310,9 @@ def _stone_row(item: dict, *, paid: bool = False, is_hinglish: bool = False, is_
     elif is_tenglish:
         alt_label = "Mantra Japam Mariyu Daanam" if verdict in ("avoid", "mantra_only") else "Dainandina Mantra Japam Mariyu Pooja"
     else:
-        alt_label = "Immediate relief (Mantra & charity)" if verdict in ("avoid", "mantra_only") else "Daily strengthening mantra & offering"
+        # The original wording; the "Immediate relief / strengthening" rewrite
+        # (63b4d3b) read as marketing copy next to a stone that says "do not wear".
+        alt_label = "Instead" if verdict in ("avoid", "mantra_only") else "If you choose not to wear it / alongside"
     
     return f"""
   <li class="stone {tone}" data-verdict="{tone}">
@@ -396,9 +398,9 @@ def render(block: dict, *, paid: bool = False, price: int = 0,
             t_lbl = "Secondary Graha Sahayam · Modata Trial Wear Cheyandi"
             a_lbl = "Varjitha Grahalu · Thక్షణ Upashamanam (Mantra Japam Mariyu Daanam)"
         else:
-            w_lbl = "Supporting planets · Auspicious gemstone & strengthening"
-            t_lbl = "Secondary planetary support · Trial wear first"
-            a_lbl = "Obstructing & friction planets · Immediate relief (mantra & charity)"
+            w_lbl = "Gemstones · considered suitable for your chart"
+            t_lbl = "Gemstones · trial first (caution)"
+            a_lbl = "Do not wear · mantra and charity instead"
 
         wear_group = _stones_group(
             safe + other, tone="up", paid=True, is_hinglish=is_hinglish, is_tenglish=is_tenglish,

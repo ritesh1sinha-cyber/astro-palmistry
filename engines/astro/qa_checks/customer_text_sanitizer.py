@@ -375,7 +375,9 @@ _SOFT_LABEL_REPLACEMENTS = [
     (re.compile(r"Love, Marriage &(?:amp;)? Emotions", re.I), "Relationships & Emotions"),
     (re.compile(r"Love &(?:amp;)? Marriage", re.I), "Relationships & Partnership"),
     (re.compile(r"Spouse:\s*", re.I), "Relationship dynamics: "),
-    (re.compile(r"\b(?:spouse|husband|wife)\b", re.I), "partner"),
+    # Keep the capital: "Spouse & Marriage" must become "Partner & Marriage".
+    (re.compile(r"\b(?:spouse|husband|wife)\b", re.I),
+     lambda m: "Partner" if m.group(0)[:1].isupper() else "partner"),
     (re.compile(r"Life-area promise", re.I), "Underlying promise"),
     (re.compile(r"\bTechnical detail\b", re.I), "Why this is supported"),
 ]

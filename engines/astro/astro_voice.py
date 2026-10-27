@@ -411,6 +411,11 @@ def translate_jargon(html: str, *, keep_original: bool = True) -> str:
             before = text[:m.start()].rstrip()
             if (not before) or before[-1] in ".!?:>":
                 plain = plain[:1].upper() + plain[1:]
+            elif plain.lower().startswith("the ") and re.search(
+                    r"\b(?:the|a|an|this|that|your)$", before, re.I):
+                # "The Navamsha division" → "The marriage chart division",
+                # not "The the marriage chart division".
+                plain = plain[4:]
             if not keep_original:
                 return plain
             return (f'<abbr class="jargon" title="{original.strip()}">'
@@ -948,14 +953,14 @@ def chart_opening(ctx: dict) -> str:
             f" The Moon in <b>{moon}</b>{f' ({moon_nak})' if moon_nak else ''} carries your "
             f"instinct and your moods, and much of what follows is read from it.",
             f" With the Moon in <b>{moon}</b>{f' ({moon_nak})' if moon_nak else ''}, your inner "
-            f"weather has its own pattern. One this reading takes seriously.",
+            f"weather has its own pattern, and this reading takes that pattern seriously.",
         ]
         second = _pick(moon_lines, ctx, 7)
 
     third = ""
     if md:
         period = f"<b>{md}</b>" + (f"–<b>{ad}</b>" if ad else "")
-        age_bit = f" at {age}" if age else ""
+        age_bit = f" at age {age}" if age else ""
         third_lines = [
             f" Right now{age_bit} you are living through your {period} period. "
             f"Nothing here is generic advice about a sign; it is dated to the chapter you are actually in.",

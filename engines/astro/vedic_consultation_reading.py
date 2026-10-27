@@ -122,7 +122,12 @@ def generate_consultation_reading(
     natal_moon_deg_in_nak = planets.get("Moon", {}).get("degree_in_nakshatra", 0.0)
 
     # Calculate current and past Dasha
-    vim = build_vimshottari_from_moon(natal_moon_nak, natal_moon_deg_in_nak, dob_date)
+    # Use the chart's own period table. Rebuilding it here from the Moon's
+    # rounded degree put the sub-period end six days away from every other
+    # section of the same report (17 May vs 23 May 2027).
+    vim = pc.get("vimshottari") or {}
+    if not (vim.get("current_md") and vim.get("current_md_antardashas")):
+        vim = build_vimshottari_from_moon(natal_moon_nak, natal_moon_deg_in_nak, dob_date)
     curr_md = vim.get("current_md", {})
     antardashas = vim.get("current_md_antardashas", [])
 
@@ -246,11 +251,11 @@ def generate_consultation_reading(
     sat_sav_pts = sav_list[sat_s_idx] if isinstance(sav_list, list) and len(sav_list) > sat_s_idx else 28
 
     if sat_sav_pts >= 30:
-        sav_note = f"Holding {sat_sav_pts} SAV bindus, this sign gives solid ground traction and delivers strong material backing."
+        sav_note = "your chart gives this sign solid ground, with strong material backing"
     elif sat_sav_pts >= 25:
-        sav_note = f"Holding {sat_sav_pts} SAV bindus, this sign is workable but requires disciplined, methodical pacing."
+        sav_note = "your chart makes this sign workable, but it rewards steady, methodical pacing"
     else:
-        sav_note = f"Holding {sat_sav_pts} SAV bindus, this sign requires extra proof stacks, patience, and rigorous verification."
+        sav_note = "your chart makes this sign harder going, so it asks for extra patience and checking"
 
     timeline_points.append(
         f"<b>Structural Testing via Saturn (House {sat_h} &mdash; {t_sat_sign}):</b> Saturn transiting your House {sat_h} has "
@@ -309,7 +314,7 @@ def generate_consultation_reading(
         )
 
     roadmap_points = [
-        f"<b>Current Phase Strategy (until {ad_end_str}):</b> You are in the final refinement window of {ad_lord}. Use this period to consolidate systems, settle pending liabilities, and avoid uncollateralized speculative bets.",
+        f"<b>Current Phase Strategy (until {ad_end_str}):</b> You are in the final refinement window of {ad_lord}. Use this period to consolidate systems, settle pending dues, and stay away from risky speculative bets.",
         f"<b>The Turning Point ({ad_end_str} to {next_end_str}):</b> Transition into <b>{next_lord} Antardasha</b> &mdash; <span class='phase-pill positive'>{forecast_grade}</span><br>{forecast_desc}",
     ]
 

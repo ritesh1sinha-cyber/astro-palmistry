@@ -280,10 +280,41 @@ def _scrub_stashed(html: str, scrub) -> str:
     return out
 
 
+def drop_appendix_gemstones(html: str) -> str:
+    """Remove the traffic-light gemstone table from the long-form appendix.
+
+    The report already ends with one gemstone section (remedy_block). The
+    appendix carried a second, differently worded copy of the same stones
+    ("Green = YES wear ..."), so a reader met two gemstone verdict lists.
+    Mantra lists and behavioural remedies in the appendix are kept.
+    """
+    import re as _re
+    if not html or "sec-remedies-gemstones" not in html:
+        return html
+    out = _re.sub(
+        r'<li[^>]*>\s*<a[^>]*href="#sec-remedies-gemstones"[^>]*>.*?</a>\s*</li>',
+        "", html, flags=_re.S)
+    m = _re.search(r'<h4[^>]*id="sec-remedies-gemstones"[^>]*>', out)
+    if not m:
+        return out
+    tail = out[m.end():]
+    ends = [i for i in (
+        tail.find('<div class="remedy-psych"'),
+        _re.search(r'<div class="card">\s*<h5>Universal background practice',
+                   tail).start() if _re.search(
+            r'<div class="card">\s*<h5>Universal background practice', tail) else -1,
+        tail.find("</section>"),
+    ) if i >= 0]
+    if not ends:
+        return out
+    return out[:m.start()] + tail[min(ends):]
+
+
 def _appendix_block(html: str, *, summary: str) -> str:
     """Long-form lane document — fragment only, no nested stylesheets."""
     if not html or not html.strip():
         return ""
+    html = drop_appendix_gemstones(html)
     import astro_split as SP
     body = SP.as_fragment(clean(html))
     if not body.strip():

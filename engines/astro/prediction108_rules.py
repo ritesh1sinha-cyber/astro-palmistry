@@ -511,7 +511,7 @@ def _c1(pc):
     base = f"You were born on a {['Mon','Tues','Wednes','Thurs','Fri','Satur','Sun'][wd]}day, so your weekday lord is {lord} ({_dig_word(d)}, {_ord(h)} house)."
     if hit:
         return V(1, "HIT", base + " " + "; ".join(notes) + ".",
-                 f"Your destiny is tied to {lord}'s periods. " +
+                 f"Your birth weekday is ruled by {lord}, so {lord}'s periods carry extra weight for you. " +
                  ("Lean into its dasha for opportunities. " if d == 'exalted' else "Keep health and the affected houses guarded during its dasha. "))
     return V(1, "NO", base + " It is neither the 6th/8th lord nor in 6/8, and not exalted/debilitated — no special weekday flag.")
 
