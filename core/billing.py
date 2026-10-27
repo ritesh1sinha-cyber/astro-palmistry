@@ -362,6 +362,23 @@ def consume_report_generation(user_id: str) -> tuple[bool, int]:
         return True, max(0, allowance - used - 1)
 
 
+def refund_report_generation(user_id: str, kind: str) -> None:
+    """Give back today's slot when a job fails without producing a report
+    (unreadable photo, engine error): the customer got nothing, so it must not
+    count against the daily cap. Best effort."""
+    from .auth import has_full_access_id
+    if kind not in GENERATION_LIMIT_KINDS or has_full_access_id(user_id):
+        return
+    try:
+        with tx() as c:
+            c.execute(text("UPDATE usage_counters SET used = used - 1, updated_at = :t"
+                           " WHERE user_id=:u AND kind=:k AND period=:p AND used > 0"),
+                      {"t": now(), "u": user_id, "k": REPORT_GEN_COUNTER,
+                       "p": ist_day_period()})
+    except Exception as exc:  # noqa: BLE001
+        print(f"[billing] generation refund skipped: {exc}", flush=True)
+
+
 def check_report_generation(user_id: str, kind: str) -> tuple[bool, int, int]:
     """Returns (allowed, remaining_after_if_consumed, allowance_today)."""
     from .auth import has_full_access_id

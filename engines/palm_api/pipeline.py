@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from palm_api.analyzer import extract_features, features_for_json, save_overlay
+from palm_api.palm_gate import PalmNotReadable, require_readable_palm  # noqa: F401
 from palm_api.confluence import build_confluence
 from palm_api.engine import predict
 from palm_api.reference import build_reference_text
@@ -78,6 +79,9 @@ def analyze_one(
 ) -> dict[str, Any]:
     """Single palm — same logic as palm_api.app._analyze_image."""
     feats = extract_features(path, hand=hand)
+    # No palm in the photo → no reading. Raised before any rule, sentence or
+    # overlay is produced; see palm_gate for what counts as readable.
+    require_readable_palm(feats, hand)
     if overlay_path:
         save_overlay(path, feats, overlay_path)
     clean = features_for_json(feats)

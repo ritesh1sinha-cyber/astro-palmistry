@@ -183,9 +183,15 @@ def h_palm(user: dict, p: dict) -> dict:
         if len(paths) < 2:
             raise UserError("Both palms are needed for a reading.")
 
-        raw_result = analyze_image_paths(
-            [str(x) for x in paths],
-            active_hand=p.get("dominant", "right"), overlay_dir=overlay_dir)
+        from palm_api.palm_gate import PalmNotReadable
+        try:
+            raw_result = analyze_image_paths(
+                [str(x) for x in paths],
+                active_hand=p.get("dominant", "right"), overlay_dir=overlay_dir)
+        except PalmNotReadable as exc:
+            # No palm (or no readable lines) in the photo: refuse. Nothing is
+            # generated, saved or charged for; the customer is told how to retake.
+            raise UserError(str(exc)) from exc
 
         # overlays → object storage (proof + archive; HTML embeds them as data URIs)
         overlays = {}

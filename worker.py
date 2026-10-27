@@ -111,6 +111,11 @@ def run_once() -> bool:
                 print(f"[worker] {pid} retry {attempts}", flush=True)
             else:
                 Q.finish(job, error=friendly(exc))
+                try:
+                    from core.billing import refund_report_generation
+                    refund_report_generation(job["userId"], kind)
+                except Exception:                                     # noqa: BLE001
+                    pass
                 job_update(pid, status="failed", finished_at=now(),
                            attempts=attempts, error=str(exc)[:900],
                            duration_ms=int((time.time() - t0) * 1000))

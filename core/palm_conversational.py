@@ -1,4 +1,4 @@
-"""The palm reading, written the way a palmist gives it.
+﻿"""The palm reading, written the way a palmist gives it.
 
 This renderer replaced a text-only prose page. That page read well and said
 almost nothing: it never showed the customer's own photographs, never named a
@@ -1015,47 +1015,36 @@ def render(
             hardest_lbl = "Core tension to watch:"
         now_points.append(f'<li><b style="color:#a44c12;">{hardest_lbl}</b> {_e(hardest)}</li>')
 
-    # Executive Palm Architecture Highlights Strip
+    # Photo-measured summary strip. Every value comes from this customer's own
+    # image analysis (hand type, lines traced, photo clarity). It used to be a
+    # fixed block ("Systems Architect", "Writer's Fork", "Sealed Wealth Vault")
+    # printed for everybody, including for photos that held no palm at all.
+    _dom_feats = (raw.get(dom_key) or {}).get("features") or {}
+    _hand_t = (_dom_feats.get("morphology") or {}).get("hand_type")
+    _ln = _dom_feats.get("lines") or {}
+    _seen = [k.title() for k in ("life", "head", "heart", "fate")
+             if (_ln.get(k) or {}).get("detected")
+             and float((_ln.get(k) or {}).get("ridge_coverage") or 0) >= 0.30]
+    _grade = str((_dom_feats.get("quality") or {}).get("grade") or "").title()
     if is_tenglish:
-        arch_lbl = "Mee Hasta Shastra Mukhya Amshalu"
-        p1_title = "Vyakthithvam"
-        p1_val = f"{dom_name} Cheyi &bull; Systems Architect"
-        p2_title = "Alochana Paddathi"
-        p2_val = "Bifurcated Writer's Fork (Dual Engine)"
-        p3_title = "Dhana Sthirathvam"
-        p3_val = "Sealed Dhana Thrikonam (Wealth Vault)"
-        p4_title = "Varthamana Milestone"
-        p4_val = f"Aayu {age} &bull; Sovereign Asset Ownership"
+        arch_lbl = "Mee Palm Photo Nundi Kolichina Amshalu"
+        t_hand, t_lines, t_photo = "Chethi Rakam", "Spashtamga Kanipinchina Rekhalu", "Photo Spashtatha"
     elif is_hinglish:
-        arch_lbl = "Aapke Hast Shastra Ke Mukhya Bindu"
-        p1_title = "Core Vyaktitva"
-        p1_val = f"{dom_name} Haath &bull; Systems Architect"
-        p2_title = "Soch Ki Prakriti"
-        p2_val = "Bifurcated Writer's Fork (Dual Engine)"
-        p3_title = "Dhan Sthirta"
-        p3_val = "Sealed Dhan Trikon (Wealth Vault)"
-        p4_title = "Vartaman Milestone"
-        p4_val = f"Aayu {age} &bull; Sovereign Asset Ownership"
+        arch_lbl = "Aapki Palm Photo Se Naape Gaye Bindu"
+        t_hand, t_lines, t_photo = "Haath Ka Prakar", "Spasht Dikhi Rekhayein", "Photo Ki Spashtata"
     else:
-        arch_lbl = "Executive Palm Architecture Summary"
-        p1_title = "Core Persona"
-        p1_val = f"{dom_name} Hand &bull; Systems Architect"
-        p2_title = "Cognitive Engine"
-        p2_val = "Bifurcated Writer's Fork (Dual Processing)"
-        p3_title = "Capital Retention"
-        p3_val = "Sealed Dhana Triangle (Wealth Vault)"
-        p4_title = "Current Milestone"
-        p4_val = f"Age {age} &bull; Sovereign Asset Ownership"
-
+        arch_lbl = "What Your Palm Photo Measured"
+        t_hand, t_lines, t_photo = "Hand type", "Lines clearly traced", "Photo clarity"
+    _items = [f"<li><b>{t_hand}:</b> {_e(str(_hand_t).title())} hand ({_e(dom_name)})</li>" if _hand_t
+              else f"<li><b>{t_hand}:</b> {_e(dom_name)}</li>"]
+    if _seen:
+        _items.append(f"<li><b>{t_lines}:</b> {_e(', '.join(_seen))}</li>")
+    if _grade:
+        _items.append(f"<li><b>{t_photo}:</b> {_e(_grade)}</li>")
     summary_grid = (
         f'<div class="card" style="background:#fffdfa;border:1px solid #ebd4cc;border-left:4px solid #2c7658;border-radius:12px;padding:14px 16px;margin:12px 0 14px 0;">'
         f'  <div class="ev-label" style="color:#2c7658;font-weight:700;margin-bottom:8px;">{arch_lbl}</div>'
-        f'  <ul class="pv-plain" style="margin:0;padding-left:18px;">'
-        f'    <li><b>{p1_title}:</b> {p1_val}</li>'
-        f'    <li><b>{p2_title}:</b> {p2_val}</li>'
-        f'    <li><b>{p3_title}:</b> {p3_val}</li>'
-        f'    <li><b>{p4_title}:</b> {p4_val}</li>'
-        f'  </ul>'
+        f'  <ul class="pv-plain" style="margin:0;padding-left:18px;">{"".join(_items)}</ul>'
         f'</div>'
     )
     now_summary = summary_grid + now_summary
@@ -1184,17 +1173,17 @@ def render(
             
             if wv_html or ml_html:
                 if is_tenglish:
-                    w_title = "Dhana Thrikonam Mariyu Vishesha Rekhalu"
-                    w_sub = "Dhana samrakshana mariyu specialized perceptive antennas vishleshana."
-                    w_nav = "Dhana Rekhalu"
+                    w_title = "Vishesha Rekhalu"
+                    w_sub = "Mee chethilo photo lo kanipinchina chinna rekhala vishleshana."
+                    w_nav = "Vishesha Rekhalu"
                 elif is_hinglish:
-                    w_title = "Dhan Trikon (Wealth Vault) & Vishesh Rekhayein"
-                    w_sub = "Sampatti sanrakshan trikon aur specialized receptive lines ka vishleshan."
-                    w_nav = "Dhan Trikon"
+                    w_title = "Vishesh Rekhayein"
+                    w_sub = "Aapki palm photo mein dikhi chhoti rekhaon ka vishleshan."
+                    w_nav = "Vishesh Rekhayein"
                 else:
-                    w_title = "The Wealth Vault (Closed Dhana Triangle) & Minor Power Lines"
-                    w_sub = "The sealed geometric intersections governing asset retention, commercial agility, and intuitive perceptive radars."
-                    w_nav = "Wealth Vault"
+                    w_title = "Minor Power Lines"
+                    w_sub = "The fine secondary lines the image analysis found in your palm."
+                    w_nav = "Minor Lines"
                 blocks.append(_section(
                     "sec-wealth-vault", w_title,
                     w_sub,
@@ -1275,123 +1264,9 @@ def render(
         # 7 — Forward Roadmap (Upcoming Age Windows & Direction Ages {age}+)
         ahead_legacy = _timeline(conf, age, ahead=True, lang=lang)
         
-        # Build comprehensive forward age chapters dynamically for any current age
-        w1_start, w1_end = age, age + 4
-        w2_start, w2_end = age + 5, age + 9
-        w3_start, w3_end = max(50, age + 10), max(58, age + 17)
-        w4_start = max(60, age + 18)
-
-        if is_tenglish:
-            forward_cards = [
-                {
-                    "window": f"aayu {w1_start}&ndash;{w1_end} varshalu",
-                    "title": "Asset Sthiratha Mariyu Executive Swatantrata",
-                    "tag": "Earning Velocity & Sthiratha",
-                    "sign": "Fate Line Mars plain nunchi Head Line vaipu peruguthunna sandarbham.",
-                    "meaning": f"Ee phase lo mee vruthi mariyu career lo autonomous responsibility mariyu high-value execution peruguthundi. Sealed Wealth Vault aarthika sthirathaku thodupaduthundi."
-                },
-                {
-                    "window": f"aayu {w2_start}&ndash;{w2_end} varshalu",
-                    "title": "Strategic Advisory Mariyu Expansion",
-                    "tag": "Advisory Runway",
-                    "sign": "Fate Line Heart Line mariyu Surya Rekha (Sun Line) intersection.",
-                    "meaning": f"Routine execution nunchi high-level advisory, systems planning mariyu senior leadership vaipu marpu kanipisthundi. Mee anubhavam gouravanni thesthundhi."
-                },
-                {
-                    "window": f"aayu {w3_start}&ndash;{w3_end} varshalu",
-                    "title": "Peak Authority Mariyu Senior Mentorship",
-                    "tag": "Peak Authority Phase",
-                    "sign": "Heart Line Solomon Trident mariyu Apollo Mount apex.",
-                    "meaning": f"Mee institutional authority mariyu mentorship peak stage ki cheruthundi. Senior leadership mariyu strategic advisory roles lo meeru key decision maker ga untaru."
-                },
-                {
-                    "window": f"aayu {w4_start}+ varshalu",
-                    "title": "Generational Legacy Mariyu Long-term Stability",
-                    "tag": "Golden Runway",
-                    "sign": "Fate Line Saturn mount meeda deep ascent mariyu 80+ Life Line arc.",
-                    "meaning": f"Active intellectual productivity, advisory roles mariyu generational asset guidance tho mee paripakvatha jeevitham anandamga konasaguthundi."
-                },
-            ]
-        elif is_hinglish:
-            forward_cards = [
-                {
-                    "window": f"aayu {w1_start}&ndash;{w1_end} varsh",
-                    "title": "Asset Sthirta Aur Executive Swatantrata",
-                    "tag": "Earning Velocity & Sthirta",
-                    "sign": "Fate Line ka Mars plain se Head Line ki or vikasit hona.",
-                    "meaning": f"Is dauran aapka career focus autonomous decision-making aur structured systems par kendrit hota hai. Sealed Wealth Vault aarthika bachat aur capital growth ko majboot karta hai."
-                },
-                {
-                    "window": f"aayu {w2_start}&ndash;{w2_end} varsh",
-                    "title": "Strategic Advisory Aur Career Expansion",
-                    "tag": "Advisory Runway",
-                    "sign": "Fate Line aur Surya Rekha (Sun Line) ka Heart Line ke kareeb milan.",
-                    "meaning": f"Routine kaam se aage badhkar aap strategic consulting, systems planning aur senior leadership roles mein vistar karte hain. Aapki salah ka vishesh samman hoga."
-                },
-                {
-                    "window": f"aayu {w3_start}&ndash;{w3_end} varsh",
-                    "title": "Peak Authority Aur Senior Mentorship",
-                    "tag": "Peak Authority Phase",
-                    "sign": "Heart Line aur Mount of Apollo par shubh lakshan.",
-                    "meaning": f"Aapka institutional authority aur mentorship ka peak phase. Aap multi-domain projects mein director aur master mentor ke roop mein prabhavshali sthiti mein honge."
-                },
-                {
-                    "window": f"aayu {w4_start}+ varsh",
-                    "title": "Generational Legacy Aur Deerghakalin Sthirta",
-                    "tag": "Golden Runway",
-                    "sign": "Mount of Saturn par Fate Line ka sthir pravesh aur mazboot Life Line arc.",
-                    "meaning": f"Sustained intellectual productivity, advisory board roles aur generational asset stewardship aapko aane wale dashakon mein sthir samman aur santushti dete hain."
-                },
-            ]
-        else:
-            forward_cards = [
-                {
-                    "window": f"ages {w1_start}&ndash;{w1_end}",
-                    "title": "Asset Consolidation & Executive Autonomy",
-                    "tag": "Earning Velocity & Consolidation",
-                    "sign": "Traced along the ascending Line of Fate crossing the upper plain of Mars toward the Head Line.",
-                    "meaning": f"During this window, your professional focus decisively consolidates around autonomous ownership and sovereign systems. Capital accumulation accelerates with disciplined structure."
-                },
-                {
-                    "window": f"ages {w2_start}&ndash;{w2_end}",
-                    "title": "Strategic Consultative Transition",
-                    "tag": "Advisory Runway",
-                    "sign": "Traced along the Fate Line approaching the Heart Line intersection and the rising Line of Apollo (Sun Line).",
-                    "meaning": f"A strategic inflection point where you transition out of routine execution into high-leverage systems consulting, advisory counsel, and senior leadership."
-                },
-                {
-                    "window": f"ages {w3_start}&ndash;{w3_end}",
-                    "title": "Advisory Peak & Senior Mentorship",
-                    "tag": "Peak Authority Window",
-                    "sign": "Traced at the Heart Line intersection and the apex of the Line of Apollo below the ring finger.",
-                    "meaning": f"Your peak institutional authority window. Balanced, dignified leadership and multi-domain expertise position you as a master strategist and senior director."
-                },
-                {
-                    "window": f"ages {w4_start}+",
-                    "title": "Institutional Legacy & Generational Impact",
-                    "tag": "Golden Runway",
-                    "sign": "Traced along the deep ascent of the Fate Line onto the Mount of Saturn, reinforced by a strong Life Line arc.",
-                    "meaning": f"Active intellectual productivity, board-level advisory roles, and generational asset stewardship well into your mature golden years."
-                },
-            ]
-        
         fwd_html_cards = ""
-        for fc in forward_cards:
-            fwd_html_cards += (
-                '<li style="margin-bottom:16px;">'
-                f'<div class="tl-when" style="font-weight:700;color:#2c7658;font-size:0.88rem;">{fc["window"]}</div>'
-                '<div class="tl-body" style="background:#fff;border:1px solid #e2ded5;border-radius:10px;padding:14px 16px;margin-top:6px;">'
-                f'  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">'
-                f'    <b style="font-size:0.98rem;color:#1f2430;">{_e(fc["title"])}</b>'
-                f'    <span style="font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:#eef7f2;color:#2c7658;text-transform:uppercase;letter-spacing:0.04em;">{_e(fc["tag"])}</span>'
-                f'  </div>'
-                f'  <p style="margin:0 0 8px;font-size:0.9rem;line-height:1.58;color:#2c3140;">{fc["meaning"]}</p>'
-                f'  <p style="margin:0;font-size:0.82rem;color:#6b7280;font-style:italic;"><b>Observed Physical Sign:</b> {fc["sign"]}</p>'
-                '</div>'
-                '</li>'
-            )
-        
-        future_roadmap_html = f'<ol class="timeline" style="list-style:none;padding-left:0;">{fwd_html_cards}</ol>'
+
+        future_roadmap_html = ''
         
         if future_ms_rows:
             future_roadmap_html += (
@@ -1470,7 +1345,7 @@ def render(
             elif is_hinglish:
                 blocks.append(_section("sec-science", "Vaigyanik Hast Shastra Rahasya", "Personalized neuroscience aur dermatoglyphic principles ka vishleshan.", full_sci_html, nav="Vigyan"))
             else:
-                blocks.append(_section("sec-science", "Scientific Dermatoglyphics & Neural Topography", "Five verified neuroscience principles explaining how your brain directly sculpts and evolves your active palm lines.", full_sci_html, nav="Scientific Insights"))
+                blocks.append(_section("sec-science", "Scientific Dermatoglyphics & Neural Topography", "Observations taken only from what the image analysis measured in your palm.", full_sci_html, nav="Scientific Insights"))
 
         # 8 — Innate vs. Made (Left vs. Right Hand Confluence)
         if is_tenglish:
@@ -1738,9 +1613,9 @@ def render(
         if is_tenglish:
             blocks.append(f"""
 <div class="qa-window locked" style="margin:16px 0;">
-  <div class="qa-wlabel">💎 Dhana Thrikonam (Wealth Vault) Mariyu Vishista Rekhalu</div>
-  <p class="blurred">Fate, Head, Mercury rekhala sangamam dwara ertpadina sealed dhana thrikonam vishleshana - sampada samrakshana saamarthyam mariyu minor power lines.</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Wealth Vault locked ga undi.</b> Sampada vishleshana chudataniki unlock cheyandi.</p>
+  <div class="qa-wlabel">Vishesha Rekhalu (Minor Power Lines)</div>
+  <p class="blurred">Mee chethi photo lo kanipinchina Sun, Mercury, Solomon vanti chinna rekhala vishleshana.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Idi locked ga undi.</b> Chudataniki unlock cheyandi.</p>
 </div>
 
 <div class="qa-window locked" style="margin:16px 0;">
@@ -1787,9 +1662,9 @@ def render(
         elif is_hinglish:
             blocks.append(f"""
 <div class="qa-window locked" style="margin:16px 0;">
-  <div class="qa-wlabel">💎 Dhan Trikon (Wealth Vault) Aur Vishisht Rekhayein</div>
-  <p class="blurred">Bhagya, Mastishk aur Budh rekhaon ke sangam se bana sealed dhan trikon vishleshan - sampatti sanrakshan kshamta aur minor power lines.</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Wealth Vault locked hai.</b> Dhan vishleshan dekhne ke liye unlock karein.</p>
+  <div class="qa-wlabel">Vishesh Rekhayein (Minor Power Lines)</div>
+  <p class="blurred">Aapki palm photo mein dikhi Sun, Mercury, Solomon jaisi chhoti rekhaon ka vishleshan.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Yeh locked hai.</b> Dekhne ke liye unlock karein.</p>
 </div>
 
 <div class="qa-window locked" style="margin:16px 0;">
@@ -1836,9 +1711,9 @@ def render(
         else:
             blocks.append(f"""
 <div class="qa-window locked" style="margin:16px 0;">
-  <div class="qa-wlabel">💎 The Wealth Vault (The Great Closed Dhana Triangle) & Minor Power Lines</div>
-  <p class="blurred">Analysis of the sealed triangle formed by Fate, Head, and Mercury lines — measuring capital accumulation capacity, asset leakage prevention, and hidden perceptive antenna lines (Sun, Mercury, Solomon Ring, Girdle of Venus).</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Wealth Vault analysis is locked.</b> Unlock to view your complete wealth storage capacity and minor power lines.</p>
+  <div class="qa-wlabel">Minor Power Lines</div>
+  <p class="blurred">Analysis of the fine secondary lines (Sun, Mercury, Solomon Ring, Girdle of Venus) that the image analysis found in your palm.</p>
+  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Minor line analysis is locked.</b> Unlock to see the secondary lines found in your palm.</p>
 </div>
 
 <div class="qa-window locked" style="margin:16px 0;">
@@ -1879,7 +1754,7 @@ def render(
 
 <section class="buy" id="unlock" style="margin-top:20px;">
   <h3>Unlock your complete palm reading</h3>
-  <p>You have seen your core persona, cognitive wiring, emotional posture, and past milestones. Unlock the Wealth Vault, forward age timeline, strategic counsel, mount energy profile, special marks, hand evolution, and personalized mudra remedies.</p>
+  <p>You have seen your core persona, cognitive wiring, emotional posture, and past milestones. Unlock the minor power lines, forward age timeline, mount energy profile, special marks, hand evolution, and personalized mudra remedies.</p>
   <a class="cta" href="#unlock" data-unlock="1">Unlock full reading · ₹{_e(price)}</a>
 </section>""")
 

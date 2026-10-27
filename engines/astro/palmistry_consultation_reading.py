@@ -27,86 +27,32 @@ def generate_personalized_scientific_secrets(client_name: str, raw_cv: dict, han
     quality = raw_cv.get("quality") or {}
     if str(quality.get("grade") or "poor").lower() == "poor":
         return []
-    has_writers_fork = bool(raw_cv.get("has_writers_fork"))
+    # Every card below states only what the photo measured. This function used
+    # to return five fixed paragraphs for every customer ("density 0.132",
+    # "sealed triangle, zero fractures") whatever the hand looked like, which is
+    # how a photo with no palm in it received a confident reading.
     minor = raw_cv.get("minor_lines") or {}
-    has_solomon = bool(minor.get("ring_of_solomon", {}).get("detected"))
-    has_sun = bool(minor.get("sun", {}).get("detected"))
-    has_merc = bool(minor.get("mercury", {}).get("detected"))
-    
-    return [
-        {
-            "id": "brain_hand_neural_highway",
-            "title": f"Your Neural Architecture: The Deeply Etched Channels of {client_name}",
-            "subtitle": "How your brain's motor cortex directly sculpts your primary lines",
-            "scientific_fact": (
-                f"Your palm displays deeply etched, singular primary channels with zero nervous static lines or chaotic crisscrossing. "
-                f"In dermatoglyphic neural mapping, your {hand_shape} Hand reflects exceptional neural signal clarity: "
-                f"you process high-complexity systems without mental scattering, allowing you to sustain deep analytical concentration "
-                f"where others experience cognitive fatigue."
-            ),
-            "entertainment_insight": (
-                f"Your brain does not waste electrical energy on superficial worries; your neural highway routes directly into "
-                f"high-leverage architecture and focused execution."
-            ),
-        },
-        {
-            "id": "six_month_line_evolution",
-            "title": f"Your Conscious Transformation: Left Blueprint vs. Right Reality",
-            "subtitle": "How your active willpower has rewritten your lived palm lines",
-            "scientific_fact": (
-                f"Comparing your Left Hand (innate subconscious blueprint) to your Right Hand (lived manifestation) demonstrates the "
-                f"<b>Dynamic 6-Month Line Evolution Law</b> in action. Your Right Fate Line and Sun Line are visibly sharper, firmer, and deeper "
-                f"than your passive hand, proving that through disciplined focus in your late 20s and 30s, your active willpower has "
-                f"physically carved out independent executive authority beyond your baseline genetic inheritance."
-            ),
-            "entertainment_insight": (
-                f"You were born with deep introspective sensitivity (Left), but you deliberately forged yourself into an authoritative, "
-                f"commercially sharp systems leader (Right)."
-            ),
-        },
-        {
-            "id": "money_triangle_vault",
-            "title": f"Your Personal Wealth Vault: The Sealed Central Dhana Triangle",
-            "subtitle": "The exact intersection of your Fate, Head, and Mercury lines",
-            "scientific_fact": (
-                f"On your right palm, your ascending Fate Line (earning drive), your bifurcated Head Line (strategic asset allocation), "
-                f"and your diagonal Mercury Line (commercial agility, density 0.0889) intersect to form a completely enclosed "
-                f"<b>Great Dhana Triangle (Wealth Vault)</b>. Because the walls of this triangle are fully sealed with zero line fractures, "
-                f"wealth generated across your career is systematically locked into long-term compounding assets rather than leaking away."
-            ),
-            "entertainment_insight": (
-                f"Your hand guarantees high earning velocity, but your sealed triangle ensures that what you build remains sovereign, "
-                f"protected, and generational."
-            ),
-        },
-        {
-            "id": "quadrangle_mental_bandwidth",
-            "title": f"Your Intellectual Sovereignty: The Spacious Quadrangle of {client_name}",
-            "subtitle": "The uncrowded corridor between your Head and Heart lines",
-            "scientific_fact": (
-                f"The central arena on your palm between your Head Line (Writer's Fork) and Heart Line (Solomon Trident) is remarkably wide, "
-                f"clean, and free of disruptive cross-bars. In scientific palmistry, this spacious Quadrangle bestows profound mental equilibrium: "
-                f"you remain emotionally unshakeable in high-stakes negotiations and cannot be gaslit or swayed by social hysteria."
-            ),
-            "entertainment_insight": (
-                f"Your internal radar demands empirical logic before emotional buy-in—you instantly spot inconsistencies in proposals and people."
-            ),
-        },
-        {
+    cards: list[dict[str, str]] = []
+
+    sol = minor.get("ring_of_solomon") or {}
+    if sol.get("detected") and str(sol.get("strength") or "") in ("moderate", "strong"):
+        cards.append({
             "id": "solomon_ring_psychic_radar",
-            "title": f"Your Character Intuition Radar: The Prominent Ring of Solomon",
-            "subtitle": "The sharp semi-lunar arc detected on your Mount of Jupiter",
+            "title": "A Ring of Solomon on your Mount of Jupiter",
+            "subtitle": "A fine arc around the base of the index finger",
             "scientific_fact": (
-                f"Computer Vision detected a strong Ring of Solomon (density 0.132, strength: strong) curving around the base of your index finger. "
-                f"This marking indicates accelerated subconscious micro-expression reading. You instinctively decode subtle vocal shifts, "
-                f"body language, and underlying motives within the first two minutes of meeting someone."
+                f"The image analysis traced an arc around the base of your index finger "
+                f"(measured line density {sol.get('density')}, strength: {sol.get('strength')}). "
+                f"Traditionally this ring is read as a natural feel for people and "
+                f"what lies behind what they say."
             ),
             "entertainment_insight": (
-                f"If your gut feeling whispers that someone is untrustworthy, trust it without hesitation—your Solomon Ring is processing "
-                f"subconscious behavioral data faster than your logical mind can formulate words."
+                "Treat it as a prompt for reflection: do you tend to sense a person's "
+                "mood or motive early? If yes, the ring and your experience agree."
             ),
-        },
-    ]
+        })
+
+    return cards
 
 
 def _evidence_only_consultation(
@@ -267,46 +213,9 @@ def _evidence_only_consultation(
             "lines": detected_minor[:8],
         }
 
-    # Rich Wealth Vault and Counsel
-    if is_hi:
-        sections["wealth_vault"] = {
-            "title": "Dhan Trikon (Great Closed Dhana Triangle)",
-            "narrative": "Aapki Fate line, Head line aur secondary conduits milkar haath ke madhya mein ek surakshit Dhan Trikon banate hain, jo kamaye gaye dhan ko anushasit bachat aur compounding assets mein badalte hain.",
-            "rule_explanation": "Bandh trikon sanket deta hai ki kamai hui poonji asani se kharch nahi hoti, balki lambe samay mein compound hoti hai.",
-        }
-        sections["palmist_counsel"] = {
-            "points": [
-                "Short-term speculation ke bajay structured, high-conviction assets par focus karein.",
-                "Aapki analytical soch aur spasht vaani aapke sabse bade vocational multipliers hain.",
-                "Workload ke dauran niyamit dincharya aur hydration se stamina banaye rakhein.",
-            ]
-        }
-    elif is_te:
-        sections["wealth_vault"] = {
-            "title": "Dhana Thrikonam (Great Closed Dhana Triangle)",
-            "narrative": "Mee Fate line, Head line mariyu commercial lines kalisi cheyi madhyalo oka surakshitamaina Dhana Thrikonam ni yerparusthunnayi, idi aarthika sthirathaku mariyu podupuku thodupaduthundi.",
-            "rule_explanation": "Moosina thrikonam aarthika vistaranni mariyu sthiramaina asset accumulation ni chupisthundi.",
-        }
-        sections["palmist_counsel"] = {
-            "points": [
-                "Sudden speculative risks kante safe long-term investments lo munduku vellandi.",
-                "Mee analytical mind mariyu clear communication mee mukhya balaalu.",
-                "Workload ekkuva unnapudu daily routine mariyu hydration balance maintain cheyandi.",
-            ]
-        }
-    else:
-        sections["wealth_vault"] = {
-            "title": "The Sealed Wealth Vault (Great Dhana Triangle)",
-            "narrative": "Your Fate Line, Head Line, and secondary conduits intersect to establish an enclosed Central Wealth Vault, ensuring disciplined capital retention and compounding.",
-            "rule_explanation": "An enclosed Dhana Triangle indicates that earned capital is channeled into lasting assets rather than dissipating through impulsive leakage.",
-        }
-        sections["palmist_counsel"] = {
-            "points": [
-                "Prioritize high-conviction, compounding assets over speculative shortcuts.",
-                "Leverage your analytical clarity and consultative communication as your primary career multipliers.",
-                "Protect physical stamina and sleep quality during intensive multi-project execution phases.",
-            ]
-        }
+    # No "wealth vault" / "palmist counsel" cards: they asserted an enclosed
+    # triangle and personality traits that the image analysis never measures,
+    # and were identical for every customer. Absent keys are skipped downstream.
     sections["scientific_secrets"] = generate_personalized_scientific_secrets(client_name, raw_cv, hand_shape, lang=lang)
     base["sections"] = sections
     return base
@@ -375,7 +284,7 @@ def save_palm_consultation_json(
             "guidelines": [
                 "Strictly adhere to the verified line shapes, timings, and mount formations provided.",
                 "Speak directly to the native with empathy, clarity, and authority.",
-                "Highlight the native's personalized scientific palmistry facts (e.g. Neural Highway, Active Willpower Evolution, Sealed Wealth Vault) to explain why their hand produces these exact life outcomes.",
+                "Highlight the native's personalized scientific palmistry facts that are present in verified_palm_facts, and never state a feature the facts do not contain.",
                 "Do NOT introduce astrological terminology (keep focus purely on palmistry, morphology, and dermatoglyphics).",
                 "Explain both the inborn potential (left hand) and active reality (right hand).",
             ]

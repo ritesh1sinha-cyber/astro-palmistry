@@ -1630,6 +1630,7 @@ def extract_features(
 
     pts, lm_status = detect_hand_landmarks(bgr)
     landmarks_ok = pts is not None
+    lm_detail = lm_status      # why detection failed, before the fallback rewrites it
 
     if pts is not None:
         mask = _palm_mask_from_landmarks(bgr, pts)
@@ -1767,6 +1768,15 @@ def extract_features(
         "source_image": str(image_path.resolve()),
         "hand": hand,
         "landmark_status": lm_status,
+        "landmark_detail": lm_detail,
+        # How much of the photo the hand's bounding box covers. A full-body or
+        # distant shot can still yield a landmark hit on a tiny hand; the gate
+        # needs this to refuse it rather than trace creases that are not there.
+        "hand_frame_fraction": (
+            round(float((pts[:, 0].max() - pts[:, 0].min())
+                        * (pts[:, 1].max() - pts[:, 1].min()))
+                  / float(bgr.shape[0] * bgr.shape[1]), 4)
+            if landmarks_ok else None),
         "quality": quality,
         "photo_guidance": photo_guidance,
         "morphology": morphology,
