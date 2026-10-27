@@ -313,6 +313,16 @@ def submit_job(body: JobIn, request: Request, user: dict = Depends(current_user)
     public_kinds = sorted(k for k in HANDLERS if not k.startswith("admin_"))
     if body.kind not in public_kinds:          # admin_* kinds are queued by admin endpoints only
         raise HTTPException(400, f"unknown kind; try {public_kinds}")
+    # Free-text questions are vetted before anything is queued or counted:
+    # gibberish, crisis, sexual/abusive text and harm-to-others never reach a
+    # chart, a model, or the customer's daily slot.
+    if body.kind in ("horary", "user_question"):
+        from core.question_guard import check_question
+        verdict = check_question(str(body.payload.get("question") or ""), body.kind)
+        if verdict:
+            print(f"[guard] {body.kind} refused code={verdict.code} user={user['id']}",
+                  flush=True)
+            raise HTTPException(422, verdict.message)
     # One job at a time per login: a second tap while the first is still
     # queued or running is refused before it can use up a daily slot.
     if Q.has_active_job(str(user["id"])):
@@ -751,6 +761,16 @@ def report_chat(rid: str, body: ChatIn, user: dict = Depends(current_user)):
         sys.path.insert(0, str(eng))
 
     question = (body.message or "").strip()
+    # Guardrail first: nothing unsafe is stored, sent to a model, or answered
+    # with chart facts. The customer gets a plain reply (with help lines for
+    # a crisis message) instead.
+    from core.question_guard import check_question
+    verdict = check_question(question, "chat")
+    if verdict:
+        print(f"[guard] chat refused code={verdict.code} user={user['id']} report={rid}",
+              flush=True)
+        return {"reportId": rid, "answer": verdict.message, "out_of_scope": True,
+                "blocked": verdict.code, "used_fact_ids": []}
     chat_append(rid, user["id"], "user", question)
     history = [
         {"role": m["role"], "content": m["content"]}

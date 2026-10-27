@@ -29,7 +29,9 @@ Do not write the customer answer. Decide only:
 1. restated_intent — what they actually asked, in one plain sentence.
 2. in_scope — true only for a human-life question (work, money, family,
    health, relationship, property, travel, legal, lost object, timing).
-   False for programming, recipes, trivia or device repair.
+   False for programming, recipes, trivia or device repair, and False when the
+   text is not a meaningful question at all (gibberish, random letters, a
+   greeting, test text, insults, or anything sexual or violent).
 3. is_yes_no — true only if a yes or no would be a fair answer.
    False for when / how / what / who / why / which, or any question that
    needs a description rather than a yes.

@@ -465,6 +465,8 @@ def h_horary(user: dict, p: dict) -> dict:
     q = (p.get("question") or "").strip()
     if not q:
         raise UserError("Type your question first.")
+    from .question_guard import ensure_question_ok
+    ensure_question_ok(q, "horary")          # also enforced at /api/job; belt and braces
     try:
         kp_num = int(str(p.get("kpNumber") or p.get("kp_number") or "").strip())
     except (TypeError, ValueError):
@@ -502,6 +504,11 @@ def h_horary(user: dict, p: dict) -> dict:
         str(kp_num), area=area,
         lat=p.get("lat"), lon=p.get("lon"))
     judgement = judge_kp_horary(q, data, area=area)
+    if str(getattr(judgement, "label", "")) == "out_of_scope":
+        # The model judged this is not a question about a human life (nonsense,
+        # a greeting, code, trivia). Say so; do not save and sell a "reading".
+        from .question_guard import MSG, QuestionRejected
+        raise QuestionRejected("out_of_scope", MSG["gibberish"])
     kp_verdict = judgement_as_verdict(judgement)
     evidence = kp_evidence(data)
     # The chart promised it: date the running period, as the book does. It did
@@ -559,6 +566,8 @@ def h_user_question(user: dict, p: dict) -> dict:
     q = (p.get("question") or "").strip()
     if not q:
         raise UserError("Type your question first.")
+    from .question_guard import ensure_question_ok
+    ensure_question_ok(q, "user_question")
 
     try:
         import semantic_fallback
