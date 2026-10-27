@@ -885,6 +885,16 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     except Exception as exc:  # noqa: BLE001
         print(f"[report_render] planner skipped: {exc}", flush=True)
 
+    # When the words name the subject outright ("girlfriend", "visa", "surgery") that wins
+    # over the planner model and the menu pick: a soft router once answered
+    # "when will I get a girlfriend" with a health reading.
+    if domain_override != "out_of_domain":
+        from question_domain import keyword_domain
+        named = keyword_domain(question)
+        if named and named != domain_override:
+            print(f"[report_render] domain {domain_override!r} -> {named!r} by wording", flush=True)
+            domain_override = named
+
     if domain_override != "out_of_domain" and QR.is_gem_question(question):
         domain_override = "gemstones_remedies"
 

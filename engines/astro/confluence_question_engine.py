@@ -815,6 +815,15 @@ def _fallback_detect_domain(question: str, route: Any = None, area: str = "") ->
     if is_strictly_out_of_domain(question):
         return "out_of_domain"
 
+    # A question that names its subject outright needs no soft router.
+    try:
+        from question_domain import keyword_domain
+        named = keyword_domain(question)
+        if named:
+            return named
+    except Exception:                                                 # noqa: BLE001
+        pass
+
     # Phrase-level high intent scoring (e.g. "move abroad", "win court case")
     phrase_scores: dict[str, int] = {}
     for d_key, phrases in INTENT_KEYPHRASES.items():
