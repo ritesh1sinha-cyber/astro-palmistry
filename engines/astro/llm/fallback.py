@@ -721,7 +721,7 @@ _FAMILY_RELATION_WORDS = {
     "home": ("home", "household", "domestic", "childhood", "upbringing"),
 }
 _FAMILY_HEDGED = re.compile(
-    r"\b(?:reads? as|comes? across|seems?|appears?|usually|often|tends?|may|"
+    r"\b(?:reads? as|comes? across|seems?|appears?|usually|often|tends?|may|classically|"
     r"might|likely)\b", re.I,
 )
 
@@ -889,8 +889,11 @@ def _life_state_prose(life_state: Any) -> tuple[list[str], str]:
 def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
     name = getattr(facts, "first_name", "") or ""
     lang_code = str(getattr(facts, "language", "") or "").lower()
-    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
-    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+    # The Hinglish / Telugu strings in this fallback were one fixed positive line
+    # per area, identical for every hand. The measured, English text is used for
+    # every language instead; the model-written prose carries the language.
+    is_hinglish = False
+    is_tenglish = False
     traits = [str(t).strip() for t in (getattr(facts, "personality_traits", None) or []) if str(t).strip()]
     if is_hinglish:
         personality = (
@@ -908,13 +911,7 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
         # Use the primary character and temperament sentence intact
         personality = traits[0]
     else:
-        personality = (
-            f"{name}, your hands show a nature that holds across temperament, mind and work. "
-            f"That nature does not change with a season; it is what you keep bringing."
-            if name else
-            "Your hands show a nature that holds across temperament, mind and work. "
-            "That nature does not change with a season; it is what you keep bringing."
-        )
+        personality = ""   # no measured traits: say nothing rather than a line that fits any hand
     stage = str(getattr(facts, "life_stage_note", "") or "").strip()
     if stage and stage[-1] not in ".!?":
         cut = max(stage.rfind(". "), stage.rfind("—"), stage.rfind(" - "))
@@ -928,10 +925,7 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
         current_phase = "Mee chethulu prasthutha jeevitha phase lo sthiramga mariyu patience tho munduki saagalsina avasaram undani chupisthunnai."
         hardest = f"Prasthutha samayam lo ekkuva dhyanam pettalsina vishayam: {demanding}." if demanding else ""
     else:
-        current_phase = stage or (
-            "Your hands point to a life stage that rewards steadiness. Do not rush "
-            "what they are asking you to look after."
-        )
+        current_phase = stage
         hardest = f"The area asking for more care right now is {demanding}." if demanding else ""
 
     areas = {}
@@ -958,7 +952,7 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
                 outlook = f"Mee chethulu {title} vishayam lo balanced mariyu active energy ni chupisthunnai."
             else:
                 outlook = clean_palm_summary(summary) or (
-                    f"Your hands read as steady on {title.lower()}."
+                    f"Your hands read as {strength} on {title.lower()}." if strength else ""
                 )
             try:
                 from .rules import scrub_palm_bodily
@@ -978,16 +972,13 @@ def conversational_palm_fallback(facts: Any) -> dict[str, Any]:
                         f"{first[0].lower() + first[1:]}."
                     )
                 else:
-                    outlook = f"Your hands read as steady on {title.lower()}."
+                    continue   # nothing measured for this area: leave it out, do not invent
             if key == "character" and personality:
                 if outlook[:80].lower() in personality.lower():
                     if recognize:
                         outlook = str(recognize[0]).strip()
                     else:
-                        outlook = (
-                            "Your nature is consistent — the same temperament "
-                            "shows in how you deal with people and how you decide."
-                        )
+                        outlook = ""
             if demanding:
                 outlook = (
                     f"{outlook} This is one of the areas your hands ask you to look after "

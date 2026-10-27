@@ -342,6 +342,34 @@ def _get_varga_planet_sign(pc: dict, code: str, planet: str) -> str:
     return (pc.get("divisional", {}).get(code, {}) or {}).get(planet, "")
 
 
+def _graded(pc: dict, planets: list, strong: str, mixed: str, strained: str) -> str:
+    """Pick the sentence that matches how strong the relevant planets really are.
+
+    The divisional text used to carry one flattering default per life area
+    ("You carry strong moral grounding and blessings from parents") that printed
+    for every chart. Now the outcome follows the planets that govern the area.
+    """
+    import chart_lines as CL
+    names = [x for x in planets if x]
+    if not names:
+        return mixed
+    avg = sum(CL.score_planet(pc, x) for x in names) / len(names)
+    g = CL.grade(round(avg))
+    return {"strong": strong, "mixed": mixed, "strained": strained}[g]
+
+
+def _lagna_sentence(lagna: str) -> str:
+    """The rising sign's own description, not one sentence for every chart."""
+    try:
+        from bhardwaj_prose import LAGNA_HUMAN
+        txt = str(LAGNA_HUMAN.get(lagna) or "").strip()
+    except Exception:  # noqa: BLE001
+        txt = ""
+    if txt:
+        return txt.rstrip(".")
+    return f"Your rising sign shapes how you come across to others"
+
+
 def _a_an(phrase: str) -> str:
     """'a' or 'an' for the phrase that follows ("a intellectually" read wrong)."""
     word = (str(phrase or "").strip().split() or [""])[0].lower()
@@ -1243,9 +1271,12 @@ def _interpret_varga_concrete(
     """Generates rich, highly specific, practical life interpretations for each divisional chart."""
     div_dict = pc.get("divisional", {})
     d1_planets = pc.get("planets", {})
-    lang_code = str(lang or "").lower().strip()
-    is_hinglish = lang_code in ("hi_en", "hinglish", "hi", "hindi")
-    is_tenglish = lang_code in ("te_en", "tenglish", "te", "telugu")
+    # The Hinglish / Telugu branches below are fixed positive scripts that do not
+    # change with the chart. This block is rendered from the chart-derived English
+    # text for every language; the model-written prose carries the language.
+    is_hinglish = False
+    is_tenglish = False
+    import chart_lines as CL
 
     reading_parts: list[str] = []
     remedy_planet = lord
@@ -1288,8 +1319,8 @@ def _interpret_varga_concrete(
         else:
             headline = f"Core Nature & Personal Vitality ({v_lagna} Rising)"
             reading_parts.append(
-                f"Your foundational birth chart shows a thoughtful, perceptive, and adaptable nature (<b>{v_lagna} Rising</b>). "
-                f"With your Moon in <b>{moon_sign} under {nakshatra}</b>, you have an alert mind that quickly absorbs ideas and notices subtle nuances around you."
+                f"{_lagna_sentence(v_lagna)} (<b>{v_lagna} Rising</b>). "
+                f"Your Moon is in <b>{moon_sign} under {nakshatra}</b>, which sets the tone of your mind and moods."
             )
             if lord_house in DUSTHANA:
                 reading_parts.append(
@@ -1298,9 +1329,11 @@ def _interpret_varga_concrete(
                 remedy_type = "dusthana"
                 remedy_reason = f"To Support Your Ruling Planet ({lord})"
             else:
-                reading_parts.append(
-                    f"Your ruling planet (<b>{lord}</b>) sits comfortably in the {ORDINALS.get(lord_house, '1st')} house, giving you steady physical vitality, natural independence, and self-confidence."
-                )
+                reading_parts.append(_graded(
+                    pc, [lord],
+                    f"Your ruling planet (<b>{lord}</b>) sits well in the {ORDINALS.get(lord_house, '1st')} house, giving you steady physical vitality, natural independence, and self-confidence.",
+                    f"Your ruling planet (<b>{lord}</b>) sits in the {ORDINALS.get(lord_house, '1st')} house with mixed support, so energy and self-confidence come in good stretches and drained ones.",
+                    f"Your ruling planet (<b>{lord}</b>) is under strain in the {ORDINALS.get(lord_house, '1st')} house, so energy and confidence need deliberate protection."))
 
     elif code == "D2":
         if is_hinglish:
@@ -1333,7 +1366,11 @@ def _interpret_varga_concrete(
 
             reading_parts.append(
                 f"This division maps your money instincts, asset retention, and long-term capital stability. "
-                f"Your chart indicates that wealth compounds most reliably through <b>{hora_nature}</b> rather than speculative shortcuts."
+                + _graded(
+                    pc, [CL.lord_of(pc, 2), CL.lord_of(pc, 11)],
+                    f"Your chart indicates that wealth compounds most reliably through <b>{hora_nature}</b> rather than speculative shortcuts.",
+                    f"Your chart indicates that wealth builds best, though unevenly, through <b>{hora_nature}</b> rather than speculative shortcuts.",
+                    f"Your chart indicates that money needs careful pacing, and is best built through <b>{hora_nature}</b> rather than speculative shortcuts.")
             )
             if strong_planets:
                 reading_parts.append(
@@ -1357,19 +1394,27 @@ def _interpret_varga_concrete(
             )
         else:
             headline = f"Courage, Siblings & Everyday Initiative"
-            courage_str = "You possess strong natural courage, decisive execution, and the ability to take self-directed initiative on ambitious goals."
+            courage_str = _graded(
+                pc, ["Mars", CL.lord_of(pc, 3)],
+                "Your chart shows strong natural courage, decisive execution, and the ability to take self-directed initiative on ambitious goals.",
+                "Your courage and initiative are real but uneven: bold when you are sure, hesitant when the stakes feel unclear.",
+                "Courage and initiative do not come easily in your chart; you act best after careful preparation rather than on impulse.")
             if lord_house in (3, 6, 10, 11):
                 courage_str = "Your chart confirms powerful upachaya drive (*Parakrama*), indicating that your determination and ability to overcome resistance grow stronger with every challenge."
             elif lord_house in DUSTHANA:
                 courage_str = "Your personal enterprise develops through thoughtful strategy, research, and patient effort rather than hasty actions."
 
-            sibling_str = "The Drekkana chart confirms supportive co-born relationships, mutual affection with siblings, and a collaborative spirit when working alongside close peers."
-            if d1_h2_lord_house in (3, 9, 11, 1, 5) or "Mars" in [sp.split()[0] for sp in strong_planets]:
-                sibling_str = "Governed by strong 3rd house indicators, your relationship with siblings brings mutual backing, shared family pride, and strong loyalty."
-            elif d1_h2_lord_house in DUSTHANA:
-                sibling_str = "Your chart favors cultivating independent self-reliance while maintaining respectful, mature communication with siblings and peers."
+            sibling_str = _graded(
+                pc, [CL.lord_of(pc, 3), "Mars"],
+                "The ruler of your siblings area is well placed, which points to mutual backing, loyalty and a collaborative spirit with siblings and close peers.",
+                "The ruler of your siblings area is placed with mixed support, so ties with siblings and peers are warm at times and distant at others.",
+                "The ruler of your siblings area is under strain, so these ties ask for patience and clear communication, and self-reliance serves you well.")
 
-            motor_str = "You possess good physical coordination, manual dexterity, and the active stamina to carry projects through to completion."
+            motor_str = _graded(
+                pc, ["Mars"],
+                "Mars is well placed in your chart, which favours good physical coordination and the stamina to carry projects through.",
+                "Mars gives you stamina in bursts; steady routines work better than sprints.",
+                "Mars is under strain in your chart, so physical pacing, warm-ups and avoiding overexertion matter.")
             if "Saturn" in [tp.split()[0] for tp in trik_planets] or "Rahu" in [tp.split()[0] for tp in trik_planets]:
                 motor_str = "Physical pacing and manual stamina benefit from steady warmups, regular physical exercise, and avoiding erratic overexertion."
 
@@ -1399,7 +1444,11 @@ def _interpret_varga_concrete(
             headline = f"Home, Land, Vehicles & Relocation"
             reading_parts.append(
                 "The Chaturthamsha division maps <b>domestic peace (*Griha Sukha*), fixed property, land acquisition, conveyances (*Vahana*), and geographical relocation / foreign settlement (*Videsh Vasa*)</b>. "
-                "Your chart confirms a solid foundational promise for acquiring residential real estate, comfortable conveyances, and establishing an enduring personal sanctuary in adulthood."
+                + _graded(
+                    pc, [CL.lord_of(pc, 4), "Venus"],
+                    "The ruler of your home area is well placed, which supports a solid promise of owning a home, comfortable conveyances and an enduring personal sanctuary.",
+                    "The ruler of your home area has mixed support, so a home and conveyances come through steady effort, with some delays or compromises.",
+                    "The ruler of your home area is under strain, so property and a settled home take longer and need careful, well-checked decisions.")
             )
             if strong_planets:
                 reading_parts.append(
@@ -1491,9 +1540,11 @@ def _interpret_varga_concrete(
                     f"Classical confirmation affirms joyful, healthy children and family happiness that unfolds naturally after marriage in adulthood."
                 )
             else:
-                reading_parts.append(
-                    f"This chart confirms supportive potential for children and family continuation, bringing deep emotional joy, mutual affection, and fulfillment through parenthood."
-                )
+                reading_parts.append(_graded(
+                    pc, [CL.lord_of(pc, 5), "Jupiter"],
+                    "The indicators for children are well placed, which supports joy and fulfilment through children and family continuation.",
+                    "The indicators for children have mixed support, so family growth comes with both joy and some waiting or adjustment.",
+                    "The indicators for children are under strain, so this area asks for patience and good health care, and timing matters more than speed."))
         remedy_planet = "Jupiter"
         remedy_reason = "To Bless Progeny & Family Growth (Santan Gopal Upaya)"
 
@@ -1524,7 +1575,12 @@ def _interpret_varga_concrete(
             reading_parts.append(
                 f"The Navamsha division maps life partnership, marital harmony, and inner destiny (Bhagyodaya). "
                 f"Your chart indicates {_a_an(partner_nature)} <b>{partner_nature}</b> life partner, likely connected with <b>{partner_realm}</b>. "
-                f"The relationship provides {dynamics}, bringing emotional stability, shared values, and mutual life elevation in adulthood."
+                f"The relationship provides {dynamics}. "
+                + _graded(
+                    pc, [CL.lord_of(pc, 7), "Venus"],
+                    "Your partnership indicators are well placed, which supports emotional stability and shared values.",
+                    "Your partnership indicators have mixed support, so the relationship brings closeness along with adjustments to make.",
+                    "Your partnership indicators are under strain, so patience, clear communication and timing matter in this area.")
             )
         remedy_planet = "Venus"
         remedy_reason = "To Foster Harmony in Relationships (Shukra Upaya)"
@@ -1557,8 +1613,12 @@ def _interpret_varga_concrete(
             fields_bullet = ", ".join([f"<b>{f}</b>" for f in suited_fields])
             reading_parts.append(
                 f"Your professional karma operates as {_a_an(archetype)} <b>{archetype}</b>. Your natural work style {work_style}.<br><br>"
-                f"<b>Optimal High-Growth Career Fields:</b> Your planetary confluence indicates maximum success and recognition in {fields_bullet}. "
-                f"Gaining specialized subject mastery early paves the way for significant executive respect and leadership authority."
+                f"<b>Career Fields Your Chart Points To:</b> {fields_bullet}. "
+                + _graded(
+                    pc, [CL.lord_of(pc, 10), "Sun"],
+                    "Your career indicators are well placed, so building expertise early tends to bring respect and responsibility.",
+                    "Your career indicators have mixed support, so progress comes in steps with some slow stretches.",
+                    "Your career indicators are under strain, so progress asks for patience, and steady skill-building matters more than quick promotion.")
             )
         remedy_planet = "Sun"
         remedy_type = "dusthana" if d1_h10_lord_house in DUSTHANA else "strengthen"
@@ -1580,8 +1640,11 @@ def _interpret_varga_concrete(
         else:
             headline = f"Family Roots & Parental Blessings"
             reading_parts.append(
-                f"This chart reflects family heritage, parental affection, and ancestral protection. "
-                f"You carry strong moral grounding and blessings from parents. Respecting family elders and honoring family traditions brings positive energetic support throughout your life."
+                _graded(
+                    pc, ["Sun", "Moon", CL.lord_of(pc, 9)],
+                    "The indicators for parents and family roots are well placed, which classically points to support and good grounding from your family.",
+                    "The indicators for parents and family roots have mixed support, which classically points to a family bond with both warmth and friction.",
+                    "The indicators for parents and family roots are under strain, which classically points to a harder road with family, where you build your own footing.")
             )
             if strong_planets:
                 reading_parts.append(
@@ -1606,8 +1669,11 @@ def _interpret_varga_concrete(
         else:
             headline = f"Education, Memory & Intellectual Mastery"
             reading_parts.append(
-                f"The D24 chart confirms strong conceptual grasping power, analytical thinking, and the ability to master complex disciplines. "
-                f"With structured, distraction-free study habits, you can excel in technical, scientific, legal, or management programs and competitive certifications."
+                _graded(
+                    pc, ["Mercury", CL.lord_of(pc, 5)],
+                    "Your learning indicators are well placed, which supports strong grasp, analytical thinking and mastery of complex subjects.",
+                    "Your learning indicators have mixed support, so you learn well when the subject interests you and the routine is steady.",
+                    "Your learning indicators are under strain, so learning comes through patient repetition and structure rather than speed.")
             )
             if strong_planets:
                 reading_parts.append(
@@ -1955,18 +2021,15 @@ def get_108_snapshot_summary_paragraph(pc: dict) -> str:
 
         if not sentences:
             return (
-                "Your birth chart carries classical foundational strengths where focused personal effort and disciplined habits "
-                "consistently unlock meaningful opportunities across major life chapters."
+                "The classical checks did not single out a standout strength or weakness in the foundation of your chart; "
+                "the detail below is what the chart itself shows."
             )
 
         merged = " ".join(sentences[:4])
         return merged
     except Exception as exc:
         print(f"[divisional_profile] 108 summary error: {exc}", flush=True)
-        return (
-            "Your birth chart carries classical foundational strengths: your personal efforts find natural external backing, "
-            "and leaning into key supportive planetary periods delivers long-term stability and fulfillment."
-        )
+        return ""
 
 
 def render_divisional_blocks(pc: dict, *, paid: bool = False,

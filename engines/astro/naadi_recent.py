@@ -396,7 +396,7 @@ def mind_units(f: dict) -> list[dict]:
             "a": f"The Moon is also {rel} your birth {c['planet']}, which stands for {c['stands_for']}.",
             "b": "", "topic": c["stands_for"], "nature": "nudging at the back of your mind",
             "scenes": _scenes_for(c),
-            "fb": "You may notice a decision or a conversation about this quietly waiting for an answer."})
+            "fb": f"You may find {_two(_scenes_for(c))} nudging at you in the background."})
     if f.get("chandrashtama"):
         units.append({
             "title": "Handle with care",
@@ -416,7 +416,7 @@ def mind_units(f: dict) -> list[dict]:
                   f"stands for {PLANET_STANDS_FOR.get(f['ad'], 'steady growth')}."),
             "b": "", "topic": PLANET_STANDS_FOR.get(f["ad"], ""), "nature": "a steady background pull",
             "scenes": "weighing what is really worth your energy, where your attention keeps going",
-            "fb": "You may be weighing what is really worth your energy right now."})
+            "fb": f"You may find {_two(PLANET_SCENES.get(f['ad'], '') or 'where your attention keeps going')} taking up your attention."})
     return units[:3]
 
 

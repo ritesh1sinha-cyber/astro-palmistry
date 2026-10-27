@@ -1528,6 +1528,16 @@ LAGNESHA_HOUSE_PREDICTIONS: dict[int, str] = {
 }
 
 
+def _CL_period(pc, lord, tense):
+    """Chart-derived sentence for a sub-period (replaces the fixed per-slot script)."""
+    try:
+        import chart_lines as CL
+        line = CL.period_line(pc or {}, lord, tense)
+    except Exception:  # noqa: BLE001
+        line = ""
+    return line or f"{lord} sets the tone of this stretch."
+
+
 def _build_unified_current_chapter_html(
     pc: dict,
     analysis: Any,
@@ -1627,7 +1637,7 @@ def _build_unified_current_chapter_html(
             m_note = (f'<p style="{_note_style}">Read the Chandra Naadi way: the Moon is the daily trigger, '
                       f'and it is touching these parts of your birth chart right now.</p>')
         else:
-            m_items = "".join(f"<li>{it}</li>" for it in cr_res.get("mind_state", []))
+            m_items = ""  # no fixed-script fallback: the card is left out rather than invented
             m_note = ""
         if m_items:
             mind_card_html = (
@@ -1645,7 +1655,7 @@ def _build_unified_current_chapter_html(
             p_note = (f'<p style="{_note_style}">Read the Chandra Naadi way: the slow planets set the climate '
                       f'for months, and the Moon&rsquo;s monthly pass over the same spot is when it came to a head.</p>')
         else:
-            p_items = "".join(f"<li>{it}</li>" for it in cr_res.get("past_6_months", []))
+            p_items = ""  # no fixed-script fallback: the card is left out rather than invented
             p_note = ""
         if p_items:
             past_card_html = (
@@ -1704,15 +1714,15 @@ def _build_unified_current_chapter_html(
         if is_hinglish:
             p_badge = "Haal Ka Anubhav / Past Window"
             p_sub = f"{p_lord} Antardasha ({cur_md}–{p_lord})"
-            p_text = "Karyakshetra ki tayyari, administrative commitments aur lambe samay ke lakshyo ke liye zameen tayyar karna."
+            p_text = _CL_period(pc, p_lord, "past")
         elif is_tenglish:
             p_badge = "Gathisina Anubhavam / Past Window"
             p_sub = f"{p_lord} Antardasha ({cur_md}–{p_lord})"
-            p_text = "Karyakshetramlo tayyari, administrative badhyathalu mariyu deergha kaala lakshyala kosam moolalanu siddham cheyadam."
+            p_text = _CL_period(pc, p_lord, "past")
         else:
             p_badge = "Recent Formative Window"
             p_sub = f"{p_lord} Sub-Period ({cur_md}–{p_lord})"
-            p_text = "Analytical groundwork, managing administrative commitments, and laying the intellectual runway for long-term objectives."
+            p_text = _CL_period(pc, p_lord, "past")
         chronology_items.append(
             f'<div class="chapter-step past" style="background:#fdfdfd;border:1px solid #e4ded3;border-left:4px solid #6a7080;border-radius:11px;padding:13px 15px;">'
             f'  <div class="step-badge past" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#f0f0f0;color:#4a5160;">{p_badge}</div>'
@@ -1727,15 +1737,15 @@ def _build_unified_current_chapter_html(
     if is_hinglish:
         c_badge = "Chalu Operating Chapter"
         c_sub = f"{ad_lord} Antardasha ({cur_md}–{ad_lord})"
-        c_text = "<b>Aantarik Sthirta Aur Re-Alignment:</b> Ek anushasit daur jo purani rukawaton ko hatane, vyarth commitments ko chhodne aur apne professional base ko mazboot karne ke liye samarpit hai."
+        c_text = _CL_period(pc, ad_lord, "now")
     elif is_tenglish:
         c_badge = "Chalu Operating Chapter"
         c_sub = f"{ad_lord} Antardasha ({cur_md}–{ad_lord})"
-        c_text = "<b>Aantrika Sthiratha Mariyu Re-Alignment:</b> Patha avarodhalanu tholaginchadaniki, waste commitments vadiliveyadaniki mariyu professional base ni balaparachadaniki anukoolamaina phase."
+        c_text = _CL_period(pc, ad_lord, "now")
     else:
         c_badge = "Active Operating Chapter"
         c_sub = f"{ad_lord} Sub-Period ({cur_md}–{ad_lord})"
-        c_text = "<b>Concentrated Restructuring &amp; Karmic Realignment:</b> A disciplined phase dedicated to internal consolidation, shedding unproductive commitments, and methodically fortifying your core professional baseline."
+        c_text = _CL_period(pc, ad_lord, "now")
     chronology_items.append(
         f'<div class="chapter-step active" style="background:#fffcf8;border:1px solid #e4ded3;border-left:4px solid #b57c38;border-radius:11px;padding:14px 16px;">'
         f'  <div class="step-badge active" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#fdf2e3;color:#8a5a1c;">{c_badge}</div>'
@@ -1752,15 +1762,15 @@ def _build_unified_current_chapter_html(
         if is_hinglish:
             n_badge = "Aane Wala Breakthrough Window"
             n_sub = f"{n_lord} Antardasha ({cur_md}–{n_lord})"
-            n_text = "<b>Mahatvapurna Safalta Aur Vistaar:</b> Vah mukhya samay jahan pichle prayas samman, promotion aur sthirta mein badalte hain."
+            n_text = _CL_period(pc, n_lord, "next")
         elif is_tenglish:
             n_badge = "Munde Vache Breakthrough Window"
             n_sub = f"{n_lord} Antardasha ({cur_md}–{n_lord})"
-            n_text = "<b>Mukhya Safalatha Mariyu Vistaaram:</b> Mundu chesina prayathnalu gouravam, promotion mariyu sthiratha roopamlo phalithalani iche mukhyamaina samayam."
+            n_text = _CL_period(pc, n_lord, "next")
         else:
             n_badge = "Upcoming Breakthrough Window"
             n_sub = f"{n_lord} Sub-Period ({cur_md}–{n_lord})"
-            n_text = "<b>Major Manifestation &amp; Elevation Catalyst:</b> The primary timing window where prior perseverance translates into public recognition, vocational promotion, and decisive material expansion."
+            n_text = _CL_period(pc, n_lord, "next")
         chronology_items.append(
             f'<div class="chapter-step future" style="background:#f8fbf9;border:1px solid #e4ded3;border-left:4px solid #1c6b45;border-radius:11px;padding:13px 15px;">'
             f'  <div class="step-badge future" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#e3f5ec;color:#1c6b45;">{n_badge}</div>'

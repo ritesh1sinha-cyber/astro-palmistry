@@ -210,8 +210,9 @@ def _blind(pc: dict, dob: date | None, female: bool) -> tuple[list[str], dict[st
             title = str(section.get("title") or "").lower()
             paragraphs = list(section.get("paragraphs") or [])
             if "parent" in title or "sibling" in title or "birth order" in title:
-                for para in paragraphs:
-                    _merge_family(family, _route_family(para))
+                # Fixed script ("Your father reads as principled...", "you are the
+                # youngest") that does not change with the chart: not evidence.
+                continue
             elif "core nature" in title or "personality" in title or title.startswith("you"):
                 for para in paragraphs:
                     traits += _safe_sentences(para, trait=True)
@@ -477,35 +478,30 @@ def _classical_report(pc: dict) -> tuple[list[str], dict[str, list[str]]]:
 
 
     hlh = book.get("house_lord_in_house", {})
-    # 2. Natal Roots for Family (Sun for father, Moon for mother, 3rd lord/Mars for siblings, 4th/2nd for home)
-    sun_h = chart.planets.get("Sun", {}).get("house", 0)
-    sun_sign = chart.planets.get("Sun", {}).get("sign", "")
-    if sun_h and sun_sign:
-        family["father"].append(f"Natal chart places Sun in {sun_sign} in the {sun_h} house, indicating a structured paternal presence.")
-
-    moon_h = chart.planets.get("Moon", {}).get("house", 0)
-    moon_sign = chart.planets.get("Moon", {}).get("sign", "")
-    if moon_h and moon_sign:
-        family["mother"].append(f"Natal chart places Moon in {moon_sign} in the {moon_h} house, reflecting an emotional maternal bond.")
-
-    lord_3 = chart.houses.get(3, {}).get("lord", "")
-    mars_sign = chart.planets.get("Mars", {}).get("sign", "")
-    if lord_3 and mars_sign:
-        family["siblings"].append(f"Natal 3rd house governed by {lord_3} with Mars in {mars_sign} highlights dynamic sibling ties.")
-
-    lord_4 = chart.houses.get(4, {}).get("lord", "")
-    lord_2 = chart.houses.get(2, {}).get("lord", "")
-    if lord_4 or lord_2:
-        family["home"].append(f"Natal 4th house ruled by {lord_4 or lord_2} forms the foundation of childhood environment and values.")
+    # Family lines are built from the chart's own significators in
+    # _divisional_family (chart_lines.family_notes); nothing canned lives here.
 
     return traits, family
 
 
 def _divisional_family(pc: dict) -> tuple[list[str], dict[str, list[str]]]:
+    """Family lines graded from the chart's significators (see chart_lines).
+
+    This used to print the same claim for every chart ("a strong paternal
+    heritage of discipline...") and vary only the house number. The claim now
+    follows the strength of the indicators, so a strained chart reads strained.
+    """
     traits: list[str] = []
     family: dict[str, list[str]] = _empty_family()
     if not isinstance(pc, dict):
         return traits, family
+    try:
+        import chart_lines as CL
+        for relation, lines in CL.family_notes(pc).items():
+            family[relation] += lines
+    except Exception:  # noqa: BLE001
+        pass
+    return traits, family
     divisional = pc.get("divisional") or {}
     d12 = divisional.get("D12") or {}
     d3 = divisional.get("D3") or {}

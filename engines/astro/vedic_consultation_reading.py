@@ -294,28 +294,29 @@ def generate_consultation_reading(
     next_dig = next_planet_data.get("dignity", "neutral_sign")
     next_house = next_planet_data.get("house", 1)
 
-    if next_dig in ["exalted", "own_sign", "moolatrikona"]:
-        forecast_grade = "Highly Auspicious / Golden Era"
-        forecast_desc = (
-            f"Your natal {next_lord} is strongly dignified ({next_dig}) in House {next_house}. When this sub-period begins, "
-            f"the silent efforts and systems built during the current cycle will convert into massive material prosperity, "
-            f"elevated status, and widespread recognition."
-        )
-    elif next_lord in ["Venus", "Jupiter", "Mercury", "Sun"]:
-        forecast_grade = "Expansive & Fruitful Phase"
-        forecast_desc = (
-            f"Activating {next_lord} in House {next_house} unlocks rapid progress, supportive alliances, financial liquidity, "
-            f"and positive milestone celebrations."
-        )
-    else:
-        forecast_grade = "Structured & Transformative Phase"
-        forecast_desc = (
-            f"Activating {next_lord} in House {next_house} brings major structural maturity, long-term stability, and legal/institutional authority."
-        )
+    # Derived from where the coming sub-period's lord actually sits and how strong
+    # it is. The old text promised "massive material prosperity" to anyone whose
+    # next lord was Venus/Jupiter/Mercury/Sun, whatever their chart said.
+    import chart_lines as CL
+    g_next = CL.planet_grade(pc, next_lord)
+    g_now = CL.planet_grade(pc, ad_lord)
+    forecast_grade = {"strong": "Supportive phase", "mixed": "Mixed phase",
+                      "strained": "Demanding phase"}[g_next]
+    forecast_desc = (
+        CL.period_line(pc, next_lord, "next") + " "
+        + {"strong": f"{next_lord} is well placed in your chart, so these matters tend to move more easily.",
+           "mixed": f"{next_lord} is placed with both help and friction, so expect progress with some resistance.",
+           "strained": f"{next_lord} is under strain in your chart, so these matters ask for more effort and patience."}[g_next]
+    ).strip()
+    now_advice = {
+        "strong": "This is a good stretch to push forward the matters it rules.",
+        "mixed": "Move steadily and check the details on the matters it rules.",
+        "strained": "Pace big commitments and protect your energy on the matters it rules.",
+    }[g_now]
 
     roadmap_points = [
-        f"<b>Current Phase Strategy (until {ad_end_str}):</b> You are in the final refinement window of {ad_lord}. Use this period to consolidate systems, settle pending dues, and stay away from risky speculative bets.",
-        f"<b>The Turning Point ({ad_end_str} to {next_end_str}):</b> Transition into <b>{next_lord} Antardasha</b> &mdash; <span class='phase-pill positive'>{forecast_grade}</span><br>{forecast_desc}",
+        f"<b>Current Phase (until {ad_end_str}):</b> {CL.period_line(pc, ad_lord, 'now')} {now_advice}",
+        f"<b>The Turning Point ({ad_end_str} to {next_end_str}):</b> Transition into <b>{next_lord} Antardasha</b> &mdash; <span class='phase-pill {'positive' if g_next == 'strong' else 'warning' if g_next == 'strained' else 'info'}'>{forecast_grade}</span><br>{forecast_desc}",
     ]
 
     # ══════════════════════════════════════════════════════════════════
