@@ -140,7 +140,8 @@ def report_title(kind: str, meta: Optional[dict] = None) -> str:
 # ---------------------------------------------------------------------------
 _SUMMARY_CSS = """
 .gr-sum{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-  color:#16181d;max-width:640px;margin:0 auto;padding:8mm 0 4mm;line-height:1.55}
+  color:#16181d;background:#fbfaf8;max-width:640px;margin:0 auto;padding:9mm 9mm 6mm;
+  border-radius:14px;line-height:1.55}
 .gr-sum .gr-sum-eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;
   color:#8a6a1f;font-weight:600;margin:0 0 8px}
 .gr-sum h1{font-family:Fraunces,Georgia,serif;font-size:1.7rem;line-height:1.15;

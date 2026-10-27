@@ -2385,7 +2385,7 @@ Cross-method confidence is capped at MODERATE until the full lane set is generat
 
     body = f"""
 <div class="page">
-<div class="uncal-banner" style="background:#fff8e1;border-left:4px solid #f9a825;padding:12px 18px;margin-bottom:22px;border-radius:8px;font-size:.9rem;">
+<div class="uncal-banner" style="background:#fff8e1;color:#3a3220;border-left:4px solid #f9a825;padding:12px 18px;margin-bottom:22px;border-radius:8px;font-size:.9rem;">
 <strong>Technical confluence.</strong> {n_sys} independent techniques were read and cross-checked. Where several agree, confidence rises.
 This is the analyst view — the plain-language version for the client is <em>user_report_{slug.lower()}.html</em>.
 </div>

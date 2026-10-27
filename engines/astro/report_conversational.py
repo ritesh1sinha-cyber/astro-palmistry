@@ -1686,9 +1686,9 @@ def _build_unified_current_chapter_html(
             p_text = "Analytical groundwork, managing administrative commitments, and laying the intellectual runway for long-term objectives."
         chronology_items.append(
             f'<div class="chapter-step past" style="background:#fdfdfd;border:1px solid #e4ded3;border-left:4px solid #6a7080;border-radius:11px;padding:13px 15px;">'
-            f'  <div class="step-badge past" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#f0f0f0;color:#6a7080;">{p_badge}</div>'
+            f'  <div class="step-badge past" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#f0f0f0;color:#4a5160;">{p_badge}</div>'
             f'  <div class="step-head" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
-            f'    <b style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;">{p_sub}</b> <span class="step-dates" style="font-size:0.75rem;font-weight:700;color:#6a7080;">{p_dates}</span>'
+            f'    <b style="font-family:Georgia,serif;font-size:0.98rem;color:#1f2430;">{p_sub}</b> <span class="step-dates" style="font-size:0.75rem;font-weight:700;color:#4a5160;">{p_dates}</span>'
             f'  </div>'
             f'  <p style="margin:4px 0 0;font-size:0.86rem;line-height:1.55;color:#3d4250;">{p_text}</p>'
             f'</div>'
@@ -1709,9 +1709,9 @@ def _build_unified_current_chapter_html(
         c_text = "<b>Concentrated Restructuring &amp; Karmic Realignment:</b> A disciplined phase dedicated to internal consolidation, shedding unproductive commitments, and methodically fortifying your core professional baseline."
     chronology_items.append(
         f'<div class="chapter-step active" style="background:#fffcf8;border:1px solid #e4ded3;border-left:4px solid #b57c38;border-radius:11px;padding:14px 16px;">'
-        f'  <div class="step-badge active" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#fdf2e3;color:#b57c38;">{c_badge}</div>'
+        f'  <div class="step-badge active" style="display:inline-block;font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:99px;margin-bottom:6px;background:#fdf2e3;color:#8a5a1c;">{c_badge}</div>'
         f'  <div class="step-head" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
-        f'    <b style="font-family:Georgia,serif;font-size:1.02rem;color:#1f2430;">{c_sub}</b> <span class="step-dates" style="font-size:0.76rem;font-weight:700;color:#b57c38;">{cur_dates}</span>'
+        f'    <b style="font-family:Georgia,serif;font-size:1.02rem;color:#1f2430;">{c_sub}</b> <span class="step-dates" style="font-size:0.76rem;font-weight:700;color:#8a5a1c;">{cur_dates}</span>'
         f'  </div>'
         f'  <p style="margin:4px 0 0;font-size:0.88rem;line-height:1.58;color:#2c3140;">{c_text}</p>'
         f'</div>'
@@ -2168,7 +2168,7 @@ def _build_unified_current_chapter_html(
     if chronology_items:
         timeline_html = f"""
     <div class="chapter-timeline-wrap" style="margin:20px 0;">
-      <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#7a4b18;margin-bottom:10px;">{timeline_title}</div>
+      <div style="font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:var(--warning,#7a4b18);margin-bottom:10px;">{timeline_title}</div>
       <div style="display:grid;gap:10px;">
         {"".join(chronology_items)}
       </div>
@@ -2177,8 +2177,8 @@ def _build_unified_current_chapter_html(
 
     return f"""
     <section class="conv-block current-block" style="margin:28px 0;">
-      <div class="section-kicker" style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:#8a6a1f;font-weight:800;margin-bottom:6px;">{ch_kicker}</div>
-      <h2 id="sec-your-current-chapter" data-nav="Current chapter" style="font-family:Georgia,serif;font-size:1.35rem;color:#1f2430;margin:0 0 14px;font-weight:600;">{ch_heading}</h2>
+      <div class="section-kicker" style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--warning,#8a6a1f);font-weight:800;margin-bottom:6px;">{ch_kicker}</div>
+      <h2 id="sec-your-current-chapter" data-nav="Current chapter" style="font-family:Georgia,serif;font-size:1.35rem;color:var(--text-main,#1f2430);margin:0 0 14px;font-weight:600;">{ch_heading}</h2>
       {mind_card_html}
       {past_card_html}
       {roadmap_card_html}

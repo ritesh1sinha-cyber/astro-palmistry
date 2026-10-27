@@ -744,15 +744,15 @@ def _build_domain_specific_timeline(
             peak_yr = this_yr + (28 - current_age)
             return (
                 f"<b>Current Foundation Phase ({curr_md}–{curr_ad_lord}):</b> Building curiosity, academic focus, and early discipline.<br>"
-                f"<b>Key Career Launch Window:</b> <span style='color:#1c6b45;font-weight:700;'>{launch_yr}–{launch_yr+4} (Ages 22–26)</span> | "
-                f"<b>Executive Leadership Window:</b> <span style='color:#1c6b45;font-weight:700;'>{peak_yr}–{peak_yr+6} (Ages 28–34)</span>."
+                f"<b>Key Career Launch Window:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{launch_yr}–{launch_yr+4} (Ages 22–26)</span> | "
+                f"<b>Executive Leadership Window:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{peak_yr}–{peak_yr+6} (Ages 28–34)</span>."
             )
         else:
             c_lord, c_st, c_en, c_st_d, c_en_d = find_target_ad(["Venus", amk, "Sun", h10_lord, "Jupiter", "Mars"])
             return (
                 f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
                 f"Quiet consolidation, refining specialized skills, and establishing solid internal systems without forcing hasty career pivots.<br>"
-                f"<b>Upcoming Major Breakthrough:</b> <span style='color:#1c6b45;font-weight:700;'>{c_st} – {c_en} ({curr_md}–{c_lord})</span> — "
+                f"<b>Upcoming Major Breakthrough:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{c_st} – {c_en} ({curr_md}–{c_lord})</span> — "
                 f"Major executive recognition, leadership promotion, and substantial career elevation."
             )
 
@@ -761,7 +761,7 @@ def _build_domain_specific_timeline(
         if is_child:
             m_yr = this_yr + (26 - current_age)
             return (
-                f"<b>Partnership Horizon:</b> <span style='color:#1c6b45;font-weight:700;'>{m_yr}–{m_yr+5} (Ages 26–31)</span> — "
+                f"<b>Partnership Horizon:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{m_yr}–{m_yr+5} (Ages 26–31)</span> — "
                 f"Auspicious timing for marriage, life partnership, and mutual emotional maturity."
             )
         else:
@@ -769,7 +769,7 @@ def _build_domain_specific_timeline(
             return (
                 f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
                 f"Deepening mutual emotional grounding, patience, and clear communication in relationships.<br>"
-                f"<b>Relational Harmony & Partnership Window:</b> <span style='color:#1c6b45;font-weight:700;'>{m_st} – {m_en} ({curr_md}–{m_lord})</span> — "
+                f"<b>Relational Harmony & Partnership Window:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{m_st} – {m_en} ({curr_md}–{m_lord})</span> — "
                 f"Warm emotional alignment, shared happiness, and elevated domestic harmony."
             )
 
@@ -779,7 +779,7 @@ def _build_domain_specific_timeline(
         return (
             f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
             f"Disciplined budgeting, capital preservation, and avoiding unvetted speculative risks.<br>"
-            f"<b>Major Wealth Surge & Asset Accumulation:</b> <span style='color:#1c6b45;font-weight:700;'>{w_st} – {w_en} ({curr_md}–{w_lord})</span> — "
+            f"<b>Major Wealth Surge & Asset Accumulation:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{w_st} – {w_en} ({curr_md}–{w_lord})</span> — "
             f"Accelerated savings, lucrative income flow, and strong financial stability."
         )
 
@@ -788,7 +788,7 @@ def _build_domain_specific_timeline(
         if is_child:
             p_yr = this_yr + (28 - current_age)
             return (
-                f"<b>Family Continuation Window:</b> <span style='color:#1c6b45;font-weight:700;'>{p_yr}–{p_yr+5} (Ages 28–33)</span> — "
+                f"<b>Family Continuation Window:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{p_yr}–{p_yr+5} (Ages 28–33)</span> — "
                 f"Supportive period for parenthood and family continuation."
             )
         else:
@@ -796,7 +796,7 @@ def _build_domain_specific_timeline(
             return (
                 f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
                 f"Supportive family foundation and patient, attentive parenting.<br>"
-                f"<b>Family Expansion & Joyful Milestones:</b> <span style='color:#1c6b45;font-weight:700;'>{p_st} – {p_en} ({curr_md}–{p_lord})</span> — "
+                f"<b>Family Expansion & Joyful Milestones:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{p_st} – {p_en} ({curr_md}–{p_lord})</span> — "
                 f"Auspicious family milestones, children's accomplishments, and domestic happiness."
             )
 
@@ -806,7 +806,7 @@ def _build_domain_specific_timeline(
         return (
             f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
             f"Focused self-study, mastering specialized knowledge, and refining technical expertise.<br>"
-            f"<b>Academic Distinction & Professional Certification:</b> <span style='color:#1c6b45;font-weight:700;'>{l_st} – {l_en} ({curr_md}–{l_lord})</span> — "
+            f"<b>Academic Distinction & Professional Certification:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{l_st} – {l_en} ({curr_md}–{l_lord})</span> — "
             f"Major certifications, published research, and intellectual accolades."
         )
 
@@ -817,7 +817,7 @@ def _build_domain_specific_timeline(
         return (
             f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
             f"Domestic organizing, researching properties, and maintaining residential peace.<br>"
-            f"<b>Prime Property Acquisition & Upgrades:</b> <span style='color:#1c6b45;font-weight:700;'>{prop_st} – {prop_en} ({curr_md}–{prop_lord})</span> — "
+            f"<b>Prime Property Acquisition & Upgrades:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{prop_st} – {prop_en} ({curr_md}–{prop_lord})</span> — "
             f"Highly favorable window for acquiring residential property, vehicles, or upgrading home comforts."
         )
 
@@ -827,7 +827,7 @@ def _build_domain_specific_timeline(
             rec_lord, rec_st, rec_en, rec_st_d, rec_en_d = find_target_ad(["Mercury", "Jupiter", "Venus", "Moon"])
             return (
                 f"<b>Current Phase ({curr_md}–{curr_ad_lord}):</b> Establishing robust immunity, steady nutrition, and regular rest rhythms.<br>"
-                f"<b>Peak Vitality & Growth Window:</b> <span style='color:#1c6b45;font-weight:700;'>{rec_st} – {rec_en} ({curr_md}–{rec_lord})</span> — "
+                f"<b>Peak Vitality & Growth Window:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{rec_st} – {rec_en} ({curr_md}–{rec_lord})</span> — "
                 f"Strong physical stamina and energetic balance."
             )
         else:
@@ -835,7 +835,7 @@ def _build_domain_specific_timeline(
             return (
                 f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
                 f"Prioritizing restorative sleep, digestive wellness, and conscious stress-relief.<br>"
-                f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:#1c6b45;font-weight:700;'>{rec_st} – {rec_en} ({curr_md}–{rec_lord})</span> — "
+                f"<b>Peak Vitality & Rejuvenation Window:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{rec_st} – {rec_en} ({curr_md}–{rec_lord})</span> — "
                 f"Rejuvenated energy, high physical stamina, and deep bodily renewal."
             )
 
@@ -845,7 +845,7 @@ def _build_domain_specific_timeline(
             sp_lord, sp_st, sp_en, sp_st_d, sp_en_d = find_target_ad(["Mercury", "Jupiter", "Venus", "Moon"])
             return (
                 f"<b>Current Phase ({curr_md}–{curr_ad_lord}):</b> Encouraging creative play, communication, and motor coordination.<br>"
-                f"<b>Expressive Breakthrough Window:</b> <span style='color:#1c6b45;font-weight:700;'>{sp_st} – {sp_en} ({curr_md}–{sp_lord})</span> — "
+                f"<b>Expressive Breakthrough Window:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{sp_st} – {sp_en} ({curr_md}–{sp_lord})</span> — "
                 f"Confident self-expression and clear communication."
             )
         else:
@@ -853,7 +853,7 @@ def _build_domain_specific_timeline(
             return (
                 f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
                 f"Steady, deliberate execution on personal projects and supportive relationships with close peers.<br>"
-                f"<b>High-Impact Enterprise & Collaborative Venture:</b> <span style='color:#1c6b45;font-weight:700;'>{dr_st} – {dr_en} ({curr_md}–{dr_lord})</span> — "
+                f"<b>High-Impact Enterprise & Collaborative Venture:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{dr_st} – {dr_en} ({curr_md}–{dr_lord})</span> — "
                 f"Bold initiatives, expanding enterprise, and successful ventures."
             )
 
@@ -863,7 +863,7 @@ def _build_domain_specific_timeline(
         return (
             f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
             f"Honoring ancestral values, respecting family elders, and maintaining peaceful family ties.<br>"
-            f"<b>Family Milestone & Parental Blessings:</b> <span style='color:#1c6b45;font-weight:700;'>{par_st} – {par_en} ({curr_md}–{par_lord})</span> — "
+            f"<b>Family Milestone & Parental Blessings:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{par_st} – {par_en} ({curr_md}–{par_lord})</span> — "
             f"Auspicious family celebrations, parental backing, and shared domestic milestones."
         )
 
@@ -873,7 +873,7 @@ def _build_domain_specific_timeline(
         return (
             f"<b>Current Phase ({curr_md}–{curr_ad_lord}, until {curr_ad_end_fmt}):</b> "
             f"Grounded self-realization, inner clarity, and steady personal growth.<br>"
-            f"<b>Personal Evolution & Clarity Window:</b> <span style='color:#1c6b45;font-weight:700;'>{core_st} – {core_en} ({curr_md}–{core_lord})</span> — "
+            f"<b>Personal Evolution & Clarity Window:</b> <span style='color:var(--positive,#1c6b45);font-weight:700;'>{core_st} – {core_en} ({curr_md}–{core_lord})</span> — "
             f"Expanding personal confidence, charismatic presence, and decisive life breakthroughs."
         )
 
@@ -1176,7 +1176,7 @@ def build_divisional_insights(pc: dict, lang: str = "en") -> list[DivisionalInsi
         if trik_planets:
             proof_parts.append(f"Dusthana: <b>{', '.join(trik_planets)}</b>")
 
-        evidence_str = " &nbsp;|&nbsp; ".join(proof_parts[:4]) + f"<br><span style='color:#666;font-size:0.74rem;'>All Placements: {'; '.join(all_placements)}</span>"
+        evidence_str = " &nbsp;|&nbsp; ".join(proof_parts[:4]) + f"<br><span style='color:var(--text-muted,#6a7080);font-size:0.74rem;'>All Placements: {'; '.join(all_placements)}</span>"
 
         insights.append(
             DivisionalInsight(
