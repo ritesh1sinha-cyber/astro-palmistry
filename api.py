@@ -251,6 +251,19 @@ def admin_analysis(user: dict = Depends(current_user)):
     return admin_analysis_summary()
 
 
+@app.get("/api/admin/llm-health")
+def admin_llm_health(user: dict = Depends(current_user)):
+    """One live model call plus the last failure a report run saw — admin only.
+
+    Answers "LLM is on but prose is the fallback": host/scheme, latency, the
+    exception type (timeout, connect, 401, 404, 429 ...) — never the key.
+    """
+    if not is_admin(user):
+        raise HTTPException(403, "admin only")
+    from core import llm_client
+    return llm_client.health()
+
+
 @app.get("/api/admin/enquiries")
 def admin_enquiries_list(status: str = "", limit: int = 50,
                          user: dict = Depends(current_user)):

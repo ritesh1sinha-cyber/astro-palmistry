@@ -44,6 +44,55 @@ def _throttle() -> None:
         _last_llm_call = time.time()
 
 
+_LAST_ERROR: dict = {}
+
+
+def _note_error(stage: str, exc) -> None:
+    """Remember why the last model call failed (type + short message, no chart text)."""
+    name = exc if isinstance(exc, str) else type(exc).__name__
+    msg = "" if isinstance(exc, str) else str(exc)[:240]
+    _LAST_ERROR.clear()
+    _LAST_ERROR.update({"stage": stage, "error": name, "message": msg,
+                        "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+
+
+def last_error() -> dict:
+    return dict(_LAST_ERROR)
+
+
+def health() -> dict:
+    """One tiny live call, so an operator can see whether the endpoint answers.
+
+    Reports the host (never the key), latency, HTTP-level failure type and the
+    last error a real report run recorded.
+    """
+    from urllib.parse import urlparse
+    host = urlparse(S.llm_base_url or "").netloc or "(unset)"
+    out = {"enabled": bool(S.llm_enabled), "host": host,
+           "scheme": urlparse(S.llm_base_url or "").scheme or "",
+           "model": S.llm_model, "timeoutSec": float(S.llm_timeout or 20),
+           "hasKey": bool(S.llm_api_key), "lastRunError": last_error()}
+    client = _get_client()
+    if client is None:
+        out.update(ok=False, error="client not configured (key/base_url/openai package)")
+        return out
+    t0 = time.time()
+    try:
+        resp = client.chat.completions.create(
+            model=S.llm_model or "Qwen/Qwen2.5-7B-Instruct-AWQ",
+            messages=[{"role": "user", "content": 'Reply with the JSON {"ok": true}'}],
+            max_tokens=20, temperature=0)
+        choices = getattr(resp, "choices", None) or []
+        text = (getattr(choices[0].message, "content", "") or "").strip() if choices else ""
+        out.update(ok=bool(text), ms=int((time.time() - t0) * 1000),
+                   reply_chars=len(text),
+                   error=None if text else "200 but empty reply")
+    except Exception as exc:  # noqa: BLE001
+        out.update(ok=False, ms=int((time.time() - t0) * 1000),
+                   error=type(exc).__name__, message=str(exc)[:240])
+    return out
+
+
 def set_stub(fn) -> None:
     """Install a test stub: ``fn(schema, system, user, **kw) -> BaseModel|None``."""
     global _STUB_COMPLETE
@@ -132,6 +181,7 @@ def _log_parse_failure(why: str, schema: Type[T], text: str) -> None:
     schema by one field. The reply itself carries the reader's chart, so only
     its length is logged.
     """
+    _note_error("parse", f"unusable: {why}"[:120])
     print(f"[llm] {schema.__name__} unusable ({why}); {len(text)} chars",
           flush=True)
 
@@ -161,6 +211,7 @@ def complete_model(
         return None
     client = _get_client()
     if client is None:
+        _note_error("client", "not_configured")
         return None
     _throttle()
 
@@ -225,6 +276,7 @@ def complete_model(
             return parsed
     except Exception as exc:  # noqa: BLE001
         err = str(exc).lower()
+        _note_error("chat", exc)
         # Pass 2: vLLM guided_json
         if "400" in err or "response_format" in err or "json_schema" in err:
             try:
@@ -239,6 +291,7 @@ def complete_model(
                 if parsed is not None:
                     return parsed
             except Exception as exc2:  # noqa: BLE001
+                _note_error("guided_json", exc2)
                 print(f"[llm] guided_json failed: {type(exc2).__name__}: {exc2}",
                       flush=True)
         else:
@@ -276,6 +329,7 @@ def complete_model(
             repaired = _content(resp)
             return _parse(schema, repaired) if repaired else None
         except Exception as exc:  # noqa: BLE001
+            _note_error("repair", exc)
             print(f"[llm] repair failed: {type(exc).__name__}: {exc}", flush=True)
 
     return None
