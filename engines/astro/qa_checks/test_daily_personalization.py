@@ -121,5 +121,5 @@ def test_paid_daily_render_contains_personalization_blocks():
     assert "Moon BAV 3/8" in html
     assert "Every lane that voted on today" not in html
     assert "Best and avoid times" in html
-    assert "<b>Why:</b>" in html
+    assert "Why today reads this way" in html
     assert "The clock you are actually running on" in html

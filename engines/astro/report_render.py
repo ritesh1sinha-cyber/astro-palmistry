@@ -1166,17 +1166,17 @@ def kundali_match(match_meta: dict, *, groom: str = "", bride: str = "",
 # daily — verdict free every morning, the working behind it on subscription
 # ---------------------------------------------------------------------------
 DAILY_FREE_SECTIONS = (
-    "Today's verdict & emotional climate",
-    "Your lucky number and day colour",
-    "Primary action (Do) and pitfall to avoid (Don't)",
-    "Preview of locked precision clock windows & transit workings",
+    "Today's score and one-line verdict",
+    "Work, money, people and mood at a glance",
+    "Your lucky number and colours",
+    "One Do and one Don't",
 )
 DAILY_PAID_SECTIONS = (
-    "Precision Auspicious Hours & Rahu Kaal Avoid Times",
-    "Your Personal Moon Transit & Ashtakavarga Score (/56)",
-    "Full Action Guide — 3 Personalized Dos & 3 Don'ts",
-    "Vimshottari Dasha & Pratyantardasha Sub-Clock",
-    "Moonology Phase Ritual & Journaling Prompt",
+    "Best hours and the hours to avoid (Rahu Kaal, choghadiya)",
+    "All 3 Dos and 3 Don'ts, tied to your chart",
+    "Why today reads this way, check by check",
+    "The Vimshottari clock you are running today",
+    "The full working: Moon transit, Ashtakavarga, houses",
 )
 
 

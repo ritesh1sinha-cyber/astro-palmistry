@@ -171,7 +171,7 @@ def test_free_template_contains_family_home_and_conversion_teaser():
             ],
         },
     )
-    assert "FAMILY & HOME" in html
+    assert "The people and home that shaped you" in html
     assert "Father" in html
     assert "Mother" in html
     assert "The full reading also covers the remaining family relationships" in html

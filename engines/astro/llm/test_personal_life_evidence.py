@@ -224,3 +224,34 @@ def test_free_shows_only_the_family_teaser():
     assert len(lines) == 2
     blob = " ".join(lines).lower()
     assert "father" in blob and "mother" in blob
+
+
+def test_fallback_family_lines_drop_the_technical_set_up():
+    """Raw "Dwadashamsha (D12) places the Sun in Taurus in the 8 house" is not prose."""
+    from llm.fallback import conversational_fallback
+    from llm.schemas import FamilyNoteFact, ReportFacts
+    from llm.validate import validate_family_line
+
+    facts = ReportFacts(access="paid", first_name="Asha", family_notes=[
+        FamilyNoteFact(
+            relation="father", label="Father", tags=[], method_count=3,
+            notes=[
+                "Natal chart places Sun in Taurus in the 11 house, indicating a structured paternal presence.",
+                "Dwadashamsha (D12) places the Sun in Taurus in the 8 house, indicating a strong "
+                "paternal heritage of discipline, traditional values, and structured guidance.",
+                "Paternal lineage emphasizes duty, ethical principles, and respect for ancestral traditions.",
+            ]),
+        FamilyNoteFact(
+            relation="home", label="Home", tags=[], method_count=1,
+            notes=["Chaturthamsha (D4) places the Moon in Virgo in the 12 house, supporting "
+                   "long-term domestic comfort and steady property accumulation."]),
+    ])
+    lines = conversational_fallback(facts).get("family_note") or []
+    assert len(lines) == 2
+    blob = " ".join(lines)
+    for raw in ("Dwadashamsha", "D12", "D4", "Chaturthamsha", "in the 8 house", "12 house"):
+        assert raw not in blob, raw
+    assert lines[0].startswith("Your father's side of the chart points to a strong paternal heritage")
+    assert "seems to point to" in lines[1]            # one method: hedged
+    for line in lines:
+        assert validate_family_line(line, facts) == []

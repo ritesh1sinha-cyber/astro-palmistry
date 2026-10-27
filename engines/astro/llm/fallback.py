@@ -726,52 +726,85 @@ _FAMILY_HEDGED = re.compile(
 )
 
 
+_FAMILY_LEAD = {
+    "father": "Your father's side of the chart {verb} {x}.",
+    "mother": "Your mother's side of the chart {verb} {x}.",
+    "siblings": "On brothers and sisters, your chart {verb} {x}.",
+    "home": "On the home you grew up in, your chart {verb} {x}.",
+}
+# What an engine sentence says once its technical set-up is stripped:
+# "Dwadashamsha (D12) places the Sun in Taurus in the 8 house, indicating X."
+_FAMILY_CLAUSE = re.compile(
+    r",?\s+(?:indicating|reflecting|supporting|suggesting|showing|shows|highlights|"
+    r"forms|gives|giving|providing|provides)\s+(?:that\s+)?(.+?)\.?\s*$", re.I)
+_FAMILY_TECH = re.compile(
+    r"\bD\d{1,2}\b|\(D\d+\)|Dwadashamsha|Drekkana|Chaturthamsha|Navamsha|"
+    r"\b\d+(?:st|nd|rd|th)?\s+house\b|\bhouse\b|\bgoverned by\b|\bruled by\b|"
+    r"\bnatal\b|\bchart places\b|\bin (?:Aries|Taurus|Gemini|Cancer|Leo|Virgo|Libra|"
+    r"Scorpio|Sagittarius|Capricorn|Aquarius|Pisces)\b", re.I)
+
+
+def _family_clause(notes: list[str]) -> str:
+    """The plain-English claim inside the engines' notes, or ''."""
+    # Divisional-chart notes carry the richer claim, so they go first.
+    ordered = sorted(notes, key=lambda n: 0 if re.search(
+        r"\bD\d{1,2}\b|Dwadashamsha|Drekkana|Chaturthamsha", n) else 1)
+    for n in ordered:
+        m = _FAMILY_CLAUSE.search(n)
+        if not m:
+            continue
+        x = m.group(1).strip().rstrip(".")
+        if x and not _FAMILY_TECH.search(x) and len(x) >= 18:
+            return x[0].lower() + x[1:]
+    return ""
+
+
 def _family_prose(family_notes: Any) -> list[str]:
     """One deterministic line per relation, from the engines' own sentences.
 
-    The source sentences are already customer-safe and already addressed to
-    the reader so the work here is framing rather than rewriting.
+    The engines write technical sentences ("Dwadashamsha (D12) places the Sun in
+    Taurus in the 8 house, indicating ..."). A reader should get the claim, not
+    the set-up, so the technical clause is stripped and the claim is framed in
+    one hedged sentence. A relation whose notes carry no usable claim is left out
+    rather than printed raw.
     """
     lines: list[str] = []
-    _RELATION_WORDS_EXTENDED = {
-        "father": ("father", "dad", "paternal", "your father"),
-        "mother": ("mother", "mum", "maternal", "your mother"),
-        "siblings": ("sibling", "brother", "sister", "elder", "youngest",
-                     "last-born", "your siblings", "brothers and sisters"),
-        "home": ("home", "household", "domestic", "childhood", "upbringing",
-                 "the family home", "family home"),
-    }
     for note in list(family_notes or [])[:4]:
         notes = [str(n).strip() for n in (getattr(note, "notes", None) or []) if str(n).strip()]
         if not notes:
             continue
         relation = str(getattr(note, "relation", "") or "")
-        rel_words = _RELATION_WORDS_EXTENDED.get(relation, ())
         try:
             methods = int(getattr(note, "method_count", 0) or 0)
         except (TypeError, ValueError):
             methods = 0
-        # Synthesize notes for this relation into an articulate, elaborate narrative
-        div_note = next((n for n in notes if any(k in n for k in ("Dwadashamsha", "Drekkana", "Chaturthamsha", "D12", "D3", "D4"))), "")
-        core_note = next((n for n in reversed(notes) if n != div_note and any(w in n.lower() for w in rel_words)), "")
-
-        if div_note and core_note:
-            body = f"{div_note} {core_note}"
-        elif div_note:
-            body = div_note
-        elif core_note:
-            body = core_note
-        else:
-            body = notes[-1]
-
-        body = re.sub(r"\bThe (father|mother)\b", r"Your \1", body)
-        body = re.sub(r"\bthe (father|mother)\b", r"your \1", body)
-        low = body.lower()
-        if not any(w in low for w in rel_words):
-            body = _FAMILY_OPENER.get(relation, "") + body[0].lower() + body[1:]
-        if methods <= 1 and not _FAMILY_HEDGED.search(body):
-            body += " That reading leans on one method rather than full agreement."
-        lines.append(clip_sentences(body, 320))
+        lead = _FAMILY_LEAD.get(relation)
+        x = _family_clause(notes)
+        if lead and x:
+            verb = "points to" if methods >= 2 else "seems to point to"
+            body = lead.format(verb=verb, x=x)
+            # One already-hedged follow-up (e.g. birth-order inference) is worth keeping.
+            for n in notes:
+                if (_FAMILY_HEDGED.search(n) and not _FAMILY_TECH.search(n)
+                        and n != notes[0] and x not in n):
+                    body += " " + re.sub(r"\s-\s", " — ", n)
+                    break
+            if methods <= 1 and not _FAMILY_HEDGED.search(body):
+                body += " That reading leans on one method rather than full agreement."
+            lines.append(clip_sentences(body, 320))
+            continue
+        # No technical claim could be lifted: use the first plain sentence as written.
+        plain = next((n for n in notes if not _FAMILY_TECH.search(n)), "")
+        if plain:
+            body = re.sub(r"\bThe (father|mother)\b", r"Your \1", plain)
+            body = re.sub(r"\bthe (father|mother)\b", r"your \1", body)
+            low = body.lower()
+            rel_words = _FAMILY_RELATION_WORDS.get(relation, ())
+            if not any(w in low for w in rel_words):
+                body = _FAMILY_OPENER.get(relation, "") + body[0].lower() + body[1:]
+            if methods <= 1 and not _FAMILY_HEDGED.search(body):
+                body += " That reading leans on one method rather than full agreement."
+            lines.append(clip_sentences(body, 320))
     return lines[:4]
 
 

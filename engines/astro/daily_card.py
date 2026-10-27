@@ -785,7 +785,7 @@ def _extras(reading: dict) -> str:
             f"<li>{_e(x)}</li>" for x in
             (vc.get("jaimini_md_note"), vc.get("jaimini_ad_note"),
              vc.get("jaimini_pd_note")) if x)
-        blocks += (f"<h4>The Jaimini clock</h4>"
+        blocks += (f"<h4>The second clock (sign-based)</h4>"
                    f"<p>A second, sign-based dasha system running in parallel with "
                    f"Vimshottari: <b>{_e(jai.get('stack'))}</b>. Where the two agree, "
                    f"the day is unambiguous.</p>"
@@ -824,50 +824,208 @@ def _extras(reading: dict) -> str:
 
 
 def _locked_preview(*, price: int, n_lanes: int, md: str, ad: str, pd: str) -> str:
-    """Free view: what today's paid reading adds, named against this chart.
+    """Free view: one compact unlock card instead of four blurred panels.
 
-    The periods running today are already known here, so the teaser says whose
+    The periods running today are already known here, so the card says whose
     clock it is rather than describing the feature in the abstract. A reader
     who sees their own three lords named knows the locked half is about them.
     """
     stack = " – ".join(x for x in (md, ad, pd) if x)
-    clock_teaser = (
-        f"Your <b>{stack}</b> clock is what is running today. The exact "
-        "three-tier sequence, its handover dates, and what each layer is doing "
-        "to the day are in the full reading."
-        if stack else
-        "The exact three-tier period clock running today, with its handover "
-        "dates and what each layer is doing to the day.")
+    clock = (f"The <b>{_e(stack)}</b> period you are running, with its "
+             "three-tier handover dates" if stack else
+             "The three-tier period clock running today, with handover dates")
     return f"""
-<div class="qa-window locked" style="margin:14px 0;">
-  <div class="qa-wlabel">Precision Auspicious Hours & Timing Windows</div>
-  <p class="blurred">Exact daylight planetary hours (Jupiter, Mercury, Venus horas) for commercial decisions, applications, negotiations, and exact Rahu Kaal window to avoid.</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Daily clock windows are locked.</b> Unlock to see the exact clock times of today's most favourable hours, and the hour to keep clear.</p>
-</div>
-
-<div class="qa-window locked" style="margin:14px 0;">
-  <div class="qa-wlabel">Personal Moon Transit & Strength Score</div>
-  <p class="blurred">Sarvashtakavarga score (/56) and Moon BAV (/8) on today's activated house, refined by the natal condition of your governing house lord.</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Personalized transit working is locked.</b> Unlock to see the exact astrological strength behind today's climate.</p>
-</div>
-
-<div class="qa-window locked" style="margin:14px 0;">
-  <div class="qa-wlabel">Full Action Guide — 3 Personalized Dos & 3 Don'ts</div>
-  <p class="blurred">Complete tactical guidance grounded in today's active Tarabala, Chandrabala, and planetary weekday lord.</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Full action guide is locked.</b> Unlock for all 6 rule-backed actions for today.</p>
-</div>
-
-<div class="qa-window locked" style="margin:14px 0;">
-  <div class="qa-wlabel">Active Timing Clock & Life Phase Sub-Periods</div>
-  <p class="blurred">{clock_teaser}</p>
-  <p style="margin:6px 0 0 0;font-size:0.85rem;color:#5a554c;"><b>Dasha timing stack is locked.</b> Unlock to see the active planetary periods governing today.</p>
-</div>
-
-<div class="buy" style="margin-top:20px;">
-  <h3>Unlock full daily guidance</h3>
-  <p>Your daily verdict, emotional climate, and lucky numbers remain free every morning. Subscribe to unlock precision clock windows, complete dos/donts, and deep chart workings every day.</p>
+<div class="dy-unlock">
+  <div class="dy-unlock-t">Unlock the rest of today</div>
+  <ul>
+    <li>Exact best hours, and the hours to keep clear</li>
+    <li>All 3 Dos and 3 Don'ts, each tied to your chart</li>
+    <li>Why the day reads this way, check by check</li>
+    <li>{clock}</li>
+  </ul>
   <a class="cta" href="#unlock" data-unlock="1">Unlock full reading</a>
+  <p class="dy-unlock-n">Your verdict, mood and lucky number stay free every morning.</p>
 </div>"""
+
+
+# ---------------------------------------------------------------------------
+# the crisp card
+# ---------------------------------------------------------------------------
+DAILY_CSS = """
+.tabhead{padding:26px 0 6px}
+.tabhead h1{font-size:1.5rem;margin:6px 0 4px}
+.tabhead .sub{font-size:.8rem;margin:0}
+.dy-hero{background:linear-gradient(140deg,#1d2232 0%,#2c2748 100%);color:#f7f5f1;
+border-radius:18px;padding:18px 18px 16px;margin:14px 0 12px}
+.dy-hero-top{display:flex;gap:14px;align-items:center}
+.dy-ring{--p:50;flex:0 0 auto;width:64px;height:64px;border-radius:50%;
+background:conic-gradient(var(--c,#e0b84a) calc(var(--p)*1%),rgba(255,255,255,.16) 0);
+display:grid;place-items:center;position:relative}
+.dy-ring:before{content:"";position:absolute;inset:6px;border-radius:50%;background:#232540}
+.dy-ring b{position:relative;font-family:Fraunces,Georgia,serif;font-size:1.35rem;line-height:1}
+.dy-ring i{position:relative;display:block;font-style:normal;font-size:.55rem;opacity:.65;
+text-align:center;margin-top:1px}
+.dy-ring-in{position:relative;text-align:center}
+.dy-ring.up{--c:#6fcf97}.dy-ring.mixed{--c:#e0b84a}.dy-ring.down{--c:#eb8a73}
+.dy-tone{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.7}
+.dy-head{font-family:Fraunces,Georgia,serif;font-size:1.22rem;line-height:1.28;margin:3px 0 0;
+font-weight:600}
+.dy-sum{font-size:.84rem;line-height:1.5;opacity:.82;margin:12px 0 0}
+.dy-chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
+.dy-chip{font-size:.72rem;background:rgba(255,255,255,.1);border-radius:99px;padding:5px 11px;
+line-height:1.3}
+.dy-chip b{opacity:.65;font-weight:600;margin-right:4px}
+.dy-agree{font-size:.7rem;opacity:.6;margin:10px 0 0}
+.dy-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.dy-tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 12px 12px}
+.dy-tile-h{display:flex;align-items:center;gap:6px;font-size:.66rem;letter-spacing:.1em;
+text-transform:uppercase;font-weight:700;color:var(--muted)}
+.dy-dot{width:8px;height:8px;border-radius:50%;background:var(--mixed)}
+.dy-tile.up .dy-dot{background:var(--up)}.dy-tile.down .dy-dot{background:var(--down)}
+.dy-tile-w{margin-left:auto;font-size:.62rem;letter-spacing:.04em;text-transform:none}
+.dy-tile.up .dy-tile-w{color:var(--up)}.dy-tile.down .dy-tile-w{color:var(--down)}
+.dy-tile.mixed .dy-tile-w{color:var(--mixed)}
+.dy-tile p{margin:7px 0 0;font-size:.8rem;line-height:1.42;color:#2c303a}
+.dy-lucky{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);
+border-radius:14px;padding:10px 14px;margin:0 0 12px}
+.dy-num{font-family:Fraunces,Georgia,serif;font-size:1.7rem;font-weight:600;line-height:1;
+min-width:38px;text-align:center}
+.dy-lucky small{display:block;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+font-weight:700;color:var(--muted)}
+.dy-lucky span{font-size:.84rem}
+.dy-lucky .sep{width:1px;align-self:stretch;background:var(--line)}
+.dy-dd{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.dy-dd>div{border-radius:14px;padding:11px 13px}
+.dy-dd .do{background:#f1f8f4;border:1px solid #d3e8dc}
+.dy-dd .dont{background:#fdf3f0;border:1px solid #f2d9d2}
+.dy-dd h4{margin:0 0 6px;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.dy-dd .do h4{color:var(--up)}.dy-dd .dont h4{color:var(--down)}
+.dy-dd p{margin:0 0 7px;font-size:.8rem;line-height:1.42;color:#2c303a}
+.dy-dd p:last-child{margin-bottom:0}
+@media(max-width:430px){.dy-dd,.dy-tiles{grid-template-columns:1fr}}
+.dy-sec{font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
+color:var(--muted);margin:18px 2px 8px}
+.dy-times{background:#fff;border:1px solid var(--line);border-radius:14px;padding:4px 14px;margin:0 0 12px}
+.dy-times div{display:flex;gap:10px;align-items:baseline;padding:9px 0;font-size:.82rem;
+border-bottom:1px solid #f0eee9}
+.dy-times div:last-child{border-bottom:0}
+.dy-times b{font-variant-numeric:tabular-nums;min-width:96px}
+.dy-times em{font-style:normal;color:#4a4f5c}
+.dy-times .good b{color:var(--up)}.dy-times .bad b{color:var(--down)}
+.dy-basis{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.dy-basis span{font-size:.72rem;border-radius:99px;padding:5px 11px;border:1px solid var(--line);
+background:#fff}
+.dy-basis .up{background:#eaf6ef;border-color:#cfe7d9;color:var(--up)}
+.dy-basis .down{background:#fcefeb;border-color:#f0d5cd;color:var(--down)}
+.dy-basis .mixed{color:#555b69}
+.dy-run{font-size:.8rem;color:#4a4f5c;margin:0 2px 12px}
+.dy-fold{border:1px solid var(--line);border-radius:14px;background:#fff;padding:0;margin:14px 0 0}
+.dy-fold>summary{padding:13px 16px;font-size:.82rem;font-weight:600;color:#2c303a;cursor:pointer}
+.dy-fold-b{padding:0 16px 14px}
+.dy-fold-b h3.sec{font-size:1.05rem;margin:22px 0 4px}
+.dy-unlock{background:#fff;border:1px dashed #cdbf95;border-radius:16px;padding:16px 18px;margin:4px 0 0}
+.dy-unlock-t{font-family:Fraunces,Georgia,serif;font-size:1.05rem;font-weight:600;margin-bottom:8px}
+.dy-unlock ul{margin:0 0 14px;padding-left:18px;font-size:.84rem;color:#3d4250}
+.dy-unlock li{margin:5px 0}
+.dy-unlock-n{font-size:.74rem;color:var(--muted);margin:10px 0 0}
+"""
+
+
+def _top(S: dict, day: date, reading: dict) -> str:
+    moon = reading.get("moon_transit") or {}
+    chips = ""
+    if S.get("focus"):
+        chips += f'<span class="dy-chip"><b>Focus</b>{_e(S["focus"])}</span>'
+    ck = S.get("checks") or {}
+    agree = ""
+    if ck.get("total"):
+        lean = "lean good" if ck.get("lean") == "good" else "ask for care"
+        agree = (f'<p class="dy-agree">{ck["agree"]} of {ck["total"]} checks {lean} today'
+                 f' · Moon in {_e(moon.get("sign", ""))}</p>' if moon.get("sign") else
+                 f'<p class="dy-agree">{ck["agree"]} of {ck["total"]} checks {lean} today</p>')
+    return f"""
+<div class="dy-hero">
+  <div class="dy-hero-top">
+    <div class="dy-ring {S['tone']}" style="--p:{S['score'] * 10}"><div class="dy-ring-in"><b>{S['score']}</b><i>of 10</i></div></div>
+    <div><div class="dy-tone">{_e(S['tone_word'])}</div><div class="dy-head">{_e(S['headline'])}</div></div>
+  </div>
+  {f'<p class="dy-sum">{_e(S["summary"])}</p>' if S.get("summary") else ''}
+  {f'<div class="dy-chips">{chips}</div>' if chips else ''}
+  {agree}
+</div>"""
+
+
+def _tiles_html(S: dict) -> str:
+    tiles = S.get("tiles") or []
+    if not tiles:
+        return ""
+    from daily_summary import TONE_WORD
+    cells = "".join(
+        f'<div class="dy-tile {t["tone"]}"><div class="dy-tile-h"><span class="dy-dot"></span>'
+        f'{_e(t["label"])}<span class="dy-tile-w">{TONE_WORD[t["tone"]]}</span></div>'
+        f'<p>{_e(t["text"])}</p></div>' for t in tiles)
+    return f'<div class="dy-tiles">{cells}</div>'
+
+
+def _lucky_row(reading: dict) -> str:
+    nums = reading.get("lucky_numbers") or {}
+    cols = [c.get("name") for c in (reading.get("lucky_colors") or [])[:2] if c.get("name")]
+    if nums.get("primary") is None and not cols:
+        return ""
+    num = (f'<div class="dy-num">{_e(nums["primary"])}</div>'
+           f'<div><small>Lucky number</small><span>for any choice you get to make</span></div>'
+           if nums.get("primary") is not None else "")
+    sep = '<div class="sep"></div>' if num and cols else ""
+    col = (f'<div><small>Colours</small><span>{_e(" · ".join(cols))}</span></div>'
+           if cols else "")
+    return f'<div class="dy-lucky">{num}{sep}{col}</div>'
+
+
+def _dd_html(S: dict, *, paid: bool) -> str:
+    n = 3 if paid else 1
+    dos, donts = (S.get("dos") or [])[:n], (S.get("donts") or [])[:n]
+    if not dos and not donts:
+        return ""
+    return (f'<div class="dy-dd"><div class="do"><h4>Do</h4>'
+            + "".join(f"<p>{_e(x)}</p>" for x in dos)
+            + '</div><div class="dont"><h4>Don\'t</h4>'
+            + "".join(f"<p>{_e(x)}</p>" for x in donts) + "</div></div>")
+
+
+def _times_html(S: dict, reading: dict, day: date, lat: float, lon: float,
+                tz: float) -> str:
+    tm = S.get("timing") or {}
+    rows = "".join(
+        f'<div class="good"><b>{_e(x["when"])}</b><em><b style="min-width:0;color:inherit">'
+        f'{_e(x["label"])}</b> — {_e(x["plain"])}</em></div>' for x in tm.get("best", []))
+    rows += "".join(
+        f'<div class="bad"><b>{_e(x["when"])}</b><em><b style="min-width:0;color:inherit">'
+        f'{_e(x["label"])}</b> — {_e(x["plain"])}</em></div>' for x in tm.get("avoid", []))
+    if rows:
+        return f'<div class="dy-sec">Best and avoid times</div><div class="dy-times">{rows}</div>'
+    return _windows(reading, day, lat, lon, tz)
+
+
+def _basis_html(S: dict) -> str:
+    chips = "".join(
+        f'<span class="{"up" if v["vote"] > 0 else "down" if v["vote"] < 0 else "mixed"}">'
+        f'{"✓" if v["vote"] > 0 else "!" if v["vote"] < 0 else "·"} {_e(v["label"])}'
+        f'{" · " + _e(v["text"]) if v.get("text") else ""}</span>'
+        for v in S.get("votes", []))
+    if not chips:
+        return ""
+    return f'<div class="dy-sec">Why today reads this way</div><div class="dy-basis">{chips}</div>'
+
+
+def _running(reading: dict) -> str:
+    d = reading.get("dasha") or {}
+    stack = "–".join(x for x in (d.get("md"), d.get("ad"), d.get("pd")) if x)
+    if not stack:
+        return ""
+    until = _nice_date(d.get("pd_end")) if d.get("pd_end") else ""
+    tail = f" — the shortest layer runs until {_e(until)}" if until else ""
+    return (f'<p class="dy-run">The clock you are actually running on: <b>{_e(stack)}</b>'
+            f'{tail}.</p>')
 
 
 # ---------------------------------------------------------------------------
@@ -877,8 +1035,14 @@ def render(reading: dict, *, name: str = "", day: Optional[date] = None,
            lat: float = 25.6, lon: float = 85.1, tz: float = 5.5,
            paid: bool = False, price: int = 298,
            pc: Optional[dict] = None) -> str:
-    """One daily reading, gated. Returns a standalone HTML document."""
+    """One daily reading, gated. Returns a standalone HTML document.
+
+    Built to be read in ten seconds: how today is, which parts of life it helps,
+    one thing to do and one to avoid. Everything deeper is behind the paywall,
+    and the deep working sits under a single fold even there.
+    """
     import report_shell as RS
+    import daily_summary as DS
 
     reading = reading or {}
     day = day or date.today()
@@ -886,45 +1050,34 @@ def render(reading: dict, *, name: str = "", day: Optional[date] = None,
     vc = reading.get("vedic_confluence") or {}
     lanes = [ln for ln in (vc.get("lanes") or []) if ln.get("signal")]
     d = reading.get("dasha") or {}
+    S = DS.build(reading, first if first != "friend" else "")
 
-    body = (_hero(reading, day, len(lanes))
-            + _moon_proof(reading, first)
-            + _lucky(reading, paid=paid)
-            + _dodont(reading, paid=paid))
+    body = (f"<style>{DAILY_CSS}</style>"
+            + _top(S, day, reading)
+            + _tiles_html(S)
+            + _lucky_row(reading)
+            + _dd_html(S, paid=paid))
 
     if paid:
-        # Paid daily is the full personalization layer: the Moon transit is
-        # tied to the natal house, exact SAV/BAV, house significator, running
-        # dasha and the independent lanes. These are already computed by the
-        # deterministic engine; this renderer does not recalculate them.
-        body += (
-            _personal_moon_focus(reading)
-            + _dasha(reading)
-            + _ashtakavarga(reading)
-            + _houses(reading)
-            + _windows(reading, day, lat, lon, tz)
-            + _extras(reading)
-        )
+        body += (_times_html(S, reading, day, lat, lon, tz)
+                 + _basis_html(S)
+                 + _running(reading))
+        working = (_personal_moon_focus(reading) + _dasha(reading)
+                   + _ashtakavarga(reading) + _houses(reading) + _extras(reading))
+        if working.strip():
+            body += ('<details class="dy-fold"><summary>The full working behind today</summary>'
+                     f'<div class="dy-fold-b">{working}</div></details>')
     else:
         body += _locked_preview(price=price, n_lanes=len(lanes),
                                 md=d.get("md", ""), ad=d.get("ad", ""),
                                 pd=d.get("pd", ""))
 
-    moon = reading.get("moon_transit") or {}
-    natal = reading.get("natal_moon") or {}
-    sub_bits = [f"Moon in {moon['sign']}" if moon.get("sign") else "",
-                f"{moon['nakshatra']}" if moon.get("nakshatra") else "",
-                f"read against your birth Moon in {natal['sign']}"
-                if natal.get("sign") else ""]
-    sub = " · ".join(b for b in sub_bits if b)
-
     return RS.page(
         f"{first} — today" if first != "friend" else "Today",
         body,
-        eyebrow=("Daily reading · unlocked" if paid
-                 else "Daily reading · today's verdict, free"),
+        eyebrow=("Your day · unlocked" if paid else "Your day · free"),
         heading=f"{day:%A %d %B}",
-        sub=sub)
+        sub="", nav=False)
 
 
 # ---------------------------------------------------------------------------
