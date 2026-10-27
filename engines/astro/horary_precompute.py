@@ -1112,6 +1112,28 @@ def detect_topic(question: str, area: str = "") -> str:
     if not q:
         return "general"
 
+    # 0. A question that names its subject outright ("girlfriend", "visa", "surgery") is
+    #    that topic. The semantic router below once read "get girlfriend" as children.
+    try:
+        from question_domain import keyword_domain
+        named = keyword_domain(q)
+    except Exception:
+        named = ""
+    wording_topic = {
+        "marriage_relationship": "marriage", "children_progeny": "children", "career_profession": "career",
+        "wealth_finances": "finance", "property_assets": "property", "foreign_relocation": "travel",
+        "education_learning": "education", "litigation_disputes": "litigation",
+    }.get(named)
+    if named in ("health_vitality", "speech_neurology"):
+        ql0 = q.lower()
+        if any(kw in ql0 for kw in TOPIC_KEYWORDS.get("disease_cure", [])):
+            return "disease_cure"
+        if any(kw in ql0 for kw in TOPIC_KEYWORDS.get("disease", [])):
+            return "disease"
+        return "health"
+    if wording_topic:
+        return wording_topic
+
     # 1. If explicit area provided from dropdown, respect it
     if area:
         try:
@@ -1137,18 +1159,31 @@ def detect_topic(question: str, area: str = "") -> str:
         if any(phrase in ql for phrase in phrases):
             return topic
 
-    # 3. Semantic router
+    # 3. The model's judgement of what the question is about. Not the semantic router:
+    #    without sentence-transformers (production) that is hashed word overlap and
+    #    named "will it rain tomorrow" a property question.
     try:
-        import semantic_question as SQ
-        routed = SQ.route(q, area="")
-        if routed:
-            if routed.topic and routed.topic != "general":
-                if routed.method == "minilm" or routed.topic_score >= 0.28:
-                    return routed.topic
-            if routed.domain and routed.domain in TOPIC_BHAVAS:
-                return routed.domain
+        from llm.question_planner import classify_area
+        picked = classify_area(q)
     except Exception:
-        pass
+        picked = None
+    if picked:
+        pk_area, pk_scope = picked
+        if pk_scope:
+            mapped = {
+                "marriage_relationship": "marriage", "children_progeny": "children",
+                "career_profession": "career", "wealth_finances": "finance",
+                "property_assets": "property", "foreign_relocation": "travel",
+                "education_learning": "education", "litigation_disputes": "litigation",
+                "health_vitality": "health", "speech_neurology": "health",
+            }.get(pk_area)
+            if mapped == "health":
+                if any(kw in ql for kw in TOPIC_KEYWORDS.get("disease_cure", [])):
+                    return "disease_cure"
+                if any(kw in ql for kw in TOPIC_KEYWORDS.get("disease", [])):
+                    return "disease"
+            if mapped:
+                return mapped
 
     # 4. Ordered keywords
     priority = ["travel", "property", "disease_cure", "disease", "litigation", "children", "marriage", "career", "health",

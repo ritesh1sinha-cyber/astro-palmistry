@@ -833,33 +833,19 @@ def _fallback_detect_domain(question: str, route: Any = None, area: str = "") ->
     if phrase_scores:
         return max(phrase_scores, key=phrase_scores.get)
 
-    if route is not None:
-        r_topic = getattr(route, "topic", "")
-        if r_topic and r_topic not in ("general", "general_destiny"):
-            mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r_topic.lower().strip())
-            if mapped:
-                return mapped
-        r_domain = getattr(route, "domain", "")
-        if r_domain and r_domain != "general":
-            mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r_domain.lower().strip())
-            if mapped:
-                return mapped
-
-    if q_lower:
-        try:
-            import semantic_question as SQ
-            r = SQ.route(question, area="")
-            if r:
-                if r.topic and r.topic not in ("general", "general_destiny"):
-                    mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r.topic.lower().strip())
-                    if mapped:
-                        return mapped
-                if r.domain and r.domain != "general":
-                    mapped = AREA_TO_CONFLUENCE_DOMAIN.get(r.domain.lower().strip())
-                    if mapped and (r.method == "minilm" or r.domain_score >= 0.25):
-                        return mapped
-        except Exception:
-            pass
+    # Not the semantic router: without sentence-transformers (production) it is a hashed
+    # word-overlap stand-in that cannot tell "girlfriend" from "children". Ask the model.
+    try:
+        from llm.question_planner import classify_area
+        picked = classify_area(question)
+    except Exception:                                                 # noqa: BLE001
+        picked = None
+    if picked:
+        pk_area, pk_scope = picked
+        if not pk_scope:
+            return "out_of_domain"
+        if pk_area != "general_destiny":
+            return pk_area
 
     scores: dict[str, int] = {}
     for d_key, d_cfg in DOMAINS_CONFIG.items():

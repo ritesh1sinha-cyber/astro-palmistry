@@ -888,10 +888,17 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     # When the words name the subject outright ("girlfriend", "visa", "surgery") that wins
     # over the planner model and the menu pick: a soft router once answered
     # "when will I get a girlfriend" with a health reading.
-    if domain_override != "out_of_domain":
-        from question_domain import keyword_domain
-        named = keyword_domain(question)
-        if named and named != domain_override:
+    # The same word list rescues a question the planner wrongly called out of scope
+    # ("will I win the lottery") unless it is plainly not about a life at all.
+    from confluence_question_engine import is_strictly_out_of_domain
+    from question_domain import keyword_domain
+    named = keyword_domain(question)
+    if named and named != domain_override:
+        if domain_override == "out_of_domain" and is_strictly_out_of_domain(question):
+            pass
+        elif named == "general_destiny" and domain_override not in ("out_of_domain", "speech_neurology"):
+            pass                      # "general" never beats a real area the planner chose
+        else:
             print(f"[report_render] domain {domain_override!r} -> {named!r} by wording", flush=True)
             domain_override = named
 

@@ -66,10 +66,22 @@ A reader has asked a question in their own words. Do not answer it. Decide:
 1. restated_intent — what they are actually asking, in one plain sentence.
 2. in_scope — true when the question is about a human life: their future,
    work, money, family, health, relationships, children, study, travel,
-   property, legal matters, mood, timing, gemstones or remedies. False only
+   property, legal matters, mood, luck, lottery, spirituality, timing, gemstones
+   or remedies. False only
    for questions with nothing to do with a person's life, such as programming,
    general trivia, recipes or device repair. When in doubt, choose true.
-3. life_area — the single closest area key from the list below.
+3. life_area — the single closest area key from the list below. Choose by what
+   the person is asking ABOUT, never by words like "when" or "will". Rules:
+   - girlfriend, boyfriend, crush, dating, love, ex, breakup, proposal, spouse,
+     marriage, partner -> marriage_relationship (a love question is never health).
+   - their own pregnancy, baby, or their son / daughter / child -> children_progeny.
+   - health_vitality only when a body, illness, medicine, stress or mental
+     health is mentioned. speech_neurology only when speech or a
+     neuro-developmental condition is named.
+   - luck, lottery, money, debt, investing -> wealth_finances. Peace of mind,
+     purpose, spirituality, "my future" -> general_destiny.
+   - a job abroad or studying abroad -> foreign_relocation.
+   - a court case or a dispute about anything -> litigation_disputes.
 4. target_planet — if the reader named a gemstone or a planet, the planet that
    rules it, otherwise empty. Match the intent even when the spelling is
    wrong or informal: emerald / emerland / panna are Mercury, ruby / manik are
@@ -328,3 +340,55 @@ def write_in_user_voice(question: str, plan: Any, results: dict[str, Any], *,
                 "Do not invent a date or gemstone. Keep every remaining fact "
                 "the same.")})
     return ""
+
+
+# --------------------------------------------------------------------------
+# One-word classifier for callers that have no planner (horary, chat, fallback)
+# --------------------------------------------------------------------------
+_CLASSIFY_SYSTEM = """You sort a reader's question into one area of life for a Vedic astrology service.
+Reply with JSON only: {{"area": "<key>", "in_scope": true|false}}.
+
+Decide by what the person is asking ABOUT, never by words like "when" or "will".
+- girlfriend, boyfriend, crush, dating, love, ex, breakup, proposal, spouse, marriage -> marriage_relationship
+- their own pregnancy, baby, son, daughter, child -> children_progeny
+- health_vitality only for a body, illness, medicine, stress or mental health
+- luck, lottery, money, debt, investing -> wealth_finances
+- peace of mind, purpose, spirituality, "my future", or no clear subject -> general_destiny
+- a job abroad or studying abroad -> foreign_relocation
+- a court case or a dispute -> litigation_disputes
+in_scope is false only for programming, trivia, recipes, device repair or nonsense.
+
+AREA KEYS
+{areas}"""
+
+_AREA_CACHE: dict[str, tuple[str, bool]] = {}
+
+
+def classify_area(question: str) -> Optional[tuple[str, bool]]:
+    """(area key, in_scope) from the model, or ``None`` when it cannot answer."""
+    q = " ".join((question or "").split())[:400]
+    if not q:
+        return None
+    if q.lower() in _AREA_CACHE:
+        return _AREA_CACHE[q.lower()]
+    try:
+        from core.llm_client import complete_model
+        from pydantic import BaseModel, ConfigDict
+    except Exception as exc:                                          # noqa: BLE001
+        print(f"[planner] classify import failed: {exc}", flush=True)
+        return None
+
+    class _Pick(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        area: str = "general_destiny"
+        in_scope: bool = True
+
+    areas = "\n".join(f"- {k}: {title}" for k, title in _areas())
+    pick = complete_model(_Pick, _CLASSIFY_SYSTEM.format(areas=areas), f'QUESTION: "{q}"', temperature=0.0)
+    if pick is None:
+        return None
+    area = pick.area if pick.area in {k for k, _ in _areas()} else "general_destiny"
+    out = (area, bool(pick.in_scope))
+    if len(_AREA_CACHE) < 512:
+        _AREA_CACHE[q.lower()] = out
+    return out
