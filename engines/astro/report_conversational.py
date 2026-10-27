@@ -1610,23 +1610,48 @@ def _build_unified_current_chapter_html(
         g_raw = ((pc.get("meta") or {}).get("gender") or "male")
         g_str = "female" if g_raw in (1, "female", "f") else "male"
         cr_res = generate_consultation_reading(pc, gender=g_str)
-        
-        m_items = "".join(f"<li>{it}</li>" for it in cr_res.get("mind_state", []))
+
+        # Chandra Naadi is the primary lens for these two cards: the Moon's trigger on your
+        # birth planets today, and the slow planets' contacts over the last six months.
+        # Falls back to the older consultation text when the engine cannot run.
+        naadi_res: dict = {}
+        try:
+            import naadi_recent as NR
+            naadi_res = NR.build(pc, today)
+        except Exception as exc:                                         # noqa: BLE001
+            print(f"[report_conversational] naadi recent skipped: {exc}", flush=True)
+        _note_style = "margin:0 0 10px;font-size:.84rem;color:var(--muted,#94a3b8);line-height:1.5;"
+
+        if naadi_res.get("mind"):
+            m_items = NR.render_items(naadi_res["mind"])
+            m_note = (f'<p style="{_note_style}">Read the Chandra Naadi way: the Moon is the daily trigger, '
+                      f'and it is touching these parts of your birth chart right now.</p>')
+        else:
+            m_items = "".join(f"<li>{it}</li>" for it in cr_res.get("mind_state", []))
+            m_note = ""
         if m_items:
             mind_card_html = (
                 f'<div class="summary-card info">\n'
                 f'  <h2>1. What Is in Your Mind Right Now (The Immediate Trigger)</h2>\n'
+                f'  {m_note}\n'
                 f'  <ul class="bullet-list info">\n'
                 f'    {m_items}\n'
                 f'  </ul>\n'
                 f'</div>\n'
             )
-            
-        p_items = "".join(f"<li>{it}</li>" for it in cr_res.get("past_6_months", []))
+
+        if naadi_res.get("past"):
+            p_items = NR.render_items(naadi_res["past"])
+            p_note = (f'<p style="{_note_style}">Read the Chandra Naadi way: the slow planets set the climate '
+                      f'for months, and the Moon&rsquo;s monthly pass over the same spot is when it came to a head.</p>')
+        else:
+            p_items = "".join(f"<li>{it}</li>" for it in cr_res.get("past_6_months", []))
+            p_note = ""
         if p_items:
             past_card_html = (
                 f'<div class="summary-card warn">\n'
                 f'  <h2>2. What Happened in the Last 6 Months (Timeline &amp; Building Real Strength)</h2>\n'
+                f'  {p_note}\n'
                 f'  <ul class="bullet-list warn">\n'
                 f'    {p_items}\n'
                 f'  </ul>\n'
