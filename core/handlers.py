@@ -605,7 +605,7 @@ def h_user_question(user: dict, p: dict) -> dict:
             price=uq_price,
             lat=float(chart["lat"]), lon=float(chart["lon"]),
             tz=float(chart["tz_offset"]),
-            lang=lang)
+            lang=lang, gender=chart.get("gender"))
     finally:
         DE.end()
 

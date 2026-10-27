@@ -863,7 +863,7 @@ def horary(*, question: str, verdicts: dict, western_judgment: dict,
 def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
                   price: int = 298, lat: float = 0.0, lon: float = 0.0,
                   tz: float = 5.5, today: Optional[date] = None,
-                  area: str = "", lang: str = "en") -> tuple:
+                  area: str = "", lang: str = "en", gender: Any = None) -> tuple:
     """Renders comprehensive, unified Vedic Consultation report for ANY life question."""
     today = today or date.today()
     first = (name or "").split()[0] if name else ""
@@ -918,8 +918,23 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     reading, qfacts, by_model = QR.build_reading(conf, pc, cfg, lang=lang)
     qwen_consultation = reading.answer if by_model else ""
 
-    free_body = _voice_polish(QR.render_html(reading, qfacts, paid=False, lang=lang, price=price))
-    paid_body = _voice_polish(QR.render_html(reading, qfacts, paid=True, lang=lang, price=price))
+    # Love, breakup and "will she come back" questions get their own Chandra Naadi section.
+    rel_block, rel_free, rel_paid = None, "", ""
+    if conf.domain_key == "marriage_relationship":
+        try:
+            import relationship_naadi as RN
+            built = RN.build(pc, question, qfacts, stance=reading.stance, gender=gender, today=today, lang=lang)
+            if built:
+                rel_block = RN.compose(built, lang=lang)
+                rel_free = RN.render_html(rel_block, paid=False, price=price)
+                rel_paid = RN.render_html(rel_block, paid=True, price=price)
+        except Exception as exc:                                      # noqa: BLE001
+            print(f"[report_render] relationship section skipped: {type(exc).__name__}: {exc}", flush=True)
+
+    free_body = _voice_polish(QR.render_html(reading, qfacts, paid=False, lang=lang, price=price,
+                                             extra_after_answer=rel_free))
+    paid_body = _voice_polish(QR.render_html(reading, qfacts, paid=True, lang=lang, price=price,
+                                             extra_after_answer=rel_paid))
 
     lang_code = str(lang or "").lower().strip()
     if lang_code in ("hi_en", "hinglish", "hi", "hindi"):
@@ -966,6 +981,12 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
         "paidSections": ["When it happens", "What to do", "The chart facts behind the answer"],
         "teasers": {}
     }
+    if rel_block:
+        import relationship_naadi as RN
+        meta["relationship"] = RN.public(rel_block)
+        meta["freeSections"] = ["Your answer", "What is happening", "What your chart shows"]
+        meta["paidSections"] = ["The days the Moon favours reaching out", "Days to hold back",
+                                "What helps and what to avoid", "When it happens", "The chart facts behind the answer"]
     return free, paid, meta
 
 

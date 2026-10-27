@@ -1049,7 +1049,7 @@ def _facts_list(facts: dict) -> list[str]:
 
 def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str = "en",
                 price: int = 298, fact_rows: Optional[list[str]] = None,
-                meta_line: Optional[str] = None) -> str:
+                meta_line: Optional[str] = None, extra_after_answer: str = "") -> str:
     """One card for any question. A horary supplies its own ``fact_rows`` and ``meta_line``."""
     L = _LABELS[_lang_key(lang)]
     color = _STANCE_COLOR[reading.stance]
@@ -1072,6 +1072,8 @@ def render_html(reading: QuestionReading, facts: dict, *, paid: bool, lang: str 
         f'<p style="font-size:.78rem;color:#6a7080;margin:8px 0 0;">{meta_line}</p>'
         '</article>',
     ]
+    if extra_after_answer and not out_of_scope:
+        parts.append(extra_after_answer)       # e.g. the relationship reading
 
     free_view = not paid and not out_of_scope
     if reading.lenses and free_view:
