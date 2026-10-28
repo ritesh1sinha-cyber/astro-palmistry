@@ -132,14 +132,14 @@ def build_archetype(dom: dict[str, Any], non: dict[str, Any], *,
         first = _MOUNT_PERSONA.get(keyed[0])
         if first:
             parts.append(
-                f"Your <b>{first[0]}</b> is prominently elevated on your active hand — "
+                f"Your <b>{first[0].removeprefix('your ')}</b> is prominently elevated on your active hand — "
                 f"reinforcing <b>{first[1]}</b>: {first[2]}."
             )
         extra = [k for k in keyed[1:2]]
         for k in extra:
             p = _MOUNT_PERSONA.get(k)
             if p:
-                parts.append(f"Your <b>{p[0]}</b> is also well-developed, adding {p[1]}.")
+                parts.append(f"Your <b>{p[0].removeprefix('your ')}</b> is also well-developed, adding {p[1]}.")
 
     return {
         "title": hand.title() if hand else "Balanced",

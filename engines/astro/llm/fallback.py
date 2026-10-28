@@ -1049,8 +1049,11 @@ def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False, lang: str =
     if palm_state is None:
         return [], ""
     lang_code = str(lang or "").lower()
-    is_hi = is_hinglish or lang_code in ("hi_en", "hinglish", "hi", "hindi")
-    is_te = lang_code in ("te_en", "tenglish", "te", "telugu")
+    # No fixed Hinglish/Telugu scripts: they said the same thing for every palm.
+    # The line is built from what the hands measured, in English; the model's
+    # prose carries the language when it is on.
+    is_hi = False
+    is_te = False
     lines: list[str] = []
     for i, topic in enumerate(list(getattr(palm_state, "mind_now", None) or [])[:3]):
         label = str(getattr(topic, "label", "") or "").strip()
@@ -1075,7 +1078,7 @@ def _palm_state_prose(palm_state: Any, *, is_hinglish: bool = False, lang: str =
         elif i == 0:
             lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be sitting with you now.")
         elif i == 1:
-            lines.append(f"If {head.lower()} has been on your mind, you {lead} also be carrying {subject}.")
+            lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} also be in the picture.")
         else:
             lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be in the background too.")
 

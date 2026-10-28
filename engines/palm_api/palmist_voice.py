@@ -210,7 +210,7 @@ def read_shape(feats: dict, *, hand: str = "") -> list[Reading]:
             "You lead with heart, empathy, and adaptability. You are generous in discussions, though you must guard against "
             "giving away leverage too easily in negotiations.",
             tone="care", hand=hand,
-            remedy="Establish your core non-negotiables before enterinng important discussions, and state your boundary clearly up front."))
+            remedy="Establish your core non-negotiables before entering important discussions, and state your boundary clearly up front."))
 
     opening = _val(thumb, "opening")
     if opening == "wide":
@@ -693,8 +693,13 @@ def read_marks(feats: dict, *, hand: str = "", allowed: bool = False) -> list[Re
         sign = (f"a {kind or 'mark'} on your {place}" if place
                 else f"a {kind or 'mark'} on your palm")
         tone = _MARK_TONE.get(kind, "neutral")
+        remedy = _MARK_REMEDY.get(kind, "")
+        if kind == "cross" and zone == "jupiter":
+            # The books read a cross on Jupiter as a good sign (a union), so it is
+            # neither flagged "needs care" nor given the warning remedy.
+            tone, remedy = "neutral", ""
         out.append(_mk(f"mark_{kind}_{zone}", title, sign, meaning, tone=tone,
-                       remedy=_MARK_REMEDY.get(kind, ""), hand=hand, where=where))
+                       remedy=remedy, hand=hand, where=where))
     return out
 
 

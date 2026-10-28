@@ -120,7 +120,7 @@ def _karaka_bullet(row: dict[str, Any]) -> str:
     if bav >= 5:
         return f"{planet} has a helpful tailwind here - lean in if it feels right."
     if bav >= 4:
-        return f"{planet} moves in fits and starts - one focused block beats multitasking."
+        return f"{planet} moves in fits and starts - small steady steps beat one big push."
     if bav >= 3:
         return f"{planet} needs patience - do not force outcomes before they ripen."
     return f"{planet} is under strain - protect your energy and keep stakes modest."

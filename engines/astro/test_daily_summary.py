@@ -115,3 +115,16 @@ def test_free_card_is_one_screen_with_one_unlock_card_and_paid_folds_the_working
     assert "Best and avoid times" in paid and "Why today reads this way" in paid
     assert paid.count('class="dy-fold"') == 1
     assert "dy-unlock" not in paid.split("</style>", 2)[-1]
+
+def test_money_tile_comes_from_money_signals_not_the_mood_note():
+    bad_note = {"name": "Vipat Rasi", "tone": "caution",
+                "do_note": "Confirm commute and gadget backups.", "note": "Avoid sarcastic replies."}
+    r = _reading(chandrabal=bad_note,
+                 moon_transit={"sign": "Taurus", "house_from_moon": 6, "house_from_lagna": 11})
+    money = {t["key"]: t for t in DS.build(r, "Asha")["tiles"]}["money"]
+    assert "commute" not in money["text"] and "sarcastic" not in money["text"]
+    assert "11th house" in money["text"]
+    r12 = _reading(chandrabal=bad_note,
+                   moon_transit={"sign": "Pisces", "house_from_moon": 6, "house_from_lagna": 12})
+    money12 = {t["key"]: t for t in DS.build(r12, "Asha")["tiles"]}["money"]
+    assert "12th house" in money12["text"] and money12["text"] != money["text"]

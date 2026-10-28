@@ -332,10 +332,16 @@ def _personality(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     if note:
         items.append(note)
 
+    _lg = _grade_of(chart, _lord_of(chart, 1), "Moon")
     close = (
         f"Taken together, {chart.lagna} rising with a {chart.moon_sign} Moon gives a person "
-        "who is capable and self-directed. The work is to stay steady when the chart's "
-        "weaker placements pull you off routine."
+        + _pick(_lg,
+                "who is capable and self-directed, because both the rising-sign ruler and the Moon are "
+                "well placed. The work is to keep that steadiness when the weaker placements pull you off routine.",
+                "who is capable but uneven, because the rising-sign ruler and the Moon do not support "
+                "each other equally. The work is to build routines that carry you through the low stretches.",
+                "who builds confidence through effort, because the rising-sign ruler or the Moon sits "
+                "under strain. The work is to protect your energy and let results come slowly.")
     )
     return _section("1. Personality Traits", items, close)
 
@@ -360,6 +366,39 @@ def _varga_planet_pos(varga_data: dict, planet: str) -> tuple[str, int]:
     return planet_sign, house
 
 
+def _lite_pc(chart: BhardwajChart) -> dict:
+    """Just enough of a chart for chart_lines to grade a planet."""
+    planets = {}
+    for name, d in (chart.planets or {}).items():
+        if isinstance(d, dict):
+            planets[name] = {"sign": d.get("sign"), "house": _house_of(chart, name),
+                             "dignity": d.get("dignity", "")}
+    return {"planets": planets}
+
+
+def _grade_of(chart: BhardwajChart, *planets: str) -> str:
+    """strong / mixed / strained, from dignity, house type and malefic company."""
+    import chart_lines as CL
+    pc = _lite_pc(chart)
+    names = [p for p in planets if p and p in pc["planets"]]
+    if not names:
+        return "mixed"
+    return CL.grade(round(sum(CL.score_planet(pc, p) for p in names) / len(names)))
+
+
+def _varga_tone(house: int) -> str:
+    """Where a planet falls in a divisional chart: supportive, testing, or in between."""
+    if house in (1, 4, 5, 7, 9, 10, 11):
+        return "good"
+    if house in (6, 8, 12):
+        return "hard"
+    return "mid"
+
+
+def _pick(grade: str, strong: str, mixed: str, strained: str) -> str:
+    return {"strong": strong, "strained": strained}.get(grade, mixed)
+
+
 def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items: list[str] = []
     divisional = (evidence or {}).get("divisional") or {}
@@ -373,13 +412,17 @@ def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     sun_house = _house_of(chart, "Sun")
     sun_sign = (chart.planets.get("Sun") or {}).get("sign", "")
     d12_sun_sign, d12_sun_house = _varga_planet_pos(d12, "Sun")
+    father_grade = _grade_of(chart, "Sun", ninth_lord)
 
     d12_father_note = ""
     if d12_sun_house:
         d12_father_note = (
             f" In the Dwadashamsha (D12 ancestral chart), the Sun is placed in {d12_sun_sign} "
-            f"in the {_ord(d12_sun_house)} house, indicating a strong paternal heritage of "
-            f"discipline, values, and duty."
+            f"in the {_ord(d12_sun_house)} house, "
+            + {"good": "which reads as a supportive paternal line.",
+               "hard": "which reads as a paternal line that tests you before it supports you.",
+               "mid": "which reads as a paternal line that is steady but not demonstrative."}[
+                _varga_tone(d12_sun_house)]
         )
 
     father_cause = CV.placement_cause("Sun", sun_house, sun_sign,
@@ -387,9 +430,15 @@ def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items.append(CV.bullet(
         "Father and paternal lineage (D12 Dwadashamsha)",
         f"{father_cause}, with your 9th lord {ninth_lord} in the {_ord(ninth_lord_in)} house",
-        f"the Sun signifies the father, ethical principles, and ancestral standing; the chart "
-        f"points to a structured, principled paternal bond where respect and traditional values "
-        f"play a central guiding role.{d12_father_note}",
+        "the Sun signifies the father, ethical principles, and ancestral standing; "
+        + _pick(father_grade,
+                "both indicators are well placed, so the paternal bond is supportive and respect "
+                "and shared values give you steady backing.",
+                "the indicators are mixed, so the paternal bond carries both warmth and distance and "
+                "grows closer through effort and honest conversation.",
+                "the indicators are under strain, so the father figure may have been distant, busy or "
+                "hard to reach, and his support is earned slowly rather than given freely.")
+        + d12_father_note,
     ))
 
     # 2. Mother and Maternal Heritage (Natal 4th House + D12 Dwadashamsha)
@@ -398,12 +447,16 @@ def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     moon_house = _house_of(chart, "Moon")
     moon_sign = (chart.planets.get("Moon") or {}).get("sign", "")
     d12_moon_sign, d12_moon_house = _varga_planet_pos(d12, "Moon")
+    mother_grade = _grade_of(chart, "Moon", fourth_lord)
 
     d12_mother_note = ""
     if d12_moon_house:
         d12_mother_note = (
             f" In the Dwadashamsha (D12), the Moon sits in {d12_moon_sign} in the {_ord(d12_moon_house)} house, "
-            f"reflecting maternal grounding, emotional resilience, and introspective ancestral roots."
+            + {"good": "which reads as a maternal line that grounds you.",
+               "hard": "which reads as a maternal line where closeness comes with worry or distance.",
+               "mid": "which reads as a maternal line that is caring but reserved."}[
+                _varga_tone(d12_moon_house)]
         )
 
     mother_cause = CV.placement_cause("Moon", moon_house, moon_sign,
@@ -411,8 +464,13 @@ def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items.append(CV.bullet(
         "Mother and maternal heritage (D12 Dwadashamsha)",
         f"{mother_cause}, with your 4th lord {fourth_lord} in the {_ord(fourth_lord_in)} house",
-        f"the Moon carries the maternal influence, emotional nurturance, and early conditioning; "
-        f"her blessings form an emotional pillar, fostering sensitivity and moral stability.{d12_mother_note}",
+        "the Moon carries the maternal influence, emotional nurturance, and early conditioning; "
+        + _pick(mother_grade,
+                "both indicators are well placed, so her care is a steady emotional pillar for you.",
+                "the indicators are mixed, so her care is real but comes with moods or distance at times.",
+                "the indicators are under strain, so closeness with her may have come with worry, "
+                "separation or pressure, and emotional security is something you build for yourself.")
+        + d12_mother_note,
     ))
 
     # 3. Siblings and Co-borns (Natal 3rd House + D3 Drekkana)
@@ -421,6 +479,7 @@ def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     mars_sign = (chart.planets.get("Mars") or {}).get("sign", "")
     d3_mars_sign, d3_mars_house = _varga_planet_pos(d3, "Mars")
     d3_jup_sign, d3_jup_house = _varga_planet_pos(d3, "Jupiter")
+    sib_grade = _grade_of(chart, "Mars", third_lord)
 
     d3_sibling_note = ""
     if d3_jup_house == 3:
@@ -431,41 +490,65 @@ def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     elif d3_mars_house:
         d3_sibling_note = (
             f" In the Drekkana (D3), Mars sits in {d3_mars_sign} in the {_ord(d3_mars_house)} house, "
-            f"showing energetic, independent siblings where mutual patience and clear communication keep bonds strong."
+            + {"good": "which reads as siblings who are energetic and helpful.",
+               "hard": "which reads as sibling ties that need patience and clear communication.",
+               "mid": "which reads as independent siblings who keep their own pace."}[
+                _varga_tone(d3_mars_house)]
         )
 
     items.append(CV.bullet(
         "Siblings and co-born dynamics (D3 Drekkana)",
         f"your 3rd lord {third_lord} sits in the {_ord(third_lord_in)} house, with Mars (Bhratri Karaka) in {mars_sign}",
-        f"the 3rd house and Mars govern siblings, courage, and personal initiative. Sibling relationships "
-        f"bring shared learning and mutual loyalty, flourishing when each person's independence is respected.{d3_sibling_note}",
+        "the 3rd house and Mars govern siblings, courage, and personal initiative. "
+        + _pick(sib_grade,
+                "Both are well placed, so ties with siblings and close peers are warm and dependable.",
+                "Both carry mixed support, so ties with siblings are warm at times and distant at others.",
+                "Both are under strain, so ties with siblings or close peers can carry rivalry or "
+                "distance and ease when each side is given room.")
+        + d3_sibling_note,
     ))
 
     # 4. Home Environment and Property (Natal 4th House + D4 Chaturthamsha)
     d4_moon_sign, d4_moon_house = _varga_planet_pos(d4, "Moon")
+    home_grade = _grade_of(chart, fourth_lord, "Moon")
     d4_prop_note = ""
     if d4_moon_house:
         d4_prop_note = (
             f" The Chaturthamsha (D4) places the Moon in {d4_moon_sign} in the {_ord(d4_moon_house)} house, "
-            f"indicating progressive accumulation of landed assets, property, and domestic comfort over time."
+            + {"good": "which supports landed assets and domestic comfort building up over time.",
+               "hard": "which suggests property and home matters take longer and need careful paperwork.",
+               "mid": "which suggests property and home matters move at a steady, unhurried pace."}[
+                _varga_tone(d4_moon_house)]
         )
 
     items.append(CV.bullet(
         "Home environment and property (D4 Chaturthamsha)",
         f"your 4th house of domestic peace is ruled by {fourth_lord} in the {_ord(fourth_lord_in)} house",
-        f"domestic stability and fixed assets are built through steady planning and careful investments. "
-        f"Creating a calm, uncluttered home environment directly strengthens mental peace and productivity.{d4_prop_note}",
+        _pick(home_grade,
+              "the ruler of home is well placed, so domestic stability and fixed assets come with "
+              "relatively little struggle.",
+              "the ruler of home has mixed support, so peace at home and property matters are good "
+              "in some periods and unsettled in others.",
+              "the ruler of home is under strain, so peace at home and property matters ask for "
+              "extra care and a calm, uncluttered space helps.")
+        + d4_prop_note,
     ))
 
     # 5. Speech, Cultural Lineage and Family Values (Natal 2nd House)
     second_lord = _lord_of(chart, 2)
     second_lord_in = _house_of(chart, second_lord)
     if second_lord and second_lord_in:
+        values_grade = _grade_of(chart, second_lord)
         items.append(CV.bullet(
             "Family values and cultural grounding",
             f"your 2nd lord {second_lord} is placed in the {_ord(second_lord_in)} house",
-            f"early upbringing instills strong ethical and financial values; family traditions and speech "
-            f"act as a steady anchor in public life and career choices.",
+            _pick(values_grade,
+                  "it is well placed, so early upbringing gave you steady values and the family's "
+                  "way of speaking is an anchor.",
+                  "it has mixed support, so family values are a real influence, though speech at "
+                  "home could be warm one day and blunt the next.",
+                  "it is under strain, so the family's values reached you unevenly and what you "
+                  "keep, you chose for yourself."),
         ))
 
     # 6. Shadow Planet In Domestic/Family Houses
@@ -476,19 +559,28 @@ def _family(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
             items.append(CV.bullet(
                 label,
                 f"{planet} occupies your {_ord(house)} house of {_HOUSE_TOPIC.get(house, '')}",
-                f"the classical reading indicates a need for personal space within the family dynamic, "
-                f"where quiet patience and routine resolve misunderstandings far better than emotional confrontation.",
+                "the classical reading indicates a need for personal space within the family dynamic, "
+                "where quiet patience and routine resolve misunderstandings far better than emotional confrontation.",
             ))
 
     note = _consensus_note("family", evidence or {}, life_area="home")
     if note:
         items.append(note)
 
+    grades = [father_grade, mother_grade, sib_grade, home_grade]
+    n_strong, n_hard = grades.count("strong"), grades.count("strained")
+    if n_hard > n_strong:
+        tail = ("Most of the family indicators are under strain, so warmth at home is something you "
+                "build with patience and clear boundaries rather than inherit.")
+    elif n_strong > n_hard:
+        tail = ("Most of the family indicators are well placed, so family is a real source of "
+                "support; keep it that way by returning the care you receive.")
+    else:
+        tail = ("The family indicators pull both ways, so some bonds are easy and some need "
+                "work; patience with elders and clear boundaries keep it steady.")
     close = (
         "The family foundation is read across the natal chart (D1), the Dwadashamsha (D12 for parents), "
-        "the Drekkana (D3 for siblings), and the Chaturthamsha (D4 for home and property). "
-        "Where the chart shows distinct personalities under one roof, patience with elders and clear boundaries "
-        "preserve lifelong family harmony."
+        "the Drekkana (D3 for siblings), and the Chaturthamsha (D4 for home and property). " + tail
     )
     return _section("2. Family and Background", items, close)
 
@@ -552,10 +644,15 @@ def _career(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     if note:
         items.append(note)
 
-    close = (
-        "Success in this chart is built rather than gifted. Skill, visibility and patience "
-        "carry the professional life further than speed."
-    )
+    _cg = _grade_of(chart, tenth_lord, "Sun", "Saturn")
+    close = _pick(
+        _cg,
+        "The career indicators are well placed, so recognition tends to follow steady work; "
+        "skill and visibility carry the professional life, and pacing keeps the gains lasting.",
+        "The career indicators pull both ways, so progress comes in stages; skill, visibility "
+        "and patience carry the professional life further than speed.",
+        "The career indicators are under strain, so success in this chart is built rather than "
+        "gifted; skill, visibility and patience carry the professional life further than speed.")
     return _section("3. Career and Professional Nature", items, close)
 
 
@@ -628,10 +725,16 @@ def _marriage(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
         "next section show when they fall",
     ))
 
-    close = (
-        "Partnership in this chart improves as you become less guarded. Clear speech and "
-        "matched expectations matter more than an auspicious wedding date."
-    )
+    _mg = _grade_of(chart, seventh_lord, "Venus")
+    close = _pick(
+        _mg,
+        "The partnership indicators are well placed, so a steady bond comes with relatively "
+        "little struggle; clear speech and matched expectations keep it that way.",
+        "The partnership indicators pull both ways, so closeness grows as you become less "
+        "guarded; clear speech and matched expectations matter more than an auspicious wedding date.",
+        "The partnership indicators are under strain, so a lasting bond is built slowly and "
+        "on honest terms; clear speech and matched expectations matter more than an "
+        "auspicious wedding date.")
     return _section("4. Relationship and Marriage Indications", items, close)
 
 
@@ -808,8 +911,15 @@ def _health(chart: BhardwajChart, buckets: list[dict], evidence: Optional[dict] 
     if note:
         items.append(note)
 
+    _hg = _grade_of(chart, _lord_of(chart, 1), "Sun", "Moon")
     close = (
-        "Read this as maintenance rather than medicine. The chart says which part of the "
+        _pick(_hg,
+              "The vitality indicators are well placed, so ordinary upkeep is usually enough. ",
+              "The vitality indicators pull both ways, so a steady routine matters more than any "
+              "single fix. ",
+              "The vitality indicators are under strain, so the routine needs more guarding than "
+              "most. ")
+        + "Read this as maintenance rather than medicine: the chart says which part of the "
         "routine to guard and when to guard it hardest; anything a doctor should see still "
         "belongs with a doctor."
     )
@@ -1070,17 +1180,27 @@ def _currently(chart: BhardwajChart, evidence: Optional[dict] = None) -> str:
     items.append(CV.bullet(
         "Need for discipline",
         "the combined weight of the running period",
-        "a fixed rhythm for sleep, food and work does more for this stretch than any single "
-        "decision you could make",
+        _pick(_grade_of(chart, md_lord, ad_lord),
+              "the period supports you, so a steady rhythm for sleep, food and work lets you use it fully",
+              "the period is uneven, so a fixed rhythm for sleep, food and work does more than any "
+              "single decision you could make",
+              "the period is demanding, so a fixed rhythm for sleep, food and work protects you more "
+              "than any single decision you could make"),
     ))
     note = _consensus_note("career", evidence or {}, label="What the present chapter confirms")
     if note:
         items.append(note)
 
-    close = (
-        "Life may feel demanding rather than fast right now. The classical view is that a "
-        "period like this builds the foundation the next one stands on."
-    )
+    _pg = _grade_of(chart, md_lord, ad_lord)
+    close = _pick(
+        _pg,
+        f"The running {md_lord or 'main'} period is well supported, so this stretch tends to "
+        "move things forward; use it to build what the next period will stand on.",
+        f"The running {md_lord or 'main'} period has mixed support, so progress comes with "
+        "pauses; use the quiet stretches to build what the next period will stand on.",
+        f"The running {md_lord or 'main'} period is under strain, so life may feel demanding "
+        "rather than fast; the classical view is that a period like this builds the foundation "
+        "the next one stands on.")
     return _section("7. What You Are Going Through Currently", items, close)
 
 

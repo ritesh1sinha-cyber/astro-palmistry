@@ -154,6 +154,46 @@ def day_strength(votes: list[dict], base_tone: str = "") -> int:
 
 # ---- tiles -------------------------------------------------------------------
 
+_ORD = {1: "1st", 2: "2nd", 3: "3rd"}
+# The houses that speak to money, and which way they lean when the Moon crosses them.
+_MONEY_HOUSES = {
+    2: (1, "savings, family speech and day-to-day security"),
+    11: (1, "income, gains and what your network brings you"),
+    5: (0, "speculation and measured risk-taking"),
+    9: (0, "fortune and what comes through teachers and elders"),
+    6: (-1, "debts and everyday costs"),
+    8: (-1, "joint money and sudden change"),
+    12: (-1, "expenses and letting go of excess"),
+}
+
+
+def _money_line(reading: dict, chandra: dict) -> tuple[str, int]:
+    """One money line from the signals that actually speak to money.
+
+    The Moon's house from the rising sign decides whether today touches savings,
+    gains or spending; failing that, Mercury (trade) today; failing that, the
+    Sampat star, which is the wealth star in the Tara cycle. The Chandrabal
+    do-note is a different thing (it is about mood by the Moon's sign), so it is
+    never quoted as money advice.
+    """
+    h = _g(reading, "moon_transit", "house_from_lagna")
+    if h in _MONEY_HOUSES:
+        lean, theme = _MONEY_HOUSES[h]
+        nth = _ORD.get(h, f"{h}th")
+        if lean > 0:
+            return (f"The Moon crosses your {nth} house of {theme}, a good day to act on "
+                    f"money matters you have been holding."), 1
+        if lean < 0:
+            return (f"The Moon crosses your {nth} house of {theme}, so keep spending "
+                    f"deliberate and avoid new commitments."), -1
+        return f"The Moon crosses your {nth} house of {theme}; judge offers on their merits.", 0
+    merc = re.sub(r"\s*\([^)]*\)", "", str(reading.get("mercury_narrative") or "")).strip()
+    if merc:
+        return _first_sentence(merc, 125), 0
+    if "sampat" in str(chandra.get("name") or "").lower() and chandra.get("do_note"):
+        return str(chandra["do_note"]), 1
+    return "", 0
+
 def _tiles(reading: dict, votes: list[dict]) -> list[dict]:
     vc = reading.get("vedic_confluence") or {}
     tiles: list[dict] = []
@@ -164,14 +204,13 @@ def _tiles(reading: dict, votes: list[dict]) -> list[dict]:
     work = _first_sentence(vc.get("work_hint"))
     if work:
         tiles.append({"key": "work", "label": "Work", "tone": _tone_from(work_votes),
-                      "text": work})
+                      "text": work if work.lower().startswith(("in ", "at ", "for ")) else f"At work, {work}"})
 
     chandra = reading.get("chandrabal") or {}
-    money_bits = [str(chandra.get(k) or "").strip() for k in ("do_note", "note")]
-    money = " ".join(b for b in money_bits if b)
+    money, money_adj = _money_line(reading, chandra)
     if money:
         tiles.append({"key": "money", "label": "Money",
-                      "tone": _tone_from(_vote(votes, "chandra", "moon_sav", "mercury")),
+                      "tone": _tone_from(_vote(votes, "moon_sav", "mercury") + money_adj),
                       "text": _short(money, 130)})
 
     personal = str(vc.get("personal_hint") or "")
@@ -184,7 +223,7 @@ def _tiles(reading: dict, votes: list[dict]) -> list[dict]:
     if rel:
         tiles.append({"key": "people", "label": "People & love",
                       "tone": _tone_from(_vote(votes, "tara", "moon")),
-                      "text": rel})
+                      "text": rel if rel.lower().startswith(("in ", "with ")) else f"In relationships, {rel}"})
 
     mind = _first_sentence(_g(reading, "moonology", "sign_summary"), 125)
     if mind:

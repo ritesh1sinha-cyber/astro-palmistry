@@ -1,4 +1,4 @@
-﻿"""The palm reading, written the way a palmist gives it.
+"""The palm reading, written the way a palmist gives it.
 
 This renderer replaced a text-only prose page. That page read well and said
 almost nothing: it never showed the customer's own photographs, never named a
@@ -551,7 +551,7 @@ def _vedic_life_reading(conf: dict, first: str, lang: str = "en") -> str:
                 lbl_win = f"<b>Mukhya Career Establishment Samay:</b> Aayu {int(win[0])}–{int(win[1])} varsh."
                 tag = f"Career · Sthirata {int(win[0])}–{int(win[1])} varsh"
             else:
-                lbl_win = f"<b>Major Vocational Establishment Window:</b> Ages {int(win[0])}–{int(win[1])}."
+                lbl_win = f"<b>Major Vocational Establishment Window:</b> roughly ages {int(win[0])} to {int(win[1])}."
                 tag = f"Career · Establishes {int(win[0])}–{int(win[1])}"
             win_note = f"<p style='margin:6px 0 0;font-size:0.85rem;color:#6a7080;'>{lbl_win}</p>"
 
@@ -1380,8 +1380,9 @@ def render(
                     inborn_lbl = "Inborn Potential (Passive Hand: "
                 cols += ('<div class="pv-col"><div class="ev-label">' + inborn_lbl +
                          f'{_e(other_key.title())})</div><ul class="pv-plain">'
-                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign, is_active=False, lang=lang)}</li>"
-                                   for r in only_innate) + "</ul></div>")
+                         + "".join(f"<li>{x}</li>" for x in dict.fromkeys(
+                             _clean_contrast_label(r.feature, r.sign, is_active=False, lang=lang)
+                             for r in only_innate)) + "</ul></div>")
             if only_active:
                 if is_tenglish:
                     active_lbl = "Karma Tho Sadinchina Vikas (Active Hand: "
@@ -1391,8 +1392,9 @@ def render(
                     active_lbl = "Cultivated Strengths (Active Hand: "
                 cols += ('<div class="pv-col"><div class="ev-label">' + active_lbl +
                          f'{_e(dom_key.title())})</div><ul class="pv-plain">'
-                         + "".join(f"<li>{_clean_contrast_label(r.feature, r.sign, is_active=True, lang=lang)}</li>"
-                                   for r in only_active) + "</ul></div>")
+                         + "".join(f"<li>{x}</li>" for x in dict.fromkeys(
+                             _clean_contrast_label(r.feature, r.sign, is_active=True, lang=lang)
+                             for r in only_active)) + "</ul></div>")
             if cols:
                 contrast += f'<div class="card pv-cols">{cols}</div>'
         if is_tenglish:

@@ -460,6 +460,8 @@ def _problems(w: dict, b: dict) -> list[str]:
         if re.search(rf"\b{re.escape(word)}\b", low) and not re.search(rf"\b{re.escape(word)}\b", facts_low):
             out.append(f"mentions {word}, which the facts do not say; do not invent causes")
             break
+    if re.search(r"\b(?:in|through)\s+[A-Z][a-z]+,?\s+(?:which is\s+)?your\s+\d+(?:st|nd|rd|th)\s+house", text):
+        out.append("calls the planet's sign your Nth house; say which house the planet rules and where it sits")
     if _WILL_LOSE.search(text):
         out.append("predicts a loss or a failure to recover; use pressure and care instead")
     if b["lean"] != "open" and _WILL_WIN.search(text):

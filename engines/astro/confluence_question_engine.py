@@ -1,4 +1,4 @@
-"""Universal Vedic Confluence Engine for Life Inquiries & Problem Analysis.
+﻿"""Universal Vedic Confluence Engine for Life Inquiries & Problem Analysis.
 
 Provides deep, multi-layered classical astrological analysis for ANY life question
 (speech, neurological, career, marriage, health, finances, litigation, progeny, education, etc.)
