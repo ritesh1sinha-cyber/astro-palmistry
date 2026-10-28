@@ -157,13 +157,13 @@ def day_strength(votes: list[dict], base_tone: str = "") -> int:
 _ORD = {1: "1st", 2: "2nd", 3: "3rd"}
 # The houses that speak to money, and which way they lean when the Moon crosses them.
 _MONEY_HOUSES = {
-    2: (1, "savings, family speech and day-to-day security"),
-    11: (1, "income, gains and what your network brings you"),
-    5: (0, "speculation and measured risk-taking"),
-    9: (0, "fortune and what comes through teachers and elders"),
+    2: (1, "savings and security"),
+    11: (1, "income and gains"),
+    5: (0, "speculation and risk"),
+    9: (0, "fortune and elders' help"),
     6: (-1, "debts and everyday costs"),
     8: (-1, "joint money and sudden change"),
-    12: (-1, "expenses and letting go of excess"),
+    12: (-1, "expenses and letting go"),
 }
 
 
@@ -181,11 +181,9 @@ def _money_line(reading: dict, chandra: dict) -> tuple[str, int]:
         lean, theme = _MONEY_HOUSES[h]
         nth = _ORD.get(h, f"{h}th")
         if lean > 0:
-            return (f"The Moon crosses your {nth} house of {theme}, a good day to act on "
-                    f"money matters you have been holding."), 1
+            return f"The Moon crosses your {nth} house of {theme}: a good day to act on money matters.", 1
         if lean < 0:
-            return (f"The Moon crosses your {nth} house of {theme}, so keep spending "
-                    f"deliberate and avoid new commitments."), -1
+            return f"The Moon crosses your {nth} house of {theme}: keep spending deliberate.", -1
         return f"The Moon crosses your {nth} house of {theme}; judge offers on their merits.", 0
     merc = re.sub(r"\s*\([^)]*\)", "", str(reading.get("mercury_narrative") or "")).strip()
     if merc:

@@ -1,4 +1,4 @@
-﻿"""Universal Vedic Confluence Engine for Life Inquiries & Problem Analysis.
+"""Universal Vedic Confluence Engine for Life Inquiries & Problem Analysis.
 
 Provides deep, multi-layered classical astrological analysis for ANY life question
 (speech, neurological, career, marriage, health, finances, litigation, progeny, education, etc.)
@@ -1139,7 +1139,12 @@ def analyze_question_confluence(
                 timeline_items.append(f"<b>Past Formative Phase:</b> {lbl} — Initial trigger and formative manifestation of the condition.")
 
         if not breakthrough_period_str and curr_ad_list:
-            breakthrough_period_str = f"Upcoming Antardasha ({curr_ad_list[-1].get('ad_lord')} starting {curr_ad_list[-1].get('start')})"
+            # Only a sub-period that really lies ahead may be called upcoming; the
+            # last one in the list can be the one already running.
+            nxt = next((a for a in curr_ad_list if a.get("status") == "future"), None)
+            if nxt:
+                breakthrough_period_str = (f"{nxt.get('ad_lord')} Antardasha "
+                                           f"({nxt.get('start')} to {nxt.get('end')})")
 
     # 7. Ashtakavarga (SAV & BAV) Strength Analysis
     av_data = compute_chart_ashtakavarga(pc)
