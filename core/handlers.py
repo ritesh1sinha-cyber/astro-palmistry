@@ -244,6 +244,17 @@ def h_chart_summary(user: dict, p: dict) -> dict:
             if str(row.get("start") or "") <= today <= str(row.get("end") or ""):
                 cur = row
                 break
+    # The sequence rows are main periods only; the running sub-period lives in
+    # current_md_antardashas.
+    today_s = date.today().isoformat()
+    ad_row: dict = {}
+    for row in vim.get("current_md_antardashas") or []:
+        if not isinstance(row, dict):
+            continue
+        if row.get("status") == "current" or \
+                str(row.get("start") or "") <= today_s <= str(row.get("end") or ""):
+            ad_row = row
+            break
     return {
         "chartId": chart["id"],
         "lagna": {"sign": meta.get("lagna_sign"), "degree": meta.get("lagna_degree"),
@@ -251,8 +262,9 @@ def h_chart_summary(user: dict, p: dict) -> dict:
                   "lord": meta.get("lagna_lord")},
         "moon": {"sign": moon.get("sign"), "nakshatra": moon.get("nakshatra")},
         "currentDasha": {"md": cur.get("md_lord") or cur.get("lord"),
-                         "ad": cur.get("ad_lord"), "from": cur.get("start"),
-                         "to": cur.get("end")},
+                         "ad": cur.get("ad_lord") or ad_row.get("ad_lord"),
+                         "from": cur.get("start"), "to": cur.get("end"),
+                         "adFrom": ad_row.get("start"), "adTo": ad_row.get("end")},
         "age": meta.get("age"), "ayanamsa": meta.get("ayanamsa"),
         "personalNote": V.concise(V.humanise(V.chart_opening(_voice_ctx(pc, chart)))),
     }

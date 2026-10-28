@@ -1642,13 +1642,14 @@ def _interpret_varga_concrete(
             reading_parts.append(
                 _graded(
                     pc, ["Sun", "Moon", CL.lord_of(pc, 9)],
-                    "The indicators for parents and family roots are well placed, which classically points to support and good grounding from your family.",
-                    "The indicators for parents and family roots have mixed support, which classically points to a family bond with both warmth and friction.",
-                    "The indicators for parents and family roots are under strain, which classically points to a harder road with family, where you build your own footing.")
+                    "In your birth chart, the indicators for parents and family roots are well placed, which classically points to support and good grounding from your family.",
+                    "In your birth chart, the indicators for parents and family roots have mixed support, which classically points to a family bond with both warmth and friction.",
+                    "In your birth chart, the indicators for parents and family roots are under strain, which classically points to a harder road with family, where you build your own footing.")
             )
             if strong_planets:
                 reading_parts.append(
-                    f"Fortified placements ({', '.join(strong_planets)}) in D12 indicate noble lineage and deep parental blessings."
+                    f"The D12 chart itself is a separate lens and it is {'strong' if strength == 'strong' else 'supportive in places'}: "
+                    f"fortified placements ({', '.join(strong_planets)}) there indicate noble lineage and deep parental blessings."
                 )
         remedy_planet = "Sun"
         remedy_reason = "To Honor Ancestral Blessings (Pitru Upaya)"
