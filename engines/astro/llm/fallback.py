@@ -860,7 +860,7 @@ def _life_state_prose(life_state: Any) -> tuple[list[str], str]:
         elif i == 0:
             lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be sitting with you now.")
         elif i == 1:
-            lines.append(f"If {head.lower()} has been on your mind, you {lead} also be carrying {subject}.")
+            lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} also be in the picture.")
         else:
             lines.append(f"If {head.lower()} has been on your mind, {subject} {lead} be in the background too.")
 
