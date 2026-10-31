@@ -251,6 +251,64 @@ def lens_text(key: str, d: dict, facts: dict, lk: str) -> str:
     return ""
 
 
+def plain_reasons(facts: dict, lk: str) -> list[str]:
+    hi = lk == "hi_en"
+    key = facts["domain_key"]
+    if key == "out_of_domain":
+        return []
+    if key == "gemstones_remedies":
+        asked = facts["gems"].get("asked") or []
+        suitable = asked and all(r["verdict"] == "wear" for r in asked)
+        first = (("Yeh ratna aapki kundli ke sahayak tathyon se mel khata hai, par trial mein aaram bhi zaroori hai."
+                  if suitable else
+                  "Yeh ratna aapki kundli ke sahayak tathyon se mel khate hain, par vyaktigat aaram bhi zaroori hai."
+                  if not asked else
+                  "Jo ratna kisi aur ki kundli ko suit kare, woh aapke liye zaroori nahi; isliye savdhan raasta behtar hai.")
+                 if hi else
+                 ("Ee ratnam mee jataka anukula amshalatho sardhukuntu undi, ayite trial lo soukaryam kuda mukhyam."
+                  if suitable else
+                  "Ee ratnalu mee jataka anukula amshalatho sardhukuntayi, ayite vyaktigata soukaryam kuda mukhyam."
+                  if not asked else
+                  "Inkokari jatakaniki sardina ratnam meeku sardhutundi ani ledu, kabatti jagrattha margam manchidi."))
+        second = ("Teen din ka trial sirf savdhani hai, guarantee nahi; asuvidha ho to turant band karein." if hi else
+                  "Moodu rojula trial kevalam jagrattha matrame, guarantee kaadu; asoukaryam unte ventane aapeseyandi.")
+        return [first, second]
+    lenses = facts.get("lenses") or {}
+    vuln = lenses.get("vulnerability")
+    if vuln:
+        import question_health as QH
+        body = QH.text_local(vuln, lk).split(" Chandra Naadi", 1)[0].strip()
+        care = QR._care_now(facts)
+        second = ("Abhi extra dhyan zaroori hai; niyamit dinacharya aur shuruaati dhyaan rakhein." if care else
+                  "Abhi sthiti behtar lagti hai, phir bhi niyamit dhyan zaroori hai.") if hi else (
+                  "Ippudu ekkuva jagrattha avasaram; kramabaddha dinacharya mariyu mundasthu shraddha patinchandi." if care else
+                  "Ippudu paristhiti sthiramga kanipistundi, ayina kramabaddha shraddha avasaram.")
+        return [body, second]
+    p, _n = QR._verdict_key(facts)
+    label = _AREA_LABEL[lk].get(key, "Is sawal" if hi else "Ee prashna")
+    if hi:
+        first = {1: f"{label} ke liye aapka lambe samay ka pattern sahayak hai.",
+                 0: f"{label} ke liye aapka lambe samay ka pattern milajula hai; kuch sahayak aur kuch kathin baatein hain.",
+                 -1: f"{label} ke liye aapka lambe samay ka pattern zyada mehnat maangta hai, isliye niyamit koshish zaroori hai."}[p]
+        vim = lenses.get("vimshottari") or {}
+        second = {"helper": "Abhi ki dasha is sawal se seedhi judi hai, isliye vyavaharik prayas ko saath milta hai.",
+                  "hard": "Abhi ki dasha deri ya dabav la sakti hai, isliye pragati dheemi ho sakti hai.",
+                  "none": "Abhi ki dasha is sawal ke liye lagbhag tatastha hai, isliye taiyari aur aapke nirnay zyada mahatvapurn hain."}[vim.get("rel", "none")]
+    else:
+        first = {1: f"{label} kosam mee dirghakalika pattern anukulamga undi.",
+                 0: f"{label} kosam mee dirghakalika pattern mishramam; konni anukula, konni kashtamaina amshalu unnayi.",
+                 -1: f"{label} kosam mee dirghakalika pattern ekkuva prayatnam korutundi, kabatti nirantara krusi avasaram."}[p]
+        vim = lenses.get("vimshottari") or {}
+        second = {"helper": "Prastuta dasha ee prashnatho pratyakshamga sambandham kaligi undi, kabatti acharanatmaka prayatnalaku maddatu labhistundi.",
+                  "hard": "Prastuta dasha aalasyam leda ottidi techchochu, kabatti pragati mellaga undochu.",
+                  "none": "Prastuta dasha ee prashnapai tatasthamga undi, kabatti siddham mariyu mee nirnayalu mukhyam."}[vim.get("rel", "none")]
+    rows = [first, second]
+    if (lenses.get("naadi") or {}).get("cautions"):
+        rows.append("Abhi ka samay sanvedansheel hai; baat-cheet shaant rakhein aur jaldi nirnay na lein." if hi else
+                    "Prastuta samayam sunnitamainadi; sambhashana prashantamga unchandi, thvaragatiga nirnayalu teesukokandi.")
+    return rows
+
+
 def timing(facts: dict, lk: str) -> str:
     vuln = (facts.get("lenses") or {}).get("vulnerability")
     if vuln:
@@ -260,6 +318,112 @@ def timing(facts: dict, lk: str) -> str:
     if not w:
         return ""
     return f"Iske liye sabse anukool samay {w} hai." if lk == "hi_en" else f"Deeniki anukulamaina samayam {w}."
+
+
+def practical_step(facts: dict, has_window: bool, lk: str) -> str:
+    hi = lk == "hi_en"
+    key = facts["domain_key"]
+    q = facts["question"].lower()
+    window = "upar dikhaya gaya anukool samay" if hi else "pain chupina anukula samayam"
+    if key == "career_profession":
+        if "promot" in q:
+            return (f"Apne nateeje likhkar rakhein; {window} mein promotion par baat karein." if has_window else
+                    "Apne nateeje likhkar rakhein aur manager se promotion par seedhi baat karein.") if hi else (
+                    f"Mee phalitalu raasi unchukondi; {window} lo promotion gurinchi matladandi." if has_window else
+                    "Mee phalitalu raasi unchukoni manager tho promotion gurinchi pratyakshamga matladandi.")
+        if re.search(r"first\s+job|unemployed", q):
+            return (f"Focused CV banayein aur interview practice karein; {window} mein applications aur interviews karein." if has_window else
+                    "Focused CV banayein, interview practice karein aur lagataar apply karein.") if hi else (
+                    f"Focused CV tayar chesi interview practice cheyandi; {window} lo applications mariyu interviews cheyandi." if has_window else
+                    "Focused CV tayar chesi interview practice cheyandi, kramamga apply cheyandi.")
+        if re.search(r"business|startup|self\s*-?\s*employ", q):
+            return (f"Demand jaanchein, budget banayein aur cash cushion rakhein; {window} mein sanyamit launch sochein." if has_window else
+                    "Launch se pehle demand jaanchein, budget banayein aur cash cushion rakhein.") if hi else (
+                    f"Demand parishilinchi budget tayar chesi cash cushion unchukondi; {window} lo kramamaina launch alochinchandi." if has_window else
+                    "Launch kante mundu demand parishilinchi budget tayar chesi cash cushion unchukondi.")
+        if "retir" in q:
+            return (f"Pension, monthly kharch aur health cover review karein; transition planning {window} mein karein." if has_window else
+                    "Retirement date tay karne se pehle pension, monthly kharch aur health cover review karein.") if hi else (
+                    f"Pension, nelavari karchu mariyu health cover review cheyandi; transition planning {window} lo cheyandi." if has_window else
+                    "Retirement date fix chese mundu pension, nelavari karchu mariyu health cover review cheyandi.")
+        if re.search(r"what\s+career|which\s+career|career\s+(?:should|direction)|choose.*career", q):
+            return ("Apni ruchi aur strengths ke mutabik kuch career paths tulna karein, phir chhota project ya mentor ki salah lein." if hi else
+                    "Mee abhiruchi mariyu strengths batti konni career paths polchandi, tarvata chinna project leda mentor salaha teesukondi.")
+        if re.search(r"change|switch|new job|another job", q):
+            return (f"CV update karein aur likhit offers tulna karein; {window} mein applications ya switch sochein." if has_window else
+                    "CV update karein aur resign karne se pehle likhit offers tulna karein.") if hi else (
+                    f"CV update chesi raasthi offers polchandi; {window} lo applications leda switch alochinchandi." if has_window else
+                    "CV update chesi resign chese mundu raasthi offers polchandi.")
+        if re.search(r"secure|security|safe|layoff|fired|demotion", q):
+            return ("Skills update rakhein, apna kaam document karein aur cash cushion banayein." if hi else
+                    "Skills update chesukondi, mee pani document chesi cash cushion erparachukondi.")
+        return ("Apna kaam document karein aur manager se agla career kadam tay karein." if hi else
+                "Mee pani document chesi manager tho tarvati career adugu gurinchi matladandi.")
+    if key == "marriage_relationship":
+        if re.search(r"marri|wedding|shaadi|vivah", q):
+            return (f"{window} mein parichay ya parivaar ki baat-cheet karein, bina jaldi commitment kiye." if has_window else
+                    "Parivaar se expectations par khuli baat karein aur jaldi commitment na karein.") if hi else (
+                    f"{window} lo parichayalu leda kutumba charchalu cheyandi, thvaragatiga commitment ivvakandi." if has_window else
+                    "Kutumbam tho expectations gurinchi terichi matladandi, thvaragatiga commitment ivvakandi.")
+        return ("Expectations par ek shaant baat karein aur gusse mein nirnay na lein." if hi else
+                "Expectations gurinchi oka prashanta charcha pettandi, kopamlo nirnayalu teesukokandi.")
+    if key == "children_progeny":
+        return (f"Family planning ke liye {window} ka upyog karein; medical chinta ho to qualified clinician se milein." if has_window else
+                "Taiyari aur sehat ko pehle rakhein; medical chinta ho to qualified clinician se milein.") if hi else (
+                f"Family planning kosam {window} ni upyoginchandi; medical samasya unte qualified clinician ni sanpradinchandi." if has_window else
+                "Siddham mariyu aarogyanni mundu pettandi; medical samasya unte qualified clinician ni sanpradinchandi.")
+    if key == "foreign_relocation":
+        return (f"Documents aur funds taiyar rakhein; {window} mein visa application ya pakki yatra karein." if has_window else
+                "Travel ya relocation commitments karne se pehle documents aur funds taiyar rakhein.") if hi else (
+                f"Documents mariyu funds siddham unchandi; {window} lo visa application leda khachitamaina prayanam cheyandi." if has_window else
+                "Travel leda relocation commitments kante mundu documents mariyu funds siddham unchandi.")
+    if key == "wealth_finances":
+        return (f"Savings automate karein aur karz review karein; bade financial commitments {window} mein hi sochein." if has_window else
+                "Savings automate karein, karz review karein aur jaldi financial commitments na karein.") if hi else (
+                f"Savings automate chesi runalu review cheyandi; pedda financial commitments {window} lo alochinchandi." if has_window else
+                "Savings automate chesi runalu review cheyandi, thvaragatiga financial commitments cheyakandi.")
+    if key == "education_learning":
+        return (f"Taiyari jaldi shuru karein; exams, applications ya submissions ke liye {window} ka upyog karein." if has_window else
+                "Niyamit study schedule rakhein aur exam jaise halat mein practice karein.") if hi else (
+                f"Siddham munduge modalupettandi; exams, applications leda submissions kosam {window} ni upyoginchandi." if has_window else
+                "Kramabaddha study schedule patinchi exam paristhitullo practice cheyandi.")
+    if key == "property_assets":
+        if re.search(r"sell|sale", q):
+            return (f"Title, ownership aur sale documents verify karein; serious buyer discussions {window} mein karein." if has_window else
+                    "Offer accept karne se pehle title, ownership aur sale documents verify karein.") if hi else (
+                    f"Title, ownership mariyu sale documents verify cheyandi; serious buyer charchalu {window} lo cheyandi." if has_window else
+                    "Offer accept chese mundu title, ownership mariyu sale documents verify cheyandi.")
+        if re.search(r"transfer|gift", q):
+            return ("Property transfer se pehle ownership, tax aur parivaar par asar qualified professional se review karayein." if hi else
+                    "Property transfer kante mundu ownership, tax mariyu kutumbam pai prabhavam qualified professional tho review cheyinchukondi.")
+        return (f"Title, loan terms aur documents verify karein; serious property steps {window} mein lein." if has_window else
+                "Property commitment se pehle title, loan terms aur documents verify karein.") if hi else (
+                f"Title, loan terms mariyu documents verify cheyandi; mukhyamaina property steps {window} lo teesukondi." if has_window else
+                "Property commitment kante mundu title, loan terms mariyu documents verify cheyandi.")
+    if key == "litigation_disputes":
+        if "custody" in q:
+            return ("Child-focused records rakhein, family lawyer ki salah follow karein aur bachche ko vivad mein na laayein." if hi else
+                    "Child-focused records unchukoni family lawyer salaha patinchandi, pillalanu vivadamlo laggakandi.")
+        if "divorce" in q:
+            return (f"Case aur financial records taiyar rakhein; lawyer ki salah ke saath settlement baat {window} mein karein." if has_window else
+                    "Case aur financial records taiyar rakhein aur family lawyer ki salah follow karein.") if hi else (
+                    f"Case mariyu financial records siddham unchandi; lawyer salaha tho settlement charchalu {window} lo cheyandi." if has_window else
+                    "Case mariyu financial records siddham unchi family lawyer salaha patinchandi.")
+        if re.search(r"property|inheritance|tenant|ownership", q):
+            return (f"Ownership, payment aur communication records taiyar rakhein; lawyer ki salah ke saath mediation {window} mein karein." if has_window else
+                    "Ownership, payment aur communication records taiyar rakhein aur lawyer ki salah follow karein.") if hi else (
+                    f"Ownership, payment mariyu communication records siddham unchandi; lawyer salaha tho mediation {window} lo cheyandi." if has_window else
+                    "Ownership, payment mariyu communication records siddham unchi lawyer salaha patinchandi.")
+        return (f"Documents taiyar rakhein aur lawyer ki salah follow karein; settlement par baat {window} mein karein." if has_window else
+                "Settlement tay karne se pehle documents taiyar rakhein aur lawyer ki salah follow karein.") if hi else (
+                f"Documents siddham unchi lawyer salaha patinchandi; settlement charchalu {window} lo cheyandi." if has_window else
+                "Settlement gurinchi nirnayinche mundu documents siddham unchi lawyer salaha patinchandi.")
+    if key == "speech_neurology":
+        return ("Qualified speech ya medical professional ke saath niyamit support plan banayein." if hi else
+                "Qualified speech leda medical professional tho kramabaddha support plan erparachukondi.")
+    if key == "general_destiny":
+        return "Ek practical priority chunein aur har mahine pragati review karein." if hi else "Oka practical priority enchukoni prati nelallo pragati review cheyandi."
+    return ""
 
 
 def steps(facts: dict, lk: str) -> list[str]:
@@ -274,8 +438,10 @@ def steps(facts: dict, lk: str) -> list[str]:
             finger = _swap(r["finger"].lower(), _FINGER[lk])
             metal = _swap(r["metal"].lower(), _METAL[lk])
             day = _day(r["day"], lk)
-            return (f"{day} ki subah shukla paksh mein {r['gem']} ko {metal} mein {finger} par pehnein." if hi
-                    else f"Shukla pakshamlo {day} udayam {r['gem']} ni {metal} lo {finger} meeda dharinchandi.")
+            return (f"{r['gem']} ko lagatar pehenne se pehle teen din trial karein. Aaram ho to {day} ki subah shukla "
+                    f"paksh mein use {metal} mein {finger} par pehnein." if hi else
+                    f"{r['gem']} ni niyamitamga dharinche mundu moodu rojulu trial cheyandi. Soukaryam unte shukla "
+                    f"pakshamlo {day} udayam daanini {metal} lo {finger} meeda dharinchandi.")
 
         for r in facts["gems"]["asked"]:
             if r["verdict"] == "wear":
@@ -291,13 +457,15 @@ def steps(facts: dict, lk: str) -> list[str]:
         return out[:3]
     if key == "gemstones_remedies":
         out = []
-        for r in facts["gems"]["recommended"][:2]:
+        for r in facts["gems"]["recommended"][:3]:
             finger = _swap(r["finger"].lower(), _FINGER[lk])
             metal = _swap(r["metal"].lower(), _METAL[lk])
             day = _day(r["day"], lk)
-            out.append(f"{day} ki subah shukla paksh mein {r['gem']} ko {metal} mein {finger} par pehnein." if hi
-                       else f"Shukla pakshamlo {day} udayam {r['gem']} ni {metal} lo {finger} meeda dharinchandi.")
-        if facts["gems"]["avoid"]:
+            out.append(f"{r['gem']} ko lagatar pehenne se pehle teen din trial karein. Aaram ho to {day} ki subah "
+                       f"shukla paksh mein use {metal} mein {finger} par pehnein." if hi else
+                       f"{r['gem']} ni niyamitamga dharinche mundu moodu rojulu trial cheyandi. Soukaryam unte shukla "
+                       f"pakshamlo {day} udayam daanini {metal} lo {finger} meeda dharinchandi.")
+        if facts["gems"]["avoid"] and len(out) < 3:
             out.append("Avoid wale ratna na pehnein; unke grah ka mantra jaapein aur thoda daan karein." if hi
                        else "Vaddani cheppina ratnalu dharinchakandi; aa graha mantram japinchi konchem danam "
                             "cheyandi.")
@@ -314,20 +482,18 @@ def steps(facts: dict, lk: str) -> list[str]:
     if target:
         k = target["planet"]
         day = _day(QR._WEEKDAY.get(k, ""), lk)
-        out.append(f"{k} ko majboot karein: uska mantra jaapein aur {day or 'uske din'} ko thoda daan dein." if hi
-                   else f"{k} ni balaparachandi: daani mantram japinchandi mariyu {day or 'aa roju'} na "
-                        f"konchem danam cheyandi.")
+        mantra = QR._MANTRA.get(k, "uska mantra" if hi else "daani mantram")
+        out.append(f"{k} ke liye: {day or 'uske din'} ko {mantra} ka 108 baar jaap karein aur thoda daan dein." if hi
+                   else f"{k} kosam: {day or 'aa roju'} na {mantra} ni 108 sarlu japinchi konchem danam cheyandi.")
     vuln = (facts.get("lenses") or {}).get("vulnerability")
     if vuln:
         import question_health as QH
         step = QH.prevent_step(vuln, lk)
         if step and QH.sanitized(step):
             out.append(step)
-    w = window(facts.get("next_window") or "", lk)
-    if w and key in QR._MOVE_DOMAINS:
-        out.append(f"Zaroori kadam {w} ke dauran uthane ka lakshya rakhein aur usse pehle taiyari karein." if hi
-                   else f"Mukhyamaina nirnayam {w} lo teesukovadaniki prayatninchandi, daaniki mundu "
-                        f"siddham avvandi.")
+    practical = practical_step(facts, bool(facts.get("next_window") and QR._wants_timing(facts)), lk)
+    if practical:
+        out.append(practical)
     return out[:3]
 
 
@@ -400,26 +566,26 @@ def gem_why(facts: dict, lk: str) -> list[str]:
 
 _VERDICT = {
     "hi_en": {
-        (1, 1): "Aapki kundli ka vachan is mein saath deta hai aur abhi chal rahi dasha bhi saath hai.",
-        (1, 0): "Aapki kundli ka vachan is mein saath deta hai, aur abhi chal rahi dasha milijuli hai, isliye lagatar koshish kaam aayegi.",
-        (1, -1): "Aapki kundli ka vachan is mein saath deta hai, par abhi chal rahi dasha ise rok rahi hai, isliye sabr rakhein.",
-        (0, 1): "Aapki kundli ka vachan yahan milajula hai, par abhi chal rahi dasha madad kar rahi hai.",
-        (0, 0): "Yeh aapke liye sambhav hai, par thodi mehnat aur deri ke liye taiyar rahein.",
-        (0, -1): "Aapki kundli ka vachan yahan milajula hai, aur abhi chal rahi dasha rukawat badha rahi hai.",
-        (-1, 1): "Aapki kundli ka vachan yahan kamzor hai, par abhi chal rahi dasha madad karti hai, isliye ab mehnat rang laayegi.",
-        (-1, 0): "Aapki kundli ka vachan yahan kamzor hai aur abhi chal rahi dasha milijuli hai, isliye mehnat lagegi.",
-        (-1, -1): "Abhi aapke liye yeh aasaan nahi hai: kundli ka vachan kamzor hai aur abhi chal rahi dasha rukawat badha rahi hai.",
+        (1, 1): "Aapka lambe samay ka pattern aur abhi ka samay, dono sahayak hain.",
+        (1, 0): "Aapka lambe samay ka pattern sahayak hai, par abhi pragati thodi upar-neeche ho sakti hai.",
+        (1, -1): "Aapka lambe samay ka pattern sahayak hai, par abhi deri ho sakti hai; sabr aur taiyari zaroori hai.",
+        (0, 1): "Picture milajuli hai, par abhi ka samay niyamit koshish ke liye sahayak hai.",
+        (0, 0): "Picture milajuli hai, isliye jaldi nateeje ki jagah kuch rukavat sambhav hai.",
+        (0, -1): "Picture milajuli hai aur abhi dabav zyada hai; jaldi bada nirnay na lein.",
+        (-1, 1): "Pragati mein niyamit mehnat lagegi, par abhi kuch sahayak avsar mil sakte hain.",
+        (-1, 0): "Pragati mein dhairya lagega; abhi koi aasaan raasta nahi dikh raha.",
+        (-1, -1): "Abhi sthiti kathin lagti hai; jaldi natija paane ki jagah savdhani se aage badhein.",
     },
     "te_en": {
-        (1, 1): "Mee jatakam vagdanam deeniki maddatu istundi, ippudu nadustunna dasha kuda saha ayam chestundi.",
-        (1, 0): "Mee jatakam vagdanam deeniki maddatu istundi, ippudu nadustunna dasha mishramam, kabatti nirantara prayatnam phalistundi.",
-        (1, -1): "Mee jatakam vagdanam deeniki maddatu istundi, kani ippudu nadustunna dasha daanini aapestondi, kabatti sabaram avasaram.",
-        (0, 1): "Mee jatakam vagdanam ikkada mishramam, kani ippudu nadustunna dasha maddatu istundi.",
-        (0, 0): "Idi meeku sadhyame, kani konchem shramam mariyu aalasyam undochchu.",
-        (0, -1): "Mee jatakam vagdanam ikkada mishramam, mariyu ippudu nadustunna dasha ibbandi penchutundi.",
-        (-1, 1): "Mee jatakam vagdanam ikkada balaheenam, kani ippudu nadustunna dasha maddatu istundi, kabatti ippudu prayatnam phalistundi.",
-        (-1, 0): "Mee jatakam vagdanam ikkada balaheenam, ippudu nadustunna dasha mishramam, kabatti shramam kavali.",
-        (-1, -1): "Ippudu idi meeku sulabham kaadu: jatakam vagdanam balaheenam, mariyu ippudu nadustunna dasha ibbandi penchutundi.",
+        (1, 1): "Mee dirghakalika pattern mariyu prastuta samayam rendu anukulamga unnayi.",
+        (1, 0): "Mee dirghakalika pattern anukulamga undi, kani ippudu pragati konchem upar-neeche undochu.",
+        (1, -1): "Mee dirghakalika pattern anukulamga undi, kani ippudu aalasyam undochu; sabram, siddham avasaram.",
+        (0, 1): "Paristhiti mishramam, kani prastuta samayam nirantara prayatnaniki anukulam.",
+        (0, 0): "Paristhiti mishramam, kabatti thvaragatiga phalitam kante konni aatankalu undochu.",
+        (0, -1): "Paristhiti mishramam mariyu ippudu ottidi ekkuva; thvaragatiga pedda nirnayam teesukokandi.",
+        (-1, 1): "Pragatiki nirantara krusi avasaram, kani ippudu konni anukula avakashalu undochu.",
+        (-1, 0): "Pragatiki opika avasaram; ippudu sulabhamaina margam kanipinchadam ledu.",
+        (-1, -1): "Ippudu paristhiti kashtamga undi; thvaragatiga phalitam kante jagratthaga munduku vellandi.",
     },
 }
 
@@ -453,8 +619,8 @@ def answer(facts: dict, stance: str, lk: str) -> str:
         rec, avoid = facts["gems"]["recommended"], facts["gems"]["avoid"]
         if rec:
             names = _AND[lk].join(r["gem"] for r in rec)
-            text = (f"Aapke {facts['lagna']} lagna ke liye {names} sabse achha rahega." if hi else
-                    f"Mee {facts['lagna']} lagnaniki {names} atyanta anukulam.")
+            text = (f"Aapke {facts['lagna']} lagna ke liye {names} behtar vikalp hai." if hi else
+                    f"Mee {facts['lagna']} lagnaniki {names} manchi vikalpam.")
         else:
             text = ("Abhi aapki kundli ke liye koi ratna poori tarah surakshit nahi hai, isliye ratna ki jagah "
                     "mantra aur daan behtar hai." if hi else
@@ -464,24 +630,28 @@ def answer(facts: dict, stance: str, lk: str) -> str:
             names = ", ".join(r["gem"] for r in avoid[:3])
             text += f" {names} se bachein." if hi else f" {names} dharinchakandi."
         return text
-    lord = facts["house"]["lord"]
-    dw = _dw(lord["dignity"], lk)
     label = _AREA_LABEL[lk].get(key)
-    opener = (f"{label}: " if label else "") + _VERDICT[lk][QR._verdict_key(facts)]
+    p, n = QR._verdict_key(facts)
     vuln = (facts.get("lenses") or {}).get("vulnerability")
-    if vuln:                  # health: where to take care, instead of repeating the ruling planet
+    if vuln:
         import question_health as QH
+        care = QR._care_now(facts) or n < 0
+        if hi:
+            opener = ("Sehat ka lambe samay ka pattern sahayak hai, par abhi extra dhyan aur niyamit dinacharya zaroori hai."
+                      if care and p > 0 else
+                      "Abhi sehat ka extra dhyan rakhein; niyamit dinacharya banayein aur lagatar takleef ko nazarandaz na karein."
+                      if care else
+                      "Sehat ko niyamit dhyan chahiye, halanki abhi sthiti sthir lagti hai." if p < 0 else
+                      "Abhi sehat kaafi sahayak lagti hai, phir bhi niyamit dhyan zaroori hai.")
+        else:
+            opener = ("Mee aarogyam dirghakalika pattern anukulam, kani ippudu ekkuva jagrattha mariyu kramabaddha dinacharya avasaram."
+                      if care and p > 0 else
+                      "Ippudu aarogyam vishayamlo ekkuva jagrattha teesukondi; kramabaddha dinacharya patinchi, nirantara ibbandini nirlakshyam cheyakandi."
+                      if care else
+                      "Aarogyanki nirantara shraddha avasaram, ayite ippudu paristhiti sthiramga undi." if p < 0 else
+                      "Ippudu aarogyam anukulamga kanipistundi, ayina nirantara shraddha avasaram.")
         return f"{opener} {QH.answer_line(vuln, lk)}".strip()
-    if hi:
-        text = (f"{opener} {lord['planet']}, jo is kshetra ka swami hai, {lord['sign']} mein house "
-                f"{lord['house']} mein baitha hai{dw}.")
-        if lord["hard_house"]:
-            text += " Yeh house kaam ko dheema karta hai."
-    else:
-        text = (f"{opener} {lord['planet']}, ee rangaaniki adhipati, {lord['sign']} lo house "
-                f"{lord['house']} lo undi{dw}.")
-        if lord["hard_house"]:
-            text += " Aa house panulanu mandagimpachestundi."
-    return text
+    opener = (f"{label}: " if label else "") + _VERDICT[lk][(p, n)]
+    return opener
 
 

@@ -142,16 +142,20 @@ REFUSALS = {
                  "we would not quietly extend it, so we haven't.",
     "already": "You have already used this code — it is one per person, and "
                "your access is already on your account.",
+    "wrong_item": "This code is for a different reading.",
 }
 
 
-def redeem(user_id: str, code: str) -> dict:
+def redeem(user_id: str, code: str, *, item: Optional[str] = None,
+           ref_id: Optional[str] = None) -> dict:
     """Consume one slot and grant access. Raises UserError on any refusal.
 
     The order of operations matters: claim the per-user row first, then the
     counter. Both are guarded by the database, and both live in one
     transaction, so a failure at either step leaves nothing behind.
     """
+    if bool(item) != bool(ref_id):
+        raise ValueError("report-scoped redemption needs both item and ref_id")
     code = normalise(code)
     with tx() as c:
         row = c.execute(text("SELECT * FROM promo_codes WHERE code = :c"),
@@ -163,6 +167,8 @@ def redeem(user_id: str, code: str) -> dict:
             raise UserError(REFUSALS["withdrawn"])
         if _expired(p.get("expires_at")):
             raise UserError(REFUSALS["expired"])
+        if item and p["item"] not in ("bundle_all", item):
+            raise UserError(REFUSALS["wrong_item"])
 
         # One per person. The unique index is the real check; this SELECT only
         # exists to produce a friendly message instead of an integrity error.
@@ -192,11 +198,11 @@ def redeem(user_id: str, code: str) -> dict:
     # Grants happen after the counter is safely taken. If a grant were to fail
     # the slot is still consumed, which is the conservative direction: we would
     # rather owe one person a support fix than hand out an extra free account.
-    items = billing.expand(p["item"])
+    items = (item,) if item else billing.expand(p["item"])
     for it in items:
-        billing.grant(user_id, it, source="promo")
+        billing.grant(user_id, it, ref_id=ref_id, source="promo")
 
-    return {"ok": True, "code": code, "item": p["item"], "granted": items,
+    return {"ok": True, "code": code, "item": item or p["item"], "granted": items,
             "claimed": claimed, "total": int(p["max_redemptions"]),
             "remaining": max(0, int(p["max_redemptions"]) - claimed)}
 

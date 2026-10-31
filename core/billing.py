@@ -142,8 +142,8 @@ def revoke(user_id: str, item: str, ref_id: Optional[str] = None) -> None:
 
 def entitled(user_id: str, item: str, ref_id: Optional[str] = None) -> bool:
     """Item-specific grant, or an account-wide grant, or an active subscription."""
-    from .auth import has_full_access_id
-    if has_full_access_id(user_id):
+    from .auth import has_report_access_id
+    if has_report_access_id(user_id, item):
         return True
     if item in FREE_ITEMS:
         return True

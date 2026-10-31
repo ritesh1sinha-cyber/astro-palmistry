@@ -20,6 +20,7 @@ from llm.summary import (
     _trim_headline,
     _summary_brief,
     _tidy,
+    _user_prompt,
     _validate,
     attach_plain_summary,
     build_plain_summary,
@@ -149,6 +150,16 @@ def test_a_humanised_iso_date_from_the_brief_counts_as_grounded():
     assert any(f.startswith("ungrounded_date:") for f in _validate(
         dated, "visible text with no dates", kind="user_question", paid=True,
         brief={"breakthrough_window": {"from": "2031-02-05"}}))
+
+
+def test_abbreviated_source_dates_ground_full_month_names():
+    dated = _prose(
+        ("When it shifts", "Work opens up from October 2026 and settles by May 2027.",
+         "insight"),
+    )
+    fails = _validate(dated, "Oct 2026 to May 2027", kind="user_question",
+                      paid=True, brief={})
+    assert not any(f.startswith("ungrounded_date:") for f in fails)
 
 
 def test_a_scored_sentence_is_dropped_rather_than_the_whole_draft(monkeypatch):
@@ -497,6 +508,15 @@ def test_locked_inventory_counts_without_quoting():
     joined = " ".join(inv["items"])
     assert "Two dated windows" in joined
     assert "2027" not in joined
+
+
+def test_locked_inventory_counts_only_uncollapsed_words():
+    inv = _locked_inventory(
+        "<p>Four visible words.</p><details><summary>Proof</summary>"
+        + "<p>Technical evidence hidden until requested.</p>" * 100 + "</details>",
+        None, {},
+    )
+    assert inv["paid_words"] == 3
 
 
 # ---------------------------------------------------------------------------

@@ -130,6 +130,12 @@ class Settings:
     dev_auto_pay: bool = _CODE_DEV_AUTO_PAY
     guest_passcode: str = field(default_factory=lambda: _cfg(
         "guest_passcode", "GUEST_PASSCODE", "graharekha"))
+    dev_username: str = field(default_factory=lambda: _cfg(
+        "dev_username", "DEV_USERNAME", "GRAHAREKHA"))
+    dev_password: str = field(default_factory=lambda: _cfg(
+        "dev_password", "DEV_PASSWORD", "GRAHAREKHA2026"))
+    dev_email: str = field(default_factory=lambda: _cfg(
+        "dev_email", "DEV_EMAIL", "dev@graharekha.local"))
     admin_username: str = field(default_factory=lambda: _cfg(
         "admin_username", "ADMIN_USERNAME", "graharekha"))
     admin_email: str = field(default_factory=lambda: _cfg(
@@ -178,10 +184,10 @@ class Settings:
     sub_daily_gen_limit: int = _int("SUB_DAILY_GEN", 3)
 
     # --- launch offer ------------------------------------------------------
-    # A public promise with a hard number in it. Set PROMO_CODE="" to withdraw
-    # the offer without a code change; the cap itself is enforced in the
-    # database, not here.
-    promo_code: str = os.getenv("PROMO_CODE", "FIRST500")
+    # PROMO takes precedence, then PROMO_CODE, then the built-in default. Set
+    # PROMO_CODE="" to withdraw the offer without a code change; the cap itself
+    # is enforced in the database, not here.
+    promo_code: str = os.getenv("PROMO", "").strip() or os.getenv("PROMO_CODE", "FIRST500")
     promo_item: str = os.getenv("PROMO_ITEM", "bundle_all")
     promo_max: int = _int("PROMO_MAX", 500)
 

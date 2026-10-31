@@ -314,10 +314,14 @@ def _timed_recommendations(pc: dict, candidates: list[dict[str, Any]]) -> list[d
             wear_from = wear_from or date.today().isoformat()
         if not wear_until:
             for a in dasha["antardashas"]:
-                if a.get("ad_lord") == pl:
-                    wear_from = a.get("start", "")[:10]
-                    wear_until = a.get("end", "")[:10]
-                    break
+                end = a.get("end", "")[:10]
+                if a.get("ad_lord") != pl or a.get("status") == "past":
+                    continue
+                if end and end < date.today().isoformat():
+                    continue
+                wear_from = a.get("start", "")[:10]
+                wear_until = end
+                break
         wm = c.get("wear_mode", "")
         note = ""
         if wm == "mantra_strict":

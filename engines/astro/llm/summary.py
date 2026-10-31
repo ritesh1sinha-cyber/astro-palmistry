@@ -35,6 +35,16 @@ _MONTHS = (
     "October|November|December"
 )
 _MONTH_YEAR_RE = re.compile(rf"\b({_MONTHS})\s+20\d{{2}}\b", re.I)
+_SOURCE_MONTH_YEAR_RE = re.compile(
+    r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(20\d{2})\b",
+    re.I,
+)
+_MONTH_ABBR_NAMES = {
+    "jan": "January", "feb": "February", "mar": "March", "apr": "April",
+    "may": "May", "jun": "June", "jul": "July", "aug": "August",
+    "sep": "September", "sept": "September", "oct": "October",
+    "nov": "November", "dec": "December",
+}
 _YEAR_RE = re.compile(r"\b20\d{2}\b")
 _ISO_DATE_RE = re.compile(r"\b20\d{2}-\d{2}(?:-\d{2})?\b")
 
@@ -884,6 +894,9 @@ def _locked_inventory(paid_html: str, facts: Any, meta: dict) -> dict:
     meta = meta or {}
     f = facts if isinstance(facts, dict) else {}
     paid_text = html_to_report_text(paid_html or "")
+    visible_paid_html = re.sub(r"<details\b[^>]*>.*?</details>", " ", paid_html or "",
+                               flags=re.S | re.I)
+    paid_words = len(html_to_report_text(visible_paid_html).split())
 
     windows = _count_deep(f, ("timing_windows", "future_windows", "dated_windows"))
     if not windows:
@@ -921,7 +934,7 @@ def _locked_inventory(paid_html: str, facts: Any, meta: dict) -> dict:
         "life_areas": areas,
         "remedies": remedies,
         "sections": sections,
-        "paid_words": len(paid_text.split()),
+        "paid_words": paid_words,
     }
 
     items: list[str] = []
@@ -995,8 +1008,10 @@ def _date_corpus(source: str, brief: Optional[dict]) -> str:
     if brief:
         parts.append(json.dumps(brief, ensure_ascii=False, default=str))
     blob = " ".join(parts)
+    expanded = _SOURCE_MONTH_YEAR_RE.sub(
+        lambda m: f"{_MONTH_ABBR_NAMES[m.group(1).lower()]} {m.group(2)}", blob)
     human = " ".join(_human_date(m.group(0)) for m in _ISO_DATE_RE.finditer(blob))
-    return f"{blob} {human}".lower()
+    return f"{blob} {expanded} {human}".lower()
 
 
 def _deletion_patterns(failures: list[str]) -> Optional[list[re.Pattern]]:

@@ -27,12 +27,13 @@ from pydantic import BaseModel, Field
 
 from core import billing, promo, queue as Q, turnstile as TS
 from core.auth import (COOKIE, current_user, has_full_access, has_full_access_id,
-                       is_admin, login_admin, login_dev, login_with_google, logout)
+                       has_report_access, has_report_access_id, is_admin, is_dev_user,
+                       login_admin, login_dev, login_report_dev, login_with_google, logout)
 from core.config import S
 from core.db import (chat_append, chat_history, engine, extend_partitions,
                      init_schema, job_get, job_insert, job_update, jdump,
-                     new_id, now, report_delete, report_get, reports_for_user,
-                     tx)
+                     new_id, now, report_delete, report_get, report_mark_paid,
+                     reports_for_user, tx)
 from core.pdf_export import (entitlement_item_for_kind, html_to_pdf,
                              prepend_summary, report_title, summary_for_pdf,
                              summary_html)
@@ -138,6 +139,12 @@ class AdminIn(BaseModel):
     turnstileToken: str = ""
 
 
+class ReportDevIn(BaseModel):
+    username: str
+    password: str
+    turnstileToken: str = ""
+
+
 def _set_cookie(resp: Response, token: str) -> None:
     resp.set_cookie(COOKIE, token, max_age=S.session_days * 86400, httponly=True,
                     secure=(S.env == "prod"), samesite="lax", path="/")
@@ -160,6 +167,8 @@ def public_config():
         "turnstileRequired": TS.enabled(),
         "llmEnabled": bool(S.llm_enabled),
         "chatEnabled": chat_enabled,
+        "promoCode": S.promo_code or "",
+        "fullReportDesign": os.getenv("FULL_REPORT_DESIGN", "classic").strip().lower() or "classic",
     }
 
 
@@ -178,6 +187,17 @@ def auth_dev(body: DevIn, request: Request, response: Response):
     user, token = login_dev(body.email, body.name, passcode=body.passcode,
                             ip=request.client.host if request.client else "",
                             ua=request.headers.get("user-agent", ""))
+    _set_cookie(response, token)
+    return {"token": token, "user": _me(user)}
+
+
+@app.post("/api/auth/report-dev")
+def auth_report_dev(body: ReportDevIn, request: Request, response: Response):
+    TS.require_human(request, token=body.turnstileToken)
+    user, token = login_report_dev(
+        body.username, body.password,
+        ip=request.client.host if request.client else "",
+        ua=request.headers.get("user-agent", ""))
     _set_cookie(response, token)
     return {"token": token, "user": _me(user)}
 
@@ -208,11 +228,15 @@ def _me(user: dict) -> dict:
     sub = billing.subscription_of(user["id"])
     subscribed = billing.is_subscribed(user["id"])
     admin = is_admin(user)
+    dev = is_dev_user(user)
     full = has_full_access(user)
     return {"id": user["id"], "email": user["email"], "name": user.get("name"),
             "picture": user.get("picture"), "credits": user.get("credits", 0),
             "admin": admin,
+            "dev": dev,
+            "googleSignedIn": bool(user.get("google_sub")),
             "fullAccess": full,
+            "reportAccess": has_report_access(user),
             "subscribed": subscribed or full,
             "subUntil": (sub or {}).get("current_period_end"),
             "horaryLeft": (999 if full else
@@ -326,6 +350,8 @@ def submit_job(body: JobIn, request: Request, user: dict = Depends(current_user)
     public_kinds = sorted(k for k in HANDLERS if not k.startswith("admin_"))
     if body.kind not in public_kinds:          # admin_* kinds are queued by admin endpoints only
         raise HTTPException(400, f"unknown kind; try {public_kinds}")
+    if body.kind == "classical_report" and not is_admin(user):
+        raise HTTPException(403, "classical reports are admin only")
     # Free-text questions are vetted before anything is queued or counted:
     # gibberish, crisis, sexual/abusive text and harm-to-others never reach a
     # chart, a model, or the customer's daily slot.
@@ -421,9 +447,8 @@ def file_token(report_id: str, half: str, user_id: str) -> str:
 
 
 def _links(rid: str, uid: str, paid: bool) -> dict:
-    unlocked = paid or has_full_access_id(uid)
     out = {"free": f"/api/file/{file_token(rid, 'free', uid)}"}
-    if unlocked:
+    if paid:
         out["paid"] = f"/api/file/{file_token(rid, 'paid', uid)}"
     return out
 
@@ -439,11 +464,13 @@ def _owns_report(rep: dict, uid: str) -> bool:
 
 
 def _report_unlocked(rep: dict, uid: str) -> bool:
-    if bool(rep.get("paid")) or has_full_access_id(uid):
+    kind = rep.get("kind") or ""
+    if kind == "classical_report" and not has_report_access_id(uid, kind):
+        return False
+    if bool(rep.get("paid")) or has_report_access_id(uid, kind):
         return True
     # Order may have granted the item even if reports.paid lagged.
     try:
-        kind = rep.get("kind") or ""
         item = entitlement_item_for_kind(kind)
         if item and billing.entitled(uid, item, rep.get("id")):
             return True
@@ -555,7 +582,9 @@ def _decorate(result: Any, uid: str, kind: str = "") -> Any:
                               for k, v in result["overlays"].items()
                               if isinstance(v, str)}
     rid = result.get("reportId")
-    unlocked = bool(result.get("paid")) or has_full_access_id(uid)
+    unlocked = bool(result.get("paid")) or has_report_access_id(uid, kind)
+    if kind == "classical_report" and not has_report_access_id(uid, kind):
+        unlocked = False
     if rid and "links" not in result:
         result["links"] = _links(rid, uid, unlocked)
     if isinstance(result.get("meta"), dict):
@@ -1314,6 +1343,10 @@ class PromoIn(BaseModel):
     code: str
 
 
+class PromoUnlockIn(PromoIn):
+    reportId: str
+
+
 @app.get("/api/promo/{code}")
 def promo_status(code: str):
     """Public, unauthenticated — the landing page shows how many places are
@@ -1331,6 +1364,28 @@ def promo_redeem(body: PromoIn, user: dict = Depends(current_user)):
     except UserError as e:
         raise HTTPException(400, str(e))
     return {**result, **_me(user)}
+
+
+@app.post("/api/promo/unlock")
+def promo_unlock_report(body: PromoUnlockIn, user: dict = Depends(current_user)):
+    """Unlock one owned report for a Google-signed-in customer."""
+    if not user.get("google_sub"):
+        raise HTTPException(403, "promo unlock requires Google sign-in")
+    rep = report_get(body.reportId, user["id"])
+    if not rep:
+        raise HTTPException(404, "no such report")
+    item = entitlement_item_for_kind(rep.get("kind") or "")
+    if (not item or item not in S.prices or item in billing.ACCOUNT_WIDE_ITEMS
+            or item == "classical_report"):
+        raise HTTPException(400, "this report cannot be unlocked with a promo code")
+    from core.errors import UserError
+    try:
+        result = promo.redeem(user["id"], body.code, item=item, ref_id=str(rep["id"]))
+    except UserError as e:
+        raise HTTPException(400, str(e))
+    report_mark_paid(str(rep["id"]))
+    return {**result, "reportId": rep["id"], "paid": True,
+            "links": _links(str(rep["id"]), user["id"], True)}
 
 
 @app.post("/api/payment/webhook")

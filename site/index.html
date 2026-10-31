@@ -1357,18 +1357,18 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
    <div class="card">
     <span class="admin-gen-stat" data-stat-kind="full_report"></span>
     <div class="eyebrow">The confluence report</div>
-    <h3 style="font-size:24px;margin:8px 0 10px">Half of it is free.</h3>
+    <h3 id="fullReportTitle" style="font-size:24px;margin:8px 0 10px">Half of it is free.</h3>
     <div class="grid g2">
      <div>
       <b style="font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)">Free</b>
-      <ul class="bullets" style="margin-top:10px">
+      <ul class="bullets" id="fullReportFreeList" style="margin-top:10px">
        <li>How to read your chart</li><li>Character &amp; personality</li>
        <li>Where you stand now — current dasha</li><li>Confidence dashboard</li>
       </ul>
      </div>
      <div>
       <b style="font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)">Full report · ₹298</b>
-      <ul class="bullets" style="margin-top:10px">
+      <ul class="bullets" id="fullReportPaidList" style="margin-top:10px">
        <li>All nine life domains with cross-system vote tables</li>
        <li>Year-by-year road map of your sub-periods</li>
        <li>Challenges — preparation guide</li><li>Chart-targeted remedies &amp; gemstones</li>
@@ -1376,7 +1376,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
       </ul>
      </div>
     </div>
-    <button class="btn btn-gold btn-block" onclick="astroJob('full_report')">Generate my report — free half now (half of confluence report)</button>
+    <button class="btn btn-gold btn-block" id="fullReportGenerate" onclick="astroJob('full_report')">Generate my report — free half now (half of confluence report)</button>
     <p class="hint" style="text-align:center">Takes ~2 minutes. We'll show queue position and a live ETA.</p>
    </div>
   </div>
@@ -1474,7 +1474,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
     <span class="admin-gen-stat" data-stat-kind="user_question"></span>
     <div class="eyebrow">Your chart · one question</div>
     <h3 style="font-size:24px;margin:8px 0 6px">Ask your birth chart anything.</h3>
-    <p style="color:var(--muted);font-size:14.5px">Pick the area of life, ask in your own words, and we cross-check the
+    <p id="uqIntro" style="color:var(--muted);font-size:14.5px">Pick the area of life, ask in your own words, and we cross-check the
        houses, lords, classical rules, dasha windows and timing. The working is free;
        the verdict, dated windows and remedy are ₹298.</p>
     <div class="field" style="margin-top:14px"><label for="uqArea">Area of life</label>
@@ -1500,8 +1500,8 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
      <textarea class="inp" id="uqQ" rows="3" placeholder="e.g. Should I take the offer abroad?"></textarea>
      <div class="err">Required</div></div>
     <p class="hint" style="margin:8px 0 14px">Uses the birth details above — cross-checks nine methods across your birth chart.</p>
-    <button class="btn btn-gold btn-block" onclick="astroJob('user_question')">Read my chart on this — free half</button>
-    <p class="hint" style="text-align:center">Takes ~1–2 minutes. House lords, dashas, timing windows and remedy — verdict locked until unlock.</p>
+    <button class="btn btn-gold btn-block" id="uqGenerate" onclick="astroJob('user_question')">Read my chart on this — free half</button>
+    <p class="hint" id="uqFootnote" style="text-align:center">Takes ~1–2 minutes. House lords, dashas, timing windows and remedy — verdict locked until unlock.</p>
    </div>
   </div>
 
@@ -1958,6 +1958,33 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
  </div>
 </div>
 
+<div class="modal admin-modal" id="devLoginModal" role="dialog" aria-modal="true" aria-labelledby="devLoginTitle">
+ <div class="modal-box">
+  <h3 id="devLoginTitle">Dev login</h3>
+  <p class="hint" style="margin-bottom:14px">FOR DEVELOPMENT USE ONLY</p>
+  <div class="field"><label for="devLoginUser">Username</label><input class="inp" id="devLoginUser" type="text" autocomplete="username"></div>
+  <div class="field"><label for="devLoginPass">Password</label><input class="inp" id="devLoginPass" type="password" autocomplete="current-password"></div>
+  <p class="err" id="devLoginErr" style="display:none;margin-bottom:10px"></p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+   <button class="btn btn-gold" id="devLoginSubmit" onclick="submitDevLogin()">Sign in as dev</button>
+   <button class="btn btn-ghost btn-sm" onclick="closeDevLoginModal()">Cancel</button>
+  </div>
+ </div>
+</div>
+
+<div class="modal admin-modal" id="promoUnlockModal" role="dialog" aria-modal="true" aria-labelledby="promoUnlockTitle">
+ <div class="modal-box">
+  <h3 id="promoUnlockTitle">Unlock with a promo code</h3>
+  <p class="hint" style="margin-bottom:14px">For Google-signed-in accounts. A valid code unlocks this report only.</p>
+  <div class="field"><label for="promoUnlockCode">Promo code</label><input class="inp" id="promoUnlockCode" type="text" autocomplete="off" autocapitalize="characters" placeholder="Enter your code"></div>
+  <p class="err" id="promoUnlockErr" style="display:none;margin-bottom:10px"></p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+   <button class="btn btn-gold" id="promoUnlockSubmit" onclick="submitPromoUnlock()">Unlock this report</button>
+   <button class="btn btn-ghost btn-sm" onclick="closePromoUnlock()">Cancel</button>
+  </div>
+ </div>
+</div>
+
 <div class="modal" id="camModal" role="dialog" aria-modal="true">
  <div class="modal-box">
   <h3 id="camTitle">Capture palm</h3>
@@ -2152,6 +2179,7 @@ const CONFIG = {
   turnstileRequired: false,
   llmEnabled:   false,               // from /api/public-config
   chatEnabled:  false,               // /api/public-config; needs CHAT_ENABLED=1
+  fullReportDesign: 'classic',        // /api/public-config
   price:        298,
   priceStrike:  298,
   currency:     '₹',
@@ -2830,8 +2858,10 @@ function readingActions(){
   let h = '';
   // 1. Table of Contents toggle (enabled when toc is ready)
   h += `<button class="btn btn-ghost btn-sm tocbtn" id="tocBtn" type="button" onclick="openTocSheet()" hidden title="Table of contents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="btn-lbl-extra">Contents</span></button>`;
-  // 2. Summary button - ALWAYS present for every reading (free & paid)
-  h += `<button class="btn btn-gold btn-sm btn-summary" type="button" onclick="openPlainSummary()" title="Plain-English summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px;margin-right:4px;flex:0 0 auto"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg><span>Summary</span></button>`;
+  // 2. Summary button (the focused design is already the concise reading)
+  if((READING.meta || {}).design !== 'focus-v1'){
+    h += `<button class="btn btn-gold btn-sm btn-summary" type="button" onclick="openPlainSummary()" title="Plain-English summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px;margin-right:4px;flex:0 0 auto"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg><span>Summary</span></button>`;
+  }
   // 3. Ask Astrologer button — only when the server says chat is on. An
   // unlocked report is not enough: the answers are not verified yet.
   if(rid && CONFIG.chatEnabled){
@@ -3972,11 +4002,12 @@ function wirePlace(placeId, latId, lonId, tzId){
    The bar is driven entirely by the API: it renders only while the code is
    valid and has places left, so it retires itself at 500 with no deploy. The
    count is real — it comes from the same counter the redemption enforces. */
-const PROMO_CODE = 'FIRST500';
+let PROMO_CODE = 'FIRST500';
 
 async function paintPromo(){
   const bar = $('#promoBar');
   if(!bar) return;
+  if(!PROMO_CODE){ bar.hidden = true; return; }
   let st;
   try{ st = await astroApi('/api/promo/' + PROMO_CODE); }
   catch(e){ bar.hidden = true; return; }
@@ -4010,12 +4041,52 @@ async function redeemPromo(){
   }
 }
 
+let _promoUnlock = {};
+function openPromoUnlock(item, refId){
+  if(!S.user || !apSessionToken){ toast('Please sign in with Google first.'); go('read'); return; }
+  if(!S.user.googleSignedIn){ toast('Promo unlock requires Google sign-in.'); return; }
+  if(!refId){ toast('Generate the free report first, then use your promo code.'); return; }
+  _promoUnlock = {item, refId};
+  const m=$('#promoUnlockModal'); if(!m) return;
+  m.classList.add('on');
+  const err=$('#promoUnlockErr'); if(err){ err.style.display='none'; err.textContent=''; }
+  const input=$('#promoUnlockCode'); if(input) input.value='';
+  setTimeout(()=>input?.focus(),50);
+}
+function closePromoUnlock(){
+  $('#promoUnlockModal')?.classList.remove('on');
+  _promoUnlock = {};
+}
+async function submitPromoUnlock(){
+  const code=($('#promoUnlockCode')?.value||'').trim();
+  const err=$('#promoUnlockErr'), btn=$('#promoUnlockSubmit');
+  if(!code){ if(err){ err.style.display='block'; err.textContent='Enter your promo code'; } return; }
+  const req=Object.assign({},_promoUnlock);
+  if(btn) btn.disabled=true;
+  try{
+    await api('/api/promo/unlock',{method:'POST',body:JSON.stringify({code,reportId:req.refId})});
+    closePromoUnlock();
+    stopPayPoll(); clearPayReturn();
+    _paySuccessMsg='Promo code accepted — your full report is open.';
+    if(req.item==='palm_full'){
+      S.readingId=req.refId;
+      await unlock();
+    }else{
+      await astroRefreshReports(req.refId,req.item);
+    }
+  }catch(e){
+    if(err){ err.style.display='block'; err.textContent=e.message||'Could not unlock with that code'; }
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
+
 /* ---------- auth ---------- */
 function isAdmin(){ return !!(S.user&&S.user.admin) || !!(ASTRO.user&&ASTRO.user.admin); }
 function hasFullAccess(){
   return isAdmin()
-    || !!(S.user&&S.user.fullAccess)
-    || !!(ASTRO.user&&ASTRO.user.fullAccess);
+    || !!(S.user&&(S.user.fullAccess || S.user.reportAccess))
+    || !!(ASTRO.user&&(ASTRO.user.fullAccess || ASTRO.user.reportAccess));
 }
 let adminReportStats = {};
 function paintAdminReportStats(){
@@ -4087,12 +4158,14 @@ function paintAuth(){
   if(S.user){
     const badge = isAdmin()
       ? ' · <small style="color:var(--gold-soft)">admin</small>'
-      : (hasFullAccess() ? ' · <small style="color:var(--gold-soft)">promocode</small>' : '');
+      : (S.user.dev ? ' · <small style="color:var(--gold-soft)">dev</small>'
+        : (hasFullAccess() ? ' · <small style="color:var(--gold-soft)">promocode</small>' : ''));
     h.innerHTML = `<div class="who"><b>${esc(S.user.name)}${badge}</b><small>${esc(S.user.email)}</small></div>
       <img class="avatar" src="${S.user.picture}" alt="" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22%3E%3Crect width=%2240%22 height=%2240%22 fill=%22%23161235%22/%3E%3C/svg%3E'">
       <button class="btn-line" onclick="logout()">Sign out</button>`;
   } else {
-    h.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="go('read')">Sign in</button>`;
+    h.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="go('read')">Sign in</button>
+      <button class="btn btn-ghost btn-sm" onclick="openDevLoginModal()">Dev login</button>`;
   }
   refreshAdminReportStats();
   paintDailySub();
@@ -4101,15 +4174,17 @@ function paintAuth(){
 }
 function setUser(u){
   S.user=u;
-  if(u && (u.admin || u.fullAccess)) S.unlocked=true;
+  if(u && (u.admin || u.fullAccess || u.reportAccess)) S.unlocked=true;
   save(); paintAuth(); syncFlow(); syncAstroGate();
   paintDailySub();
   const who = u.name.split(' ')[0];
   toast(u.admin
     ? 'Welcome, '+who+' (admin — full access)'
-    : (u.fullAccess
-      ? 'Welcome, '+who+' (promocode — full readings)'
-      : 'Welcome, '+who));
+    : (u.dev
+      ? 'Welcome, '+who+' (dev — reports unlocked)'
+      : (u.fullAccess
+        ? 'Welcome, '+who+' (promocode — full readings)'
+        : 'Welcome, '+who)));
 }
 function setSessionToken(t){
   apSessionToken = t || null;
@@ -4118,6 +4193,7 @@ function setSessionToken(t){
 }
 const GUEST_PIC = 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#efece4"/><text x="20" y="26" font-size="16" fill="#a6861a" text-anchor="middle" font-family="serif">G</text></svg>');
 const ADMIN_PIC = 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#c9a227"/><text x="20" y="26" font-size="14" fill="#1b1405" text-anchor="middle" font-family="serif">A</text></svg>');
+const DEV_PIC = 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#161235"/><text x="20" y="26" font-size="14" fill="#c9a227" text-anchor="middle" font-family="serif">D</text></svg>');
 
 function openGuestModal(){
   const m=$('#guestModal'); if(!m) return;
@@ -4162,6 +4238,44 @@ async function submitGuestLogin(){
 }
 // Back-compat for any leftover onclick="demoLogin()"
 function demoLogin(){ openGuestModal(); }
+
+function openDevLoginModal(){
+  const m=$('#devLoginModal'); if(!m) return;
+  m.classList.add('on');
+  const err=$('#devLoginErr'); if(err){ err.style.display='none'; err.textContent=''; }
+  const p=$('#devLoginPass'); if(p) p.value='';
+  setTimeout(()=>$('#devLoginUser')?.focus(),50);
+}
+function closeDevLoginModal(){ $('#devLoginModal')?.classList.remove('on'); }
+async function submitDevLogin(){
+  const username=($('#devLoginUser')?.value||'').trim();
+  const password=$('#devLoginPass')?.value||'';
+  const err=$('#devLoginErr'), btn=$('#devLoginSubmit');
+  if(!username || !password){
+    if(err){ err.style.display='block'; err.textContent='Username and password required'; }
+    return;
+  }
+  if(btn) btn.disabled=true;
+  try{
+    const turnstileToken=await getTurnstileToken('Quick check before dev sign-in.');
+    const r=await fetch(CONFIG.apiBase+'/api/auth/report-dev',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username,password,turnstileToken})
+    });
+    let data=null;
+    try{ data=await r.json(); }catch(e){}
+    if(!r.ok) throw new Error((data&&data.detail)||'Dev login failed');
+    setSessionToken(data.token);
+    ASTRO.user=data.user;
+    closeDevLoginModal();
+    setUser(Object.assign({picture:DEV_PIC},data.user));
+  }catch(e){
+    if(err){ err.style.display='block'; err.textContent=e.message||'Dev login failed'; }
+  }finally{
+    if(btn) btn.disabled=false;
+    const p=$('#devLoginPass'); if(p) p.value='';
+  }
+}
 
 function openAdminModal(){
   const m=$('#adminModal'); if(!m) return;
@@ -4253,7 +4367,7 @@ function initGoogle(){
   const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true;
   s.onload=()=>{ try{
       google.accounts.id.initialize({ client_id:CONFIG.googleClientId, callback:onGoogleCredential });
-      const opt = {theme:'outline',size:'large',shape:'pill',width:280,text:'continue_with'};
+      const opt = {theme:'outline',size:'large',shape:'pill',width:280,text:'signin_with'};
       if($('#gbtn')) google.accounts.id.renderButton($('#gbtn'), opt);
       if($('#gbtnAstro')) google.accounts.id.renderButton($('#gbtnAstro'), opt);
       const note=$('#authNote');
@@ -4290,6 +4404,30 @@ async function onGoogleCredential(res){
     if(note) note.textContent = prevNote;
   }
 }
+function paintFullReportDesign(){
+  const focus = CONFIG.fullReportDesign === 'focus';
+  const title = $('#fullReportTitle');
+  if(!title) return;
+  title.textContent = focus ? 'Start with what matters now.' : 'Half of it is free.';
+  $('#fullReportFreeList').innerHTML = focus
+    ? '<li>Your current dasha and chart-derived personality traits</li><li>The two life areas most active now, in plain language for your age</li><li>What is occupying your mind and where you may be vulnerable</li><li>Gemstones your chart says not to wear</li><li>Optional technical cross-checks, kept collapsed</li>'
+    : '<li>How to read your chart</li><li>Character &amp; personality</li><li>Where you stand now — current dasha</li><li>Confidence dashboard</li>';
+  $('#fullReportPaidList').innerHTML = focus
+    ? '<li>What comes next in those same two areas over the next 2–3 years</li><li>Dated helping and testing stretches, not a generic life-area catalogue</li><li>Practical remedies plus full gemstone and wearing guidance</li><li>Chandra Naadi first, checked against five other methods</li>'
+    : '<li>All nine life domains with cross-system vote tables</li><li>Year-by-year road map of your sub-periods</li><li>Challenges — preparation guide</li><li>Chart-targeted remedies &amp; gemstones</li><li>Every specialist lane report, downloadable</li>';
+  $('#fullReportGenerate').textContent = focus
+    ? 'Read what is happening in my life now — free'
+    : 'Generate my report — free half now (half of confluence report)';
+  $('#uqIntro').textContent = focus
+    ? 'Ask in your own words. Your direct answer and what is happening now are free; exact period transitions, question-specific timing and remedies are ₹298.'
+    : 'Pick the area of life, ask in your own words, and we cross-check the houses, lords, classical rules, dasha windows and timing. The working is free; the verdict, dated windows and remedy are ₹298.';
+  $('#uqGenerate').textContent = focus
+    ? 'Get my answer and current reading — free'
+    : 'Read my chart on this — free half';
+  $('#uqFootnote').textContent = focus
+    ? 'Takes ~1–2 minutes. Technical chart checks stay collapsed; unlock only if you want the dates and remedy.'
+    : 'Takes ~1–2 minutes. House lords, dashas, timing windows and remedy — verdict locked until unlock.';
+}
 async function loadPublicConfig(){
   try{
     const r = await fetch(CONFIG.apiBase + '/api/public-config');
@@ -4302,6 +4440,9 @@ async function loadPublicConfig(){
     CONFIG.turnstileRequired = !!j.turnstileRequired;
     CONFIG.llmEnabled = !!j.llmEnabled;
     CONFIG.chatEnabled = !!j.chatEnabled;
+    if(typeof j.promoCode === 'string') PROMO_CODE = j.promoCode;
+    CONFIG.fullReportDesign = j.fullReportDesign || 'classic';
+    paintFullReportDesign();
     if(READING.open && READING.reportId && CONFIG.chatEnabled){
       if(!document.querySelector('.report-chat')){
         const aside = $('#readingAside');
@@ -4956,6 +5097,7 @@ function palmPayCard(R){
     <div class="price">${money(price)}</div>
     <ul class="bullets" style="max-width:460px;margin:16px auto 20px;text-align:left">${lockBullets(R)}</ul>
     <button class="btn btn-gold" onclick="startPay()">Pay ${money(price)} · Unlock full report</button>
+    <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="openPromoUnlock('palm_full','${R.reportId||S.readingId||''}')">Have a promo code?</button>
     <p class="hint">GPay · PhonePe · cards · UPI · secured by Razorpay</p></div>`;
 }
 /* ---------- pieces that render the engine's own evidence ---------- */
@@ -5028,6 +5170,7 @@ function renderFuture(){
        ${lockBullets(R)}
       </ul>
       <button class="btn btn-gold btn-block" onclick="startPay()">Pay securely · ${money(CONFIG.price)}</button>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="openPromoUnlock('palm_full','${R.reportId||S.readingId||''}')">Have a promo code?</button>
       <p class="hint">GPay · PhonePe · cards · UPI · secured by Razorpay</p>
     </div></div></div>`;
 }
@@ -5331,7 +5474,7 @@ async function unlock(){
   go('read');
   syncFlow();
   closePay();
-  $('#s-result').innerHTML = '<div class="card hint"><span class="spin"></span> Confirming your payment…</div>';
+  $('#s-result').innerHTML = '<div class="card hint"><span class="spin"></span> Confirming your unlock…</div>';
   $('#s-result').style.display = '';
   if(MOCK){
     S.reading = S.reading || {};
@@ -5339,7 +5482,7 @@ async function unlock(){
     S.reading.links = S.reading.links || {free:'#', paid:'#'};
   S.unlocked = true;
   clearPayReturn();
-  _paySuccessMsg = 'Payment successful — your full report is open.';
+  _paySuccessMsg = _paySuccessMsg || 'Payment successful — your full report is open.';
   save(); renderReading(); openPalmReading();
   toast('Your full report is ready');
     return;
@@ -5368,7 +5511,7 @@ async function _applyUnlockedPalmReport(readingId, rep){
   }catch(e){}
   S.unlocked = true;
   S.reading.paid = true;
-  _paySuccessMsg = 'Payment successful — your full report is open.';
+  _paySuccessMsg = _paySuccessMsg || 'Payment successful — your full report is open.';
   save(); renderReading(); openPalmReading();
   toast('Your full report is ready');
 }
@@ -5447,6 +5590,7 @@ async function astroAuth(){
     return ASTRO.token;
   }
   if(!S.user) throw new Error('Please sign in first.');
+  if(S.user.dev) throw new Error('Dev session expired — please sign in again.');
   try{
     const r = S.user.idToken
       ? await astroApi('/api/auth/google', { idToken: S.user.idToken })
@@ -6102,6 +6246,7 @@ function astroPayCard(item, price, refId, sections, teasers, opts){
     <div class="price">${money(pay)}${sub?'<span style="font-size:.5em">/month</span>':''}</div>
     <ul class="bullets" style="max-width:460px;margin:16px auto 20px;text-align:left">${list}${more}</ul>
     <button class="btn btn-gold" onclick="astroPay('${item}','${refId}')">${sub?`Subscribe · ${money(pay)}/month`:`Pay ${money(pay)} · Unlock full report`}</button>
+    ${!sub&&refId?`<button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="openPromoUnlock('${item}','${refId}')">Have a promo code?</button>`:''}
     <p class="hint">GPay · PhonePe · cards · UPI · secured by Razorpay</p></div>`;
 }
 
@@ -6185,7 +6330,7 @@ async function astroRefreshReports(refId, item){
     // right after a "Payment successful" message.
     if(reportIsUnlocked(r)){
       clearPayReturn();
-      _paySuccessMsg = 'Payment successful — your full report is open.';
+      _paySuccessMsg = _paySuccessMsg || 'Payment successful — your full report is open.';
       toast('Your full report is ready');
     }
     renderAstroResult(kind, enrichReport(r, kind));
@@ -6457,7 +6602,7 @@ function syncHomeFolds(){
   $('#cEmail').textContent=CONFIG.contactEmail; $('#cEmail').href='mailto:'+CONFIG.contactEmail;
   $('#cPhone').textContent=CONFIG.contactPhone; $('#cPhone').href='tel:'+CONFIG.contactPhone.replace(/\s/g,'');
   $('#cWa').href='https://wa.me/'+CONFIG.whatsapp;
-  paintAuth(); syncFlow(); syncAstroGate(); checkReady(); paintPromo();
+  paintAuth(); syncFlow(); syncAstroGate(); checkReady();
   // Birth place -> lat/lon/tz on all three forms. The matching form has no UTC
   // field of its own (the handler defaults it), so only place/lat/lon are wired
   // there.
@@ -6497,7 +6642,7 @@ function syncHomeFolds(){
       }catch(e){ /* stale id — leave flow alone */ }
     }
   };
-  loadPublicConfig().then(()=>{ initGoogle(); }).catch(()=>{ initGoogle(); });
+  loadPublicConfig().then(()=>{ initGoogle(); paintPromo(); }).catch(()=>{ initGoogle(); paintPromo(); });
   if(S.user && apSessionToken){
     fetch(CONFIG.apiBase + '/api/me', { headers:{ Authorization:'Bearer '+apSessionToken } })
       .then(async r=>{

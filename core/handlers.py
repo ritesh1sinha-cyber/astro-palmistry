@@ -88,18 +88,19 @@ def _save_report(user_id: str, chart_id: Optional[str], kind: str,
             print(f"[handlers] facts.json skipped: {exc}", flush=True)
 
     try:
-        import sys
-        from pathlib import Path
-        eng = Path(__file__).resolve().parents[1] / "engines" / "astro"
-        if str(eng) not in sys.path:
-            sys.path.insert(0, str(eng))
-        from llm.summary import attach_plain_summary
-        lang = str(meta.get("language") or "en")
-        meta = attach_plain_summary(
-            meta, kind=kind, free_html=free_html or "",
-            paid_html=paid_html or "", paid=bool(paid), facts=facts,
-            lang=lang,
-        )
+        if meta.get("design") != "focus-v1":
+            import sys
+            from pathlib import Path
+            eng = Path(__file__).resolve().parents[1] / "engines" / "astro"
+            if str(eng) not in sys.path:
+                sys.path.insert(0, str(eng))
+            from llm.summary import attach_plain_summary
+            lang = str(meta.get("language") or "en")
+            meta = attach_plain_summary(
+                meta, kind=kind, free_html=free_html or "",
+                paid_html=paid_html or "", paid=bool(paid), facts=facts,
+                lang=lang,
+            )
     except Exception as exc:  # noqa: BLE001
         print(f"[handlers] plain summary skipped: {exc}", flush=True)
 
@@ -392,7 +393,9 @@ def h_full_report(user: dict, p: dict) -> dict:
         lang=lang)
     # Card HTML used to skip the full voice pass that the long-form appendix gets.
     # Phase 1: personalise (local openings + humanise) — no cloud LLM required.
-    if str(lang or "").lower() not in (
+    # The short focus design is already written in its own plain voice and carries a deliberately
+    # technical collapsed proof block, so the generic voice / jargon passes are skipped for it.
+    if meta.get("design") != "focus-v1" and str(lang or "").lower() not in (
         "hi_en", "hinglish", "hi", "hindi", "te_en", "tenglish", "te", "telugu"
     ):
         free_html = V.personalise(free_html, ctx, "full_report")
@@ -405,14 +408,15 @@ def h_full_report(user: dict, p: dict) -> dict:
     # default.  The summary text is customer-neutral to avoid internal-data
     # leakage into the visible report.
     try:
-        conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
-        raw = conf.get("paid_html", "") or ""
-        appendix = RD._appendix_block(raw, summary="Technical details (collapsed)")
-        if appendix:
-            paid_html += appendix
-            meta["paidSections"] = list(meta.get("paidSections", [])) + \
-                ["Technical details (collapsed)"]
-            meta["semantic_mode"] = (_payload or {}).get("semantic_mode", "")
+        if meta.get("design") != "focus-v1":
+            conf = SP.split_confluence(V.personalise(_html(conf_path), ctx, "full_report"))
+            raw = conf.get("paid_html", "") or ""
+            appendix = RD._appendix_block(raw, summary="Technical details (collapsed)")
+            if appendix:
+                paid_html += appendix
+                meta["paidSections"] = list(meta.get("paidSections", [])) + \
+                    ["Technical details (collapsed)"]
+                meta["semantic_mode"] = (_payload or {}).get("semantic_mode", "")
     except Exception as exc:                                          # noqa: BLE001
         print(f"[full_report] appendix skipped: {type(exc).__name__}: {exc}",
               flush=True)

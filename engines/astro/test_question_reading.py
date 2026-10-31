@@ -106,7 +106,7 @@ def test_model_reasons_always_cover_the_promise_and_something_running_now():
     conf, pc, cfg, facts = _sheet("is job change seen in near future", "career_profession")
     lens_of = {fid: lens for fid, lens, _t in QR._findings_full(facts)}
     with _Model(lambda *a, **k: QR.QuestionJudgement(
-            stance=QR._stance_hint(facts), answer="Your career planet is weak right now.",
+            stance=QR._stance_hint(facts), answer="Your job-change prospects look difficult right now.",
             use=["F2"], needs_timing=False)):
         got = QR._ask_model(facts, "en")
     table = {t: lens_of[i] for i, t in QR._findings(facts)}
@@ -170,7 +170,7 @@ def test_model_judges_and_picks_reasons():
         seen["user"] = user
         return QR.QuestionJudgement(
             stance="difficult",
-            answer="A promotion is hard to force right now because your career planet is weak.",
+            answer="Your promotion looks hard to secure right now, so patience and preparation matter.",
             use=["F1", "F3", "F99"], needs_timing=True)
 
     with _Model(stub):
@@ -200,6 +200,24 @@ def test_model_answer_rejected_when_it_invents():
         use=[], needs_timing=False)
     with _Model(lambda *a, **k: bad):
         assert QR._ask_model(facts, "en") is None
+
+
+def test_model_answer_rejects_certainty_vague_timing_directives_and_jargon():
+    conf, pc, cfg, facts = _sheet("when will I get promoted", "career_profession")
+    bad = [
+        "Your promotion will happen.",
+        "Your promotion may happen soon.",
+        "You should consider changing your job.",
+        "You should proceed with your property purchase.",
+        "Your birth promise supports your career, but the running period is mixed.",
+        "Your underlying pattern is supportive, but current conditions are difficult.",
+        "Your exam prospects have supportive planetary placements.",
+        "Your job security is mixed while your career base is strong. While your career base is strong, delays may affect stability.",
+        "Chandra Naadi supports your promotion prospects.",
+    ]
+    for answer in bad:
+        assert QR._check(answer, facts), answer
+    assert not QR._check("A promotion looks possible, but your progress may be slower right now.", facts)
 
 
 def test_gem_answer_must_name_every_stone():
@@ -244,8 +262,8 @@ def test_hinglish_and_tenglish_are_fully_localised_and_keep_the_facts():
 def test_model_path_localises_the_answer_without_trusting_model_text():
     conf, pc, cfg, facts = _sheet("meri shaadi kab hogi", "marriage_relationship")
     with _Model(lambda *a, **k: QR.QuestionJudgement(
-            stance=QR._stance_hint(facts), answer="You will marry soon.", use=["F1", "F2"],
-            needs_timing=True)):
+            stance=QR._stance_hint(facts), answer="Your marriage prospects look possible, but patience may be needed.",
+            use=["F1", "F2"], needs_timing=True)):
         got = QR._ask_model(facts, "hi_en")
     assert got is not None and "marry" not in got.answer and not _ENGLISH_FILLER.search(got.answer)
 
@@ -409,7 +427,7 @@ def test_health_answer_names_the_area_and_where_to_take_care():
 
 
 def test_every_domain_answer_names_its_area():
-    for q, dom, word in [("when will I get promoted", "career_profession", "career"),
+    for q, dom, word in [("when will I get promoted", "career_profession", "promotion"),
                          ("will I be rich", "wealth_finances", "finances")]:
         conf, pc, cfg, facts = _sheet(q, dom)
         assert word in QR._fallback(facts, "en").answer.lower(), (dom, QR._fallback(facts, "en").answer)
@@ -429,7 +447,7 @@ def test_health_reasons_survive_model_picks_and_hinglish_tenglish_are_localised(
         assert "HEALTH QUESTION" in user and "body vulnerability" in user
         return QR.QuestionJudgement(
             stance="mixed", answer="Your health needs steady care, mainly for the skin, nerves and face.",
-            because="Your chart is most sensitive there and the running period asks for extra care.",
+            because="Your chart is most sensitive there and the present phase asks for extra care.",
             use=["F1", "F2"], needs_timing=False)
 
     with _Model(stub):
@@ -449,6 +467,52 @@ _AREAS = [("when will I get promoted", "career_profession"), ("when will I get m
           ("should I buy a house now", "property_assets"), ("will I win my court case", "litigation_disputes"),
           ("will my stammering improve", "speech_neurology"), ("how will my life go", "general_destiny"),
           ("how is my health", "health_vitality")]
+
+
+def test_present_tense_question_does_not_get_an_irrelevant_future_window():
+    for question in ("How is my relationship with my partner right now?", "Is my current relationship serious?"):
+        conf, pc, cfg, facts = _sheet(question, "marriage_relationship")
+        r = QR._fallback(facts)
+        assert not r.timing
+        assert "supportive window above" not in " ".join(r.steps)
+        assert any("calm conversation" in s for s in r.steps)
+
+
+def test_every_major_area_has_plain_reasons_and_question_specific_advice():
+    rows = _AREAS + [("Is my job secure next year?", "career_profession"),
+                     ("Should I change my job this year?", "career_profession"),
+                     ("How is my relationship currently?", "marriage_relationship"),
+                     ("Will I travel abroad for work?", "foreign_relocation")]
+    expected = {"career_profession": ("results", "written offers", "cash cushion"),
+                "marriage_relationship": ("introductions", "calm conversation"),
+                "wealth_finances": ("Automate savings",), "children_progeny": ("clinician",),
+                "education_learning": ("Prepare early",), "foreign_relocation": ("documents and funds",),
+                "property_assets": ("Verify title",), "litigation_disputes": ("lawyer",),
+                "speech_neurology": ("qualified speech",), "general_destiny": ("one practical priority",),
+                "health_vitality": ("body pattern",)}
+    jargon = re.compile(r"birth promise|running period|Chara|Yogini|Chandra Naadi|\bhouse\s*\d|\bplanet\b|"
+                        r"\bwill\b|\bsoon\b|\beventually\b", re.I)
+    for q, dom in rows:
+        conf, pc, cfg, facts = _sheet(q, dom)
+        r = QR._fallback(facts)
+        assert not QR._check(r.answer, facts), (q, QR._check(r.answer, facts))
+        assert not jargon.search(r.answer), (q, r.answer)
+        reasons = QR.plain_reasons(facts)
+        assert 2 <= len(reasons) <= 3, (q, reasons)
+        assert not any(jargon.search(x) for x in reasons), (q, reasons)
+        steps = " ".join(r.steps)
+        assert any(word in steps for word in expected[dom]), (q, steps)
+        assert "Aim to make the key move" not in steps and "Strengthen " not in steps
+
+
+def test_gemstone_steps_include_a_trial_and_no_suitability_guarantee():
+    conf, pc, cfg, facts = _sheet("which gemstone will suit me", "gemstones_remedies")
+    r = QR._fallback(facts)
+    assert any("three days" in s and "If comfortable" in s for s in r.steps)
+    for stone in facts["gems"]["recommended"]:
+        assert any(stone["gem"] in s and "three days" in s for s in r.steps), stone["gem"]
+    reasons = " ".join(QR.plain_reasons(facts))
+    assert "not a guarantee" in reasons and "stop if you feel uncomfortable" in reasons
 
 
 def test_chandra_naadi_is_reviewed_and_shown_for_every_life_area():
@@ -503,6 +567,137 @@ def test_health_answer_cannot_say_no_care_is_needed_while_the_chart_shows_strain
     assert QR._care_now(facts)
     assert QR._check("Your health is fine; the running period does not indicate a need for extra care.", facts)
     assert "ADVISED" in QR._prompt(facts)
+
+
+def test_career_advice_matches_the_reader_situation_not_a_generic_manager_script():
+    rows = [
+        ("What career should I choose?", "career direction", "mentor"),
+        ("When will I get my first job?", "first-job prospects", "practise interviews"),
+        ("Should I start my own business?", "business plans", "Validate demand"),
+        ("Should I retire from my job next year?", "retirement transition", "pension"),
+        ("Is my job safe after the layoffs?", "job security", "cash cushion"),
+    ]
+    for question, answer_word, step_word in rows:
+        conf, pc, cfg, facts = _sheet(question, "career_profession")
+        r = QR._fallback(facts)
+        assert answer_word in r.answer.lower(), (question, r.answer)
+        assert step_word.lower() in " ".join(r.steps).lower(), (question, r.steps)
+        assert "manager" not in r.steps[-1].lower(), (question, r.steps)
+        assert not QR._check(r.answer, facts), (question, QR._check(r.answer, facts))
+    for question in ("What career should I choose?", "When will I get my first job?"):
+        conf, pc, cfg, facts = _sheet(question, "career_profession")
+        assert "resignation" not in " ".join(QR.plain_reasons(facts)).lower()
+
+
+def test_legal_scenarios_get_specific_safe_language_and_practical_steps():
+    rows = [
+        ("Will I win my property court case?", "property dispute", "ownership"),
+        ("Can I settle my tenant dispute out of court?", "tenant dispute", "communication records"),
+        ("How long will my divorce case continue?", "divorce proceedings", "financial records"),
+        ("Will I get custody of my child?", "custody matter", "child-focused"),
+        ("Can I resolve my family property dispute through mediation?", "settlement prospects", "mediation"),
+        ("Will my inheritance dispute be resolved?", "inheritance dispute", "ownership"),
+    ]
+    for question, answer_word, step_word in rows:
+        conf, pc, cfg, facts = _sheet(question, "litigation_disputes")
+        r = QR._fallback(facts)
+        assert answer_word in r.answer.lower(), (question, r.answer)
+        assert step_word in " ".join(r.steps).lower(), (question, r.steps)
+        assert "lawyer" in " ".join(r.steps).lower(), (question, r.steps)
+        assert not QR._check(r.answer, facts), (question, QR._check(r.answer, facts))
+    conf, pc, cfg, facts = _sheet("Can I resolve my family property dispute through mediation?", "litigation_disputes")
+    wrong_area = "Mediation could help, but your career base is strong while delays continue."
+    assert QR._check(wrong_area, facts), "a legal answer must not drift into career wording"
+    technical = "Mediation may help, but Saturn and the Moon touching Mars create challenges."
+    assert QR._check(technical, facts), "a plain legal answer must not expose natal-planet jargon"
+
+
+def test_sale_transfer_and_named_avoid_stone_answers_are_consistent():
+    for question, answer_word, step_word in [
+            ("Can I sell my ancestral house this year?", "property sale prospects", "sale documents"),
+            ("Should I transfer my property to my children?", "property transfer plans", "tax")]:
+        conf, pc, cfg, facts = _sheet(question, "property_assets")
+        r = QR._fallback(facts)
+        assert answer_word in r.answer.lower() and step_word in " ".join(r.steps).lower(), (question, r.answer, r.steps)
+        assert "loan terms" not in " ".join(r.steps).lower()
+    conf, pc, cfg, facts = _sheet("Should I wear blue sapphire at my age?", "gemstones_remedies")
+    facts["gems"]["asked"][0]["verdict"] = "avoid"
+    r = QR._fallback(facts)
+    assert "Blue Sapphire (Neelam) is not advised for you." in r.answer
+    assert not QR._check(r.answer, facts), QR._check(r.answer, facts)
+    technical = "You should avoid Blue Sapphire because Saturn rules your 2nd and 3rd houses and is in your 12th house."
+    assert QR._check(technical, facts), "gemstone reasons must stay plain on the customer page"
+
+
+_AGE_CHARTS = {
+    "teen": ("Aarav Singh", "2012-06-18", "08:40", 28.6139, 77.2090, "Delhi", 0),
+    "25": ("Priya Nair", "2001-03-30", "03:20", 9.9312, 76.2673, "Kochi", 1),
+    "36": ("Asha Rao", "1990-05-15", "10:30", 28.6139, 77.2090, "Delhi", 1),
+    "41": ("Vikram Shah", "1984-11-02", "06:15", 19.0760, 72.8777, "Mumbai", 0),
+    "54": ("Meena Iyer", "1972-08-21", "17:45", 13.0827, 80.2707, "Chennai", 1),
+    "68": ("Ramesh Gupta", "1958-01-09", "05:50", 26.9124, 75.7873, "Jaipur", 0),
+}
+_AGE_CASES = [
+    ("teen", "Will I pass my board exams this year?", "education_learning"),
+    ("teen", "Which stream is better for my future?", "education_learning"),
+    ("teen", "What career should I choose?", "career_profession"),
+    ("teen", "Can I study abroad after school?", "foreign_relocation"),
+    ("teen", "How is my health and energy?", "health_vitality"),
+    ("25", "When will I get my first job?", "career_profession"),
+    ("25", "Should I switch jobs for a better salary?", "career_profession"),
+    ("25", "Will my visa be approved this year?", "foreign_relocation"),
+    ("25", "Is my current relationship serious?", "marriage_relationship"),
+    ("25", "When will I get married?", "marriage_relationship"),
+    ("25", "Can I save enough for a car next year?", "wealth_finances"),
+    ("25", "Which gemstone should I wear?", "gemstones_remedies"),
+    ("36", "Will I get promoted this year?", "career_profession"),
+    ("36", "Should I start my own business?", "career_profession"),
+    ("36", "When can we plan our first child?", "children_progeny"),
+    ("36", "Should I buy a flat now or wait?", "property_assets"),
+    ("36", "Will I win my property court case?", "litigation_disputes"),
+    ("36", "How should I care for my health now?", "health_vitality"),
+    ("41", "Is my job safe after the layoffs?", "career_profession"),
+    ("41", "Can I settle my tenant dispute out of court?", "litigation_disputes"),
+    ("41", "How long will my divorce case continue?", "litigation_disputes"),
+    ("41", "Will I get custody of my child?", "litigation_disputes"),
+    ("41", "Can I repay my business loan next year?", "wealth_finances"),
+    ("54", "Should I retire from my job next year?", "career_profession"),
+    ("54", "Can I sell my ancestral house this year?", "property_assets"),
+    ("54", "Will my inheritance dispute be resolved?", "litigation_disputes"),
+    ("54", "How are my finances for retirement?", "wealth_finances"),
+    ("54", "Will my second marriage work out?", "marriage_relationship"),
+    ("54", "How should I care for my health now?", "health_vitality"),
+    ("68", "How can I maintain my health and energy?", "health_vitality"),
+    ("68", "Will my pension and savings be enough?", "wealth_finances"),
+    ("68", "Should I transfer my property to my children?", "property_assets"),
+    ("68", "Can I resolve my family property dispute through mediation?", "litigation_disputes"),
+    ("68", "How does my spiritual life look ahead?", "general_destiny"),
+    ("68", "Should I wear blue sapphire at my age?", "gemstones_remedies"),
+    ("25", "Will my stammering improve?", "speech_neurology"),
+]
+
+
+def test_age_diverse_real_life_questions_route_and_read_cleanly():
+    from astro_precompute import resolve_precompute
+    pcs = {}
+    visible_jargon = re.compile(r"birth promise|running period|Chara|Yogini|Chandra Naadi|\bhouse\s*\d|"
+                                r"\bwill\b|\bsoon\b|\beventually\b", re.I)
+    for age, question, expected_domain in _AGE_CASES:
+        if age not in pcs:
+            name, dob, tm, lat, lon, place, gender = _AGE_CHARTS[age]
+            pcs[age] = resolve_precompute(name, dob, birth_time=tm, latitude=lat, longitude=lon,
+                                          timezone=5.5, place_name=place, gender=gender)
+        pc = pcs[age]
+        conf = analyze_question_confluence(pc, question)
+        assert conf.domain_key == expected_domain, (age, question, conf.domain_key)
+        facts = QR.build_fact_sheet(conf, pc, DOMAINS_CONFIG[expected_domain])
+        r = QR._fallback(facts)
+        assert not QR._check(r.answer, facts), (age, question, QR._check(r.answer, facts))
+        assert not visible_jargon.search(r.answer), (age, question, r.answer)
+        reasons = QR.plain_reasons(facts)
+        assert 2 <= len(reasons) <= 3, (age, question, reasons)
+        assert not any(visible_jargon.search(x) for x in reasons), (age, question, reasons)
+        assert r.steps and "Aim to make the key move" not in " ".join(r.steps), (age, question, r.steps)
 
 
 if __name__ == "__main__":

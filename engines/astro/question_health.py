@@ -270,7 +270,7 @@ def text_local(d: dict, lk: str) -> str:
 
 def answer_line(d: dict, lk: str = "en") -> str:
     """One sentence for the headline answer: which places to look after."""
-    zones = zone_labels(d, lk)
+    zones = zone_labels(d, lk)[:1]
     if lk == "en":
         if zones:
             return f"Look after {_zones(zones)}; those are where your chart is most sensitive."

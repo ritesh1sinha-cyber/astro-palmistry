@@ -21,6 +21,7 @@ meta)` so `core.handlers` stays thin and testable.
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import date
 from typing import Any, Optional
@@ -338,6 +339,13 @@ def full_report(pc: dict, *, name: str = "", question: str = "",
     """
     today = today or date.today()
     first = (name or "").split()[0] if name else ""
+
+    # Short "focus" design (dasha card, two live areas, collapsed proof, 3-year outlook). Off unless
+    # explicitly switched on, so the default report is unchanged.
+    if os.getenv("FULL_REPORT_DESIGN", "").strip().lower() == "focus":
+        import report_focus as RF
+        return RF.full_report(pc, name=name, today=today, price=price,
+                              bundle_price=bundle_price, lang=lang)
 
     import deep_evidence as DE
     DE.begin(pc, lat=lat, lon=lon, tz=tz, today=today)
@@ -989,6 +997,11 @@ def user_question(pc: dict, *, question: str, route: Any = None, name: str = "",
     cfg = DOMAINS_CONFIG.get(conf.domain_key) or DOMAINS_CONFIG["career_profession"]
     reading, qfacts, by_model = QR.build_reading(conf, pc, cfg, lang=lang)
     qwen_consultation = reading.answer if by_model else ""
+
+    if os.getenv("FULL_REPORT_DESIGN", "").strip().lower() == "focus":
+        import report_focus as RF
+        return RF.question_report(pc, conf, reading, qfacts, by_model=by_model, name=name,
+                                  price=price, lang=lang, today=today)
 
     # Love, work and health questions get their own Chandra Naadi section (dated days, what helps).
     rel_block, rel_free, rel_paid = None, "", ""

@@ -27,9 +27,10 @@ os.environ.setdefault("SESSION_SECRET", "test-only")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import text                                          # noqa: E402
+from fastapi import HTTPException                                    # noqa: E402
 
-from core import billing, promo                                      # noqa: E402
-from core.db import init_schema, new_id, now, tx                     # noqa: E402
+from core import auth, billing, promo                                # noqa: E402
+from core.db import init_schema, new_id, now, report_insert, tx      # noqa: E402
 from core.errors import UserError                                    # noqa: E402
 
 PASS, FAIL = [], []
@@ -97,6 +98,29 @@ check("every bundle item is a real priced item or a subscription perk",
            and i != "daily"]))
 
 # ---------------------------------------------------------------------------
+print("\n— dev access is report-only —")
+
+dev_user, _dev_token = auth.login_report_dev(auth.S.dev_username, auth.S.dev_password)
+check("dev login creates a non-Google dev identity",
+      auth.is_dev_user(dev_user) and not dev_user.get("google_sub"))
+check("dev is not admin", not auth.is_admin(dev_user))
+check("dev does not receive unrestricted full access", not auth.has_full_access(dev_user))
+check("dev unlocks standard reports", billing.entitled(dev_user["id"], "full_report"))
+check("classical reports remain admin-only",
+      not auth.has_report_access(dev_user, "classical_report")
+      and not billing.entitled(dev_user["id"], "classical_report"))
+try:
+    auth.login_report_dev(auth.S.dev_username, "wrong-password")
+    check("wrong dev password refused", False, "login succeeded")
+except HTTPException as e:
+    check("wrong dev password refused", e.status_code == 401)
+try:
+    auth.login_dev(auth.S.dev_email, "Guest", passcode=auth.S.guest_passcode)
+    check("guest login cannot impersonate dev", False, "login succeeded")
+except HTTPException as e:
+    check("guest login cannot impersonate dev", e.status_code == 403)
+
+# ---------------------------------------------------------------------------
 print("\n— a promo grants exactly what a purchase grants —")
 
 buyer, winner = mk_user(1), mk_user(2)
@@ -120,6 +144,35 @@ with tx() as c:
                          " WHERE user_id = :u"), {"u": winner}).fetchall()
 check("entitlement is tagged source='promo'",
       [r[0] for r in src] == ["promo"], str(src))
+
+# ---------------------------------------------------------------------------
+print("\n— report-scoped promo unlock —")
+
+report_user = mk_user(2500)
+rid1 = report_insert(user_id=report_user, chart_id=None, kind="full_report",
+                     free_key="free-1", paid_key="paid-1", meta={}, paid=False)
+rid2 = report_insert(user_id=report_user, chart_id=None, kind="full_report",
+                     free_key="free-2", paid_key="paid-2", meta={}, paid=False)
+promo.create_code("ONEREPORT", item="bundle_all", max_redemptions=5)
+scoped = promo.redeem(report_user, "ONEREPORT", item="full_report", ref_id=rid1)
+check("bundle code can unlock the selected report", scoped["granted"] == ("full_report",))
+check("selected report is unlocked", billing.entitled(report_user, "full_report", rid1))
+check("another report of the same kind stays locked",
+      not billing.entitled(report_user, "full_report", rid2))
+check("no account-wide grant is created", not billing.entitled(report_user, "full_report"))
+check("other report types are not unlocked",
+      not billing.entitled(report_user, "palm_full", rid1))
+with tx() as c:
+    stored_ref = c.execute(text("SELECT ref_id FROM entitlements WHERE user_id=:u"),
+                           {"u": report_user}).scalar()
+check("grant is bound to the intended report id", str(stored_ref) == rid1)
+
+promo.create_code("PALMONLY", item="palm_full", max_redemptions=5)
+try:
+    promo.redeem(mk_user(2501), "PALMONLY", item="full_report", ref_id=rid1)
+    check("single-item code cannot unlock a different item", False, "redemption succeeded")
+except UserError as e:
+    check("single-item code cannot unlock a different item", "different reading" in str(e))
 
 # ---------------------------------------------------------------------------
 print("\n— refusals —")

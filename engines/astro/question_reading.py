@@ -344,13 +344,98 @@ _WHEN_WORDS = re.compile(r"\b(when|how long|by when|which year|what year|how soo
 def _wants_timing(facts: dict, flag: Optional[bool] = None) -> bool:
     if facts["domain_key"] in ("gemstones_remedies", "out_of_domain"):
         return False
-    # The model's flag only breaks a tie: a window is relevant for "will it happen" areas and for any
-    # question that asks "when"; it is noise on "how is my health" - unless the chart names a window
-    # in which to take more care, which is exactly what a health question needs.
+    # A present-tense relationship check does not need a marriage-style future window.
+    question = facts["question"]
+    if (re.search(r"\b(right now|currently|current|at present)\b", question, re.I)
+            and not _WHEN_WORDS.search(question)):
+        return False
     vuln = (facts.get("lenses") or {}).get("vulnerability") or {}
     if (vuln.get("watch") or {}).get("range") or (vuln.get("now") or {}).get("range"):
         return True
-    return bool(_WHEN_WORDS.search(facts["question"])) or facts["domain_key"] in _MOVE_DOMAINS
+    return bool(_WHEN_WORDS.search(question)) or facts["domain_key"] in _MOVE_DOMAINS
+
+
+_MANTRA = {
+    "Sun": "Om Suryaya Namah", "Moon": "Om Chandraya Namah", "Mars": "Om Mangalaya Namah",
+    "Mercury": "Om Budhaya Namah", "Jupiter": "Om Gurave Namah", "Venus": "Om Shukraya Namah",
+    "Saturn": "Om Shanaischaraya Namah", "Rahu": "Om Rahave Namah", "Ketu": "Om Ketave Namah",
+}
+
+
+def _gem_wear_step(r: dict) -> str:
+    return (f"Try {r['gem']} for three days before regular wear. If comfortable, use {r['metal'].lower()} on the "
+            f"{r['finger'].lower()}, on a {r['day']} morning in the bright half of the month.")
+
+
+def _practical_step(facts: dict, has_window: bool) -> str:
+    key = facts["domain_key"]
+    q = facts["question"].lower()
+    window = "the supportive window above"
+    if key == "career_profession":
+        if "promot" in q:
+            return (f"Document your results now; use {window} to request a promotion discussion." if has_window
+                    else "Document your results and have a specific promotion conversation with your manager.")
+        if re.search(r"first\s+job|unemployed", q):
+            return (f"Build a focused CV and practise interviews; use {window} for applications and interviews."
+                    if has_window else "Build a focused CV, practise interviews and apply consistently.")
+        if re.search(r"business|startup|self\s*-?\s*employ", q):
+            return (f"Validate demand, prepare a budget and keep a cash cushion; use {window} for a measured launch."
+                    if has_window else "Validate demand, prepare a budget and keep a cash cushion before launching.")
+        if "retir" in q:
+            return (f"Review pension, monthly expenses and health cover; use {window} for transition planning."
+                    if has_window else "Review pension, monthly expenses and health cover before setting a retirement date.")
+        if re.search(r"what\s+career|which\s+career|career\s+(?:should|direction)|choose.*career", q):
+            return ("Compare a few career paths against your interests and strengths, then try a small project "
+                    "or speak with a mentor.")
+        if re.search(r"change|switch|new job|another job", q):
+            return (f"Update your CV and compare written offers; use {window} for applications or a switch."
+                    if has_window else "Update your CV and compare written offers before resigning.")
+        if re.search(r"secure|security|safe|layoff|fired|demotion", q):
+            return "Keep your skills current, document your work and maintain a cash cushion."
+        return "Document your work and discuss the next concrete career step with your manager."
+    if key == "marriage_relationship":
+        if re.search(r"marri|wedding|shaadi|vivah", q):
+            return (f"Use {window} for introductions or family discussions, without rushing a commitment."
+                    if has_window else "Discuss expectations openly with family and avoid rushing a commitment.")
+        return "Have one calm conversation about expectations and avoid decisions during an argument."
+    if key == "children_progeny":
+        return (f"Use {window} for family planning; discuss any medical concerns with a qualified clinician."
+                if has_window else "Keep preparation and health first; discuss medical concerns with a qualified clinician.")
+    if key == "foreign_relocation":
+        return (f"Prepare documents and funds now; use {window} for visa applications or confirmed travel."
+                if has_window else "Prepare your documents and funds before making travel or relocation commitments.")
+    if key == "wealth_finances":
+        return (f"Automate savings and review debt before using {window} for major financial commitments."
+                if has_window else "Automate savings, review debt and avoid rushed financial commitments.")
+    if key == "education_learning":
+        return (f"Prepare early; use {window} for exams, applications or important submissions." if has_window
+                else "Use a steady study schedule and practise under exam conditions.")
+    if key == "property_assets":
+        if re.search(r"sell|sale", q):
+            return (f"Verify title, ownership and sale documents; use {window} for serious buyer discussions."
+                    if has_window else "Verify title, ownership and sale documents before accepting an offer.")
+        if re.search(r"transfer|gift", q):
+            return ("Review ownership, tax and family implications with a qualified professional before "
+                    "transferring the property.")
+        return (f"Verify title, loan terms and documents; use {window} for serious property steps." if has_window
+                else "Verify the title, loan terms and documents before committing to a property.")
+    if key == "litigation_disputes":
+        if "custody" in q:
+            return ("Keep child-focused records, follow your family lawyer's advice and avoid involving the "
+                    "child in conflict.")
+        if "divorce" in q:
+            return (f"Organise case and financial records; use {window} for lawyer-guided settlement discussions."
+                    if has_window else "Organise case and financial records and follow your family lawyer's advice.")
+        if re.search(r"property|inheritance|tenant|ownership", q):
+            return (f"Organise ownership, payment and communication records; use {window} for lawyer-guided mediation."
+                    if has_window else "Organise ownership, payment and communication records and follow your lawyer's advice.")
+        return (f"Prepare documents and follow your lawyer's advice; use {window} for settlement discussions."
+                if has_window else "Prepare your documents and follow your lawyer's advice before deciding on settlement.")
+    if key == "speech_neurology":
+        return "Work with a qualified speech or medical professional on a consistent support plan."
+    if key == "general_destiny":
+        return "Choose one practical priority and review your progress monthly."
+    return ""
 
 
 def _steps(facts: dict, lang: str = "en") -> list[str]:
@@ -365,21 +450,17 @@ def _steps(facts: dict, lang: str = "en") -> list[str]:
             out = []
             for r in asked:
                 if r["verdict"] == "wear":
-                    out.append(f"Wear {r['gem']} in {r['metal'].lower()} on the {r['finger'].lower()}, on a "
-                               f"{r['day']} morning in the bright half of the month.")
+                    out.append(_gem_wear_step(r))
                 else:
                     out.append(f"Skip {r['gem']}; chant {r['planet']}'s mantra and give a small donation on "
                                f"{_WEEKDAY.get(r['planet'], 'its day')}s.")
             skip = {r["planet"] for r in asked}
             for r in [x for x in rec if x["planet"] not in skip][:1]:
-                out.append(f"If you want a stone, wear {r['gem']} in {r['metal'].lower()} on the "
-                           f"{r['finger'].lower()}, on a {r['day']} morning in the bright half of the month.")
+                out.append("If you want another stone, " + _gem_wear_step(r)[0].lower() + _gem_wear_step(r)[1:])
             return out[:3]
-        steps = [f"Wear {r['gem']} in {r['metal'].lower()} on the {r['finger'].lower()}, on a {r['day']} "
-                 f"morning in the bright half of the month." for r in rec[:2]]
-        if facts["gems"]["avoid"]:
-            steps.append("Skip the stones listed as avoid; use that planet's mantra and a small "
-                         "donation instead.")
+        steps = [_gem_wear_step(r) for r in rec[:3]]
+        if facts["gems"]["avoid"] and len(steps) < 3:
+            steps.append("Skip the stones listed as avoid; use that planet's mantra and a small donation instead.")
         if not steps:
             lord = facts["lagna_lord"]
             steps.append(f"Chant {lord}'s mantra on {_WEEKDAY.get(lord, 'its day')}s and give a small donation.")
@@ -387,22 +468,22 @@ def _steps(facts: dict, lang: str = "en") -> list[str]:
     if key == "out_of_domain":
         return []
     steps = []
-    # Work on the planet that is actually under strain; fall back to the first natural indicator.
     cands = [facts["house"]["lord"], *facts["karakas"]]
     weak = next((c for c in cands if c["hard_house"] or c["dignity"] in _BAD_DIGNITY or c["combust"]), None)
     target = weak or (facts["karakas"][0] if facts["karakas"] else None)
     if target:
         k = target["planet"]
-        steps.append(f"Strengthen {k}: chant its mantra and offer a small donation on {_WEEKDAY.get(k, 'its day')}s.")
+        steps.append(f"For {k}: chant {_MANTRA.get(k, 'its mantra')} 108 times on "
+                     f"{_WEEKDAY.get(k, 'its day')}s and offer a small donation.")
     vuln = (facts.get("lenses") or {}).get("vulnerability")
     if vuln:
         import question_health as QH
         step = QH.prevent_step(vuln, "en")
         if step and QH.sanitized(step):
             steps.append(step)
-    window = facts.get("next_window")
-    if window and key in _MOVE_DOMAINS:
-        steps.append(f"Aim to make the key move during the {window} and prepare before it.")
+    practical = _practical_step(facts, bool(facts.get("next_window") and _wants_timing(facts)))
+    if practical:
+        steps.append(practical)
     return steps[:3]
 
 
@@ -448,7 +529,7 @@ def _asked_answer(facts: dict) -> str:
     parts = []
     for r in facts["gems"]["asked"]:
         parts.append({"wear": f"{r['gem']} suits you.",
-                      "avoid": f"{r['gem']} is best avoided.",
+                      "avoid": f"{r['gem']} is not advised for you.",
                       "mantra": f"{r['gem']} is not advised for you; {r['planet']}'s mantra and charity suit "
                                 f"better."}[r["verdict"]])
     skip = {r["planet"] for r in facts["gems"]["asked"]}
@@ -465,28 +546,33 @@ class QuestionJudgement(BaseModel):
 
     stance: Stance
     answer: str = Field(description="ONE sentence, under 18 words, that directly answers the question asked, "
-                                    "speaking to the reader as 'you'.")
-    because: str = Field(default="", description="ONE sentence, under 30 words, using 'your': whether the birth "
-                                                 "promise and what is running now agree, and the key fact.")
+                                    "addressing the reader with 'your' or 'you'.")
+    because: str = Field(default="", description="ONE sentence, under 24 words, using 'your': a concrete "
+                                                 "plain-language reason for this life area, drawn from the findings.")
     use: list[str] = Field(description="Ids (F1, F2...) of the 3-5 findings that matter for THIS question.")
     needs_timing: bool = Field(description="True only if the question asks when / how long / which year.")
 
 
 _SYSTEM = (
     "You are an experienced Vedic astrologer answering ONE question for one person. First work out "
-    "what the question is really asking. Judge it by how the lenses line up: the birth promise "
-    "(what the chart itself allows) against what is running now (the main and sub period, the Chara "
-    "period, the Yogini period, transits, Chandra Naadi). Fill `answer` with one short sentence that "
-    "answers the question in plain words, e.g. 'You can change jobs, but it will take effort'. Fill "
-    "`because` with one sentence that says, using 'your', whether the birth promise and what is "
-    "running now agree, naming the one or two facts that decide it. Use ONLY the numbered findings "
-    "supplied; never add a planet position, house, date or gemstone that is not written there. In "
-    "`use` list the ids of the 3-5 findings that genuinely matter for THIS question, covering both "
-    "the birth promise and what is running now; leave out the rest. No headings, no jargon, no "
-    "padding, do not repeat the question, never mention Lal Kitab. stance is favourable, mixed or "
-    "difficult; stay close to the suggested stance unless a finding clearly says otherwise. Set "
-    "needs_timing true only when the question asks about time. Never put a date, year or period "
-    "length in the text: timing is shown separately."
+    "what the question is really asking. Judge the underlying chart pattern against current conditions "
+    "using every numbered finding. Fill `answer` with one short sentence that directly answers the "
+    "question in plain, hedged words, for example 'Your job-change prospects look possible, but they may take "
+    "patience and preparation'. Both sentences must address the reader with 'your' or 'you'. Fill "
+    "`because` with one sentence giving the concrete reason in "
+    "everyday language, for example 'Your career base is strong, but delays in the present phase make "
+    "preparation especially important'. The `because` sentence must add a concrete reason for THIS life area, "
+    "not restate the answer or merely say 'underlying pattern' or 'current conditions'. Never use the words "
+    "birth promise, running period, Chara, Yogini, Chandra Naadi, lens, confluence, house, planet, planetary, "
+    "placement, dasha or transit in the customer text. Do not say "
+    "will, soon, eventually, certainly or definitely, and never tell the reader to make a major life "
+    "decision. Use ONLY the numbered findings supplied; never add a position, date or gemstone that "
+    "is not written there. In `use` list the ids of the 3-5 findings that genuinely matter for THIS "
+    "question, covering both the underlying pattern and current conditions; leave out the rest. No "
+    "headings, padding or repetition of the question. stance is favourable, mixed or difficult; stay "
+    "close to the suggested stance unless a finding clearly says otherwise. Set needs_timing true only "
+    "when the question asks about time. Never put a date, year or period length in the text: timing "
+    "is shown separately."
 )
 
 _LANG_NOTE = {
@@ -551,9 +637,9 @@ def _prompt(facts: dict) -> str:
                 f"{lens_labels[k]} {word[votes[k]['vote']]}" for k in lens_labels if k in votes) + ".")
         if votes:
             p, n = _verdict_key(facts)
-            lines.insert(5, "Verdict frame (answer the question FIRST, then state both in one short sentence using your/you): your birth promise is "
-                         f"{ {1: 'strong', 0: 'mixed', -1: 'weak'}[p] }; what is running for you now is "
-                         f"{ {1: 'helping', 0: 'mixed', -1: 'holding it back'}[n] }.")
+            lines.insert(5, "Judgement guide (answer the question FIRST, then give one concrete reason): the underlying "
+                         f"pattern is { {1: 'supportive', 0: 'mixed', -1: 'strained'}[p] }; current conditions are "
+                         f"{ {1: 'helpful', 0: 'mixed', -1: 'demanding'}[n] }. Do not copy these labels into the answer.")
         for fid, lens, text in _findings_full(facts):
             lines.append(f"{fid} [{lens_labels.get(lens, lens)}]: {text}")
     return "\n".join(lines)
@@ -607,10 +693,39 @@ def _check(ans: str, facts: dict) -> list[str]:
         problems.append("answer is empty")
     if len(ans.split()) > 60:
         problems.append("answer is longer than 60 words")
+    sentences = [s for s in re.split(r"(?<=[.!?])\s+", ans.strip()) if s.strip()]
+    if len(sentences) >= 2:
+        def trigrams(text: str) -> set[tuple[str, ...]]:
+            words = re.findall(r"[a-z]+", text.lower())
+            return set(zip(words, words[1:], words[2:]))
+        if trigrams(sentences[0]) & trigrams(sentences[1]):
+            problems.append("the reason repeats the answer instead of adding information")
     if re.search(r"lal\s*kitab|python|code|```", ans, re.I):
         problems.append("answer contains something that is not part of a chart answer")
     if re.search(r"\b20\d\d\b", ans):
         problems.append("puts a year in the answer; timing is shown separately")
+    if re.search(r"\b(will|definitely|certainly|guaranteed|inevitable|destined|sure\s+to)\b", ans, re.I):
+        problems.append("uses certainty instead of a hedged chart reading")
+    if re.search(r"\b(soon|eventually|any\s+time\s+now|around\s+the\s+corner)\b", ans, re.I):
+        problems.append("adds vague timing that the fact sheet does not establish")
+    if re.search(r"\byou\s+(?:should|must|ought\s+to)\s+(?:\w+\s+){0,3}"
+                 r"(?:chang\w*|quit|leave|marry|divorce|separate|buy|sell|invest|move|relocate|settle|travel|proceed)\b",
+                 ans, re.I):
+        problems.append("tells the reader to make a major life decision instead of explaining the outlook")
+    if "gems" not in facts and re.search(
+            r"\b(birth\s+promise|underlying\s+pattern|current\s+conditions|running\s+period|main\s+period|"
+            r"sub-period|chara|yogini|chandra\s+naadi|body\s+vulnerability|lenses?|confluence|mahadasha|"
+            r"antardasha|dashas?|transits?|planets?|planetary|placements?|exalted|debilitated|moolatrikona|"
+            r"sun|moon|mars|mercury|jupiter|venus|saturn|rahu|ketu|"
+            r"house\s*\d{1,2}|\d{1,2}(?:st|nd|rd|th)\s+house)\b", ans, re.I):
+        problems.append("uses chart-technique or report language instead of a plain explanation")
+    if "gems" in facts and re.search(
+            r"\b(?:rules?\s+your|sits?\s+in|placed\s+in|houses?\s*\d{1,2}|"
+            r"\d{1,2}(?:st|nd|rd|th)\s+houses?)\b", ans, re.I):
+        problems.append("uses technical gemstone reasoning instead of a plain explanation")
+    if facts.get("domain_key") != "career_profession" and re.search(
+            r"\b(?:career\s+base|career\s+prospects|job\s+security|promotion\s+prospects)\b", ans, re.I):
+        problems.append("answers about career instead of the life area asked")
     try:                      # the page's last filter deletes whole sentences it dislikes: never ship one
         from qa_checks.customer_text_sanitizer import _internal_leak
         if _internal_leak(ans):
@@ -797,6 +912,81 @@ def _pick_why(facts: dict, lk: str, use: list[str]) -> list[str]:
     return [by_id[i][1] for i in sorted(set(chosen), key=order.index)]
 
 
+def plain_reasons(facts: dict, lang: str = "en") -> list[str]:
+    """Customer-facing reasons; the selected technical findings stay in the collapsible proof."""
+    lk = _lang_key(lang)
+    if lk != "en":
+        import question_reading_i18n as I18N
+        return I18N.plain_reasons(facts, lk)
+    key = facts["domain_key"]
+    if key == "out_of_domain":
+        return []
+    if key == "gemstones_remedies":
+        asked = facts["gems"].get("asked") or []
+        first = ("This stone matches supportive factors in your chart, but comfort during the trial still matters."
+                 if asked and all(r["verdict"] == "wear" for r in asked) else
+                 "These stones match supportive factors in your chart, but individual comfort still matters."
+                 if not asked else
+                 "A stone that suits one chart may not suit another, so the cautious option is preferred here.")
+        return [first, "The three-day trial is a precaution, not a guarantee; stop if you feel uncomfortable."]
+    lenses = facts.get("lenses") or {}
+    vuln = lenses.get("vulnerability")
+    if vuln:
+        import question_health as QH
+        body = QH.text_en(vuln).split(" Chandra Naadi marks", 1)[0].strip()
+        if body.startswith("Chandra Naadi"):
+            body = "Your chart highlights specific body areas where stress may show first."
+        rows = [body]
+        rows.append("The present phase suggests extra care, so steady routines and early attention matter."
+                    if _care_now(facts) else
+                    "The present phase looks steadier, but regular care is still important.")
+        return rows
+    p, _n = _verdict_key(facts)
+    subject, _verb = _answer_area(facts)
+    area = subject[0].lower() + subject[1:]
+    first = {
+        1: f"Your chart gives {area} a supportive base to work from.",
+        0: f"Your chart shows both support and strain for {area}, so effort and timing matter together.",
+        -1: f"Your chart puts more pressure on {area}, so consistency matters more than a quick result.",
+    }[p]
+    rows = [first]
+    vim = lenses.get("vimshottari") or {}
+    rel = vim.get("rel", "none")
+    who = vim.get("who") or ""
+    phase = f"current {who} phase" if who else "current phase"
+    rows.append({
+        "helper": f"The {phase} is directly connected with this question, giving practical efforts more support.",
+        "hard": f"The {phase} is linked with delay or pressure, so progress may be slower even with a supportive base.",
+        "none": f"The {phase} is fairly neutral for this question, so preparation and personal choices matter more.",
+    }[rel])
+    naadi = lenses.get("naadi") or {}
+    if naadi.get("cautions"):
+        key = facts["domain_key"]
+        caution = {
+            "marriage_relationship": "keep communication calm and avoid rushed commitments",
+            "career_profession": "avoid impulsive resignations or workplace conflicts",
+            "wealth_finances": "avoid rushed financial commitments",
+            "property_assets": "double-check documents and avoid rushed commitments",
+            "children_progeny": "keep plans flexible and avoid putting extra pressure on yourself",
+            "education_learning": "avoid last-minute changes to your preparation",
+            "foreign_relocation": "double-check documents and avoid rushed bookings",
+            "litigation_disputes": "avoid heated exchanges and follow qualified legal advice",
+            "speech_neurology": "communicate slowly and avoid unnecessary strain",
+        }.get(key, "avoid rushed decisions")
+        if key == "career_profession":
+            q = facts["question"].lower()
+            if re.search(r"first\s+job|unemployed", q):
+                caution = "keep applications consistent and do not treat delays as a final verdict"
+            elif re.search(r"business|startup|self\s*-?\s*employ", q):
+                caution = "avoid rushed investments or resigning before the plan is financially ready"
+            elif "retir" in q:
+                caution = "avoid rushed financial or retirement decisions"
+            elif re.search(r"what\s+career|which\s+career|career\s+(?:should|direction)|choose.*career", q):
+                caution = "explore steadily and avoid choosing only under family or peer pressure"
+        rows.append(f"The immediate picture is sensitive, so {caution}.")
+    return rows
+
+
 def _attach(reading: QuestionReading, facts: dict) -> QuestionReading:
     """Record how the lenses voted, so the page can show them and the verdict is auditable."""
     lenses = facts.get("lenses") or {}
@@ -807,50 +997,88 @@ def _attach(reading: QuestionReading, facts: dict) -> QuestionReading:
     return reading
 
 
-_VERDICT_EN = {
-    (1, 1): "Your chart promises this and what is running now backs it.",
-    (1, 0): "Your chart promises this, and what is running now is mixed, so steady effort will carry it.",
-    (1, -1): "Your chart promises this, but what is running now is holding it back, so be patient.",
-    (0, 1): "Your chart gives a mixed promise here, but what is running now helps.",
-    (0, 0): "This is possible for you, but expect some effort and delay.",
-    (0, -1): "Your chart gives a mixed promise here, and what is running now adds friction.",
-    (-1, 1): "Your chart's promise here is weak, though what is running now helps, so effort pays now.",
-    (-1, 0): "Your chart's promise here is weak and what is running now is mixed, so it will take effort.",
-    (-1, -1): "This is not easy for you right now: the chart's promise is weak and what is running now "
-              "adds friction.",
-}
-
-
-_AREA_EN = {
-    "health_vitality": "your health", "speech_neurology": "your speech and nerves",
-    "career_profession": "your career", "marriage_relationship": "your relationship",
-    "wealth_finances": "your finances", "children_progeny": "your children",
-    "education_learning": "your studies", "foreign_relocation": "your move abroad",
-    "property_assets": "your property plans", "litigation_disputes": "this dispute",
-    "general_destiny": "your life path",
-}
-
-# Same nine outcomes as _VERDICT_EN, but the sentence says what it is about.
 _VERDICT_AREA_EN = {
-    (1, 1): "Your chart supports {area}, and what is running now backs it.",
-    (1, 0): "Your chart supports {area}, and what is running now is mixed, so steady effort will carry it.",
-    (1, -1): "Your chart supports {area}, but what is running now is holding it back, so be patient.",
-    (0, 1): "Your chart gives a mixed promise for {area}, but what is running now helps.",
-    (0, 0): "{Area} is workable, but expect some effort and delay.",
-    (0, -1): "Your chart gives a mixed promise for {area}, and what is running now adds friction.",
-    (-1, 1): "Your chart's promise for {area} is weak, though what is running now helps, so effort pays now.",
-    (-1, 0): "Your chart's promise for {area} is weak and what is running now is mixed, so it will take effort.",
-    (-1, -1): "{Area} needs care right now: the chart's promise is weak and what is running now adds friction.",
+    (1, 1): "{area} {verb} well supported right now.",
+    (1, 0): "{area} {verb} supportive overall, though the near term may feel uneven.",
+    (1, -1): "{area} {verb} supportive at the base, but current delays call for patience.",
+    (0, 1): "{area} {verb} mixed, but steady effort has useful support right now.",
+    (0, 0): "{area} {verb} mixed, so expect some stops and starts rather than a quick result.",
+    (0, -1): "{area} {verb} mixed and under pressure, so avoid rushing important decisions.",
+    (-1, 1): "{area} {verb} demanding, although steady effort has some useful support right now.",
+    (-1, 0): "{area} {verb} demanding and may take persistence, with no clear shortcut right now.",
+    (-1, -1): "{area} {verb} difficult right now, so go carefully rather than forcing a quick result.",
 }
+
+
+def _answer_area(facts: dict) -> tuple[str, str]:
+    key = facts["domain_key"]
+    q = facts["question"].lower()
+    if key == "career_profession":
+        if "promot" in q:
+            return "Your promotion prospects", "look"
+        if re.search(r"first\s+job|unemployed", q):
+            return "Your first-job prospects", "look"
+        if re.search(r"business|startup|self\s*-?\s*employ", q):
+            return "Your business plans", "look"
+        if "retir" in q:
+            return "Your retirement transition", "looks"
+        if re.search(r"what\s+career|which\s+career|career\s+(?:should|direction)|choose.*career", q):
+            return "Your career direction", "looks"
+        if re.search(r"secure|security|safe|layoff|fired|demotion", q):
+            return "Your job security", "looks"
+        if re.search(r"change|switch|new job|another job", q):
+            return "Your job-change prospects", "look"
+    if key == "marriage_relationship":
+        return ("Your marriage prospects", "look") if re.search(r"marri|wedding|shaadi|vivah", q) else ("Your relationship", "looks")
+    if key == "foreign_relocation":
+        if re.search(r"settl|permanent|relocate|move abroad", q):
+            return "Your plans to settle abroad", "look"
+        return "Your travel abroad plans", "look"
+    if key == "children_progeny":
+        return "Your path to parenthood", "looks"
+    if key == "education_learning" and re.search(r"exam|test|clear|pass", q):
+        return "Your exam prospects", "look"
+    if key == "property_assets":
+        if re.search(r"sell|sale", q):
+            return "Your property sale prospects", "look"
+        if re.search(r"transfer|gift", q):
+            return "Your property transfer plans", "look"
+    if key == "litigation_disputes":
+        if "custody" in q:
+            return "Your custody matter", "looks"
+        if "divorce" in q:
+            return "Your divorce proceedings", "look"
+        if "inheritance" in q:
+            return "Your inheritance dispute", "looks"
+        if "tenant" in q:
+            return "Your tenant dispute", "looks"
+        if re.search(r"settle|settlement|mediation", q):
+            return "Your settlement prospects", "look"
+        if "property" in q:
+            return "Your property dispute", "looks"
+        if re.search(r"court|case", q):
+            return "Your court case", "looks"
+    area = {
+        "health_vitality": "Your health", "speech_neurology": "Your speech and communication",
+        "career_profession": "Your career", "wealth_finances": "Your finances",
+        "education_learning": "Your studies", "property_assets": "Your property plans",
+        "litigation_disputes": "Your legal matter", "general_destiny": "Your life path",
+    }.get(key, "Your outlook")
+    return area, "look" if area in ("Your finances", "Your studies", "Your property plans", "Your speech and communication") else "looks"
 
 
 def verdict_opener(facts: dict) -> str:
     """The first sentence of the answer; it names the area asked about, never just 'this'."""
-    key = _verdict_key(facts)
-    area = _AREA_EN.get(facts["domain_key"])
-    if not area:
-        return _VERDICT_EN[key]
-    return _VERDICT_AREA_EN[key].format(area=area, Area=area[0].upper() + area[1:])
+    p, n = _verdict_key(facts)
+    if facts["domain_key"] == "health_vitality":
+        if _care_now(facts) or n < 0:
+            return ("Your health has a supportive base, but this is a time for extra care and steady routines."
+                    if p > 0 else
+                    "Your health needs extra care right now, so keep routines steady and do not ignore persistent discomfort.")
+        return ("Your health needs consistent care, although the present phase looks steadier." if p < 0 else
+                "Your health looks reasonably supported right now, with regular care still important.")
+    area, verb = _answer_area(facts)
+    return _VERDICT_AREA_EN[(p, n)].format(area=area, verb=verb)
 
 
 def headline(answer: str, limit: int = 140) -> str:
@@ -904,30 +1132,25 @@ def _fallback(facts: dict, lang: str = "en") -> QuestionReading:
     if key == "gemstones_remedies":
         rec, avoid = facts["gems"]["recommended"], facts["gems"]["avoid"]
         if rec:
-            names = " and ".join(r["gem"] for r in rec)
+            names = _and_join([r["gem"] for r in rec])
             answer = (f"For your {facts['lagna']} rising sign, {names} "
-                      f"{'suits' if len(rec) == 1 else 'suit'} you best.")
+                      f"{'is' if len(rec) == 1 else 'are'} the better-matched option{'s' if len(rec) > 1 else ''}.")
         else:
             answer = ("No gemstone is clearly safe for your chart right now, so the better route is "
                       "mantra and charity rather than wearing a stone.")
         if avoid:
-            answer += " Avoid " + ", ".join(r["gem"] for r in avoid[:3]) + "."
+            answer += " Avoid " + _and_join([r["gem"] for r in avoid[:3]]) + "."
         return QuestionReading(stance="favourable" if rec else "mixed", answer=answer,
                                why=_gem_why(facts), timing="", steps=_steps(facts))
 
     stance = _stance_hint(facts)
-    lord = facts["house"]["lord"]
-    dw = _dignity_words(lord["dignity"])
     opener = verdict_opener(facts)
     vuln = (facts.get("lenses") or {}).get("vulnerability")
     if vuln:                  # health: say where to take care instead of repeating the ruling planet
         import question_health as QH
         answer = f"{opener} {QH.answer_line(vuln)}".strip()
     else:
-        answer = (f"{opener} {lord['planet']}, the planet that rules this area, sits in house {lord['house']} "
-                  f"in {lord['sign']}" + (f" and is {dw}" if dw else "") + ".")
-        if lord["hard_house"]:
-            answer += " That house tends to slow things down."
+        answer = opener
     why = _pick_why(facts, "en", [])
     timing = _timing_line(facts) if _wants_timing(facts) else ""
     return _attach(QuestionReading(stance=stance, answer=answer, why=why, timing=timing,

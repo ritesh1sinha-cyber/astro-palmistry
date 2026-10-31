@@ -46,8 +46,8 @@ _AREAS: dict[str, tuple[str, ...]] = {
         r"startup", r"business\s+partner", r"self\s*-?\s*employ\w*", r"udyogam", r"vyapar",
     ),
     "wealth_finances": (
-        r"money", r"wealth", r"income", r"debts?", r"loans?", r"savings?", r"invest\w*",
-        r"lottery", r"rich", r"financ\w*", r"paisa", r"paise", r"dhan", r"dabbu",
+        r"money", r"wealth", r"income", r"debts?", r"loans?", r"savings?", r"sav(?:e|es|ed|ing)", r"invest\w*",
+        r"afford\w*", r"budgets?", r"lottery", r"rich", r"financ\w*", r"paisa", r"paise", r"dhan", r"dabbu",
     ),
     "property_assets": (
         r"buy\s+(?:a\s+|an\s+|my\s+)?(?:house|flat|home|property|land|plot|car|vehicle|bike)",
@@ -61,12 +61,13 @@ _AREAS: dict[str, tuple[str, ...]] = {
     ),
     "education_learning": (
         r"exams?", r"stud(?:y|ies|ying)", r"college", r"admission", r"degree", r"scholarship",
-        r"neet", r"jee", r"upsc", r"board\s+exams?", r"padhai",
+        r"neet", r"jee", r"upsc", r"board\s+exams?", r"padhai", r"streams?", r"courses?",
     ),
     "litigation_disputes": (
         r"court", r"lawsuit", r"litigation", r"legal", r"police", r"lawyer", r"verdict", r"bail",
         r"disputes?", r"settlement", r"(?:divorce|criminal|civil|property)\s+case", r"case\s+(?:against|filed)",
-        r"enem(?:y|ies)",
+        r"enem(?:y|ies)", r"custody", r"alimony", r"mediation", r"arbitration", r"legal\s+notice",
+        r"consumer\s+complaint",
     ),
     "speech_neurology": (
         r"speech", r"stammer\w*", r"stutter\w*", r"autis\w*", r"dyslexi\w*", r"adhd", r"neurolog\w*",
@@ -103,9 +104,15 @@ def keyword_domain(question: str) -> str:
     q = re.sub(r"\s+", " ", (question or "").lower()).strip()
     if not q:
         return ""
-    if _ABOUT_CHILD.search(q):
-        return "children_progeny"
     named = {area for area, rx in _COMPILED.items() if rx.search(q)}
+    if _ABOUT_CHILD.search(q):
+        if "litigation_disputes" in named:
+            return "litigation_disputes"
+        if named - {"children_progeny"} == {"property_assets"} and re.search(r"transfer|gift|inherit", q):
+            return "property_assets"
+        return "children_progeny"
+    if named == {"property_assets", "wealth_finances"} and re.search(r"save|saving|afford|budget", q):
+        return "wealth_finances"
     if len(named) == 1:
         return next(iter(named))
     if len(named) == 2 and frozenset(named) in _PAIR_WINS:

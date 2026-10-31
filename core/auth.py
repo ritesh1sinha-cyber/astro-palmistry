@@ -38,9 +38,22 @@ def is_promo_login(user: Optional[dict]) -> bool:
     return (user.get("email") or "").strip().lower() in promo_login_emails()
 
 
+def is_dev_user(user: Optional[dict]) -> bool:
+    if not user or user.get("google_sub"):
+        return False
+    return ((user.get("email") or "").strip().lower()
+            == (S.dev_email or "").strip().lower())
+
+
 def has_full_access(user: Optional[dict]) -> bool:
     """Unlock paid halves without payment. Admin or promocode login."""
     return is_admin(user) or is_promo_login(user)
+
+
+def has_report_access(user: Optional[dict], item: str = "") -> bool:
+    if item == "classical_report":
+        return is_admin(user)
+    return has_full_access(user) or is_dev_user(user)
 
 
 def is_admin_id(user_id: str) -> bool:
@@ -61,6 +74,16 @@ def has_full_access_id(user_id: str) -> bool:
         row = c.execute(text("SELECT email FROM users WHERE id = :u"),
                         {"u": user_id}).fetchone()
     return has_full_access(jrow(row)) if row else False
+
+
+def has_report_access_id(user_id: str, item: str = "") -> bool:
+    from sqlalchemy import text
+
+    from .db import engine, jrow
+    with engine().connect() as c:
+        row = c.execute(text("SELECT * FROM users WHERE id = :u"),
+                        {"u": user_id}).fetchone()
+    return has_report_access(jrow(row), item) if row else False
 
 
 def verify_google(id_token: str) -> dict:
@@ -103,11 +126,26 @@ def login_dev(email: str, name: str, *, passcode: str = "",
     if not expected or not secrets.compare_digest(passcode or "", expected):
         raise HTTPException(401, "invalid guest passcode")
     em = (email or "").strip().lower()
+    if em == (S.dev_email or "").strip().lower():
+        raise HTTPException(403, "use dev sign-in for this account")
     if em and em not in admin_emails():
         target_em = em
     else:
         target_em = next(iter(sorted(promo_login_emails())), "guest@graharekha.co.in")
     user = upsert_user(email=target_em, name=name or ("Promocode guest" if target_em.startswith("guest") else "Test User"))
+    return user, create_session(user["id"], ip=ip, ua=ua)
+
+
+def login_report_dev(username: str, password: str, *,
+                     ip: str = "", ua: str = "") -> tuple[dict, str]:
+    """Report-only dev login; never an admin or a Google identity."""
+    if not S.dev_login:
+        raise HTTPException(404, "not enabled")
+    user_ok = secrets.compare_digest((username or "").strip(), S.dev_username or "")
+    pass_ok = secrets.compare_digest(password or "", S.dev_password or "")
+    if not (user_ok and pass_ok):
+        raise HTTPException(401, "invalid dev credentials")
+    user = upsert_user(email=(S.dev_email or "").strip().lower(), name="GrahaRekha Dev")
     return user, create_session(user["id"], ip=ip, ua=ua)
 
 
