@@ -39,7 +39,7 @@ def is_promo_login(user: Optional[dict]) -> bool:
 
 
 def is_dev_user(user: Optional[dict]) -> bool:
-    if not user or user.get("google_sub"):
+    if not user or user.get("google_sub") or not S.report_dev_login:
         return False
     return ((user.get("email") or "").strip().lower()
             == (S.dev_email or "").strip().lower())
@@ -139,7 +139,7 @@ def login_dev(email: str, name: str, *, passcode: str = "",
 def login_report_dev(username: str, password: str, *,
                      ip: str = "", ua: str = "") -> tuple[dict, str]:
     """Report-only dev login; never an admin or a Google identity."""
-    if not S.dev_login:
+    if not S.report_dev_login:
         raise HTTPException(404, "not enabled")
     user_ok = secrets.compare_digest((username or "").strip(), S.dev_username or "")
     pass_ok = secrets.compare_digest(password or "", S.dev_password or "")

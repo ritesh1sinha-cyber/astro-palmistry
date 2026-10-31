@@ -113,6 +113,9 @@ def keyword_domain(question: str) -> str:
         return "children_progeny"
     if named == {"property_assets", "wealth_finances"} and re.search(r"save|saving|afford|budget", q):
         return "wealth_finances"
+    # Paying off a business debt is a money question, not a career one.
+    if named == {"career_profession", "wealth_finances"} and re.search(r"repay\w*|emi|debts?|loans?|owe", q):
+        return "wealth_finances"
     if len(named) == 1:
         return next(iter(named))
     if len(named) == 2 and frozenset(named) in _PAIR_WINS:

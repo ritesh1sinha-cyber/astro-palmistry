@@ -396,3 +396,25 @@ def test_user_question_uses_focus_only_when_flagged(monkeypatch):
                                         area="career", name="Asha Rao", today=TODAY)
     assert meta["design"] == "focus-v1"
     assert "What is happening now" in free and "Dates and transition" in paid
+
+
+def test_question_page_has_no_duplicate_chart_intro_and_remedy_says_why():
+    pc, conf, reading, facts = _question(0, "when will I get promoted", "career")
+    free, paid, _meta = RF.question_report(pc, conf, reading, facts, by_model=False, today=TODAY)
+    assert "This chart is read from" not in free and "This chart is read from" not in paid
+    assert re.search(r"so it is the planet to support", paid)
+
+
+def test_model_phase_text_may_not_state_an_outcome_as_expected():
+    assert any("expected" in p for p in RF._item_problems(
+        "Money matters should feel easier for a while and you can plan a little more freely.", "NOW"))
+
+
+def test_gap_between_dated_stretches_is_named():
+    data = _built(0)
+    a = data["areas"][0]
+    if len(a["phases"]) >= 2:
+        a["phases"][0]["end"] = TODAY
+        a["phases"][1]["start"] = TODAY + timedelta(days=400)
+        html = RF._next_html(a, data["cx"])
+        assert "nothing here stands out" in html

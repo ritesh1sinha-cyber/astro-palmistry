@@ -160,6 +160,7 @@ def public_config():
         "googleClientId": S.google_client_id or "",
         "guestLogin": bool(S.dev_login),
         "adminLogin": bool(S.dev_login),
+        "devLogin": bool(S.report_dev_login),
         "brand": "GrahaRekha",
         "razorpayKeyId": S.razorpay_key_id or "",
         "razorpayPaymentButtonId": S.razorpay_payment_button_id or "",
@@ -1378,6 +1379,9 @@ def promo_unlock_report(body: PromoUnlockIn, user: dict = Depends(current_user))
     if (not item or item not in S.prices or item in billing.ACCOUNT_WIDE_ITEMS
             or item == "classical_report"):
         raise HTTPException(400, "this report cannot be unlocked with a promo code")
+    # Never spend one of the limited places on a report that is already open.
+    if _report_unlocked(rep, user["id"]):
+        raise HTTPException(409, "this report is already unlocked")
     from core.errors import UserError
     try:
         result = promo.redeem(user["id"], body.code, item=item, ref_id=str(rep["id"]))

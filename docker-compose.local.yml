@@ -52,6 +52,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       APP_SECRET: local-dev-only-not-a-secret
       DEV_LOGIN: "1"              # lets e2e_check.py sign in. Local only.
+      DEV_USERNAME: local-dev     # report-only dev login; throwaway, this stack only
+      DEV_PASSWORD: local-dev-only-not-a-secret
+      FULL_REPORT_DESIGN: focus   # new short report; set to classic to revert
       INLINE_WORKER: "1"
       INLINE_WORKER_THREADS: "2"
       ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:8080"

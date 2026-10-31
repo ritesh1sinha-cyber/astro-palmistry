@@ -244,8 +244,14 @@ def _stance_hint(facts: dict) -> str:
     if facts["domain_key"] == "out_of_domain":
         return "not_astrological"
     if facts.get("lenses"):
-        import question_lenses as QL
-        return QL.stance(facts["lenses"])
+        # The badge must agree with the sentence the reader sees, and that sentence is chosen from the
+        # same (birth promise, running now) pair.
+        p, n = _verdict_key(facts)
+        if p > 0 and n > 0:
+            return "favourable"
+        if p < 0:
+            return "difficult"
+        return "mixed"
     if n_for - n_against >= 2:
         return "favourable"
     if n_against - n_for >= 2:
@@ -370,7 +376,7 @@ def _gem_wear_step(r: dict) -> str:
 def _practical_step(facts: dict, has_window: bool) -> str:
     key = facts["domain_key"]
     q = facts["question"].lower()
-    window = "the supportive window above"
+    window = "the period named above"
     if key == "career_profession":
         if "promot" in q:
             return (f"Document your results now; use {window} to request a promotion discussion." if has_window
@@ -473,8 +479,18 @@ def _steps(facts: dict, lang: str = "en") -> list[str]:
     target = weak or (facts["karakas"][0] if facts["karakas"] else None)
     if target:
         k = target["planet"]
-        steps.append(f"For {k}: chant {_MANTRA.get(k, 'its mantra')} 108 times on "
-                     f"{_WEEKDAY.get(k, 'its day')}s and offer a small donation.")
+        role = ("rules the house behind this question" if target is facts["house"]["lord"]
+                else "is a natural indicator for this question")
+        if target["hard_house"]:
+            state = " and sits in a hard house in your chart"
+        elif target["dignity"] in _BAD_DIGNITY:
+            state = " and is weak in your chart"
+        elif target["combust"]:
+            state = " and is overpowered by the Sun in your chart"
+        else:
+            state = ""
+        steps.append(f"{k} {role}{state}, so it is the planet to support: chant {_MANTRA.get(k, 'its mantra')} "
+                     f"108 times on {_WEEKDAY.get(k, 'its day')}s and offer a small donation.")
     vuln = (facts.get("lenses") or {}).get("vulnerability")
     if vuln:
         import question_health as QH
@@ -557,14 +573,19 @@ _SYSTEM = (
     "You are an experienced Vedic astrologer answering ONE question for one person. First work out "
     "what the question is really asking. Judge the underlying chart pattern against current conditions "
     "using every numbered finding. Fill `answer` with one short sentence that directly answers the "
-    "question in plain, hedged words, for example 'Your job-change prospects look possible, but they may take "
-    "patience and preparation'. Both sentences must address the reader with 'your' or 'you'. Fill "
-    "`because` with one sentence giving the concrete reason in "
-    "everyday language, for example 'Your career base is strong, but delays in the present phase make "
-    "preparation especially important'. The `because` sentence must add a concrete reason for THIS life area, "
-    "not restate the answer or merely say 'underlying pattern' or 'current conditions'. Never use the words "
-    "birth promise, running period, Chara, Yogini, Chandra Naadi, lens, confluence, house, planet, planetary, "
-    "placement, dasha or transit in the customer text. Do not say "
+    "question in plain, hedged words. Say it the way a kind person would say it aloud, using the "
+    "question's OWN subject (changing jobs, getting married, repaying the loan, studying abroad) rather than "
+    "a generic phrase like 'your prospects'. Examples of the shape, not the words: 'A move to a new "
+    "role looks possible, though you may need patience and a clear plan.' / 'Marriage looks possible, though "
+    "it may come later than you hope.' / 'Clearing the loan looks manageable if you keep your expenses tight.' "
+    "For a 'should I' question, say how well the chart supports the move ('the chart gives a change of job "
+    "some support, though it asks for a clear plan'), never 'you should' or 'you will'. "
+    "The two sentences together MUST contain the literal word 'you' or 'your'. Fill `because` with one sentence giving the "
+    "concrete reason in everyday language, taken from the PLAIN FACTS. The `because` sentence must add a "
+    "concrete reason for THIS life area, not restate the answer or merely say 'underlying pattern' or "
+    "'current conditions'. Never name a planet or a sign, and never use the words "
+    "birth promise, running period, sub-period, Chara, Yogini, Chandra Naadi, lens, confluence, house, planet, "
+    "planetary, placement, dasha or transit in the customer text. Do not say "
     "will, soon, eventually, certainly or definitely, and never tell the reader to make a major life "
     "decision. Use ONLY the numbered findings supplied; never add a position, date or gemstone that "
     "is not written there. In `use` list the ids of the 3-5 findings that genuinely matter for THIS "
@@ -640,8 +661,19 @@ def _prompt(facts: dict) -> str:
             lines.insert(5, "Judgement guide (answer the question FIRST, then give one concrete reason): the underlying "
                          f"pattern is { {1: 'supportive', 0: 'mixed', -1: 'strained'}[p] }; current conditions are "
                          f"{ {1: 'helpful', 0: 'mixed', -1: 'demanding'}[n] }. Do not copy these labels into the answer.")
+        try:
+            plain = plain_reasons(facts, "en")
+        except Exception:                                              # noqa: BLE001
+            plain = []
+        # The visible reasons name the running planet ("the current Sun phase"); the answer must not.
+        plain = [re.sub(r"\bcurrent (?:" + "|".join(_PLANETS) + r") phase", "current phase", t) for t in plain]
+        if plain:
+            lines.insert(4, "PLAIN FACTS (put the answer and reason in these everyday words; they are safe to "
+                            "paraphrase): " + " ".join(plain))
         for fid, lens, text in _findings_full(facts):
             lines.append(f"{fid} [{lens_labels.get(lens, lens)}]: {text}")
+        lines.append("The numbered findings are technical background for choosing `use`; do not copy their "
+                     "wording or any planet name into `answer` or `because`.")
     return "\n".join(lines)
 
 
@@ -828,6 +860,8 @@ def _blend_stance(hint: str, model: str, facts: dict) -> str:
         return hint
     if {hint, model} == {"favourable", "difficult"} or model == "not_astrological":
         return hint
+    if hint == "mixed" and facts.get("lenses"):
+        return hint           # the model may soften a verdict, never sharpen a balanced one
     return model
 
 
@@ -843,13 +877,13 @@ def _ask_model(facts: dict, lang: str) -> Optional[QuestionReading]:
     user = _prompt(facts)
     judged: Optional[QuestionJudgement] = None
     problems: list[str] = []
-    for attempt in range(3):
+    for attempt in range(4):
         try:
             got = complete_model(
                 QuestionJudgement, system,
                 user if not problems else user + "\n\nYour previous answer was rejected: "
-                + "; ".join(problems[:3]) + ". Rewrite it using only the findings.",
-                temperature=0.2)
+                + "; ".join(problems[:3]) + ". Rewrite it in everyday words using only the PLAIN FACTS.",
+                temperature=(0.2, 0.5, 0.7, 0.3)[attempt])
         except Exception as exc:  # noqa: BLE001
             print(f"[question_reading] model call failed: {type(exc).__name__}: {exc}", flush=True)
             return None

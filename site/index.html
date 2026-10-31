@@ -1975,7 +1975,7 @@ body.reading-on .mobnav,body.reading-on #promoBar{display:none!important}
 <div class="modal admin-modal" id="promoUnlockModal" role="dialog" aria-modal="true" aria-labelledby="promoUnlockTitle">
  <div class="modal-box">
   <h3 id="promoUnlockTitle">Unlock with a promo code</h3>
-  <p class="hint" style="margin-bottom:14px">For Google-signed-in accounts. A valid code unlocks this report only.</p>
+  <p class="hint" style="margin-bottom:14px">For Google-signed-in accounts. A valid code unlocks this report only; each account can use one code.</p>
   <div class="field"><label for="promoUnlockCode">Promo code</label><input class="inp" id="promoUnlockCode" type="text" autocomplete="off" autocapitalize="characters" placeholder="Enter your code"></div>
   <p class="err" id="promoUnlockErr" style="display:none;margin-bottom:10px"></p>
   <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -2180,6 +2180,7 @@ const CONFIG = {
   llmEnabled:   false,               // from /api/public-config
   chatEnabled:  false,               // /api/public-config; needs CHAT_ENABLED=1
   fullReportDesign: 'classic',        // /api/public-config
+  devLogin:     false,               // /api/public-config; true only when the host set DEV_USERNAME/DEV_PASSWORD
   price:        298,
   priceStrike:  298,
   currency:     '₹',
@@ -4165,7 +4166,7 @@ function paintAuth(){
       <button class="btn-line" onclick="logout()">Sign out</button>`;
   } else {
     h.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="go('read')">Sign in</button>
-      <button class="btn btn-ghost btn-sm" onclick="openDevLoginModal()">Dev login</button>`;
+      ${CONFIG.devLogin ? '<button class="btn btn-ghost btn-sm" onclick="openDevLoginModal()">Dev login</button>' : ''}`;
   }
   refreshAdminReportStats();
   paintDailySub();
@@ -4442,7 +4443,9 @@ async function loadPublicConfig(){
     CONFIG.chatEnabled = !!j.chatEnabled;
     if(typeof j.promoCode === 'string') PROMO_CODE = j.promoCode;
     CONFIG.fullReportDesign = j.fullReportDesign || 'classic';
+    CONFIG.devLogin = !!j.devLogin;
     paintFullReportDesign();
+    paintAuth();
     if(READING.open && READING.reportId && CONFIG.chatEnabled){
       if(!document.querySelector('.report-chat')){
         const aside = $('#readingAside');

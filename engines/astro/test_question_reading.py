@@ -74,8 +74,9 @@ def test_each_lens_votes_from_the_chart_and_the_verdict_uses_them():
     lenses = facts["lenses"]
     assert set(lenses) == set(QL.LENS_ORDER) - {"vulnerability"}, lenses.keys()    # health-only lens
     assert all(v["vote"] in (-1, 0, 1) for v in lenses.values())
-    # the stance is the weighted vote, nothing else
-    assert QR._stance_hint(facts) == QL.stance(lenses)
+    # the badge follows the same (birth promise, running now) pair that picks the sentence
+    p, n = QL.promise_and_now(lenses)
+    assert QR._stance_hint(facts) == ("favourable" if p > 0 and n > 0 else "difficult" if p < 0 else "mixed")
     # promise vs now picks the sentence; flipping the live votes changes the verdict
     for k in lenses:
         if k != "promise":

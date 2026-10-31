@@ -100,6 +100,10 @@ check("every bundle item is a real priced item or a subscription perk",
 # ---------------------------------------------------------------------------
 print("\n— dev access is report-only —")
 
+# The test must not depend on the launch switch or on credentials set on this host.
+_saved_dev = (auth.S.dev_login, auth.S.dev_username, auth.S.dev_password)
+auth.S.dev_login, auth.S.dev_username, auth.S.dev_password = True, "test-dev", "test-dev-pass"
+
 dev_user, _dev_token = auth.login_report_dev(auth.S.dev_username, auth.S.dev_password)
 check("dev login creates a non-Google dev identity",
       auth.is_dev_user(dev_user) and not dev_user.get("google_sub"))
@@ -119,6 +123,17 @@ try:
     check("guest login cannot impersonate dev", False, "login succeeded")
 except HTTPException as e:
     check("guest login cannot impersonate dev", e.status_code == 403)
+for label, vals in (("no password configured", (True, "test-dev", "")),
+                    ("no username configured", (True, "", "test-dev-pass")),
+                    ("dev logins switched off", (False, "test-dev", "test-dev-pass"))):
+    auth.S.dev_login, auth.S.dev_username, auth.S.dev_password = vals
+    try:
+        auth.login_report_dev(vals[1], vals[2])
+        check(f"dev login closed: {label}", False, "login succeeded")
+    except HTTPException as e:
+        check(f"dev login closed: {label}", e.status_code == 404)
+check("dev access disappears when the login is closed", not auth.is_dev_user(dev_user))
+auth.S.dev_login, auth.S.dev_username, auth.S.dev_password = _saved_dev
 
 # ---------------------------------------------------------------------------
 print("\n— a promo grants exactly what a purchase grants —")

@@ -937,7 +937,7 @@ def test_build_plain_summary_with_hinglish_language(monkeypatch):
             sections=[
                 {
                     "title": "Vyaktitva Aur Strengths",
-                    "body": "Aap naturally determined aur focused vyakti hain.",
+                    "body": "Aap naturally determined aur focused vyakti hain, aur Jupiter ka support aapko aage badhata hai.",
                     "role": "insight",
                 },
                 {

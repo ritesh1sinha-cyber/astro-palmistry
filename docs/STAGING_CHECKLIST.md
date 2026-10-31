@@ -4,7 +4,9 @@ Use this before pointing a staging domain at the app. Local dev commands are in 
 
 ## Environment (API)
 
-- [ ] `DEV_LOGIN=0` — guest and admin test login disabled
+- [ ] `DEV_LOGIN=0` — guest and admin test login disabled (the env var can only switch dev logins off; `_CODE_DEV_LOGIN` in `core/config.py` is the upper bound and must be `False` for launch)
+- [ ] `DEV_USERNAME` / `DEV_PASSWORD` **unset** — the report-only dev login has no built-in credentials and stays closed (`/api/auth/report-dev` returns 404, `devLogin` is `false` in `/api/public-config`, the "Dev login" button is hidden). Set both only on a private test host, with a strong password
+- [ ] `PROMO` / `PROMO_CODE` — the active code is returned to everyone by `/api/public-config`; only put a code there that you are happy to publish
 - [ ] `INLINE_WORKER=1` only if you accept single-process job queue (otherwise run a worker)
 - [ ] Google OAuth: `GOOGLE_CLIENT_ID` set; site `CONFIG.googleClientId` matches
 - [ ] UPI / payment gateway configured; `CONFIG.upiId` or server-generated QR intents work
@@ -57,5 +59,6 @@ Expect **12/12 PASS** for report HTML design checks. Live job polling (`e2e_chec
 
 - Default admin credentials (`admin@graharekha.test` / `graha-admin`)
 - `DEV_LOGIN=1`
+- `DEV_USERNAME` / `DEV_PASSWORD` set (the dev account opens every non-classical paid report for free)
 - Empty `googleClientId` if you expect real accounts
 - Placeholder contact numbers

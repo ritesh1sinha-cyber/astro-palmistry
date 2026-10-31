@@ -126,14 +126,18 @@ class Settings:
     turnstile_secret: str = field(default_factory=lambda: _cfg(
         "turnstile_secret", "TURNSTILE_SECRET", ""))
     # Guest / admin test logins (passcode + password). Off when False.
-    dev_login: bool = _CODE_DEV_LOGIN
+    # The in-code constant is the upper bound; the DEV_LOGIN env var can only switch it off
+    # (DEV_LOGIN=0), never on, so a staging host can differ from a laptop.
+    dev_login: bool = _CODE_DEV_LOGIN and _bool("DEV_LOGIN", True)
     dev_auto_pay: bool = _CODE_DEV_AUTO_PAY
     guest_passcode: str = field(default_factory=lambda: _cfg(
         "guest_passcode", "GUEST_PASSCODE", "graharekha"))
+    # Report-only dev account. No built-in username or password: the login stays closed until
+    # DEV_USERNAME and DEV_PASSWORD (or `.config`) are set on that host.
     dev_username: str = field(default_factory=lambda: _cfg(
-        "dev_username", "DEV_USERNAME", "GRAHAREKHA"))
+        "dev_username", "DEV_USERNAME", ""))
     dev_password: str = field(default_factory=lambda: _cfg(
-        "dev_password", "DEV_PASSWORD", "GRAHAREKHA2026"))
+        "dev_password", "DEV_PASSWORD", ""))
     dev_email: str = field(default_factory=lambda: _cfg(
         "dev_email", "DEV_EMAIL", "dev@graharekha.local"))
     admin_username: str = field(default_factory=lambda: _cfg(
@@ -287,6 +291,11 @@ class Settings:
         ru = (self.redis_url or "").strip()
         if not ru or "{{" in ru or "}}" in ru:
             self.redis_url = ""
+
+    @property
+    def report_dev_login(self) -> bool:
+        """The report-only dev login is open only when dev logins are on AND both credentials are set."""
+        return bool(self.dev_login and (self.dev_username or "").strip() and self.dev_password)
 
     @property
     def is_postgres(self) -> bool:

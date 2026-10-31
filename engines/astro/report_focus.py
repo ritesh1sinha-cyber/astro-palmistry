@@ -1154,6 +1154,8 @@ HARD RULES
 
 _CACHE: dict[str, list[str]] = {}
 _FUTURE = re.compile(r"\b(will|won't|going to|definitely|certainly|guarantee\w*|you'll|it'll)\b", re.I)
+_EXPECT = re.compile(r"\b(?:should|ought to|is bound to|are bound to)\s+(?:feel|be|get|become|ease|improve|start|begin|"
+                     r"turn|bring|help|open)\b", re.I)
 _HEDGE_MORE = re.compile(r"\b(usually|typically|generally|expect|chance|try|worth|helps?|can|should|more easily|"
                          r"less likely|tend|prone|feels?|sometimes|somewhat|a bit|seem\w*|appear\w*)\b", re.I)
 _LASTS = re.compile(r"\b(anytime soon|any time soon|for a long time|for good|forever|going away|for months|for years|"
@@ -1196,6 +1198,8 @@ def _item_problems(x: str, kind: str, pk: str = "") -> list[str]:
     bad: list[str] = []
     if _LASTS.search(x):
         bad.append("says how long it lasts")
+    if _EXPECT.search(x):
+        bad.append("states an outcome as expected; say it may or might happen")
     if _INSTRUCTION_LEAK.search(x):
         bad.append("echoes writing instructions instead of speaking to the reader")
     if _STILTED.search(x):
@@ -1437,7 +1441,8 @@ def _gender_word(pc: dict) -> str:
 
 
 def _hero(pc: dict, cx: Ctx, name: str, *, title: str = "Your Reading Right Now",
-          subtitle: str = "Where you are in life's timing, and what it is touching") -> str:
+          subtitle: str = "Where you are in life's timing, and what it is touching",
+          intro: bool = True) -> str:
     meta = pc.get("meta") or {}
     planets = pc.get("planets") or {}
     moon = planets.get("Moon") or {}
@@ -1461,7 +1466,7 @@ def _hero(pc: dict, cx: Ctx, name: str, *, title: str = "Your Reading Right Now"
         chips.append(f"<b>{_e(cx.ad)} Antardasha</b>")
     chips.append(f"Report Date: <b>{cx.today.strftime('%d %b %Y')}</b>")
     sent = ""
-    if lagna and moon_sign:
+    if intro and lagna and moon_sign:
         sent = (f"This chart is read from {_e(lagna)} lagna, with the Moon in {_e(moon_sign)}"
                 f"{f' ({_e(nak)})' if nak else ''}. You are in a {_e(cx.md)} mahadasha, "
                 f"with {_e(cx.ad)} running the current antardasha." if cx.ad else
@@ -1564,9 +1569,12 @@ def _gemstone_paid_html(data: dict) -> str:
                  if item.get("verdict") == "test_required" else
                  "Use a three-day trial before regular wear.")
         window = ""
-        if item.get("wear_from") and item.get("wear_until"):
-            window = (f' Traditional timing: {_e(_full_date(item["wear_from"]))} to '
-                      f'{_e(_full_date(item["wear_until"]))}.')
+        w_from, w_until = _d(item.get("wear_from")), _d(item.get("wear_until"))
+        if w_from and w_until:
+            if (w_until - w_from).days > 6 * 365:       # a very long span is no timing advice at all
+                window = f' Traditional timing: it may be started from {_e(_full_date(w_from))}.'
+            else:
+                window = (f' Traditional timing: {_e(_full_date(w_from))} to {_e(_full_date(w_until))}.')
         alternative = gem.get("sub") or ""
         alt_text = (f'Lower-cost alternative: {_e(alternative)} (the same trial applies).<br>'
                     if alternative else "")
@@ -1634,8 +1642,14 @@ def _next_html(a: dict, cx: Ctx) -> str:
                 'ordinary movement here rather than a turning point.</p>')
     else:
         rows = []
+        prev_end: Optional[date] = None
         for ph in a["phases"]:
             txt = ph.get("text") or ph["fb"]
+            start = _d(ph["start"])
+            if prev_end and start and (start - prev_end).days > 120:
+                rows.append(f'<p class="fine gap">Between {_e(_mon(prev_end))} and {_e(_mon(start))} nothing '
+                            f'here stands out, so expect steady, ordinary movement.</p>')
+            prev_end = _d(ph["end"]) or prev_end
             rows.append(
                 f'<div class="phase"><div><span class="when">{_e(_span(ph["start"], ph["end"]))}</span>'
                 f'<span class="tag {ph["kind"]}">{_e(ph["head"])}</span></div><p>{_e(txt)}</p>'
@@ -1809,12 +1823,18 @@ def render_question(pc: dict, reading: Any, facts: dict, *, name: str = "", paid
     period = _question_period(pc)
     out_of_scope = reading.stance == "not_astrological"
     parts = [_hero(pc, cx, name, title=q["answer"],
-                   subtitle="One question, one direct answer, checked against your chart")]
+                   subtitle="One question, one direct answer, checked against your chart", intro=False)]
     parts.append(
         f'<section class="area"><h2>&ldquo;{_e(facts["question"])}&rdquo;</h2>'
         f'<p class="tagline">{_e(labels[reading.stance])}</p>'
         f'<div class="blk"><h3>{_e(q["answer"])}</h3><p>{_e(reading.answer)}</p></div></section>')
-    visible_reasons = QR.plain_reasons(facts, lang)
+    answer_words = set(re.findall(r"[a-z']+", reading.answer.lower()))
+
+    def _already_said(reason: str) -> bool:           # the answer's reason sentence is often a plain fact
+        words = re.findall(r"[a-z']+", reason.lower())
+        return bool(words) and sum(w in answer_words for w in words) / len(words) >= 0.5
+
+    visible_reasons = [r for r in QR.plain_reasons(facts, lang) if not _already_said(r)]
     if visible_reasons:
         shown = visible_reasons if paid else visible_reasons[:2]
         items = "".join(f'<li>{_e(reason)}</li>' for reason in shown)
